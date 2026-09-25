@@ -1836,9 +1836,9 @@ build: function(root){
   function box(x, y, w, ht, t, cls){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': cls || 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 18, 'class': 'h'}, gr, t); return gr; }
   E.va = box(10, 14, 640, 86, 'Virtual address (from the AGU or the store queue)');
   E.fv = [['VPN \u00b7 bits 47:12 \u2192 DTLB', 20, 300, 'a1'], ['index \u00b7 bits 11:6', 330, 150, 'a2'], ['offset \u00b7 bits 5:0', 490, 150, 'a3']].map(function(f){
-    s('rect', {x: f[1], y: 30, width: f[2], height: 34, rx: 5, 'class': f[3] + 'b'}, E.va);
-    var t = s('text', {x: f[1] + f[2] / 2, y: 52, 'text-anchor': 'middle', 'class': 'm', 'font-size': 13}, E.va, '');
-    s('text', {x: f[1] + f[2] / 2, y: 86, 'text-anchor': 'middle', 'class': 's'}, E.va, f[0]);
+    s('rect', {x: f[1], y: 42, width: f[2], height: 34, rx: 5, 'class': f[3] + 'b'}, E.va);
+    var t = s('text', {x: f[1] + f[2] / 2, y: 64, 'text-anchor': 'middle', 'class': 'm', 'font-size': 13}, E.va, '');
+    s('text', {x: f[1] + f[2] / 2, y: 90, 'text-anchor': 'middle', 'class': 's'}, E.va, f[0]);
     return t;
   });
   E.tlb = box(670, 14, 240, 86, 'DTLB (Chapter 03)');
@@ -1849,7 +1849,7 @@ build: function(root){
   /* wires: PA tag bus and index path */
   E.wTag = s('path', {d: 'M 790 100 L 790 118 L 462 118 L 462 530', 'class': 'wire'}, sv);
   s('text', {x: 470, y: 132, 'class': 's'}, sv, 'PA tag bus');
-  E.wIdx = s('path', {d: 'M 405 64 L 405 110 L 55 110 L 55 138', 'class': 'wire'}, sv);
+  E.wIdx = s('path', {d: 'M 480 59 L 480 110 L 55 110 L 55 138', 'class': 'wire'}, sv);
   /* decoder */
   E.dec = box(10, 140, 92, 400, '');
   s('text', {x: 20, y: 160, 'class': 'h'}, E.dec, 'row'); s('text', {x: 20, y: 176, 'class': 'h'}, E.dec, 'decoder'); s('text', {x: 20, y: 192, 'class': 's'}, E.dec, '6 \u2192 64');
@@ -1917,7 +1917,7 @@ build: function(root){
   E.st = box(960, 590, 230, 196, 'Totals so far');
   E.stT = []; for (i = 0; i < 7; i++) E.stT.push(s('text', {x: 970, y: 636 + i * 22, 'font-size': 12}, E.st, ''));
 
-  h('p', {'class': 'note'}, root, 'pLRU tree bits: 0 points to the older left half; 1 points to the older right half.');
+  h('p', {'class': 'note'}, root, 'pLRU tree bits: 0 points to the older left half; 1 points to the older right half. Shortened data cells show \u2026 followed by the low four hex digits of the 64-bit word. Long decimal labels use a middle \u2026; the narration gives the full value.');
   var stp = App.stepper(root, {render: draw, pills: false});
   var cu = h('div', {'class': 'card'}, root);
   cu.innerHTML = '<h3>Run your own access</h3><div class="stp"><input class="l1va" value="0x7ffd4a3c5e58" style="width:170px" aria-label="virtual address"><select class="l1op" aria-label="access operation"><option value="ld">load</option><option value="st">store</option></select><input class="l1v" value="7" style="width:70px" aria-label="store value"><button class="pri l1go">add after the sequence</button><button class="l1clr">remove mine</button></div><p class="note l1err" role="alert" style="color:var(--bad);display:none"></p><p class="note">Enter an 8-byte-aligned user address below 0x800000000000. An unknown page gets a model frame and synthetic line data; this is not a page walk. A store value must fit in a signed 64-bit long. A custom store represents a retired store draining into the L1d. Each access runs against the cache state the sequence left behind. Change only bits 12 and up to stay in set 57.</p>';
@@ -2001,14 +2001,15 @@ build: function(root){
     if (r.si === 57 && k >= 3 && k < 5 && !r.hit) d += ' All of these addresses differ only in bits 12 and up, so bits 11:6 are always 57.';
     f.d = d; return f;
   }
-  function wordTxt(v){ if (v === null || v === undefined) return ''; return v < 100000n ? v.toString() : '\u2026' + v.toString(16).slice(-4); }
+  function wordTxt(v){ if (v === null || v === undefined) return ''; return v > -10000n && v < 100000n ? v.toString() : '\u2026' + BigInt.asUintN(64, v).toString(16).padStart(16, '0').slice(-4); }
+  function decimalTxt(v){ var t = String(v); return t.length <= 14 ? t : t.slice(0, 6) + '\u2026' + t.slice(-6); }
   function draw(f){
     var r = f.r, ph = f.ph, showAfter = ph === 'select' || ph === 'all' || ph === 'fill';
     var res = ph === 'compare' || ph === 'all' || ph === 'select' || ph === 'miss' || ph === 'writeback';
     var set = showAfter ? r.after : r.before;
     E.fv[0].textContent = hx(r.va >> 12n); E.fv[1].textContent = r.si + ' = ' + r.si.toString(2).padStart(6, '0'); E.fv[2].textContent = r.off + ' = ' + r.off.toString(2).padStart(6, '0');
     E.tlbT.textContent = 'VPN ' + (r.va >> 12n).toString(16); E.tlbT2.textContent = '\u2192 PFN ' + (r.pa >> 12n).toString(16) + ' (tag)';
-    E.opT.textContent = (r.a.st ? 'STORE 8 B, value ' + r.a.val : 'LOAD 8 B'); E.opT2.textContent = r.a.who; E.opT3.textContent = 'PA ' + hx(r.pa);
+    E.opT.textContent = (r.a.st ? 'STORE 8 B, value ' + decimalTxt(r.a.val) : 'LOAD 8 B'); E.opT2.textContent = r.a.who; E.opT3.textContent = 'PA ' + hx(r.pa);
     var on = function(el, v){ el.setAttribute('class', v ? 'on' : ''); };
     on(E.va, ph === 'split' || ph === 'all'); on(E.tlb, ph === 'split' || ph === 'all');
     E.wTag.setAttribute('class', 'wire' + (ph !== 'read' ? ' on' : '')); E.wIdx.setAttribute('class', 'wire' + (ph === 'split' || ph === 'read' || ph === 'all' ? ' on' : ''));
@@ -2041,7 +2042,7 @@ build: function(root){
     E.alT.textContent = showAfter ? 'offset ' + r.off + ' \u2192 bytes ' + r.off + '\u2013' + (r.off + 7) : '';
     E.alT2.textContent = showAfter ? 'word ' + r.wi + ' of the line' : '';
     E.outT.textContent = showAfter ? (r.a.st ? 'store merges' : 'load result') : '';
-    E.outV.textContent = showAfter ? String(r.val) : '';
+    E.outV.textContent = showAfter ? decimalTxt(r.val) : '';
     E.outT2.textContent = showAfter ? (r.a.st ? 'into way ' + r.way + ', D = 1' : 'to the destination register') : '';
     E.orT.textContent = ph === 'fill' ? 'REFILL' : res ? (r.hit ? 'HIT' : 'MISS') : ''; E.orT.setAttribute('fill', r.hit ? 'var(--ok)' : 'var(--bad)');
     E.orT2.textContent = ph === 'fill' ? 'comparators idle during refill' : res ? 'hit vector (w7..w0): ' + r.cmp.slice().reverse().map(function(b){ return b ? 1 : 0; }).join('') : '';
@@ -2058,7 +2059,7 @@ build: function(root){
     if ((showAfter || ph === 'miss' || ph === 'writeback') && !r.hit){
       L.push('MAB entry: line PA ' + hx(r.pa & ~63n));
       L.push('victim: way ' + r.way + (r.byInvalid ? ' (invalid, free)' : ' (chosen by pLRU)'));
-      if (r.evict) L.push('evicted: ' + (r.evict.tag === 0x1a3f7cn ? 'hist[120..127]' : 'PA ' + hx(r.evict.pa)) + (r.evict.d ? ', dirty' : ', clean'));
+      if (r.evict) L.push((showAfter ? 'evicted: ' : 'victim line: ') + (r.evict.tag === 0x1a3f7cn ? 'hist[120..127]' : 'PA ' + hx(r.evict.pa)) + (r.evict.d ? ', dirty' : ', clean'));
       if (ph === 'writeback' || showAfter) L.push(r.wb ? '\u2191 64 B written back to L2' : 'no write-back needed');
       if (showAfter){ L.push('\u2193 64 B filled from L2: 2 \u00d7 32 B transfers'); L.push('new line: V = 1, D = ' + (r.a.st ? '1 (store merged)' : '0')); }
     } else if (showAfter) L.push('hit: no L2 traffic');
@@ -2170,7 +2171,7 @@ build: function(root){
     var L = [['L1d', CFG.l1], ['L2', CFG.l2], ['L3', CFG.l3], ['DRAM', App.dramCycles()]], mx = Math.log10(App.dramCycles() * 1.3);
     s('text', {x: 10, y: 20, 'class': 'h'}, lsv, 'Load-to-use latency, log scale');
     L.forEach(function(r, i){
-      var y = 40 + i * 50, w = Math.max(6, (Math.log10(r[1]) / mx) * 760);
+      var y = 40 + i * 50, w = Math.max(6, (Math.log10(r[1]) / mx) * 680);
       s('text', {x: 10, y: y + 22, 'class': 'h'}, lsv, r[0]);
       s('rect', {x: 80, y: y, width: w, height: 32, rx: 4, 'class': ['a4b', 'a2b', 'a3b', 'a1b'][i]}, lsv);
       s('text', {x: 88 + w, y: y + 21, 'class': 'm', 'font-size': 12}, lsv, r[1] + ' cycles \u00b7 ' + (r[1] / CFG.ghz).toFixed(1) + ' ns \u00b7 ' + (r[1] / CFG.l1).toFixed(0) + '\u00d7 L1');
