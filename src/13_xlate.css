@@ -1,0 +1,7 @@
+.kchain{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+@media (max-width:900px){.kchain{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kchain>div{border:1px solid var(--bd);border-radius:8px;padding:8px 10px;background:var(--sunk);position:relative}
+.kchain>div.on{border-color:var(--act);background:var(--actbg)}
+.kchain code{font-size:12px;font-weight:600;color:var(--tx)}
+.kchain span{display:block;font:11px var(--mono);color:var(--tx3)}
+.kchain p{margin:4px 0 0;font-size:12.5px;color:var(--tx2)}

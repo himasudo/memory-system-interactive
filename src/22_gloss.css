@@ -1,0 +1,3 @@
+.glist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.glist .card h3{margin-bottom:4px}
+button.lnk{padding:3px 8px;font-size:11.5px}

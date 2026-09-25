@@ -1,0 +1,62 @@
+.mt{border-collapse:collapse;width:100%;font-size:12.5px}
+.mt th{text-align:left;font-weight:600;color:var(--tx3);font-size:11px;padding:3px 6px;border-bottom:1px solid var(--bd)}
+.mt td{padding:3px 6px;border-bottom:1px solid var(--bd);font-family:var(--mono);font-size:12px}
+.mt tr:last-child td{border-bottom:0}
+.mt tr.chg td{background:var(--actbg);color:var(--act)}
+.mt td dfn{font-family:var(--sans)}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:1000px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.pgrid{grid-template-columns:minmax(0,1fr)}}
+.pp h3{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.lane{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:4px 0;font-size:12px}
+.lane>span{font:600 11px var(--mono);color:var(--tx3);width:26px}
+.lane i{font:normal 11.5px var(--mono);padding:1px 6px;border-radius:5px;background:var(--a4bg);color:var(--a4)}
+.lane em{font-style:normal;color:var(--tx3);font-size:11.5px}
+.prfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:3px}
+.pr{border:1px solid var(--bd);border-radius:5px;padding:2px 4px;font-size:10.5px;line-height:1.25;min-height:32px}
+.pr b{display:block;font:600 10px var(--mono);color:var(--tx3)}
+.pr span{font-family:var(--mono)}
+.pr.free{opacity:.35}
+.pr.pend{border:1.5px dashed var(--a4);background:var(--a4bg)}
+.pr.rdy{background:var(--okbg);border-color:var(--ok)}
+.pr.nw{outline:2px solid var(--act)}
+.su{display:flex;gap:4px;align-items:center;font-size:12px;margin:3px 0;flex-wrap:wrap}
+.su b{font:600 11.5px var(--mono);min-width:56px}
+.su span{font:11px var(--mono);padding:0 5px;border-radius:4px}
+.su span.r{background:var(--okbg);color:var(--ok)}
+.su span.n{background:var(--sunk);color:var(--tx3)}
+.evl{margin:0;padding-left:18px;font-size:13.5px;color:var(--tx2)}
+.evl li{margin:3px 0}
+.evl b{color:var(--tx);font-family:var(--mono);font-size:12.5px}
+.ring{width:100%;max-width:280px;display:block;margin:0 auto}
+.gantt-w{overflow:auto;max-height:560px;border:1px solid var(--bd);border-radius:8px}
+.gantt{border-collapse:separate;border-spacing:0;font:10.5px var(--mono)}
+.gantt th{position:sticky;top:0;background:var(--panel);z-index:2;font-weight:500;color:var(--tx3);padding:3px 2px;min-width:24px;cursor:pointer;border-bottom:1px solid var(--bd);white-space:nowrap}
+.gantt td{padding:1px 2px;text-align:center;min-width:24px;height:18px;border-right:1px solid color-mix(in srgb,var(--bd) 45%,transparent)}
+.gantt .lbl{position:sticky;left:0;background:var(--panel);z-index:1;text-align:left;padding:1px 8px;min-width:70px;border-right:1px solid var(--bd)}
+.gantt thead .lbl{z-index:3}
+.gantt td.fe{background:var(--a4bg);color:var(--a4)}
+.gantt td.uq{background:var(--sunk);color:var(--tx3)}
+.gantt td.rn{background:var(--a3bg);color:var(--a3)}
+.gantt td.wt{color:var(--tx3)}
+.gantt td.is{background:var(--actbg);color:var(--act);font-weight:600}
+.gantt td.ex{background:var(--a2bg);color:var(--a2)}
+.gantt td.mm{background:var(--a4bg);color:var(--a4);font-weight:600}
+.gantt td.ms{background:var(--badbg);color:var(--bad)}
+.gantt td.wb{background:var(--okbg);color:var(--ok)}
+.gantt td.rt{background:var(--a3);color:#fff;font-weight:600}
+.gantt td.sb{background:var(--a1bg);color:var(--a1)}
+.gantt td.cm{background:var(--a1);color:#fff;font-weight:600}
+.gantt td.xx{background:var(--badbg);color:var(--bad);font-weight:700}
+.gantt td.fut{background:transparent!important;color:transparent!important}
+.gantt td.cur,.gantt th.cur{box-shadow:inset 2px 0 0 var(--act),inset -2px 0 0 var(--act)}
+.gantt tr.sqd td.lbl{color:var(--bad);text-decoration:line-through}
+.gantt tr.act td.lbl{color:var(--act);font-weight:600}
+svg .slot{fill:var(--sunk);stroke:var(--bd);stroke-width:1}
+svg .slot.wait{fill:var(--a4bg);stroke:var(--a4)}
+svg .slot.rdy{fill:var(--okbg);stroke:var(--ok)}
+svg .slot.exec{fill:var(--actbg);stroke:var(--act)}
+svg .slot.done{fill:var(--okbg);stroke:var(--ok)}
+svg .slot.miss{fill:var(--badbg);stroke:var(--bad)}
+svg .slot.sen{fill:var(--a3bg);stroke:var(--a3)}
+svg .slt{font-size:9px;fill:var(--tx)}

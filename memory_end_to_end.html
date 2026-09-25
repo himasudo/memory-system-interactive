@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,32 +9,32 @@
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
-  --bg:#f5f4f0; --panel:#ffffff; --sunk:#edebe5; --tx:#1b1b19; --tx2:#57564f; --tx3:#8a887f;
-  --bd:#d8d5cc; --bd2:#b7b3a8; --wire:#a09c91;
-  --a1:#c1502a; --a1bg:#fbe6dc;   /* tag / stores / writeback */
-  --a2:#0f7f5e; --a2bg:#d9f0e7;   /* index / fills / L1 */
-  --a3:#5f4cc2; --a3bg:#e8e4fb;   /* offset / ROB */
-  --a4:#2a67aa; --a4bg:#dbe8f6;   /* data / loads */
-  --ok:#2b8538; --okbg:#dff1dd; --bad:#c0372c; --badbg:#fbe0dd;
-  --act:#bf800d; --actbg:#fbedd0;
+  --bg:#f2f0e9; --panel:#fbfaf6; --sunk:#e9e5db; --tx:#171714; --tx2:#56544c; --tx3:#858177;
+  --bd:#d6d0c3; --bd2:#b6afa1; --wire:#9e988c;
+  --a1:#c95632; --a1bg:#f8e4db;   /* tag / stores / writeback */
+  --a2:#08785d; --a2bg:#dcefe8;   /* index / fills / L1 */
+  --a3:#6655bf; --a3bg:#e9e5f8;   /* offset / ROB */
+  --a4:#2467a8; --a4bg:#dce8f4;   /* data / loads */
+  --ok:#24783a; --okbg:#deeedf; --bad:#b93931; --badbg:#f6dfdc;
+  --act:#d86a16; --actbg:#fae8d6;
   --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,'Helvetica Neue',sans-serif;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#121215; --panel:#1a1a1f; --sunk:#101013; --tx:#ecebe6; --tx2:#a5a39b; --tx3:#74726c;
-    --bd:#2c2c34; --bd2:#43434d; --wire:#5a5a65;
-    --a1:#f08b62; --a1bg:#3a2016; --a2:#4fd0a4; --a2bg:#0f2f28; --a3:#ab99f7; --a3bg:#241d40;
-    --a4:#79b1ee; --a4bg:#16283d; --ok:#6fd07c; --okbg:#15301a; --bad:#ff7b6f; --badbg:#3b1715;
-    --act:#f2b646; --actbg:#3a2b0f;
+    --bg:#101114; --panel:#17181c; --sunk:#0d0e11; --tx:#f0eee8; --tx2:#aaa79f; --tx3:#74716a;
+    --bd:#292b31; --bd2:#41444c; --wire:#5e6169;
+    --a1:#f08a61; --a1bg:#382017; --a2:#4bcaa1; --a2bg:#102e28; --a3:#ad9bf7; --a3bg:#241e3d;
+    --a4:#79afe8; --a4bg:#17283a; --ok:#70cd7c; --okbg:#15301b; --bad:#ff7c70; --badbg:#391816;
+    --act:#ff9a3d; --actbg:#35220f;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#121215; --panel:#1a1a1f; --sunk:#101013; --tx:#ecebe6; --tx2:#a5a39b; --tx3:#74726c;
-  --bd:#2c2c34; --bd2:#43434d; --wire:#5a5a65;
-  --a1:#f08b62; --a1bg:#3a2016; --a2:#4fd0a4; --a2bg:#0f2f28; --a3:#ab99f7; --a3bg:#241d40;
-  --a4:#79b1ee; --a4bg:#16283d; --ok:#6fd07c; --okbg:#15301a; --bad:#ff7b6f; --badbg:#3b1715;
-  --act:#f2b646; --actbg:#3a2b0f;
+  --bg:#101114; --panel:#17181c; --sunk:#0d0e11; --tx:#f0eee8; --tx2:#aaa79f; --tx3:#74716a;
+  --bd:#292b31; --bd2:#41444c; --wire:#5e6169;
+  --a1:#f08a61; --a1bg:#382017; --a2:#4bcaa1; --a2bg:#102e28; --a3:#ad9bf7; --a3bg:#241e3d;
+  --a4:#79afe8; --a4bg:#17283a; --ok:#70cd7c; --okbg:#15301b; --bad:#ff7c70; --badbg:#391816;
+  --act:#ff9a3d; --actbg:#35220f;
 }
 *{box-sizing:border-box}
 html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 60px)}
@@ -257,7 +257,6 @@ svg .slt{font-size:9px;fill:var(--tx)}
 .kchain span{display:block;font:11px var(--mono);color:var(--tx3)}
 .kchain p{margin:4px 0 0;font-size:12.5px;color:var(--tx2)}
 
-
 .cohbtns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 @media (max-width:760px){.cohbtns{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .cohbtns>div{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
@@ -268,16 +267,997 @@ svg .slt{font-size:9px;fill:var(--tx)}
 .glist .card h3{margin-bottom:4px}
 button.lnk{padding:3px 8px;font-size:11.5px}
 
+/* ========================================================================== */
+/* Experience layer — intentionally separate from chapter simulation styling. */
+/* ========================================================================== */
+
+:root{
+  --sidebar-w:248px;
+  --topbar-h:58px;
+  --content-max:1560px;
+  --radius-sm:7px;
+  --radius-md:10px;
+  --radius-lg:14px;
+  --shadow-float:0 18px 55px rgba(28,27,24,.14),0 3px 12px rgba(28,27,24,.08);
+  --focus:0 0 0 3px color-mix(in srgb,var(--act) 28%,transparent);
+  --panel-hi:color-mix(in srgb,var(--panel) 88%,var(--bg));
+}
+
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--topbar-h) + 22px)}
+body{font-size:15.5px;line-height:1.62;letter-spacing:-.003em;overflow-x:hidden}
+body.nav-open,body.viz-open{overflow:hidden}
+::selection{background:color-mix(in srgb,var(--act) 28%,transparent)}
+
+/* ----- shell ----- */
+.app-shell{min-height:100vh}
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);z-index:45;
+  display:flex;flex-direction:column;background:var(--panel);
+  border-right:1px solid var(--bd);padding:18px 14px 14px;
+}
+.sidebar-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--tx);padding:4px 8px 18px}
+.sidebar-mark{width:34px;height:34px;border:1px solid var(--bd2);border-radius:9px;display:grid;place-items:center;font:700 11px var(--mono);letter-spacing:-.04em;background:var(--sunk);color:var(--act)}
+.sidebar-brand strong{display:block;font-size:14px;line-height:1.2;letter-spacing:-.015em}
+.sidebar-brand small{display:block;margin-top:3px;color:var(--tx3);font-size:10.5px;line-height:1.2;font-family:var(--mono)}
+.sidebar-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:3px 4px 12px;scrollbar-width:thin;scrollbar-color:var(--bd2) transparent}
+.nav{display:flex;flex-direction:column;gap:2px;overflow:visible;padding:0}
+.nav-group{margin:14px 8px 5px;color:var(--tx3);font:600 9.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.11em}
+.nav-group:first-child{margin-top:4px}
+.nav a{display:grid;grid-template-columns:27px minmax(0,1fr) 14px;align-items:center;gap:7px;min-height:38px;padding:7px 8px;border:0;border-radius:8px;color:var(--tx2);text-decoration:none;white-space:normal;transition:background .14s ease,color .14s ease,transform .14s ease}
+.nav a:hover{background:var(--sunk);color:var(--tx);border:0;transform:translateX(1px)}
+.nav a.cur{background:var(--actbg);border:0;color:var(--tx)}
+.nav-num{font:600 10.5px var(--mono);color:var(--tx3)}
+.nav a.cur .nav-num{color:var(--act)}
+.nav-label{font-size:12.5px;line-height:1.2;font-weight:520;letter-spacing:-.005em}
+.nav-arrow{opacity:0;color:var(--act);transform:translateX(-3px);transition:opacity .14s,transform .14s}
+.nav a.cur .nav-arrow{opacity:1;transform:none}
+.sidebar-footer{border-top:1px solid var(--bd);padding:12px 5px 0;display:grid;gap:8px}
+.machine-meta{padding:0 4px 3px;color:var(--tx3);font:10.5px/1.35 var(--mono)}
+.side-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.side-actions button{justify-content:center}
+.side-scrim{display:none}
+
+.app-stage{min-height:100vh;margin-left:var(--sidebar-w)}
+.top{position:sticky;top:0;z-index:35;height:var(--topbar-h);padding:0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px) saturate(1.15);-webkit-backdrop-filter:blur(16px) saturate(1.15);border-bottom:1px solid color-mix(in srgb,var(--bd) 82%,transparent)}
+.topin{max-width:none;height:100%;margin:0;padding:0 24px;display:flex;align-items:center;gap:12px}
+.nav-toggle{display:none}
+.crumb{display:flex;align-items:center;gap:10px;min-width:0;color:var(--tx2)}
+.crumb-num{font:600 10.5px var(--mono);letter-spacing:.06em;color:var(--act)}
+.crumb-title{font-size:12.5px;font-weight:560;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crumb-sep{width:1px;height:14px;background:var(--bd)}
+.crumb-context{font:10.5px var(--mono);color:var(--tx3);white-space:nowrap}
+.top-spacer{flex:1}
+.top-actions{display:flex;align-items:center;gap:6px}
+.desktop-only{display:inline-flex}
+.mobile-only{display:none!important}
+
+.wrap{max-width:var(--content-max);margin:0 auto;padding:38px 34px 96px}
+.ch{display:none;animation:chapter-in .2s ease-out both}
+.ch.show{display:block}
+@keyframes chapter-in{from{opacity:.55;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ----- chapter header ----- */
+.chh{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:end;margin:0 0 34px;padding:0 0 26px;border-bottom:1px solid var(--bd)}
+.ch-copy{min-width:0}
+.chh .num{display:flex;align-items:center;gap:8px;font:600 10.5px var(--mono);color:var(--act);letter-spacing:.09em;text-transform:uppercase;margin-bottom:8px}
+.chh .num::after{content:"";width:28px;height:1px;background:var(--act);opacity:.55}
+.chh h1{font-size:clamp(30px,3vw,44px);line-height:1.06;font-weight:650;margin:0 0 10px;letter-spacing:-.035em;max-width:980px}
+.chh p{margin:0;color:var(--tx2);max-width:900px;font-size:16px;line-height:1.55}
+.ch-nav{display:flex;gap:7px;align-items:center;padding-bottom:2px}
+.ch-nav button{min-width:92px}
+
+.stack>*+*{margin-top:20px}
+.grid2,.grid3{gap:20px}
+.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+/* ----- typography / surfaces ----- */
+.card{background:var(--panel);border:1px solid var(--bd);border-radius:var(--radius-md);padding:20px 22px;box-shadow:0 1px 0 color-mix(in srgb,var(--tx) 3%,transparent);overflow-wrap:anywhere}
+.card h3{font-size:14.5px;font-weight:650;letter-spacing:-.012em;margin:0 0 10px}
+.card p{font-size:14.25px;line-height:1.62;color:var(--tx2);margin:0 0 10px}
+.card:hover{border-color:color-mix(in srgb,var(--bd2) 78%,var(--bd))}
+.note{font-size:12px;line-height:1.5;color:var(--tx3)}
+code,.mono{font-size:.9em}
+code{background:color-mix(in srgb,var(--sunk) 72%,transparent);padding:.08em .28em;border-radius:4px}
+pre code{background:none;padding:0}
+.tag{font-size:10px;letter-spacing:.02em;padding:2px 6px;border-radius:5px}
+
+button{min-height:36px;font:560 12.5px var(--sans);padding:7px 11px;border-radius:7px;border:1px solid var(--bd2);background:var(--panel);color:var(--tx);cursor:pointer;transition:border-color .14s,background .14s,color .14s,transform .08s,box-shadow .14s}
+button:hover{border-color:var(--tx3);background:var(--panel-hi)}
+button:active{transform:translateY(1px)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,dfn:focus-visible{outline:none;box-shadow:var(--focus)}
+button.pri{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+button.pri:hover{background:color-mix(in srgb,var(--tx) 88%,var(--bg));color:var(--bg)}
+button.on{background:var(--actbg);border-color:color-mix(in srgb,var(--act) 65%,var(--bd));color:var(--act)}
+button.ghost{border-color:transparent;background:transparent;color:var(--tx2)}
+button.ghost:hover{background:var(--sunk);color:var(--tx)}
+.iconbtn{width:36px;padding:0;display:inline-grid;place-items:center;font-family:var(--mono);font-size:15px}
+input,select{min-height:38px;padding:7px 10px;border-radius:7px;background:var(--panel);border-color:var(--bd2)}
+
+/* ----- interactive visual canvases ----- */
+.viz-frame{position:relative;border:1px solid var(--bd);border-radius:var(--radius-lg);background:var(--panel);overflow:hidden;box-shadow:0 1px 0 color-mix(in srgb,var(--tx) 3%,transparent)}
+.viz-bar{height:42px;display:flex;align-items:center;gap:8px;padding:0 9px 0 13px;border-bottom:1px solid var(--bd);background:color-mix(in srgb,var(--panel) 96%,var(--bg));user-select:none}
+.viz-hint{font:10.5px var(--mono);color:var(--tx3);white-space:nowrap}
+.viz-hint strong{color:var(--tx2);font-weight:600}
+.viz-bar .grow{flex:1}
+.viz-bar button{min-height:28px;height:28px;min-width:28px;padding:0 8px;background:transparent;border-color:transparent;font-size:11.5px}
+.viz-bar button:hover{background:var(--sunk);border-color:transparent}
+.viz-pan{display:flex;gap:1px}
+.viz-frame .scroller{border:0!important;border-radius:0!important;background:var(--panel);overflow:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--bd2) transparent;cursor:grab;position:relative}
+.viz-frame .scroller.dragging{cursor:grabbing;user-select:none}
+.viz-frame .scroller::-webkit-scrollbar{height:10px;width:10px}
+.viz-frame .scroller::-webkit-scrollbar-thumb{background:var(--bd2);border:3px solid var(--panel);border-radius:20px}
+.viz-frame .scroller::-webkit-scrollbar-track{background:var(--panel)}
+.viz-frame .scroller svg{display:block;height:auto;max-width:none;transition:width .16s ease}
+.viz-frame::before,.viz-frame::after{content:"";position:absolute;z-index:4;top:42px;bottom:10px;width:26px;pointer-events:none;opacity:0;transition:opacity .15s}
+.viz-frame::before{left:0;background:linear-gradient(90deg,color-mix(in srgb,var(--panel) 94%,transparent),transparent)}
+.viz-frame::after{right:0;background:linear-gradient(270deg,color-mix(in srgb,var(--panel) 94%,transparent),transparent)}
+.viz-frame.can-left::before,.viz-frame.can-right::after{opacity:1}
+.viz-frame.is-fullscreen{position:fixed;inset:14px;z-index:120;background:var(--bg);border-color:var(--bd2);box-shadow:var(--shadow-float);display:flex;flex-direction:column}
+.viz-frame.is-fullscreen .viz-bar{flex:none}
+.viz-frame.is-fullscreen .scroller{flex:1;min-height:0}
+.viz-frame.is-fullscreen::before,.viz-frame.is-fullscreen::after{top:42px}
+
+/* legacy bare scrollers that are not SVG canvases */
+.scroller{border-radius:var(--radius-md);border-color:var(--bd);background:var(--panel)}
+
+/* ----- steppers ----- */
+.stepper{gap:0!important;border:1px solid var(--bd);border-radius:var(--radius-md);background:var(--panel);overflow:hidden}
+.stepper>*+*{margin-top:0!important}
+.stepper-bar{position:sticky;top:calc(var(--topbar-h) + 8px);z-index:12;display:grid;grid-template-columns:auto auto auto auto minmax(80px,1fr);gap:6px;padding:9px 10px;background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd)}
+.stepper-bar .grow{display:none}
+.stepper-bar .pills{min-width:0;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;justify-content:flex-end;padding:1px 0}
+.stepper-bar .pills::-webkit-scrollbar{display:none}
+.stepper .pill{flex:none;min-height:26px;padding:3px 8px;border-radius:5px;font:600 10px var(--mono);background:transparent}
+.stepper .pill.done{color:var(--tx3);border-color:transparent}
+.stepper .pill.cur{background:var(--actbg);color:var(--act);border-color:color-mix(in srgb,var(--act) 45%,var(--bd))}
+.step-progress{height:2px;background:var(--bd);position:relative}
+.step-progress>i{position:absolute;inset:0 auto 0 0;background:var(--act);width:0;transition:width .16s ease}
+.narr{border:0;border-radius:0;padding:17px 20px 18px;background:color-mix(in srgb,var(--actbg) 28%,var(--panel));position:relative}
+.narr::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--act)}
+.narr h4{font-size:15px;letter-spacing:-.012em;margin:0 0 5px}
+.narr p{font-size:14px;line-height:1.58}
+
+/* custom non-stepper control rows */
+.stp{gap:8px}
+.seg{border-radius:7px;flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{white-space:nowrap;min-height:36px;padding:7px 11px}
+
+/* ----- tables / dense data ----- */
+.mt{font-size:12.5px}
+.mt th{padding:8px 9px;font-size:10.5px;letter-spacing:.035em;text-transform:uppercase;background:color-mix(in srgb,var(--sunk) 55%,transparent);position:sticky;top:0}
+.mt td{padding:7px 9px;font-size:11.5px}
+.mt tr:hover td{background:color-mix(in srgb,var(--sunk) 45%,transparent)}
+.kv{gap:5px 16px;font-size:13px}
+.kv dt{font-size:12px}
+
+/* ----- glossary / popovers / drawer ----- */
+dfn{border-bottom-color:color-mix(in srgb,var(--act) 48%,var(--tx3));text-decoration:none;border-bottom-style:dotted;border-bottom-width:1px;cursor:pointer}
+dfn:hover,dfn:focus-visible{color:var(--act);border-bottom-color:var(--act)}
+.pop{max-width:390px;border-radius:9px;padding:13px 14px;box-shadow:var(--shadow-float);font-size:13px}
+.pop b{font-size:13.5px}
+.drawer{background:rgba(15,15,16,.38);backdrop-filter:blur(2px)}
+.drawer .in{width:min(460px,100%);padding:28px 26px;background:var(--panel);box-shadow:-22px 0 60px rgba(0,0,0,.14)}
+.drawer h2{font-size:23px;letter-spacing:-.025em;margin-bottom:8px}
+.drawer label{grid-template-columns:minmax(0,1fr) 112px;gap:14px;padding:10px 0;margin:0;border-bottom:1px solid var(--bd)}
+.drawer label:last-of-type{border-bottom:0}
+
+/* ----- chapter-specific density corrections ----- */
+.c2u{gap:20px;grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr)}
+.src{font-size:12.5px;line-height:1.9;border-radius:7px;padding:10px 0}
+.src .ln{padding:1px 12px}
+.fields{gap:8px}
+.fld{padding:6px 11px;border-radius:7px}
+
+.pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.pp{min-width:0}
+.prfg{grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:4px}
+.pr{min-height:36px;padding:4px 5px}
+.gantt-w{max-height:68vh;border-radius:8px;scrollbar-width:thin}
+.gantt th,.gantt td{min-width:27px}
+.ring{max-width:320px}
+.pctl{position:sticky;top:calc(var(--topbar-h) + 8px);z-index:11;box-shadow:0 7px 22px color-mix(in srgb,var(--bg) 80%,transparent)}
+
+.kchain{gap:10px}
+.kchain>div{border-radius:8px;padding:11px 12px}
+.cohbtns{gap:10px}
+.glist{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.glist .card{min-height:100%}
+
+/* ----- SVG refinement ----- */
+svg text{font-size:12px}
+svg .h{font-size:13px;font-weight:650}
+svg .s{font-size:10.5px}
+svg .box{stroke-width:1}
+svg .wire{stroke-width:1.2}
+svg .click:hover .box{stroke-width:1.7}
+
+/* ----- responsive ----- */
+@media (max-width:1180px){
+  :root{--sidebar-w:224px}
+  .wrap{padding-left:24px;padding-right:24px}
+  .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media (max-width:900px){
+  :root{--sidebar-w:272px;--topbar-h:56px}
+  .sidebar{transform:translateX(-102%);transition:transform .2s ease;box-shadow:20px 0 50px rgba(0,0,0,.16)}
+  body.nav-open .sidebar{transform:none}
+  .side-scrim{display:block;position:fixed;inset:0;z-index:44;background:rgba(0,0,0,.34);opacity:0;pointer-events:none;transition:opacity .2s}
+  body.nav-open .side-scrim{opacity:1;pointer-events:auto}
+  .app-stage{margin-left:0}
+  .nav-toggle{display:inline-grid}
+  .mobile-only{display:inline-flex!important}
+  .desktop-only{display:none!important}
+  .topin{padding:0 14px}
+  .crumb-context,.crumb-sep{display:none}
+  .wrap{padding:28px 18px 82px}
+  .chh{grid-template-columns:1fr;gap:18px;margin-bottom:26px;padding-bottom:22px}
+  .chh h1{font-size:clamp(29px,8vw,38px)}
+  .chh p{font-size:15px}
+  .ch-nav{justify-content:flex-start}
+  .grid2,.grid3,.c2u,.pgrid{grid-template-columns:minmax(0,1fr)}
+  .card{padding:18px}
+  .stepper-bar{top:calc(var(--topbar-h) + 6px);grid-template-columns:auto auto auto auto;align-items:center}
+  .stepper-bar .pills{grid-column:1/-1;justify-content:flex-start;border-top:1px solid var(--bd);padding-top:7px;margin-top:2px}
+  .pctl{top:calc(var(--topbar-h) + 6px)}
+  .viz-hint .drag-copy{display:none}
+}
+
+@media (max-width:620px){
+  .wrap{padding:22px 12px 72px}
+  .top-actions button{padding:0;width:34px}
+  .top-actions .btn-label{display:none}
+  .chh{margin-bottom:22px}
+  .chh h1{font-size:30px;line-height:1.08}
+  .chh p{font-size:14.5px}
+  .ch-nav{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .ch-nav button{min-width:0}
+  .card{padding:16px;border-radius:9px}
+  .stack>*+*{margin-top:14px}
+  .grid2,.grid3{gap:14px}
+  button{min-height:40px}
+  .stp:not(.stepper-bar){align-items:stretch}
+  .stp:not(.stepper-bar)>button{flex:0 0 auto}
+  .seg{width:100%}
+  .seg button{flex:1 0 auto}
+  .drawer .in{padding:22px 18px}
+  .drawer label{grid-template-columns:1fr}
+  .drawer label input{width:100%}
+  .viz-bar{padding-left:10px;gap:4px}
+  .viz-hint{font-size:9.5px}
+  .viz-pan{display:none}
+  .viz-frame.is-fullscreen{inset:0;border:0;border-radius:0}
+  .kchain{grid-template-columns:minmax(0,1fr)}
+  .cohbtns{grid-template-columns:minmax(0,1fr)}
+  .glist{grid-template-columns:minmax(0,1fr)}
+  .mt{min-width:520px}
+  .card:has(> .mt),.card:has(> table.mt){overflow-x:auto}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* ========================================================================== */
+/* V2 art direction + information architecture cleanup                        */
+/* ========================================================================== */
+
+:root{
+  --topbar-h:0px;
+  --content-max:1640px;
+  --radius-sm:5px;
+  --radius-md:7px;
+  --radius-lg:9px;
+  --rail:color-mix(in srgb,var(--panel) 82%,var(--bg));
+  --canvas-grid:color-mix(in srgb,var(--bd) 22%,transparent);
+  --ink-panel:#171719;
+  --ink-panel-2:#1e2023;
+  --ink-text:#f4f1e9;
+  --ink-muted:#aaa69c;
+  --signal:#ff7a1a;
+}
+
+body{
+  background-color:var(--bg);
+  background-image:
+    linear-gradient(var(--canvas-grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--canvas-grid) 1px,transparent 1px);
+  background-size:32px 32px;
+  background-attachment:fixed;
+}
+
+/* Desktop has one navigation/control rail. The top bar is mobile-only. */
+.top{display:none}
+.sidebar{background:var(--rail);padding:20px 14px 14px}
+.sidebar-brand{padding:4px 8px 20px}
+.sidebar-mark{
+  border-radius:6px;background:var(--ink-panel);border-color:var(--ink-panel);
+  color:#ffb24d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)
+}
+.sidebar-brand strong{font-size:14.5px;font-weight:680}
+.sidebar-brand small{font-size:10px;letter-spacing:.01em}
+.nav-group{margin-top:18px}
+.nav a{border-radius:5px;min-height:40px}
+.nav a:hover{transform:none;background:color-mix(in srgb,var(--sunk) 75%,transparent)}
+.nav a.cur{background:var(--ink-panel);color:var(--ink-text)}
+.nav a.cur .nav-num,.nav a.cur .nav-arrow{color:#ffad45}
+.nav a.cur .nav-label{color:var(--ink-text)}
+.sidebar-footer{padding-top:14px}
+.side-actions button{min-height:34px;border-radius:5px}
+.app-stage{background:color-mix(in srgb,var(--bg) 92%,transparent)}
+.wrap{padding:54px 42px 110px}
+
+/* Editorial chapter opening: one owner for chapter identity, no duplicate nav. */
+.chh{
+  display:block;margin:0 0 46px;padding:0;border:0;
+  max-width:1180px;
+}
+.chh.has-art{
+  max-width:none;display:grid;grid-template-columns:minmax(0,1.18fr) minmax(340px,.82fr);
+  gap:64px;align-items:center;min-height:250px;padding:18px 0 34px;
+  border-bottom:1px solid var(--bd)
+}
+.chh .num{font-size:10px;letter-spacing:.13em;margin-bottom:13px}
+.chh .num::after{width:38px}
+.chh h1{font-size:clamp(42px,4.2vw,68px);line-height:.98;font-weight:720;letter-spacing:-.055em;margin-bottom:16px}
+.chh p{font-size:17px;line-height:1.55;max-width:860px;color:var(--tx2)}
+
+/* Signature chapter art is derived from the hardware itself, not stock imagery. */
+.chapter-art{
+  position:relative;overflow:hidden;min-height:220px;border-radius:10px;
+  background:var(--ink-panel);color:var(--ink-text);border:1px solid #292b2f;
+  box-shadow:0 22px 60px rgba(26,25,22,.15)
+}
+.chapter-art::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);
+  background-size:24px 24px
+}
+.art-cap{position:absolute;left:18px;top:15px;font:700 9px var(--mono);letter-spacing:.12em;color:#8f9198}
+
+.art-map{padding:62px 22px 22px;display:flex;flex-direction:column;justify-content:center}
+.art-path{position:relative;z-index:1;display:grid;grid-template-columns:1.2fr auto .8fr auto .8fr auto .8fr auto 1.1fr;align-items:center;gap:8px}
+.art-path i{font:700 11px var(--mono);font-style:normal;text-align:center;padding:15px 8px;border:1px solid #3b3e43;background:#202226;border-radius:4px;color:#d8d7d2}
+.art-path i.ap-core{border-color:#735021;color:#ffb24d}.art-path i.ap-dram{border-color:#315f55;color:#66d7b4}
+.art-path b{font:400 13px var(--mono);color:#5d6066}
+.art-address{position:relative;z-index:1;margin-top:18px;padding-top:14px;border-top:1px solid #2d3035;font:11px var(--mono);color:#9fa1a6}
+.art-address span{color:#ff9b3f;margin:0 7px}
+.art-grid{position:absolute;width:150px;height:150px;right:-50px;bottom:-65px;border:1px solid rgba(255,153,61,.25);transform:rotate(45deg)}
+
+.art-core{padding:58px 20px 20px}
+.pipe-row{position:relative;z-index:1;display:grid;grid-template-columns:62px repeat(6,1fr);gap:5px;align-items:center;margin:8px 0}
+.pipe-row span{font:700 9px var(--mono);letter-spacing:.05em;color:#81848b}
+.pipe-row i{height:17px;border:1px solid #36393f;background:#202226;border-radius:2px}
+.pipe-row i.hot{border-color:#a55b1d;background:#4a2d16;box-shadow:0 0 18px rgba(255,122,26,.16)}
+.pipe-row i.ready{border-color:#236951;background:#173c32}
+.art-cycle{position:absolute;left:20px;right:20px;bottom:15px;padding-top:10px;border-top:1px solid #2c2f34;font:10px var(--mono);color:#7f8289}
+.art-cycle b{color:#ffad45;font-weight:700}
+
+.art-l1d{padding:58px 18px 18px}
+.cache-address{position:relative;z-index:1;display:grid;grid-template-columns:1.5fr .8fr .7fr;border:1px solid #383b40;border-radius:4px;overflow:hidden}
+.cache-address span{padding:8px 9px;font:9.5px var(--mono);color:#a7a9ae;border-right:1px solid #383b40}.cache-address span:last-child{border:0}
+.cache-address span:nth-child(2){color:#64d7ad}.cache-address span:nth-child(3){color:#b5a7ff}
+.cache-ways{position:relative;z-index:1;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:13px}
+.cache-ways i{min-width:0;padding:8px 3px 7px;border:1px solid #35383d;background:#202226;border-radius:3px;text-align:center;font-style:normal}
+.cache-ways b,.cache-ways em{display:block;font:700 8px var(--mono);font-style:normal}.cache-ways b{color:#777a81}.cache-ways em{margin-top:4px;color:#5d6066}
+.cache-ways i.hit{background:#19372e;border-color:#2d8b6d;box-shadow:0 0 18px rgba(62,210,165,.12)}
+.cache-ways i.hit b,.cache-ways i.hit em{color:#67dcb7}
+.cache-result{position:absolute;left:18px;right:18px;bottom:14px;border-top:1px solid #2d3035;padding-top:9px;font:10px var(--mono);color:#85888f}.cache-result b{color:#f3f0e8;margin-left:6px}
+
+/* Surfaces: fewer soft cards, more explicit information hierarchy. */
+.card{border-radius:var(--radius-md);box-shadow:none;background:color-mix(in srgb,var(--panel) 96%,transparent)}
+.card:hover{border-color:var(--bd)}
+.grid2,.grid3{gap:24px}
+.stack>*+*{margin-top:26px}
+
+/* Canvas chrome only appears on diagrams large enough to need it. */
+.viz-frame{border-radius:8px;box-shadow:none;background:var(--panel)}
+.viz-bar{height:38px;padding:0 8px 0 12px;background:color-mix(in srgb,var(--panel) 86%,var(--bg));border-bottom-color:var(--bd)}
+.viz-label{font:650 9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+.viz-bar button{border-radius:4px}
+.viz-frame .scroller{cursor:grab}
+.viz-frame::before,.viz-frame::after{top:38px}
+.viz-frame.is-fullscreen::before,.viz-frame.is-fullscreen::after{top:38px}
+.viz-lite{scrollbar-width:thin}
+
+/* Chapter 00: the architecture map is the hero/product, not another card. */
+.map-workbench{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:start}
+.map-workbench .map-viz{min-width:0}
+.map-inspector{
+  position:sticky;top:22px;min-height:250px;padding:24px;
+  background:var(--ink-panel);border-color:#2c2e32;color:var(--ink-text)
+}
+.map-inspector h3{font-size:22px;line-height:1.15;color:var(--ink-text);letter-spacing:-.03em;margin:6px 0 13px}
+.map-inspector p{color:#b4b1a8;font-size:13.5px}.map-inspector .note{color:#7f8187}
+.map-inspector button.pri{background:var(--signal);border-color:var(--signal);color:#151515;margin-top:8px}
+.inspector-kicker{font:700 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#ffad45}
+.route-index{background:transparent;border:0;border-top:1px solid var(--bd);border-radius:0;padding:30px 0 0}
+.route-index h3{font-size:18px}
+.route-index .route{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 44px;counter-reset:none}
+.route-index .route li{margin:0;padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--bd) 68%,transparent)}
+
+/* Chapter 02: simulator first, details on demand. */
+.core-intro>.card{background:transparent;border:0;border-top:2px solid var(--bd2);border-radius:0;padding:18px 0 0}
+.core-intro>.card:first-child{border-top-color:var(--act)}
+.core-controls{border-radius:6px;background:color-mix(in srgb,var(--panel) 94%,var(--bg));top:8px}
+.core-viz{border-color:var(--bd2)}
+.core-block{cursor:pointer;outline:none}
+.core-block:hover .box,.core-block:focus .box{stroke:var(--act);stroke-width:1.8}
+.core-events{border-left:3px solid var(--act);border-radius:4px}
+.inspector-deck{margin-top:4px;border-top:1px solid var(--bd);padding-top:24px}
+.inspector-head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:12px}
+.inspector-head span{display:block;font:700 9px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--act);margin-bottom:5px}
+.inspector-head strong{font-size:16px;font-weight:620;letter-spacing:-.02em}
+.inspector-tabs{display:flex;gap:5px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:thin}
+.inspector-tabs button{flex:none;min-height:31px;border-radius:4px;background:transparent;border-color:var(--bd);font-size:11px}
+.inspector-tabs button.on{background:var(--ink-panel);color:var(--ink-text);border-color:var(--ink-panel)}
+.inspector-tabs .all-state{margin-left:auto}
+.pgrid.inspector-mode{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.pgrid.inspector-mode>.pp{display:none;min-height:280px;border-radius:6px}
+.pgrid.inspector-mode>.pp.inspector-active{display:block}
+.pgrid.inspector-mode.show-all{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.pgrid.inspector-mode.show-all>.pp{display:block;min-height:0}
+.core-gantt{border-radius:6px}
+
+/* Chapter 04: controls/narration lead, hardware canvas follows. */
+.ch-l1d>.chapter-body{display:flex;flex-direction:column}
+.l1-intro{order:1}
+.l1-intro>.card{background:transparent;border:0;border-top:2px solid var(--bd2);border-radius:0;padding:18px 0 0}
+.l1-intro>.card:first-child{border-top-color:var(--act)}
+.l1-stepper{order:2}
+.l1-viz{order:3;border-color:var(--bd2)}
+.l1-legend{order:4;margin-top:10px!important;padding:0 2px}
+.l1-custom{order:5;border-radius:6px}
+.l1-custom>h3{font-size:18px}
+.l1-custom .stp{padding:4px 0;gap:8px}
+.l1-custom input,.l1-custom select{background:var(--bg)}
+
+/* Stepper is a transport/control surface, not a card inside a card. */
+.stepper{border-radius:6px;background:var(--panel)}
+.stepper-bar{top:8px;padding:8px 9px;background:color-mix(in srgb,var(--panel) 92%,transparent)}
+.narr{padding:19px 22px 20px;background:color-mix(in srgb,var(--actbg) 24%,var(--panel))}
+.narr h4{font-size:16px}
+
+/* Chapter-to-chapter navigation appears once, after the work. */
+.chapter-footer{
+  margin-top:74px;padding-top:22px;border-top:1px solid var(--bd);
+  display:grid;grid-template-columns:1fr 1fr;gap:18px
+}
+.chapter-jump{display:flex;flex-direction:column;align-items:flex-start;min-height:78px;padding:15px 17px;background:transparent;border:1px solid var(--bd);border-radius:6px;text-align:left}
+.chapter-jump.next{align-items:flex-end;text-align:right}
+.chapter-jump span{font:650 9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+.chapter-jump strong{margin-top:5px;font-size:14px;font-weight:620;color:var(--tx)}
+.chapter-jump:hover{background:var(--panel);border-color:var(--bd2)}
+
+/* Dark mode remains a first-class alternate theme, not the default mood. */
+:root[data-theme="dark"] body{background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px)}
+:root[data-theme="dark"] .sidebar{background:#141519}
+:root[data-theme="dark"] .nav a.cur{background:#f1eee6;color:#161719}
+:root[data-theme="dark"] .nav a.cur .nav-label{color:#161719}
+:root[data-theme="dark"] .nav a.cur .nav-num,:root[data-theme="dark"] .nav a.cur .nav-arrow{color:#b65712}
+
+@media (max-width:1260px){
+  .chh.has-art{grid-template-columns:minmax(0,1fr) 360px;gap:36px}
+  .map-workbench{grid-template-columns:minmax(0,1fr) 280px}
+  .wrap{padding-left:30px;padding-right:30px}
+}
+
+@media (max-width:1000px){
+  .chh.has-art{grid-template-columns:1fr;gap:26px;min-height:0}
+  .chapter-art{min-height:190px;max-width:720px}
+  .map-workbench{grid-template-columns:1fr}
+  .map-inspector{position:static;min-height:0}
+  .route-index .route{grid-template-columns:1fr}
+  .pgrid.inspector-mode.show-all{grid-template-columns:1fr}
+}
+
+@media (max-width:900px){
+  :root{--topbar-h:56px}
+  .top{display:block}
+  .side-actions{display:none}
+  .wrap{padding-top:32px}
+  .chh,.chh.has-art{margin-bottom:30px;padding-bottom:24px}
+  .chh h1{font-size:clamp(36px,9vw,52px)}
+  .chh p{font-size:15.5px}
+  .chapter-art{min-height:175px}
+  .stepper-bar,.core-controls{top:calc(var(--topbar-h) + 6px)}
+  .map-inspector{background:var(--panel);color:var(--tx);border-color:var(--bd)}
+  .map-inspector h3{color:var(--tx)}.map-inspector p{color:var(--tx2)}.map-inspector .note{color:var(--tx3)}
+  .map-inspector button.pri{background:var(--tx);border-color:var(--tx);color:var(--bg)}
+  .inspector-kicker{color:var(--act)}
+}
+
+@media (max-width:620px){
+  body{background-size:24px 24px}
+  .wrap{padding-left:14px;padding-right:14px}
+  .chh.has-art{padding-top:4px}
+  .chh h1{font-size:36px;letter-spacing:-.045em}
+  .chapter-art{min-height:164px;border-radius:7px}
+  .art-path{gap:3px}.art-path i{font-size:8px;padding:12px 3px}.art-path b{font-size:9px}
+  .pipe-row{grid-template-columns:54px repeat(6,1fr);gap:3px}.pipe-row span{font-size:8px}
+  .cache-ways{gap:2px}.cache-ways i{padding-left:1px;padding-right:1px}
+  .map-workbench{gap:12px}
+  .map-inspector{padding:18px}
+  .chapter-footer{grid-template-columns:1fr;margin-top:52px}
+  .chapter-jump.next{align-items:flex-start;text-align:left}
+  .chapter-jump-spacer{display:none}
+  .inspector-head{display:block}
+  .inspector-tabs .all-state{margin-left:0}
+  .l1-custom .stp{display:grid;grid-template-columns:1fr 1fr}
+  .l1-custom .l1va{grid-column:1/-1;width:100%!important}
+  .l1-custom .l1v{width:100%!important}
+  .l1-custom .l1go,.l1-custom .l1clr{grid-column:span 1}
+}
+
+
+/* ========================================================================== */
+/* V3 — dark hardware lab: progressive disclosure, focus cameras, hover rail  */
+/* ========================================================================== */
+
+:root[data-theme="dark"]{
+  --bg:#080b10; --panel:#0f141b; --sunk:#0a0e14; --tx:#f2f5f8; --tx2:#a7b1bd; --tx3:#667484;
+  --bd:#202a36; --bd2:#334354; --wire:#53677c;
+  --a1:#ff8a65; --a1bg:#351d19; --a2:#43d5a5; --a2bg:#0d2c25; --a3:#b29cff; --a3bg:#231d3a;
+  --a4:#6fb8ff; --a4bg:#122a40; --ok:#65d77a; --okbg:#102d1a; --bad:#ff746a; --badbg:#351515;
+  --act:#ff9f43; --actbg:#34230f;
+  --rail:#0b0f15; --canvas-grid:rgba(102,126,151,.08); --ink-panel:#0b0f15; --ink-panel-2:#111821; --ink-text:#f4f7fa; --ink-muted:#8592a0; --signal:#ff9f43;
+  --sidebar-collapsed:72px; --sidebar-expanded:252px;
+}
+body{background-image:linear-gradient(var(--canvas-grid) 1px,transparent 1px),linear-gradient(90deg,var(--canvas-grid) 1px,transparent 1px);background-size:32px 32px}
+.card,.viz-frame,.stepper,.drawer .in{box-shadow:0 1px 0 rgba(255,255,255,.018)}
+
+/* Desktop rail: compact by default, reveal on hover/focus, optionally pin. */
+@media (min-width:901px){
+  .sidebar{width:var(--sidebar-collapsed);padding:18px 10px 14px;transition:width .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s;overflow:hidden;background:rgba(10,14,20,.96);backdrop-filter:blur(18px)}
+  .sidebar:hover,.sidebar:focus-within,body.nav-pinned .sidebar{width:var(--sidebar-expanded);box-shadow:18px 0 45px rgba(0,0,0,.26)}
+  .app-stage{margin-left:var(--sidebar-collapsed);transition:margin-left .22s cubic-bezier(.2,.8,.2,1)}
+  body.nav-pinned .app-stage{margin-left:var(--sidebar-expanded)}
+  .sidebar-brand{padding:4px 7px 18px;gap:12px;white-space:nowrap}
+  .sidebar-brand>span:last-child,.nav-label,.nav-arrow,.machine-meta,.side-actions .action-label{opacity:1;transition:opacity .13s ease,transform .18s ease;white-space:nowrap}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .sidebar-brand>span:last-child,
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav-label,
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav-arrow,
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .machine-meta,
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .side-actions .action-label{opacity:0;pointer-events:none;transform:translateX(-5px)}
+  .nav a{grid-template-columns:30px minmax(0,1fr) 14px;padding-left:7px;padding-right:7px}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav a{grid-template-columns:30px 0 0;gap:0;justify-content:center}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav-group{height:12px;margin:9px 7px 5px;font-size:0;border-top:1px solid var(--bd)}
+  .sidebar-footer{min-width:220px}.side-actions{grid-template-columns:1fr 1fr}.side-actions button{gap:6px;display:flex;align-items:center}
+  .side-pin[aria-pressed="true"]{background:var(--actbg);color:var(--act);border-color:color-mix(in srgb,var(--act) 35%,transparent)}
+}
+
+/* Keep mobile a deterministic drawer; hover never controls navigation there. */
+@media (max-width:900px){
+  .sidebar{width:280px!important;padding:18px 14px 14px}
+  .sidebar-brand>span:last-child,.nav-label,.nav-arrow,.machine-meta{opacity:1!important;transform:none!important}
+  .side-pin{display:none!important}
+  .app-stage,body.nav-pinned .app-stage{margin-left:0}
+}
+
+/* Progressive disclosure: depth is preserved, but not all of it competes at once. */
+.concept-disclosure{border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:rgba(12,17,23,.55)}
+.concept-disclosure>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 2px;color:var(--tx2);user-select:none}
+.concept-disclosure>summary::-webkit-details-marker{display:none}
+.concept-disclosure>summary span{display:grid;gap:2px}.concept-disclosure>summary b{font-size:13px;color:var(--tx);font-weight:650}.concept-disclosure>summary small{font-size:11.5px;color:var(--tx3)}
+.concept-disclosure>summary i{font:400 18px var(--mono);font-style:normal;color:var(--tx3);transition:transform .16s,color .16s}.concept-disclosure[open]>summary i{transform:rotate(45deg);color:var(--act)}
+.concept-disclosure>summary+*{margin:5px 0 18px!important}.concept-disclosure .grid2,.concept-disclosure .core-intro{gap:16px}
+.concept-disclosure .card{background:rgba(16,22,30,.72)}
+
+/* Rich semantic terms. Color is quiet at rest, explicit on hover/focus. */
+dfn[data-g]{--term:#94a3b8;display:inline;border:0;padding:0 .08em;border-radius:3px;color:color-mix(in srgb,var(--term) 84%,var(--tx));background:linear-gradient(180deg,transparent 64%,color-mix(in srgb,var(--term) 16%,transparent) 64%);box-decoration-break:clone;-webkit-box-decoration-break:clone;transition:background .12s,color .12s,box-shadow .12s}
+dfn[data-g]:hover,dfn[data-g]:focus-visible{color:#fff;background:color-mix(in srgb,var(--term) 19%,transparent);box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--term) 70%,transparent)}
+.term-core{--term:#b29cff!important}.term-xlate{--term:#6fb8ff!important}.term-cache{--term:#43d5a5!important}.term-memory{--term:#22d3ee!important}.term-io{--term:#f5b942!important}.term-order{--term:#fb7185!important}.term-coh{--term:#ff8a4c!important}.term-pref{--term:#c084fc!important}
+.gloss-pop{padding:0!important;overflow:hidden;background:#0b1017!important;border-color:#2c3948!important;box-shadow:0 22px 70px rgba(0,0,0,.5)!important}
+.term-pop-head{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:13px 14px 11px;border-bottom:1px solid #202b37}.term-pop-head b{margin:0!important;font-size:14px!important;color:#f4f7fa}.term-pop-cat{font:700 8.5px var(--mono);letter-spacing:.09em;text-transform:uppercase;padding:3px 5px;border-radius:3px;background:color-mix(in srgb,var(--term) 18%,transparent);color:var(--term)}
+.term-pop-close{width:26px;min-width:26px;height:26px;min-height:26px;padding:0;border:0;background:transparent;color:#748394;font-size:18px}.term-pop-close:hover{background:#151d27;color:#fff}
+.gloss-pop>p{padding:12px 14px 14px;margin:0!important;color:#aeb9c5!important;font-size:12.8px;line-height:1.55}
+.term-mini{padding:9px 12px 3px;background:#0d131b}.term-mini svg{display:block;width:100%;height:92px}.term-mini rect,.term-mini circle,.term-mini path{fill:#111a24;stroke:#415266;stroke-width:1.4}.term-mini path{fill:none}.term-mini .hot{fill:color-mix(in srgb,var(--mini) 18%,#101720);stroke:var(--mini)}.term-mini text{fill:#d7dee7;font:600 10px var(--mono);text-anchor:middle}.term-mini text.s{fill:#748394;font-size:8px}.term-mini .ring{fill:none;stroke:var(--mini);stroke-width:2}.term-mini .grid path{stroke:#283746}
+
+/* Simulator workbench: controls stay present while the hardware remains large. */
+.sim-workbench{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start;margin-top:22px}
+.lab-rail{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--bd2) transparent;padding-right:2px}
+.lab-rail>*+*{margin-top:10px!important}.lab-stage{min-width:0;position:relative}.lab-stage>.viz-frame{margin-top:0!important}
+.lab-rail .stepper{border-color:#263342;background:#0c1118}.lab-rail .stepper-bar{position:static!important;background:#101720;grid-template-columns:auto auto auto auto;gap:5px}.lab-rail .stepper-bar .pills{grid-column:1/-1;justify-content:flex-start;border-top:1px solid #243140;padding-top:6px}.lab-rail .narr{padding:15px 16px 16px;background:#0d151d}.lab-rail .narr p{font-size:12.6px}.lab-rail .narr h4{font-size:14px}.scenario-dock{position:sticky;top:0;z-index:4;padding:10px;border:1px solid #263342;border-radius:7px;background:rgba(12,17,24,.96);backdrop-filter:blur(12px)}.scenario-dock>.note{width:100%;font:700 9px var(--mono);letter-spacing:.08em;text-transform:uppercase}.scenario-dock .seg{width:100%}.scenario-dock .seg button{font-size:10.5px;padding-left:7px;padding-right:7px}
+.sticky-input{position:sticky;top:0;z-index:5;padding:12px!important;background:rgba(12,17,24,.97)!important;backdrop-filter:blur(14px);border-color:#2b3948!important}.sticky-input>h3{font-size:12px!important;text-transform:uppercase;letter-spacing:.07em;color:#8493a3;margin-bottom:8px!important}.sticky-input .stp{display:grid!important;grid-template-columns:1fr 88px;gap:6px!important}.sticky-input .l1va{grid-column:1/-1;width:100%!important}.sticky-input .l1v{width:100%!important}.sticky-input .l1go{grid-column:1/-1}.sticky-input .l1clr{grid-column:1/-1;background:transparent}.control-help{margin-top:7px}.control-help summary{cursor:pointer;color:var(--tx3);font:600 9.5px var(--mono);text-transform:uppercase;letter-spacing:.05em}.control-help p{margin-top:6px!important;font-size:10.5px!important}.l1err{grid-column:1/-1}
+
+/* Focus cameras: switch what part of a large diagram owns the viewport. */
+.focus-strip{position:sticky;top:10px;z-index:10;display:flex;align-items:center;gap:8px;min-height:42px;padding:6px 8px 6px 11px;margin-bottom:7px;border:1px solid #263342;border-radius:7px;background:rgba(10,15,22,.93);backdrop-filter:blur(14px);box-shadow:0 8px 30px rgba(0,0,0,.18)}
+.focus-label{flex:none;font:700 8.5px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:#647486}.focus-tabs{display:flex;gap:3px;min-width:0;overflow-x:auto;scrollbar-width:none}.focus-tabs::-webkit-scrollbar{display:none}.focus-tabs button,.focus-follow{flex:none;min-height:27px;height:27px;padding:0 8px;border-radius:4px;background:transparent;border-color:transparent;color:#8b98a7;font-size:10.5px}.focus-tabs button:hover,.focus-follow:hover{background:#141c26;color:#dfe6ed}.focus-tabs button.on{background:#182332;color:#fff;box-shadow:inset 0 -2px 0 var(--act)}.focus-follow{margin-left:auto;border-left:1px solid #253140;border-radius:0;padding-left:10px}.focus-follow.on{color:#65d7a8}
+.viz-frame .scroller svg{transition:width .18s ease,viewBox .18s ease}.lab-stage .viz-frame{border-color:#293746;background:#0a0f15}.lab-stage .viz-bar{background:#0d131a}.lab-stage .viz-frame .scroller{background:#0b1016}
+
+/* Chapter 02: one dense simulator viewport, detail cards only on demand. */
+.ch-core .core-controls{top:10px;background:rgba(12,17,24,.94);backdrop-filter:blur(14px);border-color:#2a3746}.ch-core .core-controls+.focus-strip{top:102px}.ch-core .core-events{background:#0d131a}.ch-core .inspector-tabs button.on{background:#1a2735;color:#fff;border-color:#34485c}.ch-core .core-gantt{margin:0!important}.ch-core .concept-disclosure:has(.core-gantt){margin-top:22px}
+
+/* The old V2 flex ordering is superseded by the workbench. */
+.ch-l1d>.chapter-body{display:block}.l1-intro,.l1-stepper,.l1-viz,.l1-legend,.l1-custom{order:initial}.l1-workbench .l1-custom,.l1-workbench .l1-stepper,.l1-workbench .l1-legend{margin-top:0!important}.l1-legend{padding:9px 2px!important}.xlate-workbench{margin-top:20px}
+
+/* Stronger active-state contrast inside dark diagrams without turning everything neon. */
+svg .on.box,svg .on .box{stroke:#ff9f43;fill:#2b1d0f;filter:drop-shadow(0 0 5px rgba(255,159,67,.12))}svg .on.wire,svg .on .wire{stroke:#ffad56}svg .okb{fill:#0f2b23;stroke:#42d4a4}svg .a2b{fill:#0c2822;stroke:#43d5a5}svg .a4b{fill:#10263b;stroke:#6fb8ff}svg .a3b{fill:#211c38;stroke:#b29cff}svg .a1b{fill:#321d18;stroke:#ff8a65}
+
+@media (max-width:1180px){.sim-workbench{grid-template-columns:300px minmax(0,1fr)}}
+@media (max-width:1020px){
+  .sim-workbench{grid-template-columns:1fr}.lab-rail{position:static;max-height:none;overflow:visible;padding:0}.focus-strip{top:calc(var(--topbar-h) + 6px)}.scenario-dock,.sticky-input{position:static}.lab-rail .stepper-bar{position:sticky!important;top:calc(var(--topbar-h) + 6px)!important}
+}
+@media (max-width:620px){
+  .focus-strip{gap:5px;padding-left:8px}.focus-label{display:none}.focus-follow{font-size:0;width:32px;padding:0;margin-left:0}.focus-follow::after{content:'◎';font-size:13px}.sim-workbench{gap:10px}.sticky-input .stp{grid-template-columns:1fr 1fr!important}.sticky-input .l1va{grid-column:1/-1!important}.sticky-input .l1go,.sticky-input .l1clr{grid-column:span 1!important}.concept-disclosure>summary small{display:none}
+}
+
+/* V3 QA corrections */
+.xlate-workbench .scenario-dock .seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+.xlate-workbench .scenario-dock .seg button{white-space:normal;line-height:1.15;border-bottom:1px solid var(--bd)}
+.xlate-workbench .scenario-dock .seg button:nth-child(2n){border-right:0}
+.sticky-input input:disabled{opacity:.38;cursor:not-allowed;background:#090d12;color:var(--tx3)}
+@media (max-width:1020px){.lab-rail .stepper-bar{position:static!important;top:auto!important}}
+
+/* ========================================================================== */
+/* V4 — guided cognition, stronger dark contrast, motion with purpose          */
+/* ========================================================================== */
+
+:root[data-theme="dark"]{
+  --bg:#06080b;
+  --panel:#121820;
+  --sunk:#0a0e13;
+  --tx:#f4f6f8;
+  --tx2:#b7c0ca;
+  --tx3:#748190;
+  --bd:#293442;
+  --bd2:#405062;
+  --wire:#61758a;
+  --act:#ff9f43;
+  --actbg:#35220f;
+  --rail:#090d12;
+  --canvas-grid:rgba(108,132,156,.055);
+  --ink-panel:#0b1016;
+  --ink-panel-2:#151c25;
+  --ink-text:#f6f8fa;
+  --ink-muted:#8795a4;
+  --panel-elev:#171e27;
+  --panel-hover:#1c2530;
+}
+
+body{background-color:var(--bg);background-size:36px 36px}
+.app-stage{background:rgba(6,8,11,.72)}
+.card{background:var(--panel-elev);border-color:#2b3745}
+.card:hover{border-color:#354557}
+.scroller,.viz-frame{background:#0b1016}
+.viz-frame{border-color:#2c3846}
+.viz-bar{background:#111820;border-bottom-color:#2b3745}
+.viz-frame .scroller{background:#0a0f15}
+.stepper{background:#10161d;border-color:#2b3745}
+.narr{background:#111923;border-color:#2e3d4d}
+input,select{background:#171e27;border-color:#344456;color:var(--tx)}
+input:hover,select:hover{border-color:#4b6075}
+
+/* Navigation follows dark-surface color hierarchy: rail < selected < hover. */
+@media (min-width:901px){
+  .sidebar{background:rgba(8,11,15,.97);border-right-color:#222c37}
+  .nav a{position:relative;color:#9da9b6}
+  .nav a:hover{background:#1b2430;color:#f2f5f8}
+  .nav a.cur{background:#151b23!important;color:#f4f6f8!important;box-shadow:inset 0 0 0 1px #293542}
+  .nav a.cur::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;background:var(--act)}
+  .nav a.cur .nav-label{color:#f4f6f8!important}
+  .nav a.cur .nav-num,.nav a.cur .nav-arrow{color:#ffad56!important}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav a:hover{background:#202a36}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav a.cur{background:#171e27!important;box-shadow:inset 0 0 0 1px #2d3946}
+  .sidebar-mark{background:#141b23;border-color:#334252}
+  .side-actions button:hover,.side-pin:hover{background:#1b2430;color:#fff}
+}
+
+/* The visual canvas has a clearly separate luminance level from the page. */
+.lab-stage>.viz-frame,.core-viz{background:#090d12;border-color:#334252;box-shadow:0 18px 55px rgba(0,0,0,.22)}
+.lab-stage>.viz-frame .viz-bar,.core-viz .viz-bar{background:#111821}
+.lab-stage>.viz-frame .scroller,.core-viz .scroller{background:#080c11}
+svg .box{fill:#121922;stroke:#425267}
+svg .sunk{fill:#0b1016;stroke:#2b3948}
+
+/* Guided chapter sequence: preserve depth, expose one cognitive task at a time. */
+.learning-journey{
+  position:sticky;top:8px;z-index:28;margin:0 0 24px;
+  display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:18px;
+  padding:10px 12px;border:1px solid #2c3947;border-radius:9px;
+  background:rgba(12,17,23,.94);backdrop-filter:blur(18px) saturate(1.1);
+  box-shadow:0 14px 42px rgba(0,0,0,.22)
+}
+.journey-head{min-width:150px}
+.journey-head span{display:block;font:700 8.5px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--act)}
+.journey-head strong{display:block;margin-top:2px;font-size:12.5px;color:#dce2e8;font-weight:650}
+.journey-controls{min-width:0;display:flex;align-items:center;gap:6px}
+.journey-track{min-width:0;flex:1;display:grid;grid-template-columns:repeat(var(--journey-count,4),minmax(0,1fr));gap:4px}
+.journey-track button{position:relative;min-width:0;min-height:40px;padding:6px 9px;display:flex;align-items:center;gap:8px;border:1px solid transparent;background:transparent;color:#7f8b98;text-align:left}
+.journey-track button::after{content:"";position:absolute;left:8px;right:8px;bottom:2px;height:2px;border-radius:2px;background:transparent;transition:background .16s,box-shadow .16s}
+.journey-track button:hover{background:#1a232d;color:#f3f6f8}
+.journey-track button.on{background:#151d26;color:#fff;border-color:#2d3b4a}
+.journey-track button.on::after{background:var(--act);box-shadow:0 0 12px rgba(255,159,67,.36)}
+.journey-track b{font:700 9px var(--mono);color:#617080}.journey-track button.on b{color:#ffad56}
+.journey-track span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:620}
+.journey-arrow,.journey-all{height:34px;min-height:34px;border-color:#2c3947;background:#111821;color:#9ba8b5}
+.journey-arrow{width:34px;padding:0;display:grid;place-items:center;font-size:15px}
+.journey-arrow:hover,.journey-all:hover{background:#1c2631;color:#fff;border-color:#3a4c5f}
+.journey-all{flex:none;padding:0 10px;font-size:10.5px}
+.learning-scene{min-width:0;animation:scene-in .28s cubic-bezier(.2,.8,.2,1) both}
+.learning-scene[hidden]{display:none!important}
+.learning-scene>*+*{margin-top:18px}
+.scene-lead{display:grid;grid-template-columns:88px minmax(0,1fr);gap:18px;align-items:start;margin:3px 0 18px!important;padding:0 0 14px;border-bottom:1px solid #202a35}
+.scene-kicker{font:700 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--act);padding-top:5px}
+.scene-lead h2{margin:0;font-size:23px;line-height:1.1;letter-spacing:-.025em;font-weight:680}
+.scene-lead p{margin:6px 0 0;max-width:760px;color:var(--tx2);font-size:13.5px;line-height:1.55}
+.scene-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:28px!important;padding-top:18px;border-top:1px solid #24303c}
+.scene-nav button{min-height:40px}
+.scene-prev{background:transparent;color:#93a0ad;border-color:#2c3947}
+.scene-prev:hover{background:#18212b;color:#fff}
+.scene-next.pri{background:#f0f2f4;color:#0c1015;border-color:#f0f2f4;padding-left:16px;padding-right:16px}
+.scene-next.pri:hover{background:#fff;color:#06080b}
+.scene-nav-spacer{flex:1}
+.guided-all .learning-scene{display:block!important;margin-top:44px;animation:none}
+.guided-all .learning-scene:first-of-type{margin-top:0}
+@keyframes scene-in{from{opacity:.12;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* Focus/camera switcher lives with the diagram, so fullscreen keeps it too. */
+.focus-strip{position:sticky;top:0;z-index:12;margin:0;border:0;border-bottom:1px solid #2b3745;border-radius:0;background:rgba(15,21,28,.97);box-shadow:none;padding:6px 8px}
+.focus-step{flex:none;width:28px;min-width:28px;height:28px;min-height:28px;padding:0!important;border-color:transparent!important;background:transparent!important;color:#8291a0!important;font-size:15px!important}
+.focus-step:hover{background:#202a35!important;color:#fff!important}
+.focus-tabs button{min-height:28px;height:28px;color:#8291a0}
+.focus-tabs button:hover{background:#1c2631;color:#fff}
+.focus-tabs button.on{background:#202a35;color:#fff;box-shadow:inset 0 -2px 0 var(--act)}
+.focus-follow{color:#8291a0}.focus-follow.on{color:#64d8aa}
+.viz-focus{margin-left:4px!important;border:1px solid #334456!important;background:#18212b!important;color:#d7dee6!important;padding:0 10px!important}
+.viz-focus:hover{background:#202c38!important;color:#fff!important;border-color:#455a70!important}
+.viz-frame.is-fullscreen{inset:10px;background:#070a0e;border-color:#39495a}
+.viz-frame.is-fullscreen .scroller{overflow:auto}
+.viz-frame.is-fullscreen .focus-strip{top:38px}
+.viz-frame.camera-moving .scroller{cursor:progress}
+
+/* Motion is instructional: scene changes, camera changes and active hardware get one pulse. */
+.narr-change{animation:narr-change .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes narr-change{from{opacity:.45;transform:translateY(5px)}to{opacity:1;transform:none}}
+.step-pulse svg .on.box,.step-pulse svg .on .box{animation:active-box-pop .55s ease-out}
+.step-pulse svg .on.wire,.step-pulse svg .on .wire,.step-pulse svg .on.bus,.step-pulse svg .on .bus{animation:active-wire-pop .55s ease-out}
+@keyframes active-box-pop{0%{filter:drop-shadow(0 0 0 rgba(255,159,67,0))}35%{filter:drop-shadow(0 0 9px rgba(255,159,67,.5))}100%{filter:drop-shadow(0 0 2px rgba(255,159,67,.12))}}
+@keyframes active-wire-pop{0%{stroke-width:2.2;opacity:.45}45%{stroke-width:4.2;opacity:1}100%{opacity:1}}
+
+/* Keep controls visible without allowing them to cover the diagram. */
+.lab-rail{top:12px}
+.lab-stage{isolation:isolate}
+.learning-scene.scene-active .lab-stage>.viz-frame .scroller{max-height:calc(100vh - 185px)}
+.ch-core .core-controls{top:78px}
+.ch-core .core-controls+.focus-strip{top:0}
+
+/* The text hierarchy should not look like one continuous wall. */
+.concept-disclosure{background:#0b1016;border-color:#273340;border-radius:7px;padding:0 12px}
+.concept-disclosure>summary{padding:14px 2px}
+.concept-disclosure[open]{background:#101720;border-color:#334252}
+.concept-disclosure .card{background:#151c25;border-color:#2c3947}
+.inspector-deck{background:#0b1016;border:1px solid #293746;border-radius:8px;padding:16px}
+.pgrid.inspector-mode>.pp{background:#141b23}
+.core-events{background:#121a23!important}
+
+/* Term interaction gets enough color to be discoverable without becoming confetti. */
+dfn[data-g]{font-weight:560;background:linear-gradient(180deg,transparent 58%,color-mix(in srgb,var(--term) 20%,transparent) 58%)}
+dfn[data-g]:hover,dfn[data-g]:focus-visible{color:#fff;background:color-mix(in srgb,var(--term) 24%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--term) 35%,transparent),0 0 18px color-mix(in srgb,var(--term) 12%,transparent)}
+
+@media (max-width:1120px){
+  .learning-journey{grid-template-columns:1fr;gap:8px}
+  .journey-head{display:none}
+  .journey-track{display:flex;overflow-x:auto;scrollbar-width:none}
+  .journey-track::-webkit-scrollbar{display:none}
+  .journey-track button{flex:0 0 auto;min-width:120px}
+}
+
+@media (max-width:900px){
+  .learning-journey{top:calc(var(--topbar-h) + 6px);margin-bottom:18px;padding:7px 8px}
+  .journey-all{display:none}
+  .journey-track button{min-width:105px}
+  .scene-lead{grid-template-columns:1fr;gap:4px}
+  .scene-kicker{padding-top:0}
+  .scene-lead h2{font-size:20px}
+  .learning-scene.scene-active .lab-stage>.viz-frame .scroller{max-height:none}
+}
+
+@media (max-width:620px){
+  .journey-controls{gap:3px}
+  .journey-arrow{width:31px;min-width:31px}
+  .journey-track button{min-width:92px;height:36px;min-height:36px;padding:5px 7px}
+  .journey-track span{font-size:10px}.journey-track b{font-size:8px}
+  .scene-lead p{font-size:12.5px}
+  .scene-nav{display:grid;grid-template-columns:1fr}
+  .scene-nav-spacer{display:none}
+  .scene-nav button{width:100%}
+  .focus-label{display:none}
+  .focus-step{display:grid!important}
+  .focus-tabs{flex:1}
+  .focus-tabs button{font-size:10px;padding:0 7px}
+  .viz-focus{font-size:0!important;width:34px;padding:0!important}
+  .viz-focus::after{content:'⛶';font-size:14px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .learning-scene,.narr-change,.step-pulse svg .on.box,.step-pulse svg .on .box,.step-pulse svg .on.wire,.step-pulse svg .on .wire{animation:none!important}
+}
+
+/* V4 sticky stack: journey first, then simulator controls/camera — never overlap. */
+@media (min-width:901px){
+  .learning-scene .lab-rail{top:82px;max-height:calc(100vh - 96px)}
+  .learning-scene .focus-strip{top:78px}
+  .ch-core .core-controls{top:78px}
+}
+@media (max-width:900px){
+  .learning-scene .focus-strip{top:calc(var(--topbar-h) + 58px)}
+}
+
+
+/* ========================================================================== */
+/* V5 — semantic hardware scenes: no zoom +/-; full-depth guided flow on all  */
+/* learning chapters; safe SVG cameras; visible instructional motion.          */
+/* ========================================================================== */
+
+/* Stronger hierarchy: page < surfaces < hardware canvas. */
+body{background:#07090c;color:#edf2f7}
+.app-stage{background:#07090c}
+.card{background:#151b23;border-color:#2d3947}
+.card:hover{border-color:#405064}
+.narr{background:#121820;border-color:#303d4c;border-left-color:var(--act)}
+.stepper,.inspector-deck,.concept-disclosure{background:#0e1319}
+.lab-stage>.viz-frame,.core-viz,.viz-frame{background:#080c11;border-color:#364557}
+.lab-stage>.viz-frame .scroller,.core-viz .scroller,.viz-frame .scroller{background:#080c11}
+.viz-bar{background:#111820;border-bottom-color:#2d3947}
+
+/* Navigation: selected is restrained grey; hover is distinctly lighter. */
+@media (min-width:901px){
+  .nav a{color:#93a0ad}
+  .nav a.cur{background:#161d26!important;color:#c5ced8!important;box-shadow:inset 0 0 0 1px #303d4c}
+  .nav a.cur .nav-label{color:#c5ced8!important;font-weight:610}
+  .nav a:hover{background:#222d39;color:#f7f9fb}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav a.cur{background:#151c24!important}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav a:hover{background:#263240}
+}
+
+/* Disclosures use a directional chevron, never +/- affordances. */
+.concept-disclosure>summary i.disclosure-chevron{font-style:normal;font-size:19px;line-height:1;color:#788797;transform:rotate(0deg);transition:transform .18s ease,color .18s ease}
+.concept-disclosure>summary:hover i.disclosure-chevron{color:#d6dee7}
+.concept-disclosure[open]>summary i.disclosure-chevron{transform:rotate(90deg);color:var(--act)}
+
+/* The SVG is always fitted. Component switching replaces manual zoom/pan. */
+.viz-frame .scroller{overflow:hidden!important;cursor:default!important;padding:10px}
+.viz-frame .scroller.dragging{cursor:default!important}
+.viz-frame .scroller svg{display:block;width:100%!important;height:auto;max-width:none;overflow:visible;transition:none!important}
+.viz-bar{height:40px;padding:0 10px 0 13px;gap:8px}
+.viz-sub{font:500 9.5px var(--mono);color:#607080;white-space:nowrap}
+.viz-focus{min-width:auto!important;height:28px!important;min-height:28px!important;padding:0 10px!important;border:1px solid #3a4a5b!important;background:#18212b!important;color:#c8d2dc!important}
+.viz-focus:hover{background:#25313e!important;color:#fff!important;border-color:#52667a!important}
+.viz-frame::before,.viz-frame::after{display:none!important}
+.viz-frame.is-fullscreen{inset:8px;display:flex;flex-direction:column;background:#06080b;border-color:#405165}
+.viz-frame.is-fullscreen .scroller{flex:1;min-height:0;display:grid;place-items:center;padding:18px}
+.viz-frame.is-fullscreen .scroller svg{width:100%!important;height:100%!important;max-height:calc(100vh - 118px)}
+
+/* Focus switcher = the primary visualization navigation. */
+.focus-strip{height:auto;min-height:44px;display:flex;align-items:center;gap:7px;background:#0e151d;border-bottom:1px solid #2e3a48;padding:7px 9px}
+.focus-label{color:#6f7e8d}
+.focus-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:1px}
+.focus-tabs button{border:1px solid transparent!important;background:transparent!important;color:#8795a4!important;border-radius:5px!important;transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease}
+.focus-tabs button:hover{background:#202b37!important;color:#f3f6f9!important;border-color:#344457!important;transform:translateY(-1px)}
+.focus-tabs button.on{background:#1b2632!important;color:#dce5ee!important;border-color:#3a4b5d!important;box-shadow:inset 0 -2px 0 var(--act)!important}
+.focus-step{background:#151e27!important;border:1px solid #2f3c4a!important;color:#9eabb8!important;border-radius:5px!important}
+.focus-step:hover{background:#263240!important;color:#fff!important;border-color:#46596d!important}
+.focus-follow{border-left:0!important;border:1px solid #2f3c4a!important;border-radius:5px!important;background:#141c25!important;color:#8f9dab!important}
+.focus-follow.on{color:#72dfb3!important;border-color:#355a4c!important;background:#12231e!important}
+
+/* A view change should be unmistakable but not theatrical. */
+.viz-frame{isolation:isolate}
+.viz-frame::after{content:"";display:block!important;position:absolute;inset:40px 0 0;z-index:8;pointer-events:none;opacity:0;background:linear-gradient(105deg,transparent 20%,rgba(101,215,168,.055) 45%,rgba(96,165,250,.09) 50%,transparent 76%);transform:translateX(-45%)}
+.viz-frame.view-switched::after,.viz-frame.focus-transition::after{animation:view-scan .62s cubic-bezier(.2,.8,.2,1)}
+@keyframes view-scan{0%{opacity:0;transform:translateX(-50%)}20%{opacity:1}100%{opacity:0;transform:translateX(55%)}}
+.viz-frame.camera-moving{box-shadow:0 0 0 1px #466078,0 14px 42px rgba(0,0,0,.3)}
+
+/* Actual active hardware gets a visible, one-shot state transition. */
+svg .attention-pulse{transform-box:fill-box;transform-origin:center;animation:hardware-pop .76s cubic-bezier(.16,1,.3,1)}
+svg g.attention-pulse .box,svg g.attention-pulse rect,svg .attention-pulse.box,svg rect.attention-pulse{animation:hardware-fill .76s ease-out}
+svg path.attention-pulse,svg line.attention-pulse,svg .attention-pulse .wire{animation:signal-trace .76s ease-out}
+@keyframes hardware-pop{0%{filter:drop-shadow(0 0 0 rgba(255,159,67,0));transform:scale(.985)}38%{filter:drop-shadow(0 0 12px rgba(255,159,67,.58));transform:scale(1.012)}100%{filter:drop-shadow(0 0 2px rgba(255,159,67,.08));transform:scale(1)}}
+@keyframes hardware-fill{0%{stroke-width:1}42%{stroke-width:2.8}100%{stroke-width:1.2}}
+@keyframes signal-trace{0%{opacity:.2;stroke-dashoffset:22;stroke-width:2}45%{opacity:1;stroke-width:4.6}100%{opacity:1;stroke-dashoffset:0}}
+.narr-change{animation:narr-v5 .38s cubic-bezier(.2,.8,.2,1)}
+@keyframes narr-v5{0%{opacity:.32;transform:translateX(-8px)}55%{opacity:1;transform:translateX(2px)}100%{transform:none}}
+
+/* Guided path is the default across the learning chapters. */
+.learning-journey{top:10px;background:rgba(11,16,22,.97);border-color:#303d4b;box-shadow:0 12px 36px rgba(0,0,0,.27)}
+.journey-track button{color:#778493}
+.journey-track button:hover{background:#202a35;color:#eaf0f5}
+.journey-track button.on{background:#17212b;color:#dce5ed;border-color:#354556}
+.journey-head strong{color:#d8e0e8}
+.scene-lead{border-bottom-color:#273340}
+.scene-lead h2{font-size:clamp(22px,2vw,28px)}
+.scene-lead p{max-width:720px;color:#a7b2be}
+.scene-next.pri{background:#e7ecf1;color:#10151b;border-color:#e7ecf1}
+.scene-next.pri:hover{background:#fff;color:#07090c}
+
+/* Simulator workbenches keep controls in sight while the hardware owns space. */
+.sim-workbench{display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr);gap:16px;align-items:start}
+.lab-rail{position:sticky;top:82px;max-height:calc(100vh - 96px);overflow:auto;scrollbar-width:thin;padding-right:3px}
+.lab-stage{min-width:0}
+.lab-rail .stepper,.lab-rail .scenario-dock,.lab-rail>.stp{background:#111820;border:1px solid #2d3947;border-radius:8px;padding:12px}
+.lab-rail .narr{margin-top:10px}
+.lab-rail .pills{max-height:132px;overflow:auto}
+.generic-workbench .lab-stage>.card{margin-top:12px}
+
+/* Never constrain the hardware canvas to an internal vertical scroll window. */
+.learning-scene.scene-active .lab-stage>.viz-frame .scroller{max-height:none!important}
+
+/* Glossary is search-first, not a fake journey. */
+.glossary-workspace>.stp{position:sticky;top:12px;z-index:12;background:rgba(14,19,25,.96);backdrop-filter:blur(14px);border:1px solid #2e3b49;border-radius:8px;padding:10px}
+.glossary-workspace .glist{margin-top:16px}
+
+/* More breathing room in long-form modes. */
+.guided-all .learning-scene{max-width:1320px;margin-left:auto;margin-right:auto}
+
+@media(max-width:1120px){
+  .sim-workbench{grid-template-columns:1fr}
+  .lab-rail{position:static;max-height:none;overflow:visible;display:grid;grid-template-columns:1fr;gap:10px;padding-right:0}
+  .viz-sub{display:none}
+}
+@media(max-width:900px){
+  .viz-frame .scroller{padding:6px}
+  .focus-strip{position:static!important}
+  .learning-journey{top:calc(var(--topbar-h) + 6px)}
+}
+@media(max-width:620px){
+  .focus-step{display:grid!important;width:30px!important;min-width:30px!important}
+  .focus-follow{font-size:0!important;width:34px;padding:0!important}
+  .focus-follow::after{content:'AUTO';font:700 7.5px var(--mono);letter-spacing:.03em}
+  .viz-focus{font-size:0!important;width:34px!important;padding:0!important}
+  .viz-focus::after{content:'⛶';font-size:14px}
+  .viz-bar{padding:0 7px}
+}
+@media(prefers-reduced-motion:reduce){
+  .viz-frame.view-switched::after,.viz-frame.focus-transition::after,svg .attention-pulse,.narr-change{animation:none!important}
+}
+/* V5 patch: make the transition wash cover the full visualization, not the old edge-gradient width. */
+.viz-frame::after{width:auto!important;height:auto!important;left:0!important;right:0!important;top:40px!important;bottom:0!important}
+
 </style>
 </head>
 <body>
-<header class="top"><div class="topin">
-  <div class="brand">Memory, end to end<small>Ryzen 7 3750H &middot; Zen+</small></div>
-  <nav class="nav" id="nav"></nav>
-  <button class="cfgbtn" id="cfgOpen" title="Latency settings">latencies</button>
-</div></header>
-<main class="wrap" id="main"></main>
-<div class="pop" id="pop"></div>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+    <a class="sidebar-brand" href="#map" aria-label="Memory system home">
+      <span class="sidebar-mark">MEM</span>
+      <span><strong>Memory systems lab</strong><small>interactive hardware atlas · Zen+</small></span>
+    </a>
+    <div class="sidebar-scroll">
+      <nav class="nav" id="nav" aria-label="Chapters"></nav>
+    </div>
+    <div class="sidebar-footer">
+      <div class="machine-meta">Ryzen 7 3750H · 4C / 8T<br>interactive model + measured inputs</div>
+      <div class="side-actions">
+        <button class="ghost side-pin" id="sidebarPin" type="button" aria-pressed="false" title="Keep navigation expanded"><span class="pin-glyph" aria-hidden="true">⌖</span><span class="action-label">pin rail</span></button>
+        <button class="ghost" data-open-cfg type="button" title="Latency model"><span class="latency-glyph" aria-hidden="true">≋</span><span class="action-label">latencies</span></button>
+      </div>
+    </div>
+  </aside>
+  <div class="side-scrim" id="sideScrim"></div>
+
+  <div class="app-stage">
+    <header class="top">
+      <div class="topin">
+        <button class="iconbtn nav-toggle" id="navToggle" type="button" aria-label="Open chapter navigation" aria-expanded="false">☰</button>
+        <div class="crumb" aria-live="polite">
+          <span class="crumb-num" id="crumbNum">00</span>
+          <span class="crumb-title" id="crumbTitle">The machine</span>
+        </div>
+        <span class="top-spacer"></span>
+        <div class="top-actions">
+          <button class="iconbtn mobile-only" data-open-cfg type="button" aria-label="Open latency model" title="Latency model">≋</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap" id="main"></main>
+  </div>
+</div>
+
+<div class="pop" id="pop" role="dialog" aria-live="polite"></div>
 <div class="drawer" id="cfg"><div class="in" id="cfgIn"></div></div>
 <script>
 /* ======================= core ======================= */
@@ -292,7 +1272,11 @@ var App = (function(){
   }
   function h(tag, attrs, parent, html){
     var e = document.createElement(tag);
-    if (attrs) for (var k in attrs){ if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    if (attrs) for (var k in attrs){
+      if (k === 'class') e.className = attrs[k];
+      else if (k === 'style' && typeof attrs[k] === 'object') for (var sk in attrs[k]) e.style[sk] = attrs[k][sk];
+      else e.setAttribute(k, attrs[k]);
+    }
     if (html !== undefined) e.innerHTML = html;
     if (parent) parent.appendChild(e);
     return e;
@@ -331,62 +1315,724 @@ var App = (function(){
   /* ---------- chapters + router ---------- */
   var chapters = [], built = {}, cur = null;
   function chapter(def){ chapters.push(def); }
+
+  function chapterGroup(num){
+    var n = +num;
+    if (n === 0) return 'Overview';
+    if (n <= 3) return 'Core path';
+    if (n <= 9) return 'Memory system';
+    return 'System path';
+  }
+
+  function chapterIndex(id){
+    for (var i = 0; i < chapters.length; i++) if (chapters[i].id === id) return i;
+    return 0;
+  }
+
+  function chapterArt(id){
+    var art;
+    if (id === 'map'){
+      art = h('div', {'class':'chapter-art art-map','aria-hidden':'true'});
+      art.innerHTML = '<div class="art-cap">ONE ACCESS / WHOLE MACHINE</div>' +
+        '<div class="art-path"><i class="ap-core">CORE</i><b>→</b><i>L1D</i><b>→</b><i>L2</i><b>→</b><i>L3</i><b>→</b><i class="ap-dram">DRAM</i></div>' +
+        '<div class="art-address">0x7ffd4a3c2e58 <span>→</span> 0x1a3f7ce58</div>' +
+        '<div class="art-grid" aria-hidden="true"></div>';
+    } else if (id === 'core'){
+      art = h('div', {'class':'chapter-art art-core','aria-hidden':'true'});
+      art.innerHTML = '<div class="art-cap">OUT-OF-ORDER / LIVE STATE</div>' +
+        '<div class="pipe-row"><span>FETCH</span><i></i><i class="hot"></i><i></i><i></i></div>' +
+        '<div class="pipe-row"><span>RENAME</span><i class="hot"></i><i></i><i></i><i></i><i></i><i></i></div>' +
+        '<div class="pipe-row"><span>ISSUE</span><i></i><i class="ready"></i><i class="hot"></i><i></i><i></i></div>' +
+        '<div class="pipe-row"><span>RETIRE</span><i class="ready"></i><i class="ready"></i><i></i><i></i></div>' +
+        '<div class="art-cycle">cycle <b>17</b> · 7 µops in flight</div>';
+    } else if (id === 'l1d'){
+      art = h('div', {'class':'chapter-art art-l1d','aria-hidden':'true'});
+      art.innerHTML = '<div class="art-cap">SET 57 / 8-WAY LOOKUP</div>' +
+        '<div class="cache-address"><span>tag 0x1a3f7c</span><span>index 57</span><span>off 24</span></div>' +
+        '<div class="cache-ways">' + [0,1,2,3,4,5,6,7].map(function(n){ return '<i class="' + (n === 3 ? 'hit' : '') + '"><b>w' + n + '</b><em>' + (n === 3 ? 'HIT' : '≠') + '</em></i>'; }).join('') + '</div>' +
+        '<div class="cache-result">way 3 <b>→ 41</b></div>';
+    }
+    return art || null;
+  }
+
+  function makeChapterHeader(sec, ch){
+    var hd = h('header', {'class': 'chh'}, sec);
+    var copy = h('div', {'class': 'ch-copy'}, hd);
+    h('div', {'class': 'num'}, copy, 'CHAPTER ' + ch.num + ' · ' + chapterGroup(ch.num));
+    h('h1', null, copy, ch.title);
+    if (ch.sub) h('p', null, copy, ch.sub);
+    var art = chapterArt(ch.id);
+    if (art){ hd.classList.add('has-art'); hd.appendChild(art); }
+  }
+
+  function makeChapterFooter(sec, ch){
+    var idx = chapterIndex(ch.id), prev = idx > 0 ? chapters[idx - 1] : null, next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
+    if (!prev && !next) return;
+    var foot = h('footer', {'class':'chapter-footer','aria-label':'Continue through the atlas'}, sec);
+    if (prev){
+      var bp = h('button', {'class':'chapter-jump prev',type:'button'}, foot,
+        '<span>← previous</span><strong>' + prev.num + ' · ' + prev.short + '</strong>');
+      bp.onclick = function(){ go(prev.id); };
+    } else h('span', {'class':'chapter-jump-spacer'}, foot);
+    if (next){
+      var bn = h('button', {'class':'chapter-jump next',type:'button'}, foot,
+        '<span>next →</span><strong>' + next.num + ' · ' + next.short + '</strong>');
+      bn.onclick = function(){ go(next.id); };
+    }
+  }
+
   function show(id){
     var ch = chapters.filter(function(c){ return c.id === id; })[0] || chapters[0];
     if (!built[ch.id]){
-      var sec = h('section', {'class': 'ch', id: 'ch-' + ch.id}, document.getElementById('main'));
-      var hd = h('div', {'class': 'chh'}, sec);
-      h('div', {'class': 'num'}, hd, 'CHAPTER ' + ch.num);
-      h('h1', null, hd, ch.title);
-      if (ch.sub) h('p', null, hd, ch.sub);
-      var body = h('div', {'class': 'stack'}, sec);
+      var sec = h('section', {'class': 'ch ch-' + ch.id, id: 'ch-' + ch.id, 'data-group': chapterGroup(ch.num)}, document.getElementById('main'));
+      makeChapterHeader(sec, ch);
+      var body = h('div', {'class': 'stack chapter-body'}, sec);
       built[ch.id] = {sec: sec, api: ch.build(body) || {}};
+      enhanceChapter(sec);
+      makeChapterFooter(sec, ch);
     }
     for (var k in built) built[k].sec.classList.toggle('show', k === ch.id);
     cur = ch.id;
     var links = document.querySelectorAll('#nav a');
     for (var i = 0; i < links.length; i++) links[i].classList.toggle('cur', links[i].dataset.id === ch.id);
-    var a = document.querySelector('#nav a.cur'); if (a && a.scrollIntoView) a.scrollIntoView({block: 'nearest', inline: 'center'});
+    var a = document.querySelector('#nav a.cur'); if (a && a.scrollIntoView) a.scrollIntoView({block: 'nearest'});
+    var cn = document.getElementById('crumbNum'), ct = document.getElementById('crumbTitle');
+    if (cn) cn.textContent = ch.num;
+    if (ct) ct.textContent = ch.short;
+    closeNav();
     if (built[ch.id].api.onShow) built[ch.id].api.onShow();
   }
-  function go(id){ if (location.hash !== '#' + id) location.hash = id; else show(id); window.scrollTo(0, 0); }
+
+  function go(id){
+    if (location.hash !== '#' + id) location.hash = id; else show(id);
+    window.scrollTo({top: 0, behavior: 'auto'});
+  }
+
   function start(){
-    var nav = document.getElementById('nav');
+    initTheme();
+    initShell();
+    var nav = document.getElementById('nav'), lastGroup = null;
     chapters.forEach(function(c){
-      var a = h('a', {href: '#' + c.id}, nav, '<b>' + c.num + '</b>' + c.short);
+      var grp = chapterGroup(c.num);
+      if (grp !== lastGroup){ h('div', {'class': 'nav-group'}, nav, grp); lastGroup = grp; }
+      var a = h('a', {href: '#' + c.id}, nav,
+        '<span class="nav-num">' + c.num + '</span><span class="nav-label">' + c.short + '</span><span class="nav-arrow">›</span>');
       a.dataset.id = c.id;
     });
-    window.addEventListener('hashchange', function(){ show(location.hash.slice(1)); window.scrollTo(0, 0); });
+    window.addEventListener('hashchange', function(){ show(location.hash.slice(1)); window.scrollTo({top: 0, behavior: 'auto'}); });
     show(location.hash.slice(1) || chapters[0].id);
     initPop(); initCfg();
     document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape'){
+        if (document.body.classList.contains('viz-open')) closeFullscreenViz();
+        closeNav();
+      }
       if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
       var api = built[cur] && built[cur].api;
       if (api && api.key && api.key(e.key)) e.preventDefault();
     });
   }
 
+  /* ---------- shell / theme ---------- */
+  function initShell(){
+    var btn = document.getElementById('navToggle'), scrim = document.getElementById('sideScrim'), pin = document.getElementById('sidebarPin');
+    if (btn) btn.onclick = function(){
+      var on = document.body.classList.toggle('nav-open');
+      btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+    };
+    if (scrim) scrim.onclick = closeNav;
+    var pinned = false; try { pinned = localStorage.getItem('memE2E.navPinned') === '1'; } catch(e){}
+    document.body.classList.toggle('nav-pinned', pinned);
+    if (pin){
+      pin.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+      pin.title = pinned ? 'Let navigation collapse again' : 'Keep navigation expanded';
+      pin.onclick = function(){
+        pinned = !document.body.classList.contains('nav-pinned');
+        document.body.classList.toggle('nav-pinned', pinned);
+        pin.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+        pin.title = pinned ? 'Let navigation collapse again' : 'Keep navigation expanded';
+        try { localStorage.setItem('memE2E.navPinned', pinned ? '1' : '0'); } catch(e){}
+      };
+    }
+  }
+  function closeNav(){
+    document.body.classList.remove('nav-open');
+    var btn = document.getElementById('navToggle'); if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+  function initTheme(){
+    /* V3 has one art direction: dark. Keep the attribute explicit so diagrams, SVGs and
+       browser controls cannot drift with OS theme changes. */
+    document.documentElement.setAttribute('data-theme', 'dark');
+    try { localStorage.removeItem('memE2E.theme'); } catch(e){}
+  }
+
+  /* ---------- canvas enhancement ---------- */
+  var fullscreenViz = null;
+  function closeFullscreenViz(){
+    if (!fullscreenViz) return;
+    fullscreenViz.classList.remove('is-fullscreen');
+    document.body.classList.remove('viz-open');
+    var b = fullscreenViz.querySelector('[data-viz-full]'); if (b) b.textContent = 'focus canvas';
+    var sc = fullscreenViz.querySelector('.scroller'); if (sc && sc._vizApply) setTimeout(sc._vizApply, 20);
+    fullscreenViz = null;
+  }
+
+  function enhanceScroller(sc){
+    if (!sc || sc.dataset.enhanced || !sc.querySelector('svg')) return;
+    sc.dataset.enhanced = '1';
+    var svg = sc.querySelector('svg'), vb = (svg.getAttribute('viewBox') || '').trim().split(/\s+/).map(Number);
+    var baseW = vb.length === 4 && vb[2] ? vb[2] : 1000;
+    var originalVB = vb.length === 4 ? vb.slice() : [0, 0, baseW, Math.round(baseW * .6)];
+    var inlineMin = parseFloat((svg.style.minWidth || '').replace('px','')); if (inlineMin) baseW = Math.max(baseW, inlineMin);
+    svg.style.minWidth = '0';
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+    svg.setAttribute('overflow','visible');
+    sc._vizOriginalViewBox = originalVB.slice();
+
+    function safeBox(box, pad){
+      var b=(box || originalVB).slice(), p=pad === undefined ? Math.max(18, Math.min(44, Math.min(b[2],b[3])*.055)) : pad;
+      return [b[0]-p,b[1]-p,b[2]+p*2,b[3]+p*2];
+    }
+    sc._vizSafeBox = safeBox;
+    sc._vizSetViewBox = function(box){
+      var b = safeBox(box || originalVB);
+      svg.setAttribute('viewBox', b.join(' '));
+      if (sc._vizApply) setTimeout(sc._vizApply, 0);
+    };
+    sc._vizAnimateViewBox = function(box){
+      var target = safeBox(box || originalVB), reduce = false;
+      try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+      var from = (svg.getAttribute('viewBox') || safeBox(originalVB).join(' ')).trim().split(/\s+/).map(Number);
+      if (reduce || from.length !== 4 || target.length !== 4){ sc._vizSetViewBox(box); return; }
+      if (sc._vizRAF) cancelAnimationFrame(sc._vizRAF);
+      var t0 = performance.now(), dur = 520;
+      frame.classList.add('camera-moving','focus-transition');
+      function ease(t){ return t < .5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+      function tick(now){
+        var q = Math.min(1, (now - t0) / dur), e = ease(q), cur = [];
+        for (var n = 0; n < 4; n++) cur[n] = from[n] + (target[n] - from[n]) * e;
+        svg.setAttribute('viewBox', cur.join(' '));
+        if (q < 1) sc._vizRAF = requestAnimationFrame(tick);
+        else {
+          frame.classList.remove('camera-moving');
+          setTimeout(function(){ frame.classList.remove('focus-transition'); },220);
+          if (sc._vizApply) setTimeout(sc._vizApply, 0);
+        }
+      }
+      sc._vizRAF = requestAnimationFrame(tick);
+    };
+
+    var frame = document.createElement('div'); frame.className = 'viz-frame';
+    if (sc.classList.contains('map-canvas')) frame.classList.add('map-viz');
+    if (sc.classList.contains('core-floorplan')) frame.classList.add('core-viz');
+    if (sc.classList.contains('l1-canvas')) frame.classList.add('l1-viz');
+    sc.parentNode.insertBefore(frame, sc); frame.appendChild(sc);
+    if (baseW < 760 && !inlineMin){
+      sc.dataset.enhanced = 'lite'; sc.classList.add('viz-lite'); sc._vizSetViewBox(originalVB); return;
+    }
+    var bar = document.createElement('div'); bar.className = 'viz-bar'; frame.insertBefore(bar, sc);
+    h('span', {'class': 'viz-label'}, bar, 'hardware canvas');
+    h('span', {'class':'viz-sub'}, bar, 'switch views instead of zooming');
+    h('span', {'class': 'grow'}, bar);
+    var bFull = h('button', {type:'button','class':'viz-focus','aria-label':'Open hardware canvas in full viewport','data-viz-full':'1'}, bar, 'focus canvas');
+
+    function apply(){
+      svg.style.width = '100%';
+      svg.style.height = frame.classList.contains('is-fullscreen') ? '100%' : 'auto';
+    }
+    sc._vizApply = apply;
+    bFull.onclick = function(){
+      if (frame.classList.contains('is-fullscreen')){ closeFullscreenViz(); return; }
+      if (fullscreenViz) closeFullscreenViz();
+      fullscreenViz = frame; frame.classList.add('is-fullscreen'); document.body.classList.add('viz-open'); bFull.textContent = 'exit focus';
+      setTimeout(apply, 20);
+    };
+    window.addEventListener('resize', function(){ setTimeout(apply, 20); }, {passive:true});
+    sc._vizSetViewBox(originalVB);
+    setTimeout(apply, 0);
+  }
+
+  function makeDisclosure(node, title, copy, open){
+    if (!node || node.parentNode && node.parentNode.classList && node.parentNode.classList.contains('concept-disclosure')) return null;
+    var d = document.createElement('details'); d.className = 'concept-disclosure'; d.open = !!open;
+    var sm = document.createElement('summary');
+    sm.innerHTML = '<span><b>' + title + '</b>' + (copy ? '<small>' + copy + '</small>' : '') + '</span><i class="disclosure-chevron" aria-hidden="true">›</i>';
+    node.parentNode.insertBefore(d, node); d.appendChild(sm); d.appendChild(node); return d;
+  }
+
+  function termCategory(key){
+    var sets = {
+      core:'isa uop mop pc bp btb ras l1i itlb fetchwin predecode decode opcache uq fusion zx modrm rex rename rat crat prf freelist dispatch rob sched wakeup issue port alu agu bypass lsu lq sq sta std stlf disamb retire commit senior squash mispredict spec smt ipc mab',
+      xlate:'va pa page vpn pfn mmu tlb dtlb pte pml4 cr3 walk pwc reach huge pcid pf ftouch',
+      cache:'line set way tag index offset hit miss valid dirty wbk wthru walloc rfo evict plru vipt incl victimc shadow pfilter ccx mlp ltu wset sloc tloc sram',
+      memory:'dramcell fabric umc channel dimm bank row rowbuf act tcl burst refresh',
+      io:'pcie tlp rc mmio bar doorbell dma iommu iova msix nvme iocoh',
+      order:'memtype pat wc nt clflush fence tso',
+      coh:'coh moesi st_m st_o st_e st_s st_i probe fshare',
+      pref:'pref stream stride swpf late pollute memwall'
+    };
+    for (var k in sets) if ((' ' + sets[k] + ' ').indexOf(' ' + key + ' ') >= 0) return k;
+    return 'core';
+  }
+
+  function glossGraphic(key){
+    var cat = termCategory(key), c = {core:'#a78bfa',xlate:'#60a5fa',cache:'#34d399',memory:'#22d3ee',io:'#f59e0b',order:'#fb7185',coh:'#f97316',pref:'#c084fc'}[cat] || '#94a3b8';
+    function svg(inner){ return '<div class="term-mini" style="--mini:'+c+'"><svg viewBox="0 0 320 92" aria-hidden="true">'+inner+'</svg></div>'; }
+    if (key === 'tlb' || key === 'dtlb' || key === 'walk' || key === 'pml4') return svg('<rect x="8" y="28" width="74" height="36" rx="7"/><text x="45" y="50">VA</text><path d="M86 46H120"/><rect x="124" y="18" width="82" height="56" rx="8" class="hot"/><text x="165" y="42">TLB</text><text x="165" y="58" class="s">VPN → PFN</text><path d="M210 46H244"/><rect x="248" y="28" width="64" height="36" rx="7"/><text x="280" y="50">PA</text>');
+    if (key === 'rob' || key === 'retire') return svg('<path d="M70 46a42 30 0 1 0 84 0a42 30 0 1 0-84 0" class="ring"/><circle cx="87" cy="27" r="6" class="hot"/><circle cx="137" cy="65" r="6"/><path d="M170 46H236"/><text x="203" y="34" class="s">oldest first</text><rect x="240" y="28" width="70" height="36" rx="7"/><text x="275" y="50">RETIRE</text>');
+    if (key === 'sq' || key === 'stlf' || key === 'commit') return svg('<rect x="10" y="18" width="76" height="56" rx="8"/><text x="48" y="42">CORE</text><text x="48" y="58" class="s">store</text><path d="M90 46H126"/><rect x="130" y="14" width="84" height="64" rx="8" class="hot"/><text x="172" y="40">SQ</text><text x="172" y="57" class="s">addr + data</text><path d="M218 46H252"/><rect x="256" y="18" width="56" height="56" rx="8"/><text x="284" y="50">L1d</text>');
+    if (key === 'line' || key === 'set' || key === 'way' || key === 'plru') return svg('<text x="10" y="18" class="s">one 64-byte cache line</text><rect x="10" y="28" width="300" height="38" rx="7"/><path d="M47 28V66M84 28V66M121 28V66M158 28V66M195 28V66M232 28V66M269 28V66"/><rect x="121" y="28" width="37" height="38" class="hot"/><text x="139" y="51">8B</text>');
+    if (key === 'moesi' || key === 'coh' || key === 'probe') return svg('<circle cx="42" cy="46" r="22" class="hot"/><text x="42" y="51">M</text><circle cx="112" cy="24" r="20"/><text x="112" y="29">O</text><circle cx="112" cy="68" r="20"/><text x="112" y="73">E</text><circle cx="202" cy="24" r="20"/><text x="202" y="29">S</text><circle cx="276" cy="46" r="22"/><text x="276" y="51">I</text><path d="M66 42L90 29M66 51L90 63M133 24H178M133 68L255 50M223 27L257 39"/>');
+    if (key === 'rowbuf' || key === 'bank' || key === 'dramcell') return svg('<text x="10" y="18" class="s">DRAM bank</text><g class="grid"><rect x="10" y="26" width="220" height="48" rx="5"/><path d="M10 38H230M10 50H230M10 62H230M42 26V74M74 26V74M106 26V74M138 26V74M170 26V74M202 26V74"/></g><rect x="10" y="49" width="220" height="13" class="hot"/><path d="M238 55H270"/><rect x="274" y="34" width="38" height="42" rx="5"/><text x="293" y="51">row</text><text x="293" y="64">buf</text>');
+    if (key === 'dma' || key === 'iommu' || key === 'nvme') return svg('<rect x="8" y="26" width="70" height="40" rx="7"/><text x="43" y="50">NVMe</text><path d="M82 46H120"/><rect x="124" y="20" width="76" height="52" rx="8" class="hot"/><text x="162" y="43">IOMMU</text><text x="162" y="59" class="s">IOVA → PA</text><path d="M204 46H242"/><rect x="246" y="26" width="66" height="40" rx="7"/><text x="279" y="50">RAM</text>');
+    return '';
+  }
+
+  function addFocusStrip(sec, sc, views, opts){
+    if (!sc || sc.dataset.focusStrip) return null; sc.dataset.focusStrip = '1'; opts = opts || {};
+    var frame = sc.closest('.viz-frame'); if (!frame || !views || !views.length) return null;
+    var strip = document.createElement('div'); strip.className = 'focus-strip';
+    h('span', {'class':'focus-label'}, strip, opts.label || 'hardware view');
+    var bPrev = h('button',{type:'button','class':'focus-step','aria-label':'Previous hardware view'},strip,'‹');
+    var rail = h('div', {'class':'focus-tabs','role':'tablist'}, strip);
+    var bNext = h('button',{type:'button','class':'focus-step','aria-label':'Next hardware view'},strip,'›');
+    var scroller = frame.querySelector('.scroller'); frame.insertBefore(strip, scroller || null);
+    var active = null, auto = opts.auto !== false, bs = {}, activeIndex = 0, follow = null;
+    function set(id, source){
+      var v = views.filter(function(x){ return x.id === id; })[0] || views[0]; if (!v) return;
+      active = v.id; activeIndex = Math.max(0, views.indexOf(v)); if (source === 'manual') auto = false;
+      if (sc._vizAnimateViewBox) sc._vizAnimateViewBox(v.box); else if (sc._vizSetViewBox) sc._vizSetViewBox(v.box);
+      for (var k in bs){ var on = k === active; bs[k].classList.toggle('on', on); bs[k].setAttribute('aria-selected', on ? 'true' : 'false'); }
+      if (follow) follow.classList.toggle('on', auto);
+      strip.dataset.active = active;
+      var onb=bs[active]; if(onb && onb.scrollIntoView) onb.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});
+      frame.classList.remove('view-switched'); void frame.offsetWidth; frame.classList.add('view-switched');
+      setTimeout(function(){frame.classList.remove('view-switched');},620);
+    }
+    views.forEach(function(v){
+      var b = h('button',{type:'button','data-view':v.id,'role':'tab','aria-selected':'false'},rail,v.label); bs[v.id]=b; b.onclick=function(){set(v.id,'manual');};
+    });
+    bPrev.onclick=function(){ set(views[(activeIndex - 1 + views.length) % views.length].id,'manual'); };
+    bNext.onclick=function(){ set(views[(activeIndex + 1) % views.length].id,'manual'); };
+    if (opts.follow !== false){
+      follow = h('button',{type:'button','class':'focus-follow'},strip,'follow step');
+      follow.onclick=function(){ auto=!auto; follow.classList.toggle('on',auto); if(auto && opts.current) set(opts.current(),'follow'); };
+    }
+    var api = {set:set, follow:function(id){ if(auto) set(id,'follow'); }, isAuto:function(){return auto;}, strip:strip, views:views};
+    set((opts.initial || views[0].id),'init');
+    return api;
+  }
+
+  function compactInputHelp(card){
+    if (!card || card.dataset.compactHelp) return; card.dataset.compactHelp='1';
+    var ps = card.querySelectorAll('p.note'); if (!ps.length) return;
+    var help = ps[ps.length-1]; if (help.classList.contains('l1err')) return;
+    var d=document.createElement('details'); d.className='control-help'; var sm=document.createElement('summary'); sm.textContent='input rules'; d.appendChild(sm);
+    help.parentNode.insertBefore(d, help); d.appendChild(help);
+  }
+
+  function enhanceCoreWorkbench(sec){
+    var intro=sec.querySelector('.core-intro'); makeDisclosure(intro,'How the model works','Keep the full model assumptions and Zen+ size comparison available without occupying the simulator viewport.',false);
+    var sc=sec.querySelector('.core-floorplan');
+    var cam=addFocusStrip(sec,sc,[
+      {id:'overview',label:'Overview',box:[0,0,1200,445]},
+      {id:'front',label:'Front end',box:[0,0,820,304]},
+      {id:'rename',label:'Rename',box:[540,62,660,245]},
+      {id:'execute',label:'Execute',box:[0,130,850,315]},
+      {id:'memory',label:'Load / store',box:[430,160,770,285]},
+      {id:'retire',label:'Retire',box:[0,95,700,260]}
+    ],{auto:false,follow:false,initial:'overview',label:'hardware view'});
+    sec._cameraFocus=cam;
+    var gantt=sec.querySelector('.core-gantt'); makeDisclosure(gantt,'Pipeline timeline','Open the full µop × cycle Gantt only when you need the dense chronology.',false);
+  }
+
+  function enhanceTranslationWorkbench(sec){
+    var body=sec.querySelector('.chapter-body'); if(!body || body.dataset.workbench) return; body.dataset.workbench='1';
+    var grids=body.querySelectorAll(':scope > .grid2'); if(grids[0]) makeDisclosure(grids[0],'Translation model','Why translation is required and why a DTLB hit overlaps the VIPT L1d lookup.',false);
+    if(grids[1]) makeDisclosure(grids[1],'Deeper translation notes','TLB reach, PCIDs and context-switch behavior stay here when you want the details.',false);
+    var scenario=null; Array.prototype.some.call(body.children,function(el){ if(el.classList && el.classList.contains('stp') && !el.classList.contains('stepper-bar')){scenario=el; return true;} return false; });
+    var step=body.querySelector('.stepper'), sc=body.querySelector('.scroller'); if(!step || !sc) return;
+    var frame=sc.closest('.viz-frame');
+    var lab=document.createElement('div'); lab.className='sim-workbench xlate-workbench'; frame.parentNode.insertBefore(lab, frame);
+    var rail=document.createElement('aside'); rail.className='lab-rail'; var stage=document.createElement('div'); stage.className='lab-stage'; lab.appendChild(rail); lab.appendChild(stage);
+    if(scenario){scenario.classList.add('scenario-dock'); rail.appendChild(scenario);} step.classList.add('xlate-stepper'); rail.appendChild(step); stage.appendChild(frame);
+    var cam=addFocusStrip(sec,sc,[
+      {id:'overview',label:'Overview',box:[0,0,1200,720]},
+      {id:'address',label:'Address',box:[0,0,1200,330]},
+      {id:'tlb',label:'TLBs',box:[0,115,1200,300]},
+      {id:'walk',label:'Page walk',box:[0,320,1200,400]},
+      {id:'entry',label:'PTE bits',box:[0,520,800,240]},
+      {id:'pa',label:'Physical address',box:[760,500,440,264]}
+    ],{initial:'overview',label:'translation view'});
+    sec._cameraFocus=cam;
+    step.addEventListener('memstepchange',function(e){ var f=e.detail.frame,id='overview'; if(f.p==='VA') id='address'; else if(f.p==='lookup'||f.l2) id='tlb'; else if(f.lvl||f.walker||f.kernel||f.pte!==undefined) id='walk'; else if(f.pa) id='pa'; cam.follow(id); });
+  }
+
+  function enhanceL1Workbench(sec){
+    var body=sec.querySelector('.chapter-body'); if(!body || body.dataset.workbench) return; body.dataset.workbench='1';
+    var intro=body.querySelector('.l1-intro'); makeDisclosure(intro,'Cache geometry & metadata','The full set/way/VIPT and line-metadata explanation remains available without pushing the live cache below the fold.',false);
+    var step=body.querySelector('.l1-stepper'), custom=body.querySelector('.l1-custom'), sc=body.querySelector('.l1-canvas'); if(!step||!custom||!sc) return;
+    compactInputHelp(custom); custom.classList.add('sticky-input');
+    var frame=sc.closest('.viz-frame'), legend=body.querySelector('.l1-legend');
+    var lab=document.createElement('div'); lab.className='sim-workbench l1-workbench'; frame.parentNode.insertBefore(lab, frame);
+    var rail=document.createElement('aside'); rail.className='lab-rail'; var stage=document.createElement('div'); stage.className='lab-stage'; lab.appendChild(rail);lab.appendChild(stage);
+    rail.appendChild(custom); rail.appendChild(step); stage.appendChild(frame); if(legend) stage.appendChild(legend);
+    var cam=addFocusStrip(sec,sc,[
+      {id:'overview',label:'Overview',box:[0,0,1200,800]},
+      {id:'address',label:'Address',box:[0,0,1200,180]},
+      {id:'set',label:'Set read',box:[0,110,650,470]},
+      {id:'compare',label:'Tag compare',box:[110,120,520,470]},
+      {id:'data',label:'Data / mux',box:[560,110,640,470]},
+      {id:'replace',label:'Replacement',box:[210,545,760,285]},
+      {id:'miss',label:'Miss path',box:[580,545,620,285]}
+    ],{initial:'overview',label:'cache view'});
+    sec._cameraFocus=cam;
+    step.addEventListener('memstepchange',function(e){ var ph=e.detail.frame.ph,id='overview'; if(ph==='split')id='address'; else if(ph==='read')id='set'; else if(ph==='compare')id='compare'; else if(ph==='select'||ph==='all')id='data'; else if(ph==='miss'||ph==='writeback'||ph==='fill')id='miss'; cam.follow(id); });
+  }
+
+  function directChild(body, selector){
+    if(!body) return null;
+    for(var i=0;i<body.children.length;i++) if(body.children[i].matches && body.children[i].matches(selector)) return body.children[i];
+    return null;
+  }
+
+  function buildGenericWorkbench(sec, opts){
+    opts=opts||{}; var body=sec.querySelector('.chapter-body'); if(!body || body.dataset.genericWorkbench) return null;
+    var sc=opts.scroller || body.querySelector('.scroller'); if(!sc) return null;
+    var frame=sc.closest('.viz-frame'); if(!frame) return null;
+    var step=opts.stepper || directChild(body,'.stepper');
+    var scenario=opts.scenario || directChild(body,'.stp:not(.stepper-bar)');
+    var lab=document.createElement('div'); lab.className='sim-workbench generic-workbench '+(opts.className||'');
+    frame.parentNode.insertBefore(lab,frame);
+    var rail=document.createElement('aside'); rail.className='lab-rail'; var stage=document.createElement('div'); stage.className='lab-stage';
+    lab.appendChild(rail); lab.appendChild(stage);
+    if(scenario && scenario.parentNode){ scenario.classList.add('scenario-dock'); rail.appendChild(scenario); }
+    if(opts.railExtra) opts.railExtra.forEach(function(n){ if(n&&n.parentNode) rail.appendChild(n); });
+    if(step && step.parentNode){ step.classList.add('guided-stepper'); rail.appendChild(step); }
+    stage.appendChild(frame);
+    if(opts.stageExtra) opts.stageExtra.forEach(function(n){ if(n&&n.parentNode) stage.appendChild(n); });
+    body.dataset.genericWorkbench='1';
+    var cam=opts.views ? addFocusStrip(sec,sc,opts.views,{initial:(opts.initial||'overview'),label:(opts.label||'hardware view'),follow:opts.follow!==false}) : null;
+    if(cam) sec._cameraFocus=cam;
+    if(step && cam && opts.stepMap){
+      step.addEventListener('memstepchange',function(e){ var id=opts.stepMap(e.detail.frame,e.detail.index)||'overview'; cam.follow(id); });
+    }
+    return {lab:lab,rail:rail,stage:stage,camera:cam,stepper:step,scenario:scenario,frame:frame};
+  }
+
+  function enhanceAllChapterWorkbench(sec){
+    var id=sec.id;
+    if(id==='ch-map'){
+      var sc=sec.querySelector('.map-canvas'); if(sc) sec._cameraFocus=addFocusStrip(sec,sc,[
+        {id:'overview',label:'Whole machine',box:[0,0,1200,760]},
+        {id:'core',label:'CPU + caches',box:[15,35,780,405]},
+        {id:'memory',label:'Fabric + DRAM',box:[0,350,800,410]},
+        {id:'io',label:'I/O + devices',box:[760,20,440,740]}
+      ],{auto:false,follow:false,initial:'overview',label:'system view'});
+    }
+    if(id==='ch-hier'){
+      buildGenericWorkbench(sec,{className:'hier-workbench',views:[
+        {id:'overview',label:'Overview',box:[0,0,1200,560]},
+        {id:'core',label:'Core + L2',box:[0,0,760,275]},
+        {id:'l3',label:'L3 + shadows',box:[0,245,980,160]},
+        {id:'fabric',label:'Fabric',box:[0,360,1200,125]},
+        {id:'dram',label:'Memory',box:[0,440,1200,120]}
+      ],stepMap:function(f){ var p=(f.p||'').toLowerCase(); if(p.indexOf('l1')>=0||p.indexOf('l2')>=0)return'core'; if(p.indexOf('l3')>=0||p.indexOf('shadow')>=0||p.indexOf('probe')>=0)return'l3'; if(p.indexOf('fabric')>=0)return'fabric'; if(p.indexOf('dram')>=0||p.indexOf('return')>=0)return'dram'; return'overview'; }});
+    }
+    if(id==='ch-dram'){
+      buildGenericWorkbench(sec,{className:'dram-workbench',scenario:null,views:[
+        {id:'overview',label:'Overview',box:[0,0,1200,730]},
+        {id:'queue',label:'Requests',box:[0,0,620,220]},
+        {id:'address',label:'Address map',box:[590,0,610,220]},
+        {id:'banks',label:'Banks',box:[0,190,520,300]},
+        {id:'row',label:'Open row',box:[465,190,735,300]},
+        {id:'timeline',label:'Commands',box:[0,455,1200,275]}
+      ],stepMap:function(f){ var p=(f.p||''); if(p==='map')return'address'; if(/^ACT|^RD|^PRE/.test(p))return p.indexOf('RD')===0?'row':'banks'; if(p==='REF')return'timeline'; return'overview'; }});
+    }
+    if(id==='ch-stores'){
+      buildGenericWorkbench(sec,{className:'stores-workbench',views:[
+        {id:'overview',label:'Overview',box:[0,0,1200,400]},
+        {id:'queue',label:'Store queue',box:[0,0,330,290]},
+        {id:'l1',label:'L1 ownership',box:[280,0,350,290]},
+        {id:'peer',label:'Peer core',box:[600,0,315,290]},
+        {id:'coherence',label:'L3 / probes',box:[860,0,340,300]},
+        {id:'dram',label:'DRAM',box:[0,285,1200,115]}
+      ],stepMap:function(f){ var p=(f.p||'').toLowerCase(); if(p==='execute'||p==='retire')return'queue'; if(p==='commit'||p==='coalesce')return'l1'; if(p==='upgrade'||p==='invalidate')return'peer'; if(p==='rfo'||p==='fill')return'coherence'; if(p==='stale')return'dram'; return'overview'; }});
+    }
+    if(id==='ch-coh'){
+      var stats=sec.querySelector('.chapter-body > .card:last-child'),free=sec.querySelector('.chapter-body > .card[style*=\"display:none\"]');
+      buildGenericWorkbench(sec,{className:'coh-workbench',railExtra:free?[free]:[],stageExtra:stats?[stats]:[],views:[
+        {id:'overview',label:'Overview',box:[0,0,1200,430]},
+        {id:'cores',label:'Private caches',box:[0,0,1200,205]},
+        {id:'directory',label:'L3 directory',box:[0,195,1200,125]},
+        {id:'memory',label:'DRAM',box:[0,315,1200,115]}
+      ],stepMap:function(f){ return f && f.A && f.A.length ? 'cores' : 'overview'; }});
+    }
+    if(id==='ch-pref'){
+      var body=sec.querySelector('.chapter-body'),sc=directChild(body,'.scroller'),note=directChild(body,'.card:not(.grid2 .card)');
+      buildGenericWorkbench(sec,{className:'pref-workbench',scroller:sc,stepper:null,stageExtra:note?[note]:[],views:[
+        {id:'overview',label:'Full run',box:[0,0,1200,520]},
+        {id:'early',label:'Warm-up',box:[0,0,650,420]},
+        {id:'late',label:'Steady state',box:[540,0,660,420]}
+      ],follow:false});
+    }
+    if(id==='ch-dev'){
+      buildGenericWorkbench(sec,{className:'dev-workbench',scenario:null,views:[
+        {id:'overview',label:'Overview',box:[0,0,1200,600]},
+        {id:'cpu',label:'CPU + queues',box:[0,0,590,600]},
+        {id:'iommu',label:'IOMMU / PCIe',box:[540,170,360,430]},
+        {id:'ssd',label:'NVMe SSD',box:[860,0,340,600]},
+        {id:'memory',label:'Host memory',box:[0,220,780,380]}
+      ],stepMap:function(f){ var p=(f.p||'').toLowerCase(); if(p==='command'||p==='consume'||p==='use')return'cpu'; if(p==='doorbell'||p==='mwr'||p==='fetch'||p==='msi-x')return'iommu'; if(p==='flash')return'ssd'; if(p==='data'||p==='cqe')return'memory'; return'overview'; }});
+    }
+  }
+
+  function enhanceCoreInspector(sec){
+    var grid = sec.querySelector('.pgrid');
+    if (!grid || grid.dataset.inspector) return;
+    grid.dataset.inspector = '1'; grid.classList.add('inspector-mode');
+    var cards = Array.prototype.slice.call(grid.children);
+    if (!cards.length) return;
+    var labels = ['Front end','RAT','Registers','ROB','Schedulers','Ports','Load queue','Store queue','Memory'];
+    var deck = document.createElement('div'); deck.className = 'inspector-deck';
+    var head = h('div', {'class':'inspector-head'}, deck, '<div><span>state inspector</span><strong>Open one structure without losing the cycle context.</strong></div>');
+    var tabs = h('div', {'class':'inspector-tabs','role':'tablist','aria-label':'Core state inspector'}, deck);
+    grid.parentNode.insertBefore(deck, grid);
+    function select(k){
+      cards.forEach(function(card, i){ card.classList.toggle('inspector-active', k === 'all' || i === k); });
+      var bs = tabs.querySelectorAll('button'); for (var j = 0; j < bs.length; j++) bs[j].classList.toggle('on', bs[j].dataset.k === String(k));
+      grid.classList.toggle('show-all', k === 'all');
+    }
+    cards.forEach(function(card, i){
+      var b = h('button', {type:'button','data-k':String(i),'role':'tab'}, tabs, labels[i] || ('Panel ' + (i + 1)));
+      b.onclick = function(){ select(i); };
+    });
+    var all = h('button', {type:'button','class':'all-state','data-k':'all','role':'tab'}, tabs, 'all state');
+    all.onclick = function(){ select('all'); };
+    var map = {bp:0,ic:0,pd:0,de:0,uq:0,rn:1,rob:3,alus:4,agus:4,alup:5,agup:5,lsu:8,l2:8};
+    var blocks = sec.querySelectorAll('[data-core-block]');
+    for (var i = 0; i < blocks.length; i++) (function(el){
+      var k = map[el.getAttribute('data-core-block')]; if (k === undefined) return;
+      el.setAttribute('tabindex','0'); el.setAttribute('role','button');
+      function open(){
+        select(k);
+        if (sec._cameraFocus){
+          var vm={bp:'front',ic:'front',pd:'front',de:'front',uq:'front',rn:'rename',rob:'retire',alus:'execute',agus:'execute',alup:'execute',agup:'execute',lsu:'memory',l2:'memory'};
+          if(vm[el.getAttribute('data-core-block')]) sec._cameraFocus.set(vm[el.getAttribute('data-core-block')],'manual');
+        }
+        var r = deck.getBoundingClientRect(); if (r.top < 70 || r.bottom > window.innerHeight) deck.scrollIntoView({block:'nearest',behavior:'smooth'});
+      }
+      el.addEventListener('click', open); el.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); } });
+    })(blocks[i]);
+    select(0);
+  }
+
+  function wrapLearningScene(body, id, title, copy, nodes){
+    nodes = (nodes || []).filter(function(n){ return n && n.parentNode; }); if (!nodes.length) return null;
+    var scene = document.createElement('section'); scene.className = 'learning-scene'; scene.dataset.scene = id;
+    var first = nodes[0]; first.parentNode.insertBefore(scene, first);
+    var lead = document.createElement('div'); lead.className = 'scene-lead';
+    lead.innerHTML = '<span class="scene-kicker"></span><div><h2>' + title + '</h2>' + (copy ? '<p>' + copy + '</p>' : '') + '</div>';
+    scene.appendChild(lead); nodes.forEach(function(n){ scene.appendChild(n); }); return scene;
+  }
+
+  function makeGuidedJourney(sec, defs){
+    if (!sec || sec.dataset.guided || !defs || !defs.length) return; sec.dataset.guided = '1';
+    var body = sec.querySelector('.chapter-body'); if (!body) return;
+    var scenes = defs.map(function(d){ return wrapLearningScene(body,d.id,d.title,d.copy,d.nodes); }).filter(Boolean); if (!scenes.length) return;
+    var nav = document.createElement('div'); nav.className = 'learning-journey';
+    var head = h('div', {'class':'journey-head'}, nav, '<div><span>guided chapter</span><strong>One concept at a time</strong></div>');
+    var controls = h('div', {'class':'journey-controls'}, nav);
+    var bPrev = h('button',{type:'button','class':'journey-arrow','aria-label':'Previous learning scene'},controls,'←');
+    var track = h('div', {'class':'journey-track','role':'tablist','aria-label':'Chapter learning path'}, controls);
+    var bNext = h('button',{type:'button','class':'journey-arrow','aria-label':'Next learning scene'},controls,'→');
+    var bAll = h('button',{type:'button','class':'journey-all'},controls,'show all');
+    body.insertBefore(nav, body.firstChild);
+    var buttons=[], current=0, all=false; nav.style.setProperty('--journey-count', scenes.length);
+    scenes.forEach(function(scene,i){
+      var d=defs[i] || {}; var b=h('button',{type:'button','role':'tab','aria-selected':'false'},track,'<b>'+String(i+1).padStart(2,'0')+'</b><span>'+d.title+'</span>');
+      b.onclick=function(){ all=false; bAll.textContent='show all'; select(i,true); }; buttons.push(b);
+      var foot=h('div',{'class':'scene-nav'},scene);
+      if(i>0){ var p=h('button',{type:'button','class':'scene-prev'},foot,'← '+defs[i-1].title); p.onclick=function(){select(i-1,true);}; }
+      else h('span',{'class':'scene-nav-spacer'},foot);
+      if(i<scenes.length-1){ var n=h('button',{type:'button','class':'scene-next pri'},foot,'Continue · '+defs[i+1].title+' →'); n.onclick=function(){select(i+1,true);}; }
+      else { var done=h('button',{type:'button','class':'scene-next pri'},foot,'Chapter complete · review all'); done.onclick=function(){ bAll.click(); }; }
+    });
+    function updateSceneKickers(){ scenes.forEach(function(scene,i){ var k=scene.querySelector('.scene-kicker'); if(k) k.textContent=(i===0?'START HERE · ':'')+(i+1)+' / '+scenes.length; }); }
+    function select(i, scroll){
+      current=Math.max(0,Math.min(scenes.length-1,i)); sec.classList.toggle('guided-all',all);
+      scenes.forEach(function(scene,k){ scene.hidden = !all && k!==current; scene.classList.toggle('scene-active',all || k===current); });
+      buttons.forEach(function(b,k){ var on=k===current&&!all; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
+      bPrev.disabled=all||current===0; bNext.disabled=all||current===scenes.length-1;
+      if(!all){ var scs=scenes[current].querySelectorAll('.scroller'); for(var q=0;q<scs.length;q++) if(scs[q]._vizApply) setTimeout(scs[q]._vizApply,20); }
+      if(scroll){ var r=nav.getBoundingClientRect(); if(r.top < 0 || r.top > 100) nav.scrollIntoView({block:'start',behavior:'smooth'}); }
+    }
+    bPrev.onclick=function(){ if(!all)select(current-1,true); }; bNext.onclick=function(){ if(!all)select(current+1,true); };
+    bAll.onclick=function(){ all=!all; bAll.textContent=all?'focus mode':'show all'; select(current,false); };
+    updateSceneKickers(); select(0,false);
+  }
+
+  function installGuidedJourney(sec){
+    var body=sec.querySelector('.chapter-body'); if(!body) return;
+    var ds=sec.querySelectorAll('.concept-disclosure');
+    function q(sel){return sec.querySelector(sel);} function kids(sel){return Array.prototype.slice.call(body.querySelectorAll(':scope > '+sel));}
+    if(sec.id==='ch-map'){
+      makeGuidedJourney(sec,[
+        {id:'atlas',title:'See the whole machine',copy:'Start with the system map. Select blocks instead of reading every label at once.',nodes:[q('.map-workbench')]},
+        {id:'route',title:'Follow the route',copy:'Use the chapter route only after the hardware map is familiar.',nodes:[q('.route-index')]}
+      ]);
+    } else if(sec.id==='ch-code'){
+      var tops=Array.prototype.slice.call(body.children);
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Anchor the calling convention and the exact running example.',nodes:[tops[0]]},
+        {id:'map',title:'C → assembly',copy:'Hover and select one source line or instruction at a time.',nodes:[tops[1]]},
+        {id:'decode',title:'Decode one instruction',copy:'Read the encoding fields and the µops for the selected instruction.',nodes:[tops[2]]},
+        {id:'bytes',title:'See the bytes',copy:'Place the same instructions back into memory and the fetch window.',nodes:[tops[3]]},
+        {id:'predecode',title:'Why predecode exists',copy:'Finish with instruction boundaries and the decoder feed.',nodes:[tops[4]]}
+      ]);
+    } else if(sec.id==='ch-core'){
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Understand what the model represents before touching the cycle controls.',nodes:[ds[0]]},
+        {id:'run',title:'Run the core',copy:'Step the machine. The active structures and signal paths change with the cycle.',nodes:[q('.core-controls'),q('.core-viz'),q('.core-events')]},
+        {id:'inspect',title:'Inspect state',copy:'Open one structure at a time while keeping the current cycle fixed.',nodes:[q('.inspector-deck'),q('.core-state-grid')]},
+        {id:'timeline',title:'Read the timeline',copy:'Use the dense µop × cycle view only after you have a mental model of the hardware.',nodes:[ds[1]]}
+      ]);
+    } else if(sec.id==='ch-xlate'){
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Start with the reason translation exists and what a TLB hit buys you.',nodes:[ds[0]]},
+        {id:'translate',title:'Translate an address',copy:'Walk one virtual address through the TLBs, page walker and physical address.',nodes:[q('.xlate-workbench')]},
+        {id:'fault',title:'Handle a fault',copy:'See what changes when translation leaves hardware and enters the kernel.',nodes:[q('.xlate-kernel')]},
+        {id:'depth',title:'Go deeper',copy:'Keep TLB reach, PCID and context-switch details available without crowding the main path.',nodes:[ds[1]]}
+      ]);
+    } else if(sec.id==='ch-l1d'){
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Learn the cache geometry and metadata once, then move into the live lookup.',nodes:[ds[0]]},
+        {id:'lookup',title:'Run a lookup',copy:'Change the address or operation, then follow the highlighted set, tags, way and miss path.',nodes:[q('.l1-workbench')]}
+      ]);
+    } else if(sec.id==='ch-hier'){
+      var cards=kids('.card');
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Understand inclusion, victim behavior and the role of shadow tags.',nodes:[directChild(body,'.grid2')]},
+        {id:'miss',title:'Follow one miss',copy:'Choose where the line lives and follow the request outward and the line back.',nodes:[q('.hier-workbench')]},
+        {id:'latency',title:'Compare latency',copy:'See how each cache level changes load-to-use time.',nodes:[cards[0]]},
+        {id:'parallel',title:'Overlap misses',copy:'Contrast independent memory-level parallelism with a serialized pointer chase.',nodes:[cards[1]]},
+        {id:'links',title:'Check the links',copy:'Finish with transfer widths and the cost of moving one 64-byte line.',nodes:[cards[2]]}
+      ]);
+    } else if(sec.id==='ch-dram'){
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Learn the bank/row model and the timing vocabulary first.',nodes:[directChild(body,'.grid2')]},
+        {id:'commands',title:'Run the commands',copy:'Step ACT, RD, PRE and REF while the view follows the active part of DRAM.',nodes:[q('.dram-workbench')]},
+        {id:'meaning',title:'Connect the costs',copy:'Compare row hit, closed-row and conflict costs without losing the device-level picture.',nodes:[directChild(body,'.grid3')]}
+      ]);
+    } else if(sec.id==='ch-stores'){
+      var rem=Array.prototype.slice.call(body.children).filter(function(n){return n!==q('.stores-workbench');});
+      makeGuidedJourney(sec,[
+        {id:'path',title:'Run a store',copy:'Follow execution, retirement, ownership and commit as one guided path.',nodes:[q('.stores-workbench')]},
+        {id:'types',title:'Change the memory type',copy:'Keep write-combining and memory-type rules as a separate concept.',nodes:[rem[0],rem[1]]},
+        {id:'ordering',title:'Reason about ordering',copy:'Finish with fences and the ordering rules that the store queue exposes.',nodes:[rem[2]]}
+      ]);
+    } else if(sec.id==='ch-coh'){
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Learn the five states and how the L3 directory targets probes.',nodes:[directChild(body,'.grid2')]},
+        {id:'run',title:'Run coherence',copy:'Switch scenarios, step one operation at a time, and watch ownership move between cores.',nodes:[q('.coh-workbench')]}
+      ]);
+    } else if(sec.id==='ch-pref'){
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Separate what the model assumes from what Zen+ actually publishes.',nodes:[directChild(body,'.grid2')]},
+        {id:'experiment',title:'Experiment with prediction',copy:'Change pattern and distance, then compare covered, late and useless prefetches.',nodes:[q('.pref-workbench')]}
+      ]);
+    } else if(sec.id==='ch-dev'){
+      makeGuidedJourney(sec,[
+        {id:'orient',title:'Orient',copy:'Separate MMIO from DMA and understand the two NVMe rings.',nodes:[directChild(body,'.grid2')]},
+        {id:'trace',title:'Trace one NVMe read',copy:'Step from the submission queue to flash, DMA, interrupt and application read.',nodes:[q('.dev-workbench')]},
+        {id:'connect',title:'Connect the mechanisms',copy:'Use the cross-chapter summary only after the end-to-end path is clear.',nodes:[kids('.grid2').slice(-1)[0]]}
+      ]);
+    } else if(sec.id==='ch-e2e'){
+      var top=Array.prototype.slice.call(body.children);
+      makeGuidedJourney(sec,[
+        {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state, then read the resulting critical path.',nodes:[top[0],top[1]]},
+        {id:'steps',title:'Inspect the critical path',copy:'Open the step table only after the timeline gives you the shape of the cost.',nodes:[top[2]]},
+        {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]}
+      ]);
+    } else if(sec.id==='ch-gloss'){
+      /* The glossary is intentionally search-first rather than a fake multi-step journey. */
+      body.classList.add('glossary-workspace');
+    }
+  }
+
+  function pulseActiveVisualization(sec){
+    var frames=sec.querySelectorAll('.viz-frame');
+    for(var i=0;i<frames.length;i++){
+      var f=frames[i]; f.classList.remove('step-pulse'); void f.offsetWidth; f.classList.add('step-pulse');
+      var active=f.querySelectorAll('svg .on,svg .flow,svg .bsel,svg .cur,svg .chg');
+      for(var a=0;a<active.length;a++){
+        var el=active[a]; el.classList.remove('attention-pulse'); try{void el.getBBox();}catch(er){void el.offsetWidth;} el.classList.add('attention-pulse');
+        (function(x){setTimeout(function(){x.classList.remove('attention-pulse');},780);})(el);
+      }
+      (function(x){setTimeout(function(){x.classList.remove('step-pulse');},820);})(f);
+    }
+    var narr=sec.querySelectorAll('.narr');
+    for(var j=0;j<narr.length;j++){ var n=narr[j]; n.classList.remove('narr-change'); void n.offsetWidth; n.classList.add('narr-change'); }
+  }
+
+  function enhanceChapter(sec){
+    var sc = sec.querySelectorAll('.scroller'); for (var i = 0; i < sc.length; i++) enhanceScroller(sc[i]);
+    var terms = sec.querySelectorAll('dfn[data-g]');
+    for (var j = 0; j < terms.length; j++){
+      terms[j].tabIndex = 0; terms[j].setAttribute('role','button');
+      terms[j].classList.add('term-' + termCategory(terms[j].dataset.g));
+    }
+    if (sec.id === 'ch-core'){ enhanceCoreWorkbench(sec); enhanceCoreInspector(sec); }
+    if (sec.id === 'ch-xlate') enhanceTranslationWorkbench(sec);
+    if (sec.id === 'ch-l1d') enhanceL1Workbench(sec);
+    enhanceAllChapterWorkbench(sec);
+    installGuidedJourney(sec);
+    sec.addEventListener('memstepchange', function(){ pulseActiveVisualization(sec); });
+    sec.addEventListener('click',function(e){ if(e.target.closest && (e.target.closest('.seg button') || e.target.closest('.pill') || e.target.closest('.focus-tabs button'))) requestAnimationFrame(function(){pulseActiveVisualization(sec);}); });
+    sec.addEventListener('change',function(e){ if(e.target.matches && 'INPUT SELECT'.indexOf(e.target.tagName)>=0) requestAnimationFrame(function(){pulseActiveVisualization(sec);}); });
+  }
+
   /* ---------- popover ---------- */
   function initPop(){
-    var pop = document.getElementById('pop');
+    var pop = document.getElementById('pop'), locked = false, closeTimer = null, openTimer = null, active = null;
+    pop.classList.add('gloss-pop');
     function place(t){
-      var r = t.getBoundingClientRect(), w = Math.min(360, window.innerWidth - 20);
-      pop.style.maxWidth = w + 'px';
-      pop.style.display = 'block';
-      var ph = pop.offsetHeight, x = Math.max(10, Math.min(r.left, window.innerWidth - w - 10));
-      var y = r.bottom + 8; if (y + ph > window.innerHeight - 10) y = Math.max(10, r.top - ph - 8);
+      var r = t.getBoundingClientRect(), w = Math.min(430, window.innerWidth - 24);
+      pop.style.maxWidth = w + 'px'; pop.style.display = 'block';
+      var ph = pop.offsetHeight, x = Math.max(12, Math.min(r.left, window.innerWidth - w - 12));
+      var y = r.bottom + 10; if (y + ph > window.innerHeight - 12) y = Math.max(12, r.top - ph - 10);
       pop.style.left = x + 'px'; pop.style.top = y + 'px';
     }
+    function open(t, lock){
+      clearTimeout(closeTimer); active = t; locked = !!lock;
+      var key=t.dataset.g,d=G[key],cat=termCategory(key);
+      var title=d?d.t:key,def=d?d.d:'(no entry)';
+      pop.innerHTML='<div class="term-pop-head"><span class="term-pop-cat term-'+cat+'">'+cat+'</span><b>'+title+'</b><button type="button" class="term-pop-close" aria-label="Close definition">×</button></div>'+glossGraphic(key)+'<p>'+def+'</p>';
+      pop.querySelector('.term-pop-close').onclick=function(){locked=false;pop.style.display='none';active=null;};
+      place(t);
+    }
+    function scheduleClose(){ clearTimeout(closeTimer); closeTimer=setTimeout(function(){ if(!locked && !pop.matches(':hover')){pop.style.display='none';active=null;} },130); }
+    document.addEventListener('mouseover',function(e){
+      var t=e.target.closest&&e.target.closest('dfn[data-g]'); if(!t || t===active || (e.relatedTarget&&t.contains(e.relatedTarget))) return;
+      clearTimeout(openTimer); openTimer=setTimeout(function(){open(t,false);},110);
+    });
+    document.addEventListener('mouseout',function(e){ var t=e.target.closest&&e.target.closest('dfn[data-g]'); if(t && !(e.relatedTarget&&t.contains(e.relatedTarget))) scheduleClose(); });
+    pop.addEventListener('mouseenter',function(){clearTimeout(closeTimer);}); pop.addEventListener('mouseleave',scheduleClose);
     document.addEventListener('click', function(e){
       var t = e.target.closest && e.target.closest('dfn[data-g]');
-      if (t){
-        var d = G[t.dataset.g];
-        pop.innerHTML = d ? '<b>' + d.t + '</b><p>' + d.d + '</p>' : '<b>' + t.dataset.g + '</b><p>(no entry)</p>';
-        place(t); e.stopPropagation(); return;
-      }
-      if (!e.target.closest('#pop')) pop.style.display = 'none';
+      if (t){ open(t, true); e.stopPropagation(); return; }
+      if (!e.target.closest('#pop')){ locked=false; pop.style.display='none'; active=null; }
     });
-    window.addEventListener('scroll', function(){ pop.style.display = 'none'; }, {passive: true});
+    document.addEventListener('focusin',function(e){ var t=e.target&&e.target.matches&&e.target.matches('dfn[data-g]')?e.target:null; if(t)open(t,false); });
+    document.addEventListener('focusout',function(e){ if(e.target&&e.target.matches&&e.target.matches('dfn[data-g]'))scheduleClose(); });
+    document.addEventListener('keydown', function(e){
+      var t = e.target && e.target.matches && e.target.matches('dfn[data-g]') ? e.target : null;
+      if (t && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); open(t, true); }
+      if(e.key==='Escape' && active){locked=false;pop.style.display='none';active=null;}
+    });
+    window.addEventListener('scroll', function(){ if(!locked){pop.style.display='none';active=null;} }, {passive:true});
   }
 
   /* ---------- config drawer ---------- */
@@ -400,11 +2046,11 @@ var App = (function(){
       ['dramNs', 'DRAM extra latency beyond L3 (ns)', 'ballpark only; depends on DIMMs'],
       ['tscGhz', 'TSC frequency (GHz)', 'measure your own with RDTSC against CLOCK_MONOTONIC']
     ];
-    var html = '<h2>Latency settings</h2><p class="note">Defaults are published Zen/Zen+ figures (WikiChip, 7-cpu.com), <b>not measurements from your machine</b>. Measure your own cache and DRAM latencies (a pointer-chase, working-set-size sweep is the standard technique) and enter the plateau values here; every chapter re-runs with the new numbers.</p>';
+    var html = '<h2>Latency model</h2><p class="note">Defaults are published Zen/Zen+ figures (WikiChip, 7-cpu.com), <b>not measurements from your machine</b>. Replace them with your own pointer-chase / working-set measurements and every dependent chapter updates.</p>';
     rows.forEach(function(r){ html += '<label><span>' + r[1] + '<small>' + r[2] + '</small></span><input type="number" step="any" min="0" data-k="' + r[0] + '" value="' + CFG[r[0]] + '"></label>'; });
-    html += '<p class="note" id="cfgDram"></p><div style="display:flex;gap:8px;margin-top:12px"><button id="cfgReset">reset to published</button><button class="pri" id="cfgClose" style="margin-left:auto">close</button></div>';
+    html += '<p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset published defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
     inn.innerHTML = html;
-    function upd(){ document.getElementById('cfgDram').textContent = 'DRAM load-to-use at these settings: ' + dramCycles() + ' cycles = ' + (dramCycles() / CFG.ghz).toFixed(1) + ' ns.'; }
+    function upd(){ document.getElementById('cfgDram').textContent = 'Current DRAM load-to-use model: ' + dramCycles() + ' cycles = ' + (dramCycles() / CFG.ghz).toFixed(1) + ' ns.'; }
     upd();
     inn.addEventListener('change', function(e){
       var k = e.target.dataset && e.target.dataset.k; if (!k) return;
@@ -418,37 +2064,41 @@ var App = (function(){
       try { localStorage.removeItem('memE2E.cfg'); } catch(er){}
       upd(); cfgListeners.forEach(function(f){ f(); });
     };
-    document.getElementById('cfgOpen').onclick = function(){ dr.classList.add('show'); };
+    var opens = document.querySelectorAll('[data-open-cfg]'); for (var i = 0; i < opens.length; i++) opens[i].onclick = function(){ dr.classList.add('show'); };
     document.getElementById('cfgClose').onclick = function(){ dr.classList.remove('show'); };
     dr.addEventListener('click', function(e){ if (e.target === dr) dr.classList.remove('show'); });
   }
 
   /* ---------- stepper: frames = [{t: title, d: html, ...}] ---------- */
   function stepper(parent, opts){
-    var wrap = h('div', {'class': 'stack'}, parent);
-    var bar = h('div', {'class': 'stp'}, wrap);
-    var bBack = h('button', null, bar, '&larr; back');
+    var wrap = h('div', {'class': 'stack stepper'}, parent);
+    var bar = h('div', {'class': 'stp stepper-bar'}, wrap);
+    var bBack = h('button', {type:'button'}, bar, '← back');
     var cnt = h('span', {'class': 'cnt'}, bar);
-    var bNext = h('button', {'class': 'pri'}, bar, 'next &rarr;');
-    var bReset = h('button', null, bar, 'restart');
+    var bNext = h('button', {'class': 'pri',type:'button'}, bar, 'next →');
+    var bReset = h('button', {'class':'ghost',type:'button'}, bar, 'restart');
     h('span', {'class': 'grow'}, bar);
     var pills = h('div', {'class': 'pills'}, bar);
+    var prog = h('div', {'class':'step-progress'}, wrap), progFill = h('i', null, prog);
     var narr = h('div', {'class': 'narr'}, wrap);
     var frames = [], i = 0;
     function render(){
-      var f = frames[i];
+      var f = frames[i]; if (!f) return;
       cnt.textContent = (i + 1) + ' / ' + frames.length;
       bBack.disabled = i === 0; bNext.disabled = i === frames.length - 1;
+      progFill.style.width = (frames.length <= 1 ? 100 : (i / (frames.length - 1)) * 100) + '%';
       narr.innerHTML = '<h4>' + f.t + '</h4>' + (f.d.charAt(0) === '<' ? f.d : '<p>' + f.d + '</p>');
       var ps = pills.children;
       for (var k = 0; k < ps.length; k++) ps[k].className = 'pill' + (k === i ? ' cur' : k < i ? ' done' : '');
+      if (ps[i] && ps[i].scrollIntoView) ps[i].scrollIntoView({block:'nearest',inline:'nearest'});
       opts.render(f, i);
+      try { wrap.dispatchEvent(new CustomEvent('memstepchange',{bubbles:true,detail:{frame:f,index:i,total:frames.length}})); } catch(e){}
     }
     function set(fr, keep){
       frames = fr; if (!keep || i >= frames.length) i = 0;
       pills.innerHTML = '';
       if (opts.pills !== false) frames.forEach(function(f, k){
-        var p = h('button', {'class': 'pill'}, pills, f.p || String(k + 1));
+        var p = h('button', {'class': 'pill',type:'button'}, pills, f.p || String(k + 1));
         p.onclick = function(){ i = k; render(); };
       });
       render();
@@ -465,8 +2115,8 @@ var App = (function(){
 
   function seg(parent, items, onPick, init){
     var w = h('div', {'class': 'seg'}, parent), bs = [];
-    items.forEach(function(it, k){
-      var b = h('button', null, w, it[1]); bs.push(b);
+    items.forEach(function(it){
+      var b = h('button', {type:'button'}, w, it[1]); bs.push(b);
       b.onclick = function(){ bs.forEach(function(x){ x.classList.remove('on'); }); b.classList.add('on'); onPick(it[0]); };
       if (it[0] === init) b.classList.add('on');
     });
@@ -636,9 +2286,10 @@ App.chapter({id: 'map', num: '00', short: 'The machine', title: 'The machine, al
 sub: 'Every structure a memory access can touch on your laptop, from the load/store unit to the DRAM chips and the SSD. Tap any block for what it is, its size, and the chapter that takes it apart.',
 build: function(root){
   var h = App.h, s = App.s, g = App.g;
-  var wrap = h('div', {'class': 'scroller'}, root);
+  var work = h('div', {'class': 'map-workbench'}, root);
+  var wrap = h('div', {'class': 'scroller map-canvas'}, work);
   var sv = s('svg', {viewBox: '0 0 1200 760', style: 'min-width:880px'}, wrap);
-  var info = h('div', {'class': 'card'}, root);
+  var info = h('aside', {'class': 'card map-inspector'}, work);
   var parts = {}, selId = null;
   var D = {
     core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, 44-entry load and store queues.', 'core', 'Chapter 02 runs the histogram loop through it cycle by cycle.'],
@@ -719,14 +2370,14 @@ build: function(root){
   function pick(id){
     selId = id;
     for (var k in parts) parts[k].setAttribute('class', 'click' + (k === id ? ' on' : ''));
-    if (!id){ info.innerHTML = '<h3>Tap a block</h3><p>Each block explains what it does and which chapter takes it apart. Widths on the wires are published peak transfer sizes.</p>'; return; }
+    if (!id){ info.innerHTML = '<div class="inspector-kicker">hardware atlas</div><h3>Select a block</h3><p>Inspect any structure to see what it does, its published size, and the chapter that takes it apart. The diagram itself is the table of contents.</p><p class="note">Wire labels are published peak transfer sizes, not measured throughput.</p>'; return; }
     var d = D[id];
     info.innerHTML = '<h3>' + d[0] + '</h3><p>' + d[1] + '</p>' + (d[3] ? '<p>' + d[3] + '</p>' : '') + '<button class="pri" data-go="' + d[2] + '">open the chapter \u2192</button>';
     info.querySelector('button').onclick = function(){ App.go(d[2]); };
   }
   pick(null);
 
-  var path = h('div', {'class': 'card'}, root);
+  var path = h('div', {'class': 'card route-index'}, root);
   path.innerHTML = '<h3>The route this site follows</h3><ol class="route">' +
     '<li><b>01</b> C \u2192 assembly \u2192 bytes \u2192 \u00b5ops for <code>hist[data[i]]++</code>.</li>' +
     '<li><b>02</b> Those \u00b5ops through fetch, decode, ' + g('rename') + ', the ' + g('rob') + ', ' + g('sched', 'schedulers') + ', ports, the ' + g('lq', 'load') + ' and ' + g('sq', 'store') + ' queues, retirement and store commit.</li>' +
@@ -740,7 +2391,7 @@ build: function(root){
     '<li><b>10</b> Devices: ' + g('mmio') + ', ' + g('dma') + ', the ' + g('iommu') + ', interrupts \u2014 an NVMe read end to end.</li>' +
     '<li><b>11</b> One <code>hist[123]++</code> with every stage on a single timeline.</li>' +
     '<li><b>12</b> Glossary: every term, searchable.</li></ol>' +
-    '<p class="note">Dotted terms open a definition. Latencies come from the <b>latencies</b> button (top right): published figures until you replace them with your own measurements.</p>';
+    '<p class="note">Dotted terms open a definition. The <b>latency model</b> in the sidebar starts with published figures and can be replaced with your own measurements.</p>';
 }});
 
 /* ======================= chapter: from C to µops ======================= */
@@ -1210,7 +2861,7 @@ build: function(root){
   function missLat(){ return level === 'L2' ? CFG.l2 : level === 'L3' ? CFG.l3 : level === 'DRAM' ? App.dramCycles() : 0; }
 
   /* ---------- intro ---------- */
-  var intro = h('div', {'class': 'grid2'}, root);
+  var intro = h('div', {'class': 'grid2 core-intro'}, root);
   h('div', {'class': 'card'}, intro,
     '<h3>What is running</h3><p><code>hist[data[i]]++</code> for 3 iterations with <code>data = {123, 123, 7}</code>, <code>hist[123] = 41</code>, <code>hist[7] = 9</code>. ' +
     'Iteration 2 reads <code>hist[123]</code> while iteration 1\'s store to it is still in flight, so it needs ' + g('stlf') + '. The loop branch is predicted taken every time, so the third <code>jne</code> ' + g('mispredict', 'mispredicts') + ' and everything fetched after it is ' + g('squash', 'squashed') + '.</p>' +
@@ -1227,7 +2878,7 @@ build: function(root){
     '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages; your measured mispredict cost (~20.8 TSC ticks) reflects the real, longer one.</p>';
 
   /* ---------- controls ---------- */
-  var ctl = h('div', {'class': 'card pctl'}, root);
+  var ctl = h('div', {'class': 'card pctl core-controls'}, root);
   var row1 = h('div', {'class': 'stp'}, ctl);
   h('span', {'class': 'note'}, row1, 'data[] line is in:');
   App.seg(row1, [['L1', 'L1d (hit)'], ['L2', 'L2'], ['L3', 'L3'], ['DRAM', 'DRAM']], function(v){ level = v; run(); }, 'L1');
@@ -1251,12 +2902,12 @@ build: function(root){
   };
 
   /* ---------- floorplan ---------- */
-  var fpw = h('div', {'class': 'scroller'}, root);
+  var fpw = h('div', {'class': 'scroller core-floorplan'}, root);
   var fp = s('svg', {viewBox: '0 0 1200 445', style: 'min-width:900px'}, fpw);
   s('defs', null, fp).innerHTML = '<marker id="pa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6"/></marker>';
   var B = {};
   function blk(id, x, y, w, ht, title, sub){
-    var gr = s('g', null, fp);
+    var gr = s('g', {'class':'core-block','data-core-block':id}, fp);
     s('rect', {x: x, y: y, width: w, height: ht, rx: 8, 'class': 'box'}, gr);
     s('text', {x: x + 8, y: y + 16, 'class': 'h'}, gr, title);
     var t2 = s('text', {x: x + w - 8, y: y + 16, 'class': 's m', 'text-anchor': 'end'}, gr, sub || '');
@@ -1304,11 +2955,11 @@ build: function(root){
   s('text', {x: 22, y: 440, 'class': 's'}, fp, 'Orange = active this cycle. Slot colours: blue = waiting, amber = executing, green = done / ready, red = miss, purple = senior store.');
 
   /* ---------- events ---------- */
-  var evc = h('div', {'class': 'card'}, root);
+  var evc = h('div', {'class': 'card core-events'}, root);
   var evTitle = h('h3', null, evc), evList = h('ul', {'class': 'evl'}, evc);
 
   /* ---------- detail panels ---------- */
-  var pg = h('div', {'class': 'pgrid'}, root);
+  var pg = h('div', {'class': 'pgrid core-state-grid'}, root);
   function panel(title, term, cap){ var p = h('div', {'class': 'card pp'}, pg); h('h3', null, p, (term ? g(term, title) : title) + (cap ? ' <span class="tag pub">' + cap + '</span>' : '')); return h('div', null, p); }
   var pFE = panel('Front end', null), pRN = panel('RAT', 'rat', 'rename'), pPRF = panel('Physical registers', 'prf', C.prf + ' of ' + R.prf),
       pROB = panel('ROB', 'rob', C.rob + ' of ' + R.rob), pSC = panel('Schedulers', 'sched'), pEX = panel('Execution ports', 'port'),
@@ -1331,7 +2982,7 @@ build: function(root){
   var robList = h('div', {'class': 'note', style: 'margin-top:6px'}, pROB);
 
   /* ---------- gantt ---------- */
-  var gc = h('div', {'class': 'card'}, root);
+  var gc = h('div', {'class': 'card core-gantt'}, root);
   var gh = h('div', {'class': 'stp'}, gc);
   h('h3', {style: 'margin:0'}, gh, 'Pipeline diagram');
   h('span', {'class': 'grow'}, gh);
@@ -1502,8 +3153,8 @@ build: function(root){
   var sv = s('svg', {viewBox: '0 0 1200 720', style: 'min-width:900px'}, wrap);
   s('defs', null, sv).innerHTML = '<marker id="xa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="var(--act)"/></marker>';
   var stp = App.stepper(root, {render: draw});
-  var kern = h('div', {'class': 'card'}, root);
-  var extra = h('div', {'class': 'grid2'}, root);
+  var kern = h('div', {'class': 'card xlate-kernel'}, root);
+  var extra = h('div', {'class': 'grid2 xlate-extra'}, root);
 
   /* ---------- VA register ---------- */
   var E = {};
@@ -1836,12 +3487,12 @@ build: function(root){
   }
 
   /* ---------- intro ---------- */
-  var intro = h('div', {'class': 'grid2'}, root);
+  var intro = h('div', {'class': 'grid2 l1-intro'}, root);
   h('div', {'class': 'card'}, intro, '<h3>Geometry</h3><p>32 KB / 64-byte lines = 512 lines, arranged as 64 ' + g('set', 'sets') + ' \u00d7 8 ' + g('way', 'ways') + '. Bits 5:0 are the ' + g('offset') + ', bits 11:6 the ' + g('index') + ', bits 47:12 the ' + g('tag') + '. Index + offset = 12 bits = the page offset, so the set is chosen from the virtual address while the tag comes from the physical address: ' + g('vipt') + ' (Chapter 03).</p>');
   h('div', {'class': 'card'}, intro, '<h3>What one way stores</h3><p>' + g('valid', 'V') + ', ' + g('dirty', 'D') + ', a 36-bit physical tag and 64 data bytes. The index is never stored: the row it sits in is the index. On a ' + g('wbk', 'write-back') + ' the line\u2019s physical address is rebuilt as tag \u2016 index \u2016 000000. Replacement below is tree ' + g('plru') + '; AMD does not publish the exact L1d policy.</p>');
 
   /* ---------- SVG ---------- */
-  var wrap = h('div', {'class': 'scroller'}, root);
+  var wrap = h('div', {'class': 'scroller l1-canvas'}, root);
   var sv = s('svg', {viewBox: '0 0 1200 800', style: 'min-width:920px'}, wrap);
   var E = {};
   function box(x, y, w, ht, t, cls){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': cls || 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 18, 'class': 'h'}, gr, t); return gr; }
@@ -1928,11 +3579,19 @@ build: function(root){
   E.st = box(960, 590, 230, 196, 'Totals so far');
   E.stT = []; for (i = 0; i < 7; i++) E.stT.push(s('text', {x: 970, y: 636 + i * 22, 'font-size': 12}, E.st, ''));
 
-  h('p', {'class': 'note'}, root, 'pLRU tree bits: 0 points to the older left half; 1 points to the older right half. Shortened data cells show \u2026 followed by the low four hex digits of the 64-bit word. Long decimal labels use a middle \u2026; the narration gives the full value.');
+  h('p', {'class': 'note l1-legend'}, root, 'pLRU tree bits: 0 points to the older left half; 1 points to the older right half. Shortened data cells show \u2026 followed by the low four hex digits of the 64-bit word. Long decimal labels use a middle \u2026; the narration gives the full value.');
   var stp = App.stepper(root, {render: draw, pills: false});
-  var cu = h('div', {'class': 'card'}, root);
+  stp.el.classList.add('l1-stepper');
+  var cu = h('div', {'class': 'card l1-custom'}, root);
   cu.innerHTML = '<h3>Run your own access</h3><div class="stp"><input class="l1va" value="0x7ffd4a3c5e58" style="width:170px" aria-label="virtual address"><select class="l1op" aria-label="access operation"><option value="ld">load</option><option value="st">store</option></select><input class="l1v" value="7" style="width:70px" aria-label="store value"><button class="pri l1go">add after the sequence</button><button class="l1clr">remove mine</button></div><p class="note l1err" role="alert" style="color:var(--bad);display:none"></p><p class="note">Enter an 8-byte-aligned user address below 0x800000000000. An unknown page gets a model frame and synthetic line data; this is not a page walk. A store value must fit in a signed 64-bit long. A custom store represents a retired store draining into the L1d. Each access runs against the cache state the sequence left behind. Change only bits 12 and up to stay in set 57.</p>';
   var err = cu.querySelector('.l1err');
+  var opSel = cu.querySelector('.l1op'), valIn = cu.querySelector('.l1v');
+  function syncStoreValue(){
+    var store = opSel.value === 'st';
+    valIn.disabled = !store; valIn.setAttribute('aria-disabled', store ? 'false' : 'true');
+    valIn.title = store ? 'Value written by the store' : 'Store value is only used for a store';
+  }
+  opSel.addEventListener('change', syncStoreValue); syncStoreValue();
   function showErr(msg){ err.textContent = msg; err.style.display = msg ? '' : 'none'; }
   cu.querySelector('.l1go').onclick = function(){
     var addrText = cu.querySelector('.l1va').value.trim();

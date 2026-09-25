@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The memory system, end to end</title>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#f2f0e9; --panel:#fbfaf6; --sunk:#e9e5db; --tx:#171714; --tx2:#56544c; --tx3:#858177;
+  --bd:#d6d0c3; --bd2:#b6afa1; --wire:#9e988c;
+  --a1:#c95632; --a1bg:#f8e4db;   /* tag / stores / writeback */
+  --a2:#08785d; --a2bg:#dcefe8;   /* index / fills / L1 */
+  --a3:#6655bf; --a3bg:#e9e5f8;   /* offset / ROB */
+  --a4:#2467a8; --a4bg:#dce8f4;   /* data / loads */
+  --ok:#24783a; --okbg:#deeedf; --bad:#b93931; --badbg:#f6dfdc;
+  --act:#d86a16; --actbg:#fae8d6;
+  --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,'Helvetica Neue',sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#101114; --panel:#17181c; --sunk:#0d0e11; --tx:#f0eee8; --tx2:#aaa79f; --tx3:#74716a;
+    --bd:#292b31; --bd2:#41444c; --wire:#5e6169;
+    --a1:#f08a61; --a1bg:#382017; --a2:#4bcaa1; --a2bg:#102e28; --a3:#ad9bf7; --a3bg:#241e3d;
+    --a4:#79afe8; --a4bg:#17283a; --ok:#70cd7c; --okbg:#15301b; --bad:#ff7c70; --badbg:#391816;
+    --act:#ff9a3d; --actbg:#35220f;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101114; --panel:#17181c; --sunk:#0d0e11; --tx:#f0eee8; --tx2:#aaa79f; --tx3:#74716a;
+  --bd:#292b31; --bd2:#41444c; --wire:#5e6169;
+  --a1:#f08a61; --a1bg:#382017; --a2:#4bcaa1; --a2bg:#102e28; --a3:#ad9bf7; --a3bg:#241e3d;
+  --a4:#79afe8; --a4bg:#17283a; --ok:#70cd7c; --okbg:#15301b; --bad:#ff7c70; --badbg:#391816;
+  --act:#ff9a3d; --actbg:#35220f;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 60px)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+code,.mono{font-family:var(--mono);font-size:.9em}
+button{font:500 13px var(--sans);padding:8px 12px;border-radius:8px;border:1px solid var(--bd2);background:var(--panel);color:var(--tx);cursor:pointer}
+button:hover{border-color:var(--tx3)}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.4;cursor:default;transform:none}
+button.pri{border-color:var(--act);color:var(--act)}
+button.on{background:var(--actbg);border-color:var(--act);color:var(--act)}
+input,select{font:13px var(--mono);padding:7px 9px;border:1px solid var(--bd2);border-radius:7px;background:var(--sunk);color:var(--tx);min-width:0}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--bd);padding-top:env(safe-area-inset-top,0px)}
+.topin{max-width:1320px;margin:0 auto;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.brand{font-weight:600;font-size:15px;white-space:nowrap}
+.brand small{display:block;font-weight:400;font-size:11.5px;color:var(--tx3)}
+.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;padding:2px 0}
+.nav::-webkit-scrollbar{display:none}
+.nav a{flex:none;font-size:12.5px;color:var(--tx2);text-decoration:none;padding:6px 10px;border-radius:7px;border:1px solid transparent;white-space:nowrap}
+.nav a b{font-family:var(--mono);font-weight:500;color:var(--tx3);margin-right:5px;font-size:11px}
+.nav a:hover{border-color:var(--bd)}
+.nav a.cur{background:var(--panel);border-color:var(--bd2);color:var(--tx)}
+.nav a.cur b{color:var(--act)}
+.cfgbtn{flex:none}
+
+.wrap{max-width:1320px;margin:0 auto;padding:22px 14px 60px}
+.ch{display:none}
+.ch.show{display:block}
+.chh{margin-bottom:16px}
+.chh .num{font-family:var(--mono);font-size:12px;color:var(--act);letter-spacing:.06em}
+.chh h1{font-size:25px;font-weight:600;margin:2px 0 6px;letter-spacing:-.01em}
+.chh p{margin:0;color:var(--tx2);max-width:880px}
+.card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:14px 16px}
+.card h3{font-size:14px;font-weight:600;margin:0 0 8px}
+.card p{margin:0 0 8px;font-size:14px;color:var(--tx2)}
+.card p:last-child{margin-bottom:0}
+.card b{color:var(--tx);font-weight:600}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.stack>*+*{margin-top:12px}
+.scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--panel);border:1px solid var(--bd);border-radius:12px}
+.scroller svg{display:block;width:100%;height:auto}
+.note{font-size:12.5px;color:var(--tx3)}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;border:1px solid var(--bd);color:var(--tx2);vertical-align:1px}
+.tag.ok{background:var(--okbg);color:var(--ok);border-color:transparent}
+.tag.bad{background:var(--badbg);color:var(--bad);border-color:transparent}
+.tag.act{background:var(--actbg);color:var(--act);border-color:transparent}
+.tag.pub{background:var(--sunk);color:var(--tx3)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.kv dt{color:var(--tx3)}
+.kv dd{margin:0;font-family:var(--mono);font-size:12.5px}
+
+/* ---------- glossary term ---------- */
+dfn{font-style:normal;border-bottom:1px dotted var(--tx3);cursor:help}
+dfn:hover{border-bottom-color:var(--act);color:var(--tx)}
+.pop{position:fixed;z-index:60;max-width:360px;background:var(--panel);border:1px solid var(--bd2);border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.18);display:none}
+.pop b{display:block;font-size:13.5px;margin-bottom:3px}
+.pop p{margin:0;color:var(--tx2)}
+
+/* ---------- stepper ---------- */
+.stp{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.stp .cnt{font-family:var(--mono);font-size:12px;color:var(--tx3);min-width:64px;text-align:center}
+.stp .grow{flex:1}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.pill{font-size:11px;padding:2px 8px;border-radius:6px;border:1px solid var(--bd);color:var(--tx3);cursor:pointer;background:transparent}
+.pill.done{color:var(--tx2)}
+.pill.cur{background:var(--actbg);color:var(--act);border-color:var(--act)}
+.narr{border-left:3px solid var(--act);padding:10px 14px;background:var(--panel);border-radius:0 10px 10px 0;border-top:1px solid var(--bd);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd)}
+.narr h4{margin:0 0 4px;font-size:15px;font-weight:600}
+.narr p{margin:0;font-size:14px;color:var(--tx2)}
+.narr p+p{margin-top:6px}
+.narr b{color:var(--tx);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;border-radius:0;border-right:1px solid var(--bd);padding:7px 11px;background:var(--panel)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--actbg);color:var(--act)}
+
+/* ---------- config drawer ---------- */
+.drawer{position:fixed;inset:0;z-index:70;display:none;background:rgba(0,0,0,.35)}
+.drawer.show{display:block}
+.drawer .in{position:absolute;right:0;top:0;bottom:0;width:min(420px,100%);background:var(--panel);border-left:1px solid var(--bd);padding:calc(env(safe-area-inset-top,0px) + 18px) 18px calc(env(safe-area-inset-bottom,0px) + 18px);overflow:auto}
+.drawer h2{font-size:17px;margin:0 0 6px}
+.drawer label{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;font-size:13px;margin:8px 0}
+.drawer label span small{display:block;color:var(--tx3);font-size:11.5px}
+
+/* ---------- svg common ---------- */
+svg text{font-family:var(--sans);fill:var(--tx2);font-size:12px}
+svg .h{fill:var(--tx);font-weight:600;font-size:13px}
+svg .s{fill:var(--tx3);font-size:10.5px}
+svg .m{font-family:var(--mono)}
+svg .box{fill:var(--panel);stroke:var(--bd2);stroke-width:1.1}
+svg .sunk{fill:var(--sunk);stroke:var(--bd);stroke-width:1}
+svg .wire{stroke:var(--wire);stroke-width:1.3;fill:none}
+svg .bus{stroke:var(--wire);stroke-width:3;fill:none}
+svg .on.box,svg .on .box{stroke:var(--act);stroke-width:2;fill:var(--actbg)}
+svg .on.wire,svg .on .wire{stroke:var(--act);stroke-width:2.4}
+svg .on.bus,svg .on .bus{stroke:var(--act);stroke-width:4}
+svg .okb{fill:var(--okbg);stroke:var(--ok);stroke-width:1.8}
+svg .badb{fill:var(--badbg);stroke:var(--bad);stroke-width:1.8}
+svg .a1b{fill:var(--a1bg);stroke:var(--a1);stroke-width:1.2}
+svg .a2b{fill:var(--a2bg);stroke:var(--a2);stroke-width:1.2}
+svg .a3b{fill:var(--a3bg);stroke:var(--a3);stroke-width:1.2}
+svg .a4b{fill:var(--a4bg);stroke:var(--a4);stroke-width:1.2}
+svg .dim{opacity:.35}
+svg .flow{fill:none;stroke-width:3;stroke-dasharray:7 5}
+@media (prefers-reduced-motion:no-preference){ svg .flow{animation:dash .9s linear infinite} }
+@keyframes dash{to{stroke-dashoffset:-24}}
+svg .click{cursor:pointer}
+svg .click:hover .box{stroke:var(--act)}
+
+/*CHAPTER_CSS*/
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+    <a class="sidebar-brand" href="#map" aria-label="Memory system home">
+      <span class="sidebar-mark">MEM</span>
+      <span><strong>Memory systems lab</strong><small>interactive hardware atlas · Zen+</small></span>
+    </a>
+    <div class="sidebar-scroll">
+      <nav class="nav" id="nav" aria-label="Chapters"></nav>
+    </div>
+    <div class="sidebar-footer">
+      <div class="machine-meta">Ryzen 7 3750H · 4C / 8T<br>interactive model + measured inputs</div>
+      <div class="side-actions">
+        <button class="ghost side-pin" id="sidebarPin" type="button" aria-pressed="false" title="Keep navigation expanded"><span class="pin-glyph" aria-hidden="true">⌖</span><span class="action-label">pin rail</span></button>
+        <button class="ghost" data-open-cfg type="button" title="Latency model"><span class="latency-glyph" aria-hidden="true">≋</span><span class="action-label">latencies</span></button>
+      </div>
+    </div>
+  </aside>
+  <div class="side-scrim" id="sideScrim"></div>
+
+  <div class="app-stage">
+    <header class="top">
+      <div class="topin">
+        <button class="iconbtn nav-toggle" id="navToggle" type="button" aria-label="Open chapter navigation" aria-expanded="false">☰</button>
+        <div class="crumb" aria-live="polite">
+          <span class="crumb-num" id="crumbNum">00</span>
+          <span class="crumb-title" id="crumbTitle">The machine</span>
+        </div>
+        <span class="top-spacer"></span>
+        <div class="top-actions">
+          <button class="iconbtn mobile-only" data-open-cfg type="button" aria-label="Open latency model" title="Latency model">≋</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap" id="main"></main>
+  </div>
+</div>
+
+<div class="pop" id="pop" role="dialog" aria-live="polite"></div>
+<div class="drawer" id="cfg"><div class="in" id="cfgIn"></div></div>
+<script>
+/*JS*/
+</script>
+</body>
+</html>
