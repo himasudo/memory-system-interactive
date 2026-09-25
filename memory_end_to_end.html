@@ -258,6 +258,16 @@ svg .slt{font-size:9px;fill:var(--tx)}
 .kchain p{margin:4px 0 0;font-size:12.5px;color:var(--tx2)}
 
 
+.cohbtns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:760px){.cohbtns{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cohbtns>div{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.cohbtns>div b{width:100%;font-size:12.5px}
+.cohbtns button{padding:5px 8px;font-size:12px}
+
+.glist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.glist .card h3{margin-bottom:4px}
+button.lnk{padding:3px 8px;font-size:11.5px}
+
 </style>
 </head>
 <body>
@@ -388,9 +398,9 @@ var App = (function(){
       ['l2', 'L2 load-to-use (cycles)', 'published Zen+: 12 minimum'],
       ['l3', 'L3 load-to-use (cycles)', 'published Zen/Zen+ average: ~35'],
       ['dramNs', 'DRAM extra latency beyond L3 (ns)', 'ballpark only; depends on DIMMs'],
-      ['tscGhz', 'TSC frequency (GHz)', 'you measured 2.297 in Module 04']
+      ['tscGhz', 'TSC frequency (GHz)', 'measure your own with RDTSC against CLOCK_MONOTONIC']
     ];
-    var html = '<h2>Latency settings</h2><p class="note">Defaults are published Zen/Zen+ figures (WikiChip, 7-cpu.com), <b>not measurements from your machine</b>. After Drill 02, replace them with your own plateau values; every chapter re-runs with the new numbers.</p>';
+    var html = '<h2>Latency settings</h2><p class="note">Defaults are published Zen/Zen+ figures (WikiChip, 7-cpu.com), <b>not measurements from your machine</b>. Measure your own cache and DRAM latencies (a pointer-chase, working-set-size sweep is the standard technique) and enter the plateau values here; every chapter re-runs with the new numbers.</p>';
     rows.forEach(function(r){ html += '<label><span>' + r[1] + '<small>' + r[2] + '</small></span><input type="number" step="any" min="0" data-k="' + r[0] + '" value="' + CFG[r[0]] + '"></label>'; });
     html += '<p class="note" id="cfgDram"></p><div style="display:flex;gap:8px;margin-top:12px"><button id="cfgReset">reset to published</button><button class="pri" id="cfgClose" style="margin-left:auto">close</button></div>';
     inn.innerHTML = html;
@@ -515,7 +525,7 @@ d('retire','retire','The in-order step where a finished instruction\'s results b
 d('commit','store commit','Writing a retired store from the store queue into the L1d. Only here does the store become visible to other cores.');
 d('senior','senior store','A store that has retired but still sits in the store queue waiting to commit. It must still forward to younger loads.');
 d('squash','squash / flush','Discarding every instruction younger than a mispredicted branch (or a faulting instruction): their ROB, scheduler, queue entries and physical registers are released.');
-d('mispredict','misprediction','The branch predictor guessed wrong. Detected when the branch executes; costs the refill time of the front end. You measured ~20.8 TSC ticks (~9 ns) per mispredict in Module 05.');
+d('mispredict','misprediction','The branch predictor guessed wrong. Detected when the branch executes; costs the refill time of the front end \u2014 tens of cycles, and directly measurable with a branch-heavy loop over sorted vs. random data.');
 d('spec','speculative execution','Executing instructions before it is known that they are on the correct path. Their effects stay inside the core until retirement.');
 d('smt','SMT','Simultaneous multithreading: two hardware threads share one core\'s pipeline and caches. Your 3750H has 4 cores, 8 threads.');
 d('ipc','IPC','Instructions retired per cycle.');
@@ -599,7 +609,7 @@ d('pat','PAT / MTRR','Page attribute table (per-page memory type via PTE bits) a
 d('wc','write-combining','Stores to WC memory are gathered in a WC buffer and sent out as one full-line write, without reading the line first and without caching it.');
 d('nt','non-temporal store','A store hint (movnti, movntdq) that uses write-combining even on WB memory, avoiding the RFO and not polluting the caches.');
 d('clflush','clflush / clwb','Instructions that write a line back to memory (clwb keeps it cached; clflush/clflushopt also evict it).');
-d('fence','sfence / lfence / mfence','Ordering instructions. mfence waits for the store buffer to drain before later loads run; you measured ~46.5 ticks per mfence in Module 05.');
+d('fence','sfence / lfence / mfence','Ordering instructions. mfence waits for the store buffer to drain before later loads run \u2014 tens of cycles, easy to measure with a tight loop of mfence alone.');
 d('tso','x86-TSO','x86\'s memory model: every ordering is preserved except a store followed by a load to a different address, which the store buffer can reorder.');
 /* --- coherence --- */
 d('coh','cache coherence','The guarantee that all cores observe a single order of writes to each address, even though each core has private caches.');
@@ -728,8 +738,9 @@ build: function(root){
     '<li><b>08</b> Four cores sharing lines: ' + g('moesi') + ', probes, ' + g('fshare') + '.</li>' +
     '<li><b>09</b> ' + g('pref', 'Prefetchers') + ' guessing the next line.</li>' +
     '<li><b>10</b> Devices: ' + g('mmio') + ', ' + g('dma') + ', the ' + g('iommu') + ', interrupts \u2014 an NVMe read end to end.</li>' +
-    '<li><b>11</b> One <code>hist[k]++</code> that misses everywhere, as a single timeline.</li></ol>' +
-    '<p class="note">Dotted terms open a definition. Latencies come from the <b>latencies</b> button (top right): published figures until you replace them with your Drill 02 measurements.</p>';
+    '<li><b>11</b> One <code>hist[123]++</code> with every stage on a single timeline.</li>' +
+    '<li><b>12</b> Glossary: every term, searchable.</li></ol>' +
+    '<p class="note">Dotted terms open a definition. Latencies come from the <b>latencies</b> button (top right): published figures until you replace them with your own measurements.</p>';
 }});
 
 /* ======================= chapter: from C to µops ======================= */
@@ -2176,7 +2187,7 @@ build: function(root){
       s('rect', {x: 80, y: y, width: w, height: 32, rx: 4, 'class': ['a4b', 'a2b', 'a3b', 'a1b'][i]}, lsv);
       s('text', {x: 88 + w, y: y + 21, 'class': 'm', 'font-size': 12}, lsv, r[1] + ' cycles \u00b7 ' + (r[1] / CFG.ghz).toFixed(1) + ' ns \u00b7 ' + (r[1] / CFG.l1).toFixed(0) + '\u00d7 L1');
     });
-    cap.innerHTML = 'Values come from the latency settings: published Zen/Zen+ figures unless you entered your own. Your Drill 02 sweep measures these four plateaus directly.';
+    cap.innerHTML = 'Values come from the latency settings: published Zen/Zen+ figures unless you entered your own. A pointer-chase, working-set-size sweep measures these four plateaus directly on real hardware.';
   }
   ladder();
 
@@ -2208,6 +2219,684 @@ build: function(root){
     '<p class="note" style="margin-top:8px">Peak numbers only. Sustained bandwidth is lower: DRAM spends time on row switches and refresh (Chapter 06).</p>';
   App.onCfg(function(){ frames(); ladder(); mlpDraw(); });
   return {key: stp.key};
+}});
+
+/* ======================= chapter: DRAM ======================= */
+App.chapter({id: 'dram', num: '06', short: 'DRAM', title: 'DRAM: banks, rows and the commands behind one read',
+sub: 'The memory controller turns each 64-byte read into DRAM commands. Whether the needed row is already open decides most of the time the DRAM itself spends.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, hx = App.hx;
+  var T = {tck: 0.833, CL: 17, RCD: 17, RP: 17, RAS: 39, BL: 4, RRDL: 6, CCDL: 6, RTP: 9};
+  function ns(t){ return (t * T.tck).toFixed(1) + ' ns'; }
+  function F(pa){ return {byte: Number(pa & 63n), ch: Number((pa >> 6n) & 1n), col: Number((pa >> 7n) & 127n), bank: Number((pa >> 14n) & 3n), bg: Number((pa >> 16n) & 3n), row: Number((pa >> 18n) & 0xffffn)}; }
+  var REQ = [
+    {id: 'A', what: 'hist[120..127] (C1.ld)', pa: 0x1a3f7ce40n, arr: 0, kind: 'closed', rd: 17},
+    {id: 'D', what: 'data[0..63] (A1)', pa: 0x1c07a2c0n, arr: 0, kind: 'closed', rd: 23},
+    {id: 'B', what: 'hist[136..143]', pa: 0x1a3f7cec0n, arr: 5, kind: 'hit', rd: 29},
+    {id: 'C', what: 'a line 256 KB higher', pa: 0x1a3fbce40n, arr: 10, kind: 'conflict', rd: 73}
+  ];
+  REQ.forEach(function(r){ r.f = F(r.pa); r.data = r.rd + T.CL; });
+  var CMD = [{t: 0, c: 'ACT', r: 'A', b: 3, x: 'row 26877'}, {t: 6, c: 'ACT', r: 'D', b: 2, x: 'row 1793'}, {t: 17, c: 'RD', r: 'A', b: 3, x: 'col 28'},
+             {t: 23, c: 'RD', r: 'D', b: 2, x: 'col 69'}, {t: 29, c: 'RD', r: 'B', b: 3, x: 'col 29'}, {t: 39, c: 'PRE', r: 'C', b: 3, x: 'close'},
+             {t: 56, c: 'ACT', r: 'C', b: 3, x: 'row 26878'}, {t: 73, c: 'RD', r: 'C', b: 3, x: 'col 28'}];
+  function bank(b, t){
+    if (b === 2) return t < 6 ? {row: null, st: 'idle'} : t < 23 ? {row: 1793, st: 'activating'} : {row: 1793, st: 'open'};
+    if (t < 0) return {row: null, st: 'idle'}; if (t < 17) return {row: 26877, st: 'activating'}; if (t < 39) return {row: 26877, st: 'open'};
+    if (t < 56) return {row: null, st: 'precharging'}; if (t < 73) return {row: 26878, st: 'activating'}; return {row: 26878, st: 'open'};
+  }
+  var intro = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, intro, '<h3>What sits behind the memory controller</h3><p>Each ' + g('channel') + ' is a 64-bit data bus plus a command/address bus. On it sits a ' + g('dimm', 'rank') + ' of eight x8 chips; each chip drives 8 of the 64 data bits. Inside every chip are 16 ' + g('bank', 'banks') + ' in 4 bank groups, and every bank is a matrix of ' + g('row', 'rows \u00d7 columns') + ' of ' + g('dramcell', '1-transistor-1-capacitor cells') + '. The controller (' + g('umc') + ') drives all eight chips in lockstep, so "row 26877 of bank 3" means that row in all eight chips at once.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>The timings used here</h3><table class="mt"><tr><th>name</th><th>meaning</th><th>tCK</th><th>ns</th></tr>' +
+    [['CL', 'RD \u2192 first data', T.CL], ['tRCD', 'ACT \u2192 RD', T.RCD], ['tRP', 'PRE \u2192 next ACT', T.RP], ['tRAS', 'ACT \u2192 PRE (minimum)', T.RAS], ['BL8', '8 data beats', T.BL], ['tRRD_L', 'ACT \u2192 ACT, same bank group', T.RRDL], ['tCCD_L', 'RD \u2192 RD, same bank group', T.CCDL], ['tRTP', 'RD \u2192 PRE', T.RTP]]
+    .map(function(r){ return '<tr><td>' + r[0] + '</td><td style="font-family:var(--sans)">' + r[1] + '</td><td>' + r[2] + '</td><td>' + (r[2] * T.tck).toFixed(1) + '</td></tr>'; }).join('') +
+    '</table><p class="note" style="margin-top:6px">A common laptop DDR4-2400 CL17 bin (tCK = 0.833 ns), JEDEC-style values. Your modules may differ: <code>sudo decode-dimms</code> or <code>sudo dmidecode -t memory</code> shows what is installed. Example: one rank of x8 chips per channel.</p>');
+
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 730', style: 'min-width:920px'}, wrap);
+  var E = {};
+  function box(x, y, w, ht, t){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 20, 'class': 'h'}, gr, t); return gr; }
+  E.q = box(10, 10, 590, 190, 'UMC request queue \u2014 channel 1');
+  var QX = [22, 42, 196, 300, 334, 376, 436, 470];
+  ['', 'line', 'PA', 'BG', 'bank', 'row', 'col', 'row state'].forEach(function(t, k){ s('text', {x: QX[k], y: 46, 'class': 's'}, E.q, t); });
+  E.qr = REQ.map(function(r, i){
+    var y = 56 + i * 34, R = {bg: s('rect', {x: 16, y: y, width: 578, height: 28, rx: 4, 'class': 'sunk'}, E.q)};
+    [r.id, r.what, hx(r.pa), r.f.bg, r.f.bank, r.f.row, r.f.col, r.kind].forEach(function(t, k){ var tx = s('text', {x: QX[k], y: y + 19, 'class': k === 1 || k === 7 ? '' : 'm', 'font-size': 11.5}, E.q, String(t)); if (k === 7) R.kind = tx; });
+    return R;
+  });
+  E.a = box(612, 10, 578, 190, 'Physical address \u2192 DRAM coordinates (example layout)');
+  var FL = [['row', 33, 18, 'a1'], ['BG', 17, 16, 'a3'], ['bank', 15, 14, 'a3'], ['column', 13, 7, 'a2'], ['ch', 6, 6, 'a4'], ['byte', 5, 0, 'act']], bw = 15.6, bx = 626;
+  E.af = FL.map(function(f){
+    var n = f[1] - f[2] + 1, x = bx + (33 - f[1]) * bw, w = n * bw;
+    s('rect', {x: x + 1, y: 44, width: w - 2, height: 34, rx: 4, 'class': f[3] === 'act' ? 'sunk' : f[3] + 'b'}, E.a);
+    s('text', {x: x + w / 2, y: 94, 'text-anchor': 'middle', 'class': 's'}, E.a, f[0]);
+    s('text', {x: x + w / 2, y: 108, 'text-anchor': 'middle', 'class': 's m'}, E.a, f[1] + (f[1] !== f[2] ? ':' + f[2] : ''));
+    return {t: s('text', {x: x + w / 2, y: 66, 'text-anchor': 'middle', 'class': 'm', 'font-size': 12}, E.a, ''), f: f};
+  });
+  E.aT = s('text', {x: 626, y: 134, 'font-size': 12.5}, E.a, ''); E.aT2 = s('text', {x: 626, y: 150, 'class': 's'}, E.a, 'Real AMD controllers XOR-hash bank and channel bits with higher address bits;');
+  s('text', {x: 626, y: 168, 'class': 's'}, E.a, 'the exact mapping is set by firmware and not published per board.');
+  E.bk = box(10, 214, 470, 250, 'One x8 chip: 4 bank groups \u00d7 4 banks');
+  E.cells = [];
+  for (var bg = 0; bg < 4; bg++) for (var b = 0; b < 4; b++){
+    var x = 22 + bg * 113, y = 238 + b * 55;
+    E.cells.push({bg: bg, b: b, r: s('rect', {x: x, y: y, width: 105, height: 48, rx: 5, 'class': 'sunk'}, E.bk), t: s('text', {x: x + 8, y: y + 18, 'class': 's m'}, E.bk, 'BG' + bg + ' \u00b7 B' + b), v: s('text', {x: x + 8, y: y + 38, 'class': 'm', 'font-size': 11.5}, E.bk, '')});
+  }
+  E.z = box(492, 214, 698, 250, 'Inside bank 3 of bank group 3');
+  s('rect', {x: 504, y: 244, width: 64, height: 176, rx: 5, 'class': 'a1b'}, E.z); s('text', {x: 536, y: 330, 'text-anchor': 'middle', 'class': 's', transform: 'rotate(-90 536 330)'}, E.z, 'row decoder');
+  E.zr = [];
+  for (var i = 0; i < 9; i++){ var ry = 250 + i * 18; E.zr.push({l: s('rect', {x: 578, y: ry, width: 430, height: 14, rx: 2, 'class': 'sunk'}, E.z), t: s('text', {x: 586, y: ry + 11, 'class': 'm', 'font-size': 10}, E.z, 'row ' + (26874 + i))}); }
+  E.rb = s('rect', {x: 578, y: 418, width: 430, height: 30, rx: 4, 'class': 'box'}, E.z);
+  E.rbT = s('text', {x: 588, y: 438, 'font-size': 12}, E.z, '');
+  E.cm = s('rect', {x: 1020, y: 244, width: 160, height: 204, rx: 5, 'class': 'box'}, E.z);
+  s('text', {x: 1030, y: 266, 'class': 'h'}, E.z, 'column mux + I/O');
+  E.cmT = [0, 1, 2, 3, 4].map(function(k){ return s('text', {x: 1030, y: 292 + k * 20, 'font-size': 11.5}, E.z, ''); });
+  E.tl = box(10, 478, 1180, 244, 'Commands and data on channel 1 (x axis: clock cycles, 1 tCK = 0.833 ns)');
+  var TX = function(t){ return 120 + t * 10.5; }, LY = {CMD: 520, B3: 566, B2: 612, DQ: 658};
+  [['CMD', 'command bus'], ['B3', 'BG3 bank 3'], ['B2', 'BG3 bank 2'], ['DQ', 'data bus (64-bit)']].forEach(function(l){ s('text', {x: 20, y: LY[l[0]] + 5, 'class': 's'}, E.tl, l[1]); s('line', {x1: 120, x2: 1170, y1: LY[l[0]], y2: LY[l[0]], stroke: 'var(--bd)'}, E.tl); });
+  for (var t = 0; t <= 100; t += 10){ s('line', {x1: TX(t), x2: TX(t), y1: 684, y2: 690, stroke: 'var(--tx3)'}, E.tl); s('text', {x: TX(t), y: 706, 'text-anchor': 'middle', 'class': 's'}, E.tl, t + (t % 20 === 0 ? ' (' + (t * T.tck).toFixed(0) + ' ns)' : '')); }
+  E.dyn = s('g', null, E.tl);
+
+  var FR = [
+    {p: 'map', t: -1, n: 0, sel: 'A', h: 'Physical address \u2192 DRAM coordinates', d: 'The controller slices each physical address into channel, bank group, bank, row and column. This page uses a simple example layout: bits 5:0 = byte in the 64-byte burst, bit 6 = channel, bits 13:7 = column (64-byte units), 15:14 = bank, 17:16 = bank group, 33:18 = row. Four reads are queued, all on channel 1: A is C1\u2019s <code>hist[123]</code> line from Chapter 05 (PA 0x1a3f7ce40), D is the <code>data[]</code> line, B is another hist line in the <b>same row</b> as A, and C is 256 KB above A: same bank, <b>different row</b>.'},
+    {p: 'ACT A', t: 0, n: 1, sel: 'A', h: 't = 0: ACT opens row 26877 in bank 3', d: 'Bank 3 is idle (precharged). ' + g('act', 'ACT') + ' drives one wordline: every cell on row 26877 shares its capacitor charge with its bitline. The sense amplifiers turn each tiny voltage swing into a full 0 or 1 and latch it, so the whole row \u2014 1 KB per chip, 8 KB across the rank \u2014 now sits in the ' + g('rowbuf') + '. Reading drained the capacitors, so the sense amps also drive the values back into the cells. A column can be read only tRCD = 17 cycles (14.2 ns) later.'},
+    {p: 'ACT D', t: 6, n: 2, sel: 'D', h: 't = 6: ACT in bank 2, in parallel', d: 'D\u2019s line is in bank 2 of the same bank group. Banks are independent arrays with their own row buffers, so row 1793 opens while bank 3 is still activating. The only spacing rule between the two ACTs is tRRD_L (6 cycles here). This is bank-level parallelism: the controller keeps several banks busy to hide per-bank latency.'},
+    {p: 'RD A', t: 17, n: 3, sel: 'A', h: 't = 17: RD column 28 \u2192 64 bytes', d: 'RD selects column 28 of the open row. CL = 17 cycles later the chips drive data: 8 beats (burst length 8) on the 64-bit bus, 8 bytes per beat, <b>64 bytes = one cache line</b>. Each x8 chip supplies 8 bits of every beat. A found the row closed, so ACT \u2192 last data = tRCD + CL + 4 = 38 cycles = <b>31.7 ns</b>. This is the device time only; controller queues and the fabric add the rest of the load-to-use latency.'},
+    {p: 'RD D', t: 23, n: 4, sel: 'D', h: 't = 23: RD in bank 2', d: 'D\u2019s RD must wait for its own tRCD (6 + 17 = 23) and for tCCD_L after A\u2019s RD (17 + 6 = 23), since both are in bank group 3. Its burst follows A\u2019s on the shared data bus: the bus, not the banks, is the resource the two reads share.'},
+    {p: 'RD B', t: 29, n: 5, sel: 'B', h: 't = 29: B is a row hit', d: 'B needs row 26877 of bank 3 \u2014 already in the row buffer. No ACT: RD \u2192 data is only CL + 4 = 21 cycles = <b>17.5 ns</b>. Controllers prefer requests that hit open rows and may serve them ahead of older ones; AMD does not publish its exact scheduling policy.'},
+    {p: 'PRE', t: 39, n: 6, sel: 'C', h: 't = 39: row conflict, PRE closes row 26877', d: 'C needs row 26878 in the same bank, and a bank holds one open row. The controller must close 26877 with ' + g('act', 'PRE') + ' first, which is allowed only tRAS = 39 cycles after that row\u2019s ACT (and tRTP after the last RD, 29 + 9 = 38). The cells were restored during tRAS; PRE returns the bitlines to their idle voltage.'},
+    {p: 'ACT C', t: 56, n: 7, sel: 'C', h: 't = 56: ACT row 26878', d: 'tRP = 17 cycles after PRE, the bank can activate again.'},
+    {p: 'RD C', t: 73, n: 8, sel: 'C', h: 't = 73: RD, data at 90\u201394', d: 'tRCD later, RD; CL later, data. The minimum cost of a row conflict is tRP + tRCD + CL + 4 = 55 cycles = <b>45.8 ns</b>; C waited 84 cycles (70 ns) from its arrival because PRE also had to respect tRAS. Row hit 17.5 ns, row closed 31.7 ns, row conflict 45.8 ns or more: the same 64-byte read costs up to 2.6\u00d7 more depending on what the bank was doing.'},
+    {p: 'REF', t: 100, n: 8, sel: null, ref: true, h: 'Refresh', d: 'Cell capacitors leak. Every 7.8 \u00b5s (tREFI) the controller closes all banks of the rank and issues ' + g('refresh', 'REF') + '; for tRFC (350 ns for 8 Gb chips, JEDEC) the rank serves no reads. 8192 REF commands every 64 ms cover every row. A read that arrives during tRFC waits for it: one source of the spread visible in a measured DRAM-latency plateau.'}
+  ];
+  var stp = App.stepper(root, {render: draw});
+  function draw(ff){
+    var fr = ff.fr;
+    var sel = REQ.filter(function(r){ return r.id === fr.sel; })[0] || REQ[0], f = sel.f;
+    E.af.forEach(function(a){ var v = {row: f.row, BG: f.bg, bank: f.bank, column: f.col, ch: f.ch, byte: f.byte}[a.f[0]]; a.t.textContent = String(v); });
+    E.aT.textContent = fr.ref ? 'refresh applies to every row of every bank' : sel.id + ': PA ' + hx(sel.pa) + ' \u2192 ch ' + f.ch + ', BG ' + f.bg + ', bank ' + f.bank + ', row ' + f.row + ', column ' + f.col;
+    E.qr.forEach(function(R, i){ R.bg.setAttribute('class', REQ[i] === sel && !fr.ref ? 'on box' : 'sunk'); });
+    E.q.setAttribute('class', fr.p === 'map' ? 'on' : ''); E.a.setAttribute('class', fr.p === 'map' ? 'on' : '');
+    var tt = Math.max(fr.t, 0);
+    E.cells.forEach(function(c){
+      var st = c.bg === 3 && (c.b === 3 || c.b === 2) && fr.t >= 0 ? bank(c.b, tt) : {row: null, st: 'idle'};
+      if (fr.ref) st = {row: null, st: 'refresh'};
+      c.v.textContent = st.st === 'idle' ? '\u2014' : st.st === 'refresh' ? 'REF' : (st.row !== null ? 'row ' + st.row : '') + (st.st === 'precharging' ? 'PRE' : '');
+      c.r.setAttribute('class', st.st === 'open' ? 'okb' : st.st === 'activating' ? 'a4b' : st.st === 'precharging' ? 'badb' : st.st === 'refresh' ? 'a3b' : 'sunk');
+    });
+    var b3 = fr.ref ? {row: null, st: 'refresh'} : fr.t < 0 ? {row: null, st: 'idle'} : bank(3, tt);
+    E.zr.forEach(function(z, i){ var rn = 26874 + i; z.l.setAttribute('class', b3.row === rn ? (b3.st === 'open' ? 'okb' : 'a4b') : 'sunk'); });
+    E.rb.setAttribute('class', b3.row !== null ? 'okb' : b3.st === 'precharging' ? 'badb' : 'box');
+    E.rbT.textContent = fr.ref ? 'refresh: all rows rewritten over 64 ms' : b3.row !== null ? 'row buffer (sense amps): row ' + b3.row + (b3.st === 'activating' ? ' \u2014 sensing, tRCD running' : ' \u2014 open') : b3.st === 'precharging' ? 'precharging: bitlines returning to the idle voltage' : 'row buffer empty (bank precharged)';
+    var rd = CMD.slice(0, fr.n).filter(function(c){ return c.c === 'RD' && c.b === 3; }).pop();
+    var cmt = rd && !fr.ref && (fr.p === 'RD A' || fr.p === 'RD B' || fr.p === 'RD C') ? ['column ' + rd.x.split(' ')[1] + ' selected', '8 beats \u00d7 8 bits', 'from this chip', '\u00d7 8 chips = 64 bits', 'per beat \u2192 64 B'] : ['idle', '', '', '', ''];
+    E.cmT.forEach(function(t, k){ t.textContent = cmt[k]; }); E.cm.setAttribute('class', cmt[0] !== 'idle' ? 'okb' : 'box');
+    /* timeline */
+    E.dyn.innerHTML = '';
+    var upto = fr.ref ? 100 : Math.max(0, fr.t);
+    [[3, 'B3'], [2, 'B2']].forEach(function(bb){
+      var segs = [], prev = null, start = 0;
+      for (var t2 = 0; t2 <= upto; t2++){ var st = bank(bb[0], t2).st; if (st !== prev){ if (prev && prev !== 'idle') segs.push([start, t2, prev]); prev = st; start = t2; } }
+      if (prev && prev !== 'idle' && upto > start) segs.push([start, upto, prev]);
+      segs.forEach(function(sg){ s('rect', {x: TX(sg[0]), y: LY[bb[1]] - 10, width: Math.max(2, TX(sg[1]) - TX(sg[0])), height: 20, rx: 3, 'class': sg[2] === 'open' ? 'okb' : sg[2] === 'activating' ? 'a4b' : 'badb'}, E.dyn); });
+    });
+    CMD.slice(0, fr.n).forEach(function(c, k){
+      var cur = k === fr.n - 1 && !fr.ref;
+      s('rect', {x: TX(c.t) - 1, y: LY.CMD - 11, width: 34, height: 22, rx: 3, 'class': cur ? 'on box' : c.c === 'PRE' ? 'badb' : c.c === 'ACT' ? 'a4b' : 'okb'}, E.dyn);
+      s('text', {x: TX(c.t) + 16, y: LY.CMD + 4, 'text-anchor': 'middle', 'class': 'm', 'font-size': 10}, E.dyn, c.c);
+      s('text', {x: TX(c.t) + 16, y: LY.CMD - 15, 'text-anchor': 'middle', 'class': 's'}, E.dyn, c.r);
+      if (c.c === 'RD'){
+        var r = REQ.filter(function(q){ return q.id === c.r; })[0];
+        s('rect', {x: TX(r.data), y: LY.DQ - 11, width: TX(r.data + T.BL) - TX(r.data), height: 22, rx: 3, 'class': 'a2b'}, E.dyn);
+        s('text', {x: TX(r.data) + 21, y: LY.DQ + 4, 'text-anchor': 'middle', 'class': 'm', 'font-size': 10}, E.dyn, r.id + ' 64B');
+      }
+    });
+    if (fr.t >= 0 && !fr.ref) s('line', {x1: TX(fr.t), x2: TX(fr.t), y1: 500, y2: 684, stroke: 'var(--act)', 'stroke-width': 2, 'stroke-dasharray': '4 3'}, E.dyn);
+    E.tl.setAttribute('class', fr.t >= 0 && !fr.ref ? 'on' : '');
+    E.qr.forEach(function(R, i){ var r = REQ[i]; R.kind.textContent = r.kind + (fr.ref || (fr.n >= 8 || (r.id === 'A' && fr.n >= 3) || (r.id === 'D' && fr.n >= 4) || (r.id === 'B' && fr.n >= 5)) ? ' \u2192 done ' + (r.data + T.BL) : ''); });
+  }
+  stp.set(FR.map(function(f){ return {p: f.p, t: f.h, d: f.d, fr: f}; }));
+  var cards = h('div', {'class': 'grid3'}, root);
+  h('div', {'class': 'card'}, cards, '<h3>Three prices for the same read</h3><table class="mt"><tr><th>row state</th><th>commands</th><th>device time</th></tr><tr><td>hit</td><td>RD</td><td>21 tCK \u00b7 17.5 ns</td></tr><tr><td>closed</td><td>ACT, RD</td><td>38 tCK \u00b7 31.7 ns</td></tr><tr><td>conflict</td><td>PRE, ACT, RD</td><td>55+ tCK \u00b7 45.8+ ns</td></tr></table><p class="note" style="margin-top:6px">Device time from the command to the last data beat. Load-to-use latency also includes the core, caches, fabric and controller queues.</p>');
+  h('div', {'class': 'card'}, cards, '<h3>Why a cache line is 64 bytes, from this side</h3><p>DDR4 transfers in ' + g('burst', 'bursts') + ' of 8 beats on a 64-bit bus: 8 \u00d7 8 B = 64 B. One burst is one line, and the fixed costs (ACT, CL, command slots) are paid once per burst. Chapter 04\u2019s line size and this burst size were chosen together.</p>');
+  h('div', {'class': 'card'}, cards, '<h3>Why DRAM needs rows at all</h3><p>One cell is a transistor and a capacitor holding a few femtocoulombs. Sensing it requires a sense amplifier, which is large, so each bank has one row of them shared by all its rows. Opening a row moves thousands of bits into those amplifiers at once; after that, column reads are cheap. The same small charge is why cells leak and need ' + g('refresh') + '.</p>');
+  return {key: stp.key};
+}});
+
+/* ======================= chapter: stores and memory types ======================= */
+App.chapter({id: 'stores', num: '07', short: 'Stores', title: 'The store path, memory types and fences',
+sub: 'A store is invisible to everyone else until it leaves the store queue, and it can leave only when the L1d owns the line. What that costs depends on who else holds the line, on the memory type of the page, and on the fences around it.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, hx = App.hx;
+  var mode = 'E';
+  var ctl = h('div', {'class': 'stp'}, root);
+  h('span', {'class': 'note'}, ctl, 'before C1\u2019s store commits, the hist[123] line is:');
+  App.seg(ctl, [['E', 'in core 0\u2019s L1d, Exclusive'], ['S', 'Shared with core 1'], ['I', 'not in core 0\u2019s caches']], function(v){ mode = v; frames(); }, mode);
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 400', style: 'min-width:900px'}, wrap);
+  s('defs', null, sv).innerHTML = '<marker id="sa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="context-stroke"/></marker>';
+  var E = {};
+  function box(x, y, w, ht, t, cls){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': cls || 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 20, 'class': 'h'}, gr, t); return gr; }
+  box(10, 10, 600, 250, 'Core 0', 'sunk');
+  E.sq = box(22, 40, 270, 208, 'Store queue');
+  E.sqR = [0, 1].map(function(k){ var y = 64 + k * 64; return {r: s('rect', {x: 32, y: y, width: 250, height: 54, rx: 5, 'class': 'sunk'}, E.sq), t: s('text', {x: 42, y: y + 22, 'class': 'm', 'font-size': 12}, E.sq, ''), t2: s('text', {x: 42, y: y + 42, 'font-size': 11.5}, E.sq, '')}; });
+  E.sqN = s('text', {x: 32, y: 222, 'class': 's'}, E.sq, 'commits in program order, one per cycle');
+  E.l1 = box(310, 40, 290, 208, 'L1d \u2014 line hist[120..127]');
+  E.l1T = [0, 1, 2, 3, 4].map(function(k){ return s('text', {x: 322, y: 92 + k * 30, 'font-size': k === 0 ? 22 : 12.5, 'class': k === 0 ? 'm' : ''}, E.l1, ''); });
+  E.c1 = box(630, 10, 250, 250, 'Core 1 \u2014 its caches');
+  E.c1T = [0, 1, 2].map(function(k){ return s('text', {x: 642, y: 80 + k * 30, 'font-size': k === 0 ? 22 : 12.5, 'class': k === 0 ? 'm' : ''}, E.c1, ''); });
+  E.l3 = box(900, 10, 290, 250, 'L3 + shadow tags');
+  E.l3T = [0, 1, 2, 3].map(function(k){ return s('text', {x: 912, y: 60 + k * 26, 'font-size': 12.5}, E.l3, ''); });
+  E.dr = box(10, 320, 1180, 70, 'DRAM');
+  E.drT = s('text', {x: 22, y: 366, 'font-size': 13}, E.dr, '');
+  var A = {};
+  function arrow(id, d){ A[id] = s('path', {d: d, 'class': 'wire', 'stroke-width': 2, 'marker-end': 'url(#sa)', style: 'opacity:.18'}, sv); }
+  arrow('commit', 'M 282 118 L 308 118');
+  arrow('req', 'M 455 248 L 455 290 L 1040 290 L 1040 262');
+  arrow('probe', 'M 900 120 L 882 120');
+  arrow('ack', 'M 882 160 L 900 160');
+  arrow('data', 'M 1080 262 L 1080 300 L 500 300 L 500 250');
+  var stp = App.stepper(root, {render: draw});
+  function frames(){
+    var fr = [];
+    var F = function(p, t, d, st){ st.p = p; st.t = t; st.d = d; fr.push(st); };
+    var l0 = mode === 'E' ? 'E' : mode === 'S' ? 'S' : 'I', c1 = mode === 'S' ? 'S' : 'I';
+    F('execute', 'C1\u2019s store executes', 'The ' + g('sta') + ' writes address <code>0x7ffd4a3c2e58</code> and the ' + g('std') + ' writes 42 into C1\u2019s store-queue entry. No other core can see it. Younger loads on this core can, through ' + g('stlf') + ' (Chapter 02).', {sq: ['exec', 'none'], l0: l0, v0: 41, c1: c1, arr: []});
+    F('retire', 'C1 retires: a senior store', 'C1 reaches the ROB head and retires. Its entry becomes a ' + g('senior', 'senior store') + ': it will happen, but it is still invisible outside the core. To leave the store queue it must write into the L1d, and the L1d accepts a write only for a line it holds with write permission: ' + g('st_m', 'M') + ' or ' + g('st_e', 'E') + '.', {sq: ['senior', 'exec'], l0: l0, v0: 41, c1: c1, arr: []});
+    if (mode === 'E'){
+      F('commit', 'Commit: the line is Exclusive', 'Only this core has the line and it is clean. The store writes bytes 24\u201331 in one cycle, E becomes M silently, D = 1. No message leaves the core.', {sq: ['done', 'senior'], l0: 'M', v0: 42, c1: 'I', arr: ['commit']});
+    } else if (mode === 'S'){
+      F('upgrade', 'The line is Shared: ask for ownership', 'Core 1 read hist[123] earlier and still holds a copy. Writing now would leave core 1 reading a stale 41, so the L1d sends an upgrade request (ownership, no data) to the L3. The ' + g('shadow') + ' show core 1 as the only other holder.', {sq: ['senior', 'senior'], l0: 'S', v0: 41, c1: 'S', arr: ['req'], l3: ['upgrade request from core 0', 'shadow tags: core 1 holds S']});
+      F('invalidate', 'Probe core 1: invalidate', 'The L3 sends a ' + g('probe') + ' to core 1 only. Core 1 drops its copy (S \u2192 I) and acknowledges. All this time the store sits at the head of the store queue, and every younger store waits behind it: stores commit in order.', {sq: ['senior', 'senior'], l0: 'S', v0: 41, c1: 'I', arr: ['probe', 'ack'], l3: ['probe: invalidate core 1', 'ack received']});
+      F('commit', 'Ownership granted: S \u2192 M, store commits', 'The L3 grants ownership; the line becomes M and the store writes 42. The extra time was one request, one probe and one acknowledgement; AMD does not publish that latency.', {sq: ['done', 'senior'], l0: 'M', v0: 42, c1: 'I', arr: ['data', 'commit'], l3: ['ownership granted to core 0', 'shadow tags: core 0 only']});
+    } else {
+      F('RFO', 'Not cached: read for ownership', 'The line is not in core 0\u2019s caches. With ' + g('walloc') + ' the L1d issues an ' + g('rfo') + ': fetch the whole 64-byte line and invalidate every other copy, even though the core only wants to write 8 bytes of it.', {sq: ['senior', 'senior'], l0: '\u2014', v0: null, c1: 'I', arr: ['req'], l3: ['RFO from core 0', 'L3 / other L2s / DRAM (Ch 05)']});
+      F('fill', 'Line arrives in M; store commits', 'The line arrives in M state, bytes 24\u201331 are overwritten with 42. To write 8 bytes the core read 64, and it will write 64 back when the line is evicted.', {sq: ['done', 'senior'], l0: 'M', v0: 42, c1: 'I', arr: ['data', 'commit'], l3: ['64 B delivered with ownership']});
+    }
+    F('coalesce', 'C2\u2019s store: no traffic at all', 'C2 writes 43 to the same 8 bytes. The line is already M, so it commits in one cycle and nothing leaves the core. Every further store to this line is free until someone else asks for it.', {sq: ['done', 'done'], l0: 'M', v0: 43, c1: 'I', arr: ['commit']});
+    F('stale', 'DRAM is now stale', 'DRAM still holds 41. It is updated only when the line is evicted and written back (Chapter 04), or when another core\u2019s request makes this core supply the data (Chapter 08). Until then the only current copy of hist[123] is in core 0\u2019s L1d.', {sq: ['done', 'done'], l0: 'M', v0: 43, c1: 'I', arr: [], stale: true});
+    F('order', 'What the store queue does to ordering', '<p>Stores commit in program order, so other cores see this core\u2019s stores in the order they were written. What the store queue does break is store \u2192 load order: a later load to a different address can read the cache while an older store is still queued (' + g('tso') + ').</p><p>A classic litmus test makes this visible: two cores each store to their own flag then load the other\u2019s flag; both loads reading 0 is possible under x86-TSO and happens on a real run a noticeable fraction of the time. Placing an ' + g('fence', 'mfence') + ' between each store and load eliminates it entirely, at a real cost per fence \u2014 tens of cycles.</p>', {sq: ['done', 'done'], l0: 'M', v0: 43, c1: 'I', arr: [], stale: true});
+    stp.set(fr);
+  }
+  var SQS = {exec: ['executed: address + data known', 'a4b'], senior: ['senior: retired, waiting to commit', 'a3b'], done: ['committed to the L1d', 'okb'], none: ['', 'sunk']};
+  function draw(f){
+    [['C1', '0x\u2026c2e58 \u2190 42'], ['C2', '0x\u2026c2e58 \u2190 43']].forEach(function(e, k){
+      var st = f.sq[k], R = E.sqR[k];
+      R.t.textContent = st === 'none' ? '' : e[0] + '   ' + e[1]; R.t2.textContent = SQS[st][0]; R.r.setAttribute('class', SQS[st][1]);
+    });
+    E.l1T[0].textContent = f.l0; E.l1T[0].setAttribute('fill', f.l0 === 'M' ? 'var(--a1)' : f.l0 === 'E' ? 'var(--a2)' : f.l0 === 'S' ? 'var(--a4)' : 'var(--tx3)');
+    E.l1T[1].textContent = f.l0 === '\u2014' ? 'not present' : {M: 'Modified: dirty, only copy', E: 'Exclusive: clean, only copy', S: 'Shared: read-only here'}[f.l0];
+    E.l1T[2].textContent = f.v0 === null ? '' : 'hist[123] = ' + f.v0;
+    E.l1T[3].textContent = f.l0 === 'M' ? 'D = 1' : f.l0 === '\u2014' ? '' : 'D = 0';
+    E.l1T[4].textContent = f.l0 === 'S' ? 'a write here needs ownership first' : '';
+    E.c1T[0].textContent = f.c1; E.c1T[1].textContent = f.c1 === 'S' ? 'Shared copy, hist[123] = 41' : 'no copy (Invalid)'; E.c1T[2].textContent = f.c1 === 'S' ? 'reads hit locally' : '';
+    E.l3T.forEach(function(t, k){ t.textContent = (f.l3 || [])[k] || (k === 0 ? 'no request' : ''); });
+    E.drT.textContent = 'hist[123] in memory = 41' + (f.v0 !== null && f.v0 !== 41 ? '  \u2014 stale: the only current value (' + f.v0 + ') is in core 0\u2019s L1d' : '  \u2014 matches the caches');
+    for (var id in A){ var on = f.arr.indexOf(id) >= 0; A[id].setAttribute('class', 'wire' + (on ? ' on flow' : '')); A[id].style.opacity = on ? 1 : .18; A[id].style.stroke = on ? (id === 'data' || id === 'ack' ? 'var(--a2)' : id === 'probe' ? 'var(--bad)' : 'var(--act)') : ''; }
+    E.sq.setAttribute('class', f.p === 'execute' || f.p === 'retire' ? 'on' : ''); E.l1.setAttribute('class', f.arr.indexOf('commit') >= 0 ? 'on' : '');
+    E.c1.setAttribute('class', f.arr.indexOf('probe') >= 0 ? 'on' : ''); E.l3.setAttribute('class', f.l3 ? 'on' : ''); E.dr.setAttribute('class', f.stale ? 'on' : '');
+  }
+  frames();
+
+  /* RFO vs non-temporal */
+  var nt = h('div', {'class': 'card'}, root);
+  nt.innerHTML = '<h3>Filling a buffer: normal stores vs ' + g('nt', 'non-temporal stores') + '</h3><p>Normal stores to write-back memory must own each line first (RFO), so writing a buffer reads it from memory and later writes it back. Non-temporal stores (<code>movnti</code>, <code>movntdq</code>) gather bytes in ' + g('wc', 'write-combining') + ' buffers and send each completed 64-byte line straight to memory: no read, and the caches are not filled with data nobody will read soon. They are weakly ordered, so an <code>sfence</code> must come before any flag that publishes the buffer.</p>';
+  var ntc = h('div', {'class': 'stp'}, nt); h('span', {'class': 'note'}, ntc, 'buffer size:');
+  var ntsv = s('svg', {viewBox: '0 0 1000 150', style: 'width:100%;height:auto;display:block;margin-top:8px'}, nt);
+  function ntDraw(kb){
+    ntsv.innerHTML = ''; var lines = kb * 16, B = lines * 64, mx = 2 * B, W = function(v){ return 5 + (v / mx) * 700; };
+    var fmt = function(b){ return b >= 1048576 ? (b / 1048576) + ' MB' : (b / 1024) + ' KB'; };
+    s('text', {x: 10, y: 34, 'class': 'h'}, ntsv, 'normal stores');
+    s('rect', {x: 180, y: 18, width: W(B), height: 24, rx: 3, 'class': 'a4b'}, ntsv); s('rect', {x: 180 + W(B), y: 18, width: W(B), height: 24, rx: 3, 'class': 'a1b'}, ntsv);
+    s('text', {x: 190 + 2 * W(B), y: 35, 'class': 'm', 'font-size': 12}, ntsv, fmt(B) + ' read (RFO) + ' + fmt(B) + ' written back');
+    s('text', {x: 10, y: 88, 'class': 'h'}, ntsv, 'non-temporal');
+    s('rect', {x: 180, y: 72, width: W(B), height: 24, rx: 3, 'class': 'a1b'}, ntsv);
+    s('text', {x: 190 + W(B), y: 89, 'class': 'm', 'font-size': 12}, ntsv, fmt(B) + ' written, 0 read');
+    s('text', {x: 10, y: 136, 'class': 's'}, ntsv, lines + ' lines. Normal stores also pull all ' + fmt(B) + ' through the caches, evicting whatever was there; NT stores leave the caches alone. If the data is read again soon, normal stores win.');
+  }
+  App.seg(ntc, [[4, '4 KB'], [256, '256 KB'], [4096, '4 MB'], [65536, '64 MB']], ntDraw, 4096); ntDraw(4096);
+
+  var mt = h('div', {'class': 'card'}, root);
+  mt.innerHTML = '<h3>' + g('memtype', 'Memory types') + '</h3><table class="mt"><tr><th>type</th><th>reads</th><th>writes</th><th>ordering / speculation</th><th>typical use</th></tr>' +
+    '<tr><td>WB</td><td style="font-family:var(--sans)">cached, allocate on miss</td><td style="font-family:var(--sans)">cached, write-back, write-allocate</td><td style="font-family:var(--sans)">x86-TSO; speculative reads allowed</td><td style="font-family:var(--sans)">normal RAM: everything in chapters 01\u201306</td></tr>' +
+    '<tr><td>WT</td><td style="font-family:var(--sans)">cached</td><td style="font-family:var(--sans)">update cache on hit, always sent to memory</td><td style="font-family:var(--sans)">speculative reads allowed</td><td style="font-family:var(--sans)">rare today</td></tr>' +
+    '<tr><td>WC</td><td style="font-family:var(--sans)">not cached</td><td style="font-family:var(--sans)">gathered in WC buffers, sent as bursts</td><td style="font-family:var(--sans)">weakly ordered; needs sfence</td><td style="font-family:var(--sans)">framebuffers, GPU apertures</td></tr>' +
+    '<tr><td>UC</td><td style="font-family:var(--sans)">not cached, each access sent</td><td style="font-family:var(--sans)">not cached, each access sent</td><td style="font-family:var(--sans)">strict program order; no speculative reads</td><td style="font-family:var(--sans)">device registers: the NVMe doorbell of Chapter 10</td></tr>' +
+    '<tr><td>UC-</td><td style="font-family:var(--sans)">as UC</td><td style="font-family:var(--sans)">as UC</td><td style="font-family:var(--sans)">an MTRR set to WC can override it</td><td style="font-family:var(--sans)">PAT-only variant of UC</td></tr>' +
+    '<tr><td>WP</td><td style="font-family:var(--sans)">cached</td><td style="font-family:var(--sans)">not allocated; sent to memory, cached copies invalidated</td><td style="font-family:var(--sans)"></td><td style="font-family:var(--sans)">write-protected ranges</td></tr></table>' +
+    '<p class="note" style="margin-top:6px">The type of an access comes from the ' + g('pat', 'PAT') + ' bits in the page-table entry (PAT, PCD, PWT: Chapter 03 showed PCD = PWT = 0 for hist, which selects WB) combined with the MTRRs that cover the physical range.</p>';
+  var ins = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, ins, '<h3>Cache-control and ordering instructions</h3><table class="mt"><tr><th>instruction</th><th>effect</th></tr>' +
+    [['clflush', 'write the line back if dirty, invalidate it in every cache'], ['clflushopt', 'same, with weaker ordering so many can overlap'], ['clwb', 'write back but may keep the line cached'], ['prefetchw', 'fetch a line with intent to write (ownership)'], ['sfence', 'earlier stores (incl. NT/WC) become visible before later ones'], ['lfence', 'later instructions wait for earlier ones to complete locally; also a speculation barrier'], ['mfence', 'drain the store buffer before later loads; ~46.5 ticks measured'], ['lock add/xchg/cmpxchg', 'atomic read-modify-write; also a full barrier']]
+    .map(function(r){ return '<tr><td>' + r[0] + '</td><td style="font-family:var(--sans)">' + r[1] + '</td></tr>'; }).join('') + '</table><p class="note" style="margin-top:6px">Which of these your CPU implements: look for <code>clflushopt</code> and <code>clwb</code> in the flags line of <code>/proc/cpuinfo</code>.</p>');
+  h('div', {'class': 'card'}, ins, '<h3>What Linux emits on x86-64</h3><table class="mt"><tr><th>macro</th><th>instruction</th></tr>' +
+    [['mb()', 'mfence'], ['rmb()', 'lfence'], ['wmb()', 'sfence'], ['smp_mb()', 'lock; addl $0,-4(%rsp)'], ['smp_rmb() / smp_wmb()', 'compiler barrier only'], ['smp_store_release()', 'plain store + compiler barrier'], ['smp_load_acquire()', 'plain load + compiler barrier']]
+    .map(function(r){ return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('') + '</table><p class="note" style="margin-top:6px">From <code>arch/x86/include/asm/barrier.h</code>. TSO already keeps load\u2192load, store\u2192store and load\u2192store order, so only store\u2192load needs a real instruction; a locked add to the stack is cheaper than mfence. The acquire/release pairs are the ones io_uring uses on its rings.</p>');
+  return {key: stp.key};
+}});
+
+/* ======================= chapter: coherence ======================= */
+App.chapter({id: 'coh', num: '08', short: 'Coherence', title: 'Four cores, one line: MOESI coherence',
+sub: 'Each core has private caches, yet every core must see one order of writes to each address. The protocol that guarantees it works per 64-byte line, which is why two unrelated variables in one line can slow each other down.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g;
+  var LN = ['A', 'F', 'G1', 'G2'], LD = {A: 'hist[120..127]', F: 'struct { long a, b; }', G1: 'a, padded to its own line', G2: 'b, padded to its own line'};
+  var SC = {
+    share: {n: 'Read sharing, write, owner', ops: [[0, 'r', 'A'], [1, 'r', 'A'], [2, 'r', 'A'], [3, 'w', 'A'], [0, 'r', 'A'], [1, 'r', 'A'], [3, 'e', 'A']]},
+    fs: {n: 'False sharing', ops: [[0, 'w', 'F', 'a'], [1, 'w', 'F', 'b'], [0, 'w', 'F', 'a'], [1, 'w', 'F', 'b'], [0, 'w', 'F', 'a'], [1, 'w', 'F', 'b']]},
+    pad: {n: 'Same writes, padded', ops: [[0, 'w', 'G1', 'a'], [1, 'w', 'G2', 'b'], [0, 'w', 'G1', 'a'], [1, 'w', 'G2', 'b'], [0, 'w', 'G1', 'a'], [1, 'w', 'G2', 'b']]},
+    free: {n: 'Your own sequence', ops: []}
+  };
+  var cur = 'share';
+  var intro = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, intro, '<h3>The five states</h3><table class="mt"><tr><th></th><th>dirty?</th><th>other copies?</th><th>may write without asking?</th></tr>' +
+    '<tr><td>' + g('st_m', 'M') + '</td><td>yes</td><td>none</td><td>yes</td></tr><tr><td>' + g('st_o', 'O') + '</td><td>yes</td><td>possible (S)</td><td>no</td></tr><tr><td>' + g('st_e', 'E') + '</td><td>no</td><td>none</td><td>yes (becomes M)</td></tr><tr><td>' + g('st_s', 'S') + '</td><td>no*</td><td>possible</td><td>no</td></tr><tr><td>' + g('st_i', 'I') + '</td><td colspan="3" style="font-family:var(--sans)">no usable copy</td></tr></table><p class="note" style="margin-top:6px">* An S copy can be newer than DRAM when some cache holds the line in O. AMD64 uses ' + g('moesi') + '; the O state lets a dirty line be shared without first writing it to DRAM.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>Who is asked</h3><p>On your single-CCX APU every request that misses a core\u2019s L2 reaches the L3. Its ' + g('shadow') + ' record which cores hold each line, so ' + g('probe', 'probes') + ' go only to those cores (a ' + g('pfilter') + '), never to all four. This model shows one private cache per core (L1 + L2 together) and counts every message.</p>');
+  var ctl = h('div', {'class': 'stp'}, root);
+  App.seg(ctl, Object.keys(SC).map(function(k){ return [k, SC[k].n]; }), function(v){ cur = v; run(false); }, cur);
+  var free = h('div', {'class': 'card', style: 'display:none'}, root);
+  free.innerHTML = '<div class="cohbtns"></div><p class="note">Each click adds one operation to the end of the sequence and jumps to it.</p>';
+  var fb = free.querySelector('.cohbtns');
+  [0, 1, 2, 3].forEach(function(c){
+    var d = h('div', null, fb, '<b>core ' + c + '</b>');
+    [['r', 'A', 'read A'], ['w', 'A', 'write A'], ['e', 'A', 'evict A'], ['w', 'F', 'write F.' + (c % 2 ? 'b' : 'a')]].forEach(function(o){
+      var b = h('button', null, d, o[2]); b.onclick = function(){ SC.free.ops.push([c, o[0], o[1], c % 2 ? 'b' : 'a']); run(true); };
+    });
+  });
+  h('button', null, fb, 'clear').onclick = function(){ SC.free.ops = []; run(false); };
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 430', style: 'min-width:900px'}, wrap);
+  s('defs', null, sv).innerHTML = '<marker id="ca" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="context-stroke"/></marker>';
+  var CX = [155, 450, 745, 1040], E = {cores: []};
+  [0, 1, 2, 3].forEach(function(c){
+    var x = 20 + c * 295, gr = s('g', null, sv);
+    s('rect', {x: x, y: 10, width: 275, height: 170, rx: 9, 'class': 'box'}, gr);
+    s('text', {x: x + 10, y: 30, 'class': 'h'}, gr, 'Core ' + c + ' \u2014 private cache');
+    var rows = LN.map(function(L, k){
+      var y = 44 + k * 32;
+      var r = s('rect', {x: x + 10, y: y, width: 255, height: 26, rx: 4, 'class': 'sunk'}, gr);
+      s('text', {x: x + 20, y: y + 18, 'class': 'm', 'font-size': 12}, gr, L);
+      var st = s('text', {x: x + 70, y: y + 19, 'class': 'm', 'font-size': 15, 'font-weight': 600}, gr, '');
+      var v = s('text', {x: x + 100, y: y + 18, 'font-size': 11.5}, gr, '');
+      return {r: r, st: st, v: v};
+    });
+    E.cores.push({g: gr, rows: rows});
+  });
+  E.l3 = s('g', null, sv); s('rect', {x: 20, y: 222, width: 1160, height: 76, rx: 9, 'class': 'a3b'}, E.l3);
+  s('text', {x: 32, y: 244, 'class': 'h'}, E.l3, 'L3 shadow tags: which cores hold each line');
+  E.l3T = s('text', {x: 32, y: 270, 'class': 'm', 'font-size': 12.5}, E.l3, ''); E.l3T2 = s('text', {x: 32, y: 290, 'class': 's'}, E.l3, '');
+  E.dr = s('g', null, sv); s('rect', {x: 20, y: 340, width: 1160, height: 76, rx: 9, 'class': 'box'}, E.dr);
+  s('text', {x: 32, y: 362, 'class': 'h'}, E.dr, 'DRAM');
+  E.drT = s('text', {x: 32, y: 388, 'class': 'm', 'font-size': 12.5}, E.dr, ''); E.drT2 = s('text', {x: 32, y: 406, 'class': 's'}, E.dr, '');
+  E.arr = s('g', null, sv);
+  var stp = App.stepper(root, {render: draw, pills: false});
+  var stats = h('div', {'class': 'card'}, root);
+
+  function replay(ops){
+    var S = {}, cv = {}, mv = {}, nv = {}, fr = [], T = {probes: 0, inv: 0, c2c: 0, memR: 0, memW: 0, hits: 0};
+    LN.forEach(function(L){ S[L] = ['I', 'I', 'I', 'I']; cv[L] = [0, 0, 0, 0]; mv[L] = 0; nv[L] = 0; });
+    ops.forEach(function(o){
+      var c = o[0], k = o[1], L = o[2], st = S[L], M = [], A = [], d = '', before = st.slice();
+      var holders = [0, 1, 2, 3].filter(function(j){ return j !== c && st[j] !== 'I'; });
+      var what = k === 'r' ? 'reads' : k === 'w' ? 'writes' : 'evicts';
+      var t = 'Core ' + c + ' ' + what + ' ' + L + (o[3] ? '.' + o[3] : '');
+      if (k === 'r'){
+        if (st[c] !== 'I'){ T.hits++; d = 'Hit in state ' + st[c] + ': no message leaves core ' + c + '.'; }
+        else {
+          A.push(['req', c]);
+          var own = holders.filter(function(j){ return st[j] === 'M' || st[j] === 'O'; })[0], ex = holders.filter(function(j){ return st[j] === 'E'; })[0];
+          if (own !== undefined){
+            T.probes++; T.c2c++; A.push(['probe', own]); A.push(['c2c', own, c]);
+            d = 'Miss. The shadow tags show core ' + own + ' holding the line dirty (' + st[own] + '). The L3 probes core ' + own + ', which sends its 64 bytes to core ' + c + ' (cache to cache). Core ' + own + ' keeps the dirty data as <b>O</b> (owner); core ' + c + ' gets <b>S</b>. DRAM is not read and not written: it stays stale.';
+            st[own] = 'O'; st[c] = 'S'; cv[L][c] = cv[L][own];
+          } else if (ex !== undefined){
+            T.probes++; T.c2c++; A.push(['probe', ex]); A.push(['c2c', ex, c]);
+            d = 'Miss. Core ' + ex + ' holds the only copy, clean (E). It is probed, supplies the line and drops to <b>S</b>; core ' + c + ' gets <b>S</b>. From now on neither may write without asking.';
+            st[ex] = 'S'; st[c] = 'S'; cv[L][c] = cv[L][ex];
+          } else if (holders.length){
+            T.memR++; A.push(['mem', c]);
+            d = 'Miss. Cores ' + holders.join(', ') + ' hold clean S copies and DRAM is up to date, so no probe is needed; the line is supplied (from DRAM here; which clean copy is used is an implementation choice). Core ' + c + ' gets <b>S</b>.';
+            st[c] = 'S'; cv[L][c] = mv[L];
+          } else {
+            T.memR++; A.push(['mem', c]);
+            d = 'Miss. The shadow tags show no other holder: the line comes from DRAM and core ' + c + ' gets it <b>E</b>: only copy, clean. A later write needs no message.';
+            st[c] = 'E'; cv[L][c] = mv[L];
+          }
+        }
+      } else if (k === 'w'){
+        nv[L]++;
+        if (st[c] === 'M'){ T.hits++; d = 'Already <b>M</b>: the write happens in the L1d, no message.'; }
+        else if (st[c] === 'E'){ T.hits++; d = '<b>E \u2192 M</b> silently: no other copy exists, so no one needs to be told.'; }
+        else {
+          A.push(['req', c]);
+          if (st[c] === 'S' || st[c] === 'O'){
+            d = 'Core ' + c + ' holds ' + st[c] + ', which is read-only. It sends an upgrade request; ';
+          } else {
+            d = 'Core ' + c + ' does not have the line, so it sends an ' + g('rfo') + ': ';
+          }
+          var src = holders.filter(function(j){ return st[j] === 'M' || st[j] === 'O' || st[j] === 'E'; })[0];
+          if (st[c] === 'I'){
+            if (src !== undefined){ T.c2c++; A.push(['c2c', src, c]); d += 'core ' + src + ' supplies the data and ';}
+            else { T.memR++; A.push(['mem', c]); d += 'the data comes from DRAM and '; }
+          }
+          if (holders.length){ holders.forEach(function(j){ T.probes++; T.inv++; A.push(['inv', j]); st[j] = 'I'; }); d += 'the L3 invalidates core' + (holders.length > 1 ? 's ' : ' ') + holders.join(', ') + '. '; }
+          else d += 'no other core holds it, so nothing is invalidated. ';
+          d += 'Core ' + c + ' ends in <b>M</b>.';
+          if (L === 'F' && holders.length) d += ' Core ' + c + ' only changed ' + L + '.' + o[3] + ', and core ' + holders[0] + ' never touches ' + o[3] + ': coherence is tracked per 64-byte line, so the whole line moved anyway. This is ' + g('fshare') + '.';
+        }
+        st[c] = 'M'; cv[L][c] = nv[L];
+      } else {
+        if (st[c] === 'M' || st[c] === 'O'){ T.memW++; A.push(['wb', c]); mv[L] = cv[L][c]; d = 'The line is dirty (' + st[c] + '), so its 64 bytes are written back to DRAM before core ' + c + ' drops it. DRAM is current again.'; }
+        else if (st[c] === 'I') d = 'Core ' + c + ' does not hold the line: nothing to do.';
+        else d = 'Clean (' + st[c] + '): dropped silently, DRAM already has the same data.';
+        st[c] = 'I';
+      }
+      var snap = {}; LN.forEach(function(L2){ snap[L2] = {st: S[L2].slice(), cv: cv[L2].slice(), mv: mv[L2], nv: nv[L2]}; });
+      fr.push({t: t, d: d, snap: snap, A: A, L: L, c: c, T: JSON.parse(JSON.stringify(T)), before: before});
+    });
+    return fr;
+  }
+  function run(toEnd){
+    free.style.display = cur === 'free' ? '' : 'none';
+    var fr = replay(SC[cur].ops);
+    if (!fr.length){
+      var snap0 = {}; LN.forEach(function(L){ snap0[L] = {st: ['I', 'I', 'I', 'I'], cv: [0, 0, 0, 0], mv: 0, nv: 0}; });
+      fr = [{t: 'Empty', d: 'Use the buttons above to add operations.', snap: snap0, A: [], T: {probes: 0, inv: 0, c2c: 0, memR: 0, memW: 0, hits: 0}}];
+    }
+    stp.set(fr); if (toEnd) stp.go(fr.length - 1);
+  }
+  var COL = {M: 'var(--a1)', O: 'var(--a3)', E: 'var(--a2)', S: 'var(--a4)', I: 'var(--tx3)'};
+  function draw(f){
+    var used = cur === 'share' ? ['A'] : cur === 'fs' ? ['F'] : cur === 'pad' ? ['G1', 'G2'] : ['A', 'F'];
+    E.cores.forEach(function(cc, c){
+      cc.rows.forEach(function(R, k){
+        var L = LN[k], sn = f.snap[L], st = sn.st[c], show = used.indexOf(L) >= 0;
+        R.r.style.opacity = show ? 1 : .3; R.st.textContent = show ? st : ''; R.st.setAttribute('fill', COL[st]);
+        R.v.textContent = show ? (st === 'I' ? LD[L] : 'version ' + sn.cv[c] + (sn.cv[c] < sn.nv ? ' (stale!)' : '')) : '';
+        R.r.setAttribute('class', show && f.L === L && f.c === c ? 'on box' : 'sunk');
+      });
+      cc.g.setAttribute('class', f.c === c ? 'on' : '');
+    });
+    E.l3T.textContent = used.map(function(L){ var hs = [0, 1, 2, 3].filter(function(j){ return f.snap[L].st[j] !== 'I'; }); return L + ': ' + (hs.length ? 'cores ' + hs.join(', ') : 'nobody'); }).join('     ');
+    E.l3T2.textContent = 'probes go only to the cores listed here';
+    E.drT.textContent = used.map(function(L){ var sn = f.snap[L]; return L + ': version ' + sn.mv + (sn.mv < sn.nv ? ' (stale: newest is ' + sn.nv + ' in a cache)' : ' (current)'); }).join('     ');
+    E.drT2.textContent = 'O and M lines are newer than DRAM until written back';
+    E.arr.innerHTML = '';
+    var P = function(d, col){ s('path', {d: d, fill: 'none', stroke: col, 'stroke-width': 3, 'marker-end': 'url(#ca)', 'class': 'flow'}, E.arr); };
+    (f.A || []).forEach(function(a){
+      var x = CX[a[1]];
+      if (a[0] === 'req') P('M ' + (x - 30) + ' 182 L ' + (x - 30) + ' 220', 'var(--act)');
+      if (a[0] === 'probe') P('M ' + (x + 20) + ' 220 L ' + (x + 20) + ' 182', 'var(--a3)');
+      if (a[0] === 'inv') P('M ' + (x + 20) + ' 220 L ' + (x + 20) + ' 182', 'var(--bad)');
+      if (a[0] === 'c2c'){ var x2 = CX[a[2]]; P('M ' + (x + 45) + ' 182 L ' + (x + 45) + ' 204 L ' + (x2 + 5) + ' 204 L ' + (x2 + 5) + ' 184', 'var(--a2)'); }
+      if (a[0] === 'mem') P('M ' + (x - 60) + ' 338 L ' + (x - 60) + ' 184', 'var(--a2)');
+      if (a[0] === 'wb') P('M ' + (x + 70) + ' 184 L ' + (x + 70) + ' 338', 'var(--a1)');
+    });
+    var T = f.T;
+    stats.innerHTML = '<h3>Messages so far</h3><table class="mt"><tr><th>probes sent</th><th>invalidations</th><th>cache-to-cache transfers</th><th>DRAM reads</th><th>DRAM writes</th><th>hits (no message)</th></tr><tr><td>' + T.probes + '</td><td>' + T.inv + '</td><td>' + T.c2c + '</td><td>' + T.memR + '</td><td>' + T.memW + '</td><td>' + T.hits + '</td></tr></table>' +
+      (cur === 'fs' || cur === 'pad' ? '<p class="note" style="margin-top:8px">Same six writes in both scenarios. Unpadded: every write after the first moves the line between cores. Padded: two cold misses, then every write is a local hit. <code>____cacheline_aligned_in_smp</code> in the Linux kernel exists to force exactly this padded layout for hot per-CPU and lock structures.</p>' : '<p class="note" style="margin-top:8px">Arrows: amber = request to the L3, purple = probe, red = invalidate, green = data, orange-red = write-back.</p>');
+  }
+  run(false);
+  return {key: stp.key};
+}});
+
+/* ======================= chapter: prefetchers ======================= */
+App.chapter({id: 'pref', num: '09', short: 'Prefetchers', title: 'Prefetchers: fetching the next line before it is asked for',
+sub: 'A prefetcher watches the addresses a core misses on and bets on the next ones. When the bet is right a DRAM latency disappears; when the pattern has no structure, nothing can be predicted.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, CFG = App.CFG;
+  var pat = 'seq', dist = 4, onPF = true;
+  var intro = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, intro, '<h3>What is modelled</h3><p>One detector watches the sequence of cache lines a load touches. When the distance between consecutive lines repeats (+1 for a ' + g('stream', 'stream') + ', +k for a ' + g('stride') + '), it becomes confident and requests the next <i>distance</i> lines ahead. A prefetch that arrives before the load hits; one still in flight is ' + g('late') + '; lines prefetched but never used are ' + g('pollute', 'pollution') + '. Latency per line = the DRAM value in the latency settings (' + App.dramCycles() + ' cycles now).</p>');
+  h('div', {'class': 'card'}, intro, '<h3>What is not published</h3><p>Zen+ has hardware prefetchers at the L1d and at the L2. AMD does not publish their table sizes, confidence thresholds or prefetch distances. The detector here uses one tracking entry, confidence after two matching deltas, and the distance you choose. Use it to reason about which access patterns can be predicted at all, not to predict exact numbers.</p>');
+  var ctl = h('div', {'class': 'stp'}, root);
+  App.seg(ctl, [['seq', 'data[]: sequential'], ['stride', 'stride of 3 lines'], ['hist', 'hist[data[i]]'], ['chase', 'pointer chase']], function(v){ pat = v; draw(); }, pat);
+  h('span', {'class': 'note'}, ctl, 'distance:');
+  App.seg(ctl, [[1, '1'], [2, '2'], [4, '4'], [8, '8']], function(v){ dist = v; draw(); }, dist);
+  var tg = h('label', {'class': 'note'}, ctl, '<input type="checkbox" checked> prefetcher on');
+  tg.querySelector('input').onchange = function(e){ onPF = e.target.checked; draw(); };
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 520', style: 'min-width:900px'}, wrap);
+  var note = h('div', {'class': 'card'}, root);
+
+  function stream(){
+    var L = [], i, rnd = 12345, R = function(){ rnd = (rnd * 1103515245 + 12345) & 0x7fffffff; return rnd >> 16; };
+    if (pat === 'seq') for (i = 0; i < 24; i++) L.push({line: i, gap: 100});
+    if (pat === 'stride') for (i = 0; i < 16; i++) L.push({line: i * 3, gap: 60});
+    if (pat === 'hist'){ var seen = []; for (i = 0; i < 40; i++){ L.push({line: R() % 16, gap: 30}); } }
+    if (pat === 'chase'){ var perm = [], p; for (i = 0; i < 48; i++) perm.push(i); for (i = 47; i > 0; i--){ var j = R() % i; p = perm[i]; perm[i] = perm[j]; perm[j] = p; } for (i = 0; i < 16; i++) L.push({line: perm[i], gap: 5, dep: true}); }
+    return L;
+  }
+  function simulate(){
+    var D = App.dramCycles(), acc = stream(), cache = {}, inflight = {}, pfIssued = {}, t = 0, last = null, dlt = null, conf = 0, ev = [];
+    var st = {hit: 0, cov: 0, late: 0, miss: 0, pf: 0, stall: 0};
+    acc.forEach(function(a, i){
+      var L = a.line, r = {i: i, line: L, t: t};
+      if (cache[L] !== undefined && cache[L] <= t){ r.kind = pfIssued[L] && !pfIssued[L].used ? 'cov' : 'hit'; r.done = t + CFG.l1; }
+      else if (cache[L] !== undefined){ r.kind = pfIssued[L] && !pfIssued[L].used ? 'late' : 'hit'; r.done = cache[L]; }
+      else { r.kind = 'miss'; r.done = t + D; cache[L] = r.done; r.req = t; }
+      if (pfIssued[L]) pfIssued[L].used = true;
+      if (r.kind === 'hit') st.hit++; else if (r.kind === 'cov') st.cov++; else if (r.kind === 'late') st.late++; else st.miss++;
+      st.stall += Math.max(0, r.done - t - CFG.l1);
+      /* detector */
+      if (last !== null){ var dd = L - last; if (dd !== 0 && dd === dlt) conf++; else conf = 0; dlt = dd; }
+      last = L; r.conf = conf; r.dlt = dlt;
+      if (onPF && conf >= 1){
+        for (var k = 1; k <= dist; k++){ var nl = L + dlt * k; if (nl >= 0 && cache[nl] === undefined){ cache[nl] = t + D; pfIssued[nl] = {at: t, done: t + D, used: false}; st.pf++; ev.push({line: nl, at: t, done: t + D}); } }
+      }
+      ev.push(r);
+      t = a.dep ? r.done + a.gap : Math.max(t + a.gap, r.kind === 'miss' || r.kind === 'late' ? r.done - a.gap * 0 : t + a.gap);
+      if (!a.dep && (r.kind === 'miss' || r.kind === 'late')) t = Math.max(t, r.done);
+    });
+    st.useless = Object.keys(pfIssued).filter(function(k){ return !pfIssued[k].used; }).length;
+    st.end = t; st.D = D;
+    return {acc: ev.filter(function(e){ return e.kind; }), pf: ev.filter(function(e){ return !e.kind; }), st: st, pfIssued: pfIssued};
+  }
+  function draw(){
+    var R = simulate(), st = R.st; sv.innerHTML = '';
+    var tmax = Math.max(st.end, 1), X = function(t){ return 150 + (t / tmax) * 1020; };
+    s('text', {x: 10, y: 22, 'class': 'h'}, sv, 'Each row is one access, top to bottom in program order; bars run from the access to its data');
+    var n = R.acc.length, rh = Math.min(20, 400 / n);
+    R.acc.forEach(function(a, i){
+      var y = 40 + i * rh;
+      s('text', {x: 10, y: y + rh * .7, 'class': 's m'}, sv, 'line ' + a.line);
+      var cls = a.kind === 'miss' ? 'badb' : a.kind === 'late' ? 'a1b' : a.kind === 'cov' ? 'okb' : 'a4b';
+      s('rect', {x: X(a.t), y: y + 1, width: Math.max(3, X(a.done) - X(a.t)), height: rh - 3, rx: 2, 'class': cls}, sv);
+    });
+    R.pf.forEach(function(p){
+      var i = R.acc.findIndex(function(a){ return a.line === p.line; }), y = i >= 0 ? 40 + i * rh + rh / 2 : 40 + n * rh + 6;
+      s('line', {x1: X(p.at), x2: X(p.done), y1: y, y2: y, stroke: 'var(--tx3)', 'stroke-width': 1, 'stroke-dasharray': '3 3'}, sv);
+    });
+    var ly = 40 + n * rh + 24;
+    [['badb', 'miss: waits a full DRAM latency'], ['a1b', 'late prefetch: waits the rest'], ['okb', 'covered by a prefetch'], ['a4b', 'hit (line already cached)']].forEach(function(l, k){
+      s('rect', {x: 150 + k * 260, y: ly, width: 16, height: 12, rx: 2, 'class': l[0]}, sv); s('text', {x: 172 + k * 260, y: ly + 11, 'class': 's'}, sv, l[1]);
+    });
+    s('text', {x: 150, y: ly + 34, 'class': 's'}, sv, 'dashed = prefetch in flight \u00b7 total time ' + st.end + ' cycles (' + (st.end / CFG.ghz).toFixed(0) + ' ns)');
+    sv.setAttribute('viewBox', '0 0 1200 ' + (ly + 50));
+    var tot = st.hit + st.cov + st.late + st.miss;
+    var txt = {
+      seq: 'The histogram reads <code>data[]</code> one byte per iteration, so it enters a new line every ~100 cycles (model). After two +1 steps the detector is confident. With distance ' + dist + ', prefetches are issued ' + dist + ' lines (' + dist * 100 + ' cycles) ahead against a ' + st.D + '-cycle latency: ' + (dist * 100 >= st.D ? 'far enough, so accesses after warm-up are covered.' : 'not far enough, so prefetches are late and part of each latency remains.') + ' Sequential access is why earlier benchmarks in this course never saw DRAM latency directly.',
+      stride: 'Every third line (for example one field of a 192-byte struct). The deltas repeat (+3), so a stride detector locks on exactly as a stream detector does for +1; the prefetches just skip lines.',
+      hist: 'The loads of <code>hist[data[i]]</code> jump around 16 lines with no repeating delta, so the detector never becomes confident. It does not matter: after the first touch of each line everything hits, because the whole table fits in the L1d. Temporal locality, not prefetching, carries this access.',
+      chase: 'Each address is the data returned by the previous load, and the next line is random. The detector sees no repeating delta, and even a perfect predictor could not help because the address does not exist until the previous miss returns. Every access pays the full latency, one after another: this is the pattern Block C uses to measure true latency.'
+    }[pat];
+    note.innerHTML = '<h3>' + {seq: 'Sequential', stride: 'Strided', hist: 'Data-dependent indices, small table', chase: 'Pointer chase'}[pat] + '</h3><p>' + txt + '</p><table class="mt" style="margin-top:8px"><tr><th>accesses</th><th>covered</th><th>late</th><th>misses</th><th>hits</th><th>prefetches issued</th><th>never used</th><th>stall cycles</th></tr><tr><td>' + tot + '</td><td>' + st.cov + '</td><td>' + st.late + '</td><td>' + st.miss + '</td><td>' + st.hit + '</td><td>' + st.pf + '</td><td>' + st.useless + '</td><td>' + st.stall + '</td></tr></table>' +
+      '<p class="note" style="margin-top:8px">' + g('swpf', 'Software prefetch') + ' (<code>__builtin_prefetch(p, rw, locality)</code> \u2192 <code>prefetcht0/t1/t2/nta</code>, <code>prefetchw</code>) helps when the program knows an address early but the pattern defeats the hardware, for example the next node of a list whose pointer was loaded earlier.</p>';
+  }
+  App.onCfg(draw);
+  draw();
+}});
+
+/* ======================= chapter: devices ======================= */
+App.chapter({id: 'dev', num: '10', short: 'Devices & DMA', title: 'Devices: MMIO, DMA, the IOMMU and interrupts',
+sub: 'One 4 KB read from the NVMe SSD, from the io_uring request to the application touching the data. The SSD reads and writes host memory itself, through the IOMMU, coherently with the CPU caches.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g;
+  var intro = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, intro, '<h3>Two ways the CPU and a device touch</h3><p>' + g('mmio') + ': device registers sit at physical addresses inside the device\u2019s ' + g('bar') + '; the CPU reads or writes them with ordinary <code>mov</code> instructions on pages mapped uncacheable (UC, Chapter 07). ' + g('dma') + ': the device itself reads and writes host memory, which is how bulk data moves. NVMe uses MMIO only for tiny ' + g('doorbell', 'doorbells') + ' and DMA for everything else.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>The queues</h3><p>' + g('nvme') + ' works through rings in host RAM: a submission queue of 64-byte commands and a completion queue of 16-byte entries, each with head and tail indices. The driver produces commands and the SSD consumes them; the SSD produces completions and the driver consumes them. io_uring (Modules 25\u201326) uses the same design between user space and the kernel.</p>');
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 600', style: 'min-width:920px'}, wrap);
+  s('defs', null, sv).innerHTML = '<marker id="da" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="context-stroke"/></marker>';
+  var E = {};
+  function box(id, x, y, w, ht, t, sub, cls){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': cls || 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 20, 'class': 'h'}, gr, t); if (sub) s('text', {x: x + 10, y: y + 37, 'class': 's'}, gr, sub); E[id] = gr; return gr; }
+  box('core', 10, 10, 330, 170, 'Core 0 \u2014 driver, io_uring', 'its L1d/L2 lines for the queues and buffer:');
+  E.cl = [0, 1, 2].map(function(k){ return {r: s('rect', {x: 22, y: 58 + k * 38, width: 306, height: 30, rx: 5, 'class': 'sunk'}, E.core), t: s('text', {x: 32, y: 78 + k * 38, 'font-size': 12}, E.core, '')}; });
+  box('fab', 10, 200, 740, 38, 'Infinity Fabric \u2014 coherent: device traffic is checked against CPU caches', '', 'a3b');
+  box('dram', 10, 260, 560, 330, 'DRAM (host memory)');
+  s('text', {x: 22, y: 302, 'class': 'h'}, E.dram, 'I/O submission queue 1 (64 B entries)');
+  E.sq = []; for (var i = 0; i < 8; i++) E.sq.push({r: s('rect', {x: 22 + i * 66, y: 310, width: 60, height: 40, rx: 4, 'class': 'sunk'}, E.dram), t: s('text', {x: 52 + i * 66, y: 335, 'text-anchor': 'middle', 'class': 'm', 'font-size': 11}, E.dram, '')});
+  E.sqP = s('text', {x: 22, y: 366, 'class': 's'}, E.dram, '');
+  s('text', {x: 22, y: 392, 'class': 'h'}, E.dram, 'I/O completion queue 1 (16 B entries, phase bit)');
+  E.cq = []; for (i = 0; i < 8; i++) E.cq.push({r: s('rect', {x: 22 + i * 66, y: 400, width: 60, height: 36, rx: 4, 'class': 'sunk'}, E.dram), t: s('text', {x: 52 + i * 66, y: 423, 'text-anchor': 'middle', 'class': 'm', 'font-size': 11}, E.dram, '')});
+  E.cqP = s('text', {x: 22, y: 452, 'class': 's'}, E.dram, '');
+  s('text', {x: 22, y: 478, 'class': 'h'}, E.dram, 'read buffer: 4 KB = 64 lines');
+  E.buf = []; for (i = 0; i < 64; i++) E.buf.push(s('rect', {x: 22 + (i % 32) * 16.5, y: 488 + Math.floor(i / 32) * 20, width: 14, height: 16, rx: 2, 'class': 'sunk'}, E.dram));
+  E.bufT = s('text', {x: 22, y: 548, 'class': 's'}, E.dram, '');
+  E.bufT2 = s('text', {x: 22, y: 566, 'class': 's'}, E.dram, '');
+  box('hub', 590, 260, 170, 330, 'I/O hub');
+  E.rc = s('rect', {x: 600, y: 290, width: 150, height: 60, rx: 5, 'class': 'box'}, E.hub); s('text', {x: 610, y: 312, 'font-size': 12}, E.hub, 'PCIe root complex'); s('text', {x: 610, y: 330, 'class': 's'}, E.hub, 'MMIO \u2194 TLPs');
+  E.io = s('rect', {x: 600, y: 362, width: 150, height: 90, rx: 5, 'class': 'box'}, E.hub); s('text', {x: 610, y: 384, 'font-size': 12}, E.hub, 'IOMMU + IOTLB'); E.ioT = s('text', {x: 610, y: 404, 'class': 's m'}, E.hub, ''); E.ioT2 = s('text', {x: 610, y: 422, 'class': 's m'}, E.hub, ''); E.ioT3 = s('text', {x: 610, y: 440, 'class': 's'}, E.hub, '');
+  E.ic = s('rect', {x: 600, y: 464, width: 150, height: 60, rx: 5, 'class': 'box'}, E.hub); s('text', {x: 610, y: 486, 'font-size': 12}, E.hub, 'interrupt remap'); s('text', {x: 610, y: 504, 'class': 's'}, E.hub, '\u2192 local APIC');
+  box('link', 780, 260, 90, 330, 'PCIe', 'link');
+  E.tlp = [0, 1, 2, 3].map(function(k){ return s('text', {x: 825, y: 330 + k * 60, 'text-anchor': 'middle', 'class': 'm', 'font-size': 10}, E.link, ''); });
+  box('ssd', 890, 10, 300, 580, 'NVMe SSD');
+  s('rect', {x: 900, y: 44, width: 280, height: 110, rx: 5, 'class': 'a3b'}, E.ssd); s('text', {x: 910, y: 64, 'font-size': 12}, E.ssd, 'BAR0 registers (MMIO)');
+  E.db1 = s('text', {x: 910, y: 88, 'class': 'm', 'font-size': 11.5}, E.ssd, ''); E.db2 = s('text', {x: 910, y: 110, 'class': 'm', 'font-size': 11.5}, E.ssd, ''); s('text', {x: 910, y: 140, 'class': 's'}, E.ssd, 'doorbell stride 4 B; admin queue 0 at 0x1000/0x1004');
+  E.ctl = s('rect', {x: 900, y: 170, width: 280, height: 150, rx: 5, 'class': 'box'}, E.ssd); s('text', {x: 910, y: 192, 'font-size': 12}, E.ssd, 'controller + DMA engine');
+  E.ctT = [0, 1, 2, 3].map(function(k){ return s('text', {x: 910, y: 216 + k * 22, 'font-size': 11.5}, E.ssd, ''); });
+  E.nand = s('rect', {x: 900, y: 336, width: 280, height: 240, rx: 5, 'class': 'box'}, E.ssd); s('text', {x: 910, y: 358, 'font-size': 12}, E.ssd, 'NAND flash');
+  for (i = 0; i < 24; i++) s('rect', {x: 912 + (i % 6) * 44, y: 372 + Math.floor(i / 6) * 48, width: 38, height: 40, rx: 3, 'class': 'sunk'}, E.ssd);
+  E.nT = s('text', {x: 910, y: 568, 'class': 's'}, E.ssd, '');
+  var AR = {};
+  function ar(id, d){ AR[id] = s('path', {d: d, 'class': 'wire', 'stroke-width': 2.5, 'marker-end': 'url(#da)', style: 'opacity:.12'}, sv); }
+  ar('core_dram', 'M 120 180 L 120 258');
+  ar('core_hub', 'M 300 180 L 300 190 L 675 190 L 675 288');
+  ar('hub_link', 'M 752 320 L 778 320');
+  ar('link_ssd', 'M 870 300 L 888 300');
+  ar('ssd_link', 'M 888 420 L 872 420');
+  ar('link_hub', 'M 778 420 L 752 420');
+  ar('hub_fab', 'M 640 360 L 640 240');
+  ar('fab_core', 'M 200 200 L 200 182');
+  ar('fab_dram', 'M 420 238 L 420 258');
+  ar('hub_irq', 'M 700 464 L 700 440 L 700 190 L 330 150');
+  var stp = App.stepper(root, {render: draw});
+  var F = [];
+  function f(p, t, d, st){ st.p = p; st.t = t; st.d = d; F.push(st); }
+  f('command', 'The driver writes a command into the submission queue', 'The application\u2019s io_uring read request reaches the NVMe driver (<code>nvme_queue_rq()</code>), which fills slot 3 of I/O submission queue 1 with a 64-byte Read command: opcode 0x02, command ID 17, namespace 1, starting LBA 0x123400, 8 blocks of 512 B, and PRP1 = the ' + g('iova') + ' of the 4 KB buffer. These are ordinary stores to write-back memory, so the command sits in core 0\u2019s L1d as a dirty line; DRAM does not have it yet.', {cl: [['SQ slot 3: dirty (M)', 'a1b'], ['CQ slot 3: not cached', 'sunk'], ['buffer: not cached', 'sunk']], sq: 3, sqTail: 4, cqPh: 0, buf: 0, ar: ['core_dram'], hl: ['core'], ct: ['idle'], db: [3, 3]});
+  f('doorbell', 'Ring the doorbell: one MMIO store', 'The driver writes the new tail (4) to the SQ1 tail doorbell at BAR0 + 0x1008 with <code>writel()</code>. That page is mapped UC, so the store is not cached or merged; it leaves the core as-is. x86 keeps stores in order, so it cannot become visible before the command stores above it. On weakly ordered CPUs <code>writel()</code> adds a barrier to give the same guarantee.', {cl: [['SQ slot 3: dirty (M)', 'a1b'], ['CQ slot 3: not cached', 'sunk'], ['buffer: not cached', 'sunk']], sq: 3, sqTail: 4, buf: 0, ar: ['core_hub'], hl: ['core', 'hub'], ct: ['idle'], db: [3, 3]});
+  f('MWr', 'The root complex sends a posted write', 'The root complex turns the MMIO store into a PCIe Memory Write ' + g('tlp') + ' carrying 4 bytes. Writes are <b>posted</b>: the sender does not wait for any reply. The SSD latches SQ1 tail = 4 and now knows slot 3 holds a new command.', {cl: [['SQ slot 3: dirty (M)', 'a1b'], ['CQ slot 3: not cached', 'sunk'], ['buffer: not cached', 'sunk']], sq: 3, sqTail: 4, buf: 0, ar: ['hub_link', 'link_ssd'], hl: ['link', 'ssd'], tlp: ['MWr 4 B \u2192', 'SQ1 tail = 4'], ct: ['doorbell: SQ1 tail 3 \u2192 4'], db: [4, 3]});
+  f('fetch', 'The SSD fetches the command by DMA', 'The SSD sends a Memory Read TLP (non-posted: it expects a completion) for the 64 bytes at the IOVA of slot 3. The ' + g('iommu') + ' translates that IOVA to a physical address through its IOTLB, walking its own page tables on a miss, and rejects addresses the OS never mapped for this device. The fabric then performs a coherent read: core 0\u2019s L1d holds the line dirty, so it is probed and supplies the data (' + g('iocoh') + '). The command travels back in a Completion-with-Data TLP.', {cl: [['SQ slot 3: supplied to device', 'okb'], ['CQ slot 3: not cached', 'sunk'], ['buffer: not cached', 'sunk']], sq: 3, sqTail: 4, sqHead: 4, buf: 0, ar: ['ssd_link', 'link_hub', 'hub_fab', 'fab_core', 'hub_link', 'link_ssd'], hl: ['hub', 'fab', 'core', 'link'], tlp: ['\u2190 MRd 64 B', 'slot 3 IOVA', 'CplD 64 B \u2192', 'command'], iommu: ['IOVA \u2192 PA', 'IOTLB lookup'], ct: ['command fetched: Read, 8 \u00d7 512 B', 'CID 17, PRP1 = buffer IOVA'], db: [4, 3]});
+  f('flash', 'The SSD reads flash', 'The controller maps LBA 0x123400 to a NAND location and reads it. This is the slow part: tens of microseconds is typical for a NAND read, thousands of times a DRAM access. It is a typical figure, not a measurement; <code>fio</code> measures your drive.', {cl: [['SQ slot 3: clean copy', 'sunk'], ['CQ slot 3: not cached', 'sunk'], ['buffer: not cached', 'sunk']], sq: 3, sqTail: 4, sqHead: 4, buf: 0, ar: [], hl: ['ssd'], ct: ['reading NAND', 'LBA 0x123400, 4 KB'], nand: 1, db: [4, 3]});
+  f('data', 'DMA the data into the buffer', 'The SSD writes 4096 bytes with posted Memory Write TLPs, each at most Max_Payload_Size bytes (256 B shown: 16 TLPs; <code>lspci -vv</code> shows your value). Each is translated by the IOMMU. The fabric writes the lines to DRAM and invalidates any copies of them in the CPU caches, so no core can later read a stale line.', {cl: [['SQ slot 3: clean copy', 'sunk'], ['CQ slot 3: not cached', 'sunk'], ['buffer: copies invalidated', 'badb']], sq: 3, sqTail: 4, sqHead: 4, buf: 64, ar: ['ssd_link', 'link_hub', 'hub_fab', 'fab_dram'], hl: ['hub', 'fab', 'dram', 'link'], tlp: ['\u2190 MWr 256 B', '\u00d7 16', 'data'], iommu: ['IOVA \u2192 PA', 'per TLP'], ct: ['DMA write 4 KB'], db: [4, 3]});
+  f('CQE', 'Post the completion entry', 'The SSD writes a 16-byte completion into CQ1 slot 3: status success, SQ head = 4, command ID 17, and the phase bit set to 1. The phase bit flips on every pass around the ring, so the driver can tell a new entry from an old one without a separate counter. PCIe keeps posted writes in order: the data is in memory before this entry is.', {cl: [['SQ slot 3: clean copy', 'sunk'], ['CQ slot 3: invalidated', 'badb'], ['buffer: copies invalidated', 'badb']], sq: 3, sqTail: 4, sqHead: 4, buf: 64, cqe: 1, ar: ['ssd_link', 'link_hub', 'hub_fab', 'fab_dram'], hl: ['dram', 'link'], tlp: ['\u2190 MWr 16 B', 'CQ1 slot 3', 'phase = 1'], ct: ['completion posted'], db: [4, 3]});
+  f('MSI-X', 'Interrupt: another memory write', 'The SSD raises ' + g('msix') + ': one more posted write, a 32-bit message to an address in the 0xFEE0_0000 range. The IOMMU\u2019s interrupt remapping checks and routes it to core 0\u2019s local APIC, and the core enters <code>nvme_irq()</code>. With polled I/O (<code>IORING_SETUP_IOPOLL</code>) there is no interrupt: the driver polls the completion queue instead.', {cl: [['SQ slot 3: clean copy', 'sunk'], ['CQ slot 3: invalidated', 'badb'], ['buffer: copies invalidated', 'badb']], sq: 3, sqTail: 4, sqHead: 4, buf: 64, cqe: 1, ar: ['ssd_link', 'link_hub', 'hub_irq'], hl: ['hub', 'core', 'link'], tlp: ['\u2190 MWr 4 B', '0xFEE0_xxxx', 'interrupt'], ct: ['MSI-X vector sent'], db: [4, 3]});
+  f('consume', 'The driver consumes the completion', 'The driver reads CQ1 slot 3. The DMA write invalidated that line, so the load misses and reads DRAM. The phase bit matches the value expected on this pass: new entry. The request completes and io_uring posts a completion to the application\u2019s ring. The driver writes CQ1 head = 4 to the doorbell at BAR0 + 0x100C so the SSD may reuse the slot.', {cl: [['SQ slot 3: clean copy', 'sunk'], ['CQ slot 3: read from DRAM', 'a4b'], ['buffer: copies invalidated', 'badb']], sq: 3, sqTail: 4, sqHead: 4, buf: 64, cqe: 1, cqHead: 4, ar: ['fab_dram', 'fab_core', 'core_hub', 'hub_link', 'link_ssd'], hl: ['core', 'dram'], tlp: ['MWr 4 B \u2192', 'CQ1 head = 4'], ct: ['CQ1 head 3 \u2192 4'], db: [4, 4]});
+  f('use', 'The application reads the data', 'The application touches the buffer. Each of its 64 lines misses in the caches and comes from DRAM (Chapters 05\u201306): the data never passed through a CPU cache on the way in. Every byte was moved by the device; the CPU executed a few hundred instructions for the whole 4 KB.', {cl: [['SQ slot 3: clean copy', 'sunk'], ['CQ slot 3: cached (S/E)', 'a4b'], ['buffer: filling on demand', 'a4b']], sq: 3, sqTail: 4, sqHead: 4, buf: 64, cqe: 1, cqHead: 4, ar: ['fab_dram', 'fab_core'], hl: ['core', 'dram'], ct: ['idle'], db: [4, 4]});
+  function draw(fr){
+    E.cl.forEach(function(c, k){ c.t.textContent = fr.cl[k][0]; c.r.setAttribute('class', fr.cl[k][1]); });
+    E.sq.forEach(function(c, k){ var own = k === 3; c.t.textContent = own ? 'Read' : k < 3 ? 'done' : ''; c.r.setAttribute('class', own ? (fr.sqHead ? 'sunk' : 'a1b') : k < 3 ? 'sunk' : 'sunk'); });
+    E.sqP.textContent = 'tail = ' + (fr.sqTail || 3) + ' (driver writes here next)   head = ' + (fr.sqHead || 3) + ' (SSD has fetched up to here)';
+    E.cq.forEach(function(c, k){ var own = k === 3; c.t.textContent = own ? (fr.cqe ? 'CID 17 P=1' : 'P=0') : k < 3 ? 'P=1' : 'P=0'; c.r.setAttribute('class', own && fr.cqe ? 'okb' : 'sunk'); });
+    E.cqP.textContent = 'head = ' + (fr.cqHead || 3) + ' (driver has consumed up to here); slots 0\u20132 hold older completions from this pass';
+    E.buf.forEach(function(b, k){ b.setAttribute('class', k < fr.buf ? 'a2b' : 'sunk'); });
+    E.bufT.textContent = fr.buf ? '64 lines written by DMA' : 'empty';
+    E.bufT2.textContent = fr.buf ? 'IOVA 0xfff02000 \u2192 physical frame chosen by the OS' : '';
+    E.db1.textContent = 'SQ1 tail doorbell (0x1008) = ' + fr.db[0]; E.db2.textContent = 'CQ1 head doorbell (0x100C) = ' + fr.db[1];
+    E.ctT.forEach(function(t, k){ t.textContent = fr.ct[k] || ''; });
+    E.nT.textContent = fr.nand ? 'reading: tens of \u00b5s is typical (not measured)' : '';
+    E.ioT.textContent = fr.iommu ? fr.iommu[0] : ''; E.ioT2.textContent = fr.iommu ? fr.iommu[1] : ''; E.ioT3.textContent = fr.iommu ? 'device can reach only mapped pages' : '';
+    E.io.setAttribute('class', fr.iommu ? 'on box' : 'box'); E.rc.setAttribute('class', fr.hl.indexOf('hub') >= 0 && !fr.iommu && fr.p !== 'MSI-X' ? 'on box' : 'box');
+    E.ic.setAttribute('class', fr.p === 'MSI-X' ? 'on box' : 'box'); E.nand.setAttribute('class', fr.nand ? 'on box' : 'box'); E.ctl.setAttribute('class', fr.ct[0] !== 'idle' ? 'on box' : 'box');
+    E.tlp.forEach(function(t, k){ t.textContent = (fr.tlp || [])[k] || ''; });
+    ['core', 'fab', 'dram', 'hub', 'link', 'ssd'].forEach(function(id){ E[id].setAttribute('class', fr.hl.indexOf(id) >= 0 && id !== 'hub' && id !== 'ssd' ? 'on' : ''); });
+    for (var id in AR){ var on = fr.ar.indexOf(id) >= 0; AR[id].style.opacity = on ? 1 : .12; AR[id].setAttribute('class', 'wire' + (on ? ' on flow' : '')); }
+  }
+  stp.set(F);
+  var cards = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, cards, '<h3>Where each chapter showed up</h3><table class="mt"><tr><th>step</th><th>mechanism</th><th>chapter</th></tr>' +
+    [['command in SQ', 'WB stores, dirty line in L1d', '04, 07'], ['doorbell', 'UC memory type, store ordering', '07'], ['command fetch', 'IOMMU walk, coherent read of a dirty line', '03, 08'], ['data DMA', 'writes to DRAM, cached copies invalidated', '06, 08'], ['completion read', 'miss to DRAM after invalidation', '05']]
+    .map(function(r){ return '<tr><td style="font-family:var(--sans)">' + r[0] + '</td><td style="font-family:var(--sans)">' + r[1] + '</td><td>' + r[2] + '</td></tr>'; }).join('') + '</table>');
+  h('div', {'class': 'card'}, cards, '<h3>The same ring, one level up</h3><p>io_uring puts a submission ring and a completion ring in memory shared by the application and the kernel. Head and tail indices are published with store-release and read with load-acquire (the <code>smp_store_release()</code> / <code>smp_load_acquire()</code> pair from Chapter 07), exactly the ordering the NVMe ring needs between driver and device. Kernel function names above are from recent mainline and move between versions.</p>');
+  return {key: stp.key};
+}});
+
+/* ======================= chapter: one access end to end ======================= */
+App.chapter({id: 'e2e', num: '11', short: 'End to end', title: 'One hist[123]++, end to end',
+sub: 'C1 from Chapter 02 \u2014 addq $1,(%rdx,%rax,8) on hist[123] \u2014 with every stage from the other chapters laid on one timeline. Pick where the translation and the line are found.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, CFG = App.CFG;
+  var o = {tlb: 'hit', lvl: 'DRAM', row: 'closed'};
+  var ctl = h('div', {'class': 'card'}, root);
+  var r1 = h('div', {'class': 'stp'}, ctl); h('span', {'class': 'note', style: 'min-width:120px'}, r1, 'translation:');
+  App.seg(r1, [['hit', 'DTLB hit'], ['walk', 'page walk']], function(v){ o.tlb = v; draw(); }, o.tlb);
+  var r2 = h('div', {'class': 'stp', style: 'margin-top:8px'}, ctl); h('span', {'class': 'note', style: 'min-width:120px'}, r2, 'hist[123] line in:');
+  App.seg(r2, [['L1', 'L1d'], ['L2', 'L2'], ['L3', 'L3'], ['DRAM', 'DRAM']], function(v){ o.lvl = v; draw(); }, o.lvl);
+  var r3 = h('div', {'class': 'stp', style: 'margin-top:8px'}, ctl); h('span', {'class': 'note', style: 'min-width:120px'}, r3, 'DRAM row:');
+  App.seg(r3, [['hit', 'open (row hit)'], ['closed', 'closed'], ['conflict', 'conflict']], function(v){ o.row = v; draw(); }, o.row);
+  var bar = h('div', {'class': 'scroller', style: 'padding:10px'}, root);
+  var sv = s('svg', {viewBox: '0 0 1000 120', style: 'width:100%;min-width:640px;height:auto;display:block'}, bar);
+  var tbl = h('div', {'class': 'card'}, root);
+  var sum = h('div', {'class': 'card'}, root);
+  function steps(){
+    var ghz = CFG.ghz, S = [];
+    var add = function(n, c, src, ch, what){ S.push({n: n, c: Math.max(0, Math.round(c)), src: src, ch: ch, what: what}); };
+    add('front end: fetch, predecode, decode, \u00b5op queue', 5, 'model', 'core', 'L1i hit, op cache or decoders');
+    add('rename + dispatch', 2, 'model', 'core', 'RAT, free list, ROB, scheduler, LQ/SQ entries');
+    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'published', 'core', 'the address depends on this load');
+    add('AGU: rdx + rax\u00d78', 1, 'model', 'core', 'VA 0x7ffd4a3c2e58');
+    if (o.tlb === 'walk') add('DTLB + L2 TLB miss, page walk', 2 * CFG.l2 + 2, 'assumed', 'xlate', 'PML4E/PDPTE from the walk cache, PDE and PTE from L2');
+    var lat = o.lvl === 'L1' ? CFG.l1 : o.lvl === 'L2' ? CFG.l2 : o.lvl === 'L3' ? CFG.l3 : App.dramCycles();
+    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'published', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns (latency settings)' : 'load-to-use');
+    if (o.lvl === 'DRAM' && o.row !== 'closed') add(o.row === 'hit' ? 'row already open: saves ACT' : 'row conflict: extra PRE', (o.row === 'hit' ? -14.2 : 14.2) * ghz, 'derived', 'dram', 'device-time difference from Chapter 06 (\u00b1 14.2 ns)');
+    add('add: tmp + 1', 1, 'published', 'core', '1-cycle ALU op');
+    add('store address + data into the SQ', 2, 'model', 'core', 'STA / STD');
+    add('retire (older instructions already done)', 1, 'model', 'core', 'ROB head');
+    add('commit to L1d: line is E after the load, becomes M', 1, 'model', 'stores', 'no RFO needed');
+    S.forEach(function(x){ if (x.n.indexOf('row already open') === 0) x.neg = true; });
+    return S;
+  }
+  var COL = {core: 'a3b', xlate: 'a4b', l1d: 'a2b', hier: 'a2b', dram: 'a1b', stores: 'a3b'};
+  function draw(){
+    var S = steps(), ghz = CFG.ghz, tot = 0;
+    S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
+    sv.innerHTML = ''; var x0 = 10, W = 980, acc = 0;
+    s('text', {x: 10, y: 16, 'class': 'h'}, sv, 'Critical path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
+    S.forEach(function(x){
+      if (x.neg) return;
+      var w = (x.c / (tot + (S.filter(function(y){ return y.neg; }).reduce(function(a, y){ return a + y.c; }, 0)))) * W;
+      s('rect', {x: x0 + acc, y: 28, width: Math.max(1.5, w), height: 40, 'class': COL[x.ch] || 'box'}, sv); acc += w;
+    });
+    var mem = S.filter(function(x){ return /load hist|page walk|row/.test(x.n); }).reduce(function(a, x){ return a + (x.neg ? -x.c : x.c); }, 0);
+    s('text', {x: 10, y: 92, 'font-size': 13}, sv, 'Time spent waiting for translation and data: ' + Math.round(100 * mem / tot) + '%. Everything else together: ' + (tot - mem) + ' cycles.');
+    s('text', {x: 10, y: 112, 'class': 's'}, sv, 'Bar widths are proportional to time; tiny segments are the pipeline stages.');
+    var cum = 0;
+    tbl.innerHTML = '<h3>Step by step</h3><div style="overflow-x:auto"><table class="mt" style="min-width:560px"><tr><th>step</th><th>cycles</th><th>ns</th><th>total</th><th>source</th><th></th></tr>' + S.map(function(x){
+      cum += x.neg ? -x.c : x.c;
+      return '<tr><td style="font-family:var(--sans)">' + x.n + '<div class="note">' + x.what + '</div></td><td>' + (x.neg ? '\u2212' : '') + x.c + '</td><td>' + (x.c / ghz).toFixed(1) + '</td><td>' + cum + '</td><td><span class="tag ' + (x.src === 'published' ? 'pub' : x.src === 'model' ? '' : 'act') + '">' + x.src + '</span></td><td><button class="lnk" data-ch="' + x.ch + '">chapter \u2192</button></td></tr>';
+    }).join('') + '</table></div><p class="note" style="margin-top:8px"><b>published</b>: Zen/Zen+ figures from the latency settings (replace them with your own measured plateaus). <b>model</b>: the stage counts of the Chapter 02 model, not measured. <b>assumed</b> / <b>derived</b>: stated in the step.</p>';
+    tbl.querySelectorAll('button.lnk').forEach(function(b){ b.onclick = function(){ App.go(b.dataset.ch); }; });
+    sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale (Chapters 07, 08). Nothing else happens to it until it is evicted, when its 64 bytes are written back to the L2, later enter the L3 as a victim, and eventually reach DRAM through the controller as a write (Chapters 04\u201306). That write-back is off the critical path of this instruction; the core keeps running.</p><p>For comparison: at ' + ghz + ' GHz the loop body runs about one iteration per cycle when everything hits (Chapter 02). A single miss to DRAM costs the time of hundreds of iterations, which is why the hierarchy, the prefetchers and memory-level parallelism exist.</p>';
+  }
+  App.onCfg(draw);
+  draw();
+}});
+
+/* ======================= chapter: glossary ======================= */
+App.chapter({id: 'gloss', num: '12', short: 'Glossary', title: 'Glossary',
+sub: 'Every term used in these chapters, the same definitions the dotted terms open.',
+build: function(root){
+  var h = App.h;
+  var bar = h('div', {'class': 'stp'}, root);
+  var q = h('input', {type: 'search', placeholder: 'filter terms\u2026', style: 'flex:1;max-width:420px', 'aria-label': 'filter glossary'}, bar);
+  var cnt = h('span', {'class': 'note'}, bar);
+  var list = h('div', {'class': 'glist'}, root);
+  var keys = Object.keys(App.G).sort(function(a, b){ return App.G[a].t.toLowerCase().localeCompare(App.G[b].t.toLowerCase()); });
+  function draw(){
+    var f = q.value.trim().toLowerCase(), n = 0;
+    list.innerHTML = keys.filter(function(k){ var e = App.G[k]; return !f || e.t.toLowerCase().indexOf(f) >= 0 || e.d.toLowerCase().indexOf(f) >= 0; })
+      .map(function(k){ n++; var e = App.G[k]; return '<div class="card"><h3>' + e.t + '</h3><p>' + e.d + '</p></div>'; }).join('');
+    cnt.textContent = n + ' of ' + keys.length + ' terms';
+  }
+  q.oninput = draw; draw();
 }});
 
 App.start();

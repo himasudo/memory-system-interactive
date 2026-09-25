@@ -18,7 +18,7 @@ The goal is to make low-level memory behavior **visible, stateful, and interacti
 
 ---
 
-## Current Chapters
+## Chapters
 
 | Route | Chapter | Focus |
 |---|---|---|
@@ -28,20 +28,15 @@ The goal is to make low-level memory behavior **visible, stateful, and interacti
 | `03` | **Virtual → Physical** | TLBs, page walks, page faults, large pages, PCIDs |
 | `04` | **L1d Lookup** | Sets, ways, tags, data arrays, comparators, pLRU, dirty writeback, conflict misses |
 | `05` | **Down the Hierarchy** | L2, L3, fabric, peer-core lookup, memory controller, DRAM path, MLP |
+| `06` | **DRAM** | Address-to-bank/row/column mapping, row buffer, ACT/RD/PRE/REF, timing parameters, refresh |
+| `07` | **Stores & Memory Types** | Store queue, senior stores, ownership requests, RFO vs. non-temporal stores, memory types, fences |
+| `08` | **Coherence (MOESI)** | Per-core cache states, probes, invalidations, cache-to-cache transfer, false sharing |
+| `09` | **Prefetchers** | Stream/stride detection, prefetch distance, coverage vs. lateness vs. pollution |
+| `10` | **Devices, DMA, IOMMU** | MMIO doorbells, PCIe TLPs, IOMMU translation, coherent DMA, MSI-X interrupts |
+| `11` | **End to End** | One instruction's full critical path, reassembled across every earlier chapter |
+| `12` | **Glossary** | Every term used across the site, searchable |
 
----
-
-## Planned Chapters
-
-```text
-06  DRAM internals
-07  Store path + memory types
-08  Cache coherence / MOESI
-09  Hardware prefetchers
-10  Devices, MMIO, DMA, IOMMU, MSI-X
-11  One memory access, end to end
-12  Searchable glossary
-```
+All 13 chapters are built and live in the integrated application.
 
 ---
 
@@ -53,7 +48,7 @@ The goal is to make low-level memory behavior **visible, stateful, and interacti
 - **Real structures** such as RATs, ROBs, TLBs, cache arrays, queues, controllers, and coherence state.
 - **Clear separation** between measured values, published values, and simplified models.
 - **Explicit uncertainty** where hardware behavior is undocumented.
-- **Responsive visualizations** with light and dark theme support.
+- **Responsive visualizations** with light and dark theme support, down to mobile widths.
 - **No framework dependency** — the application is plain HTML, CSS, SVG, and JavaScript.
 
 ---
@@ -108,9 +103,7 @@ Using a local HTTP server is preferable to opening the page directly through `fi
 
 ### `memory_end_to_end.html`
 
-The main application and source of truth.
-
-It contains:
+The main application and source of truth. A single self-contained file (no build step required to run it) containing:
 
 - the chapter router
 - shared glossary
@@ -129,11 +122,15 @@ Project overview and usage instructions.
 
 ---
 
-## Current Status
+## Editing the Source
 
-**In active development.**
+`memory_end_to_end.html` is generated from a modular source tree (one file per chapter, plus shared core/glossary/CSS modules) concatenated by a small build script. If you have that source tree:
 
-Routes `00–05` are present in the integrated application. Existing chapters are being audited and refined while the remaining memory-system chapters are added.
+```bash
+python3 build.py
+```
+
+regenerates `memory_end_to_end.html` from the individual chapter files. Editing the shipped HTML directly also works fine for small fixes; the modular source is only useful for larger changes across chapters.
 
 ---
 
@@ -177,9 +174,19 @@ memory controller
 DRAM
    ↓
 refill / store / coherence
+   ↓
+device DMA (NVMe, as a worked example)
 ```
 
-That lets each chapter build on the same machine state instead of starting over.
+That lets each chapter build on the same machine state instead of starting over, and lets the end-to-end chapter reassemble every earlier chapter's cost into one timeline for a single instruction.
+
+---
+
+## Status
+
+**Feature-complete for the planned 13-chapter arc (00–12).** Numeric defaults (cache and DRAM latencies) are published figures for a Zen/Zen+-class CPU, clearly marked as such, and are meant to be overwritten with values measured on whatever machine the reader is using — the settings panel makes this the normal way to use the site rather than an edge case.
+
+Open follow-ups: broader validation across CPU vendors/generations, and extending the address-mapping and DRAM-timing examples beyond the single illustrative configuration currently shown.
 
 ---
 
