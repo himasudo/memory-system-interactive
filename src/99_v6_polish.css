@@ -1,0 +1,98 @@
+/* ========================================================================== */
+/* V6 — capsule terms, sourced definitions, de-collided palette, typography    */
+/* ========================================================================== */
+
+/* One palette for term categories. None of them sits on the amber accent,   */
+/* which is reserved for "active" in every diagram.                          */
+:root{--t-core:#a78bfa;--t-xlate:#60a5fa;--t-cache:#4ade80;--t-memory:#22d3ee;--t-io:#a3e635;--t-order:#fb7185;--t-coh:#e879f9;--t-pref:#fde047}
+.term-core{--term:var(--t-core)!important}.term-xlate{--term:var(--t-xlate)!important}.term-cache{--term:var(--t-cache)!important}.term-memory{--term:var(--t-memory)!important}
+.term-io{--term:var(--t-io)!important}.term-order{--term:var(--t-order)!important}.term-coh{--term:var(--t-coh)!important}.term-pref{--term:var(--t-pref)!important}
+
+/* ----- capsule terms ----- */
+dfn[data-g]{
+  --term:#94a3b8;
+  display:inline;font-style:normal;font-weight:560;text-decoration:none;cursor:pointer;
+  color:color-mix(in srgb,var(--term) 62%,#ffffff);
+  background:color-mix(in srgb,var(--term) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--term) 28%,transparent);
+  border-radius:999px;padding:.02em .48em .06em;margin:0 .04em;
+  box-decoration-break:clone;-webkit-box-decoration-break:clone;box-shadow:none;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease;
+}
+dfn[data-g]:hover,dfn[data-g]:focus-visible,dfn[data-g].term-open{
+  color:#fff;outline:none;
+  background:color-mix(in srgb,var(--term) 24%,transparent);
+  border-color:color-mix(in srgb,var(--term) 72%,transparent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--term) 15%,transparent);
+}
+.mt dfn[data-g],.note dfn[data-g],small dfn[data-g]{padding:0 .38em .02em;font-weight:530}
+dfn[data-g].term-nowrap{white-space:nowrap}
+h1 dfn[data-g],h2 dfn[data-g],h3 dfn[data-g],h4 dfn[data-g]{font-weight:inherit}
+
+/* ----- definition popover ----- */
+.gloss-pop{
+  --term:#94a3b8;
+  padding:0!important;overflow:visible!important;border-radius:14px!important;
+  background:linear-gradient(180deg,#101822 0%,#0b1017 100%)!important;
+  border:1px solid color-mix(in srgb,var(--term) 26%,#263240)!important;
+  box-shadow:0 24px 64px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.025) inset!important;
+}
+.gloss-pop.pop-in{animation:pop-in .2s cubic-bezier(.2,.8,.2,1)}
+.gloss-pop[data-side="above"].pop-in{animation-name:pop-in-up}
+@keyframes pop-in{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes pop-in-up{from{opacity:0;transform:translateY(-6px) scale(.985)}to{opacity:1;transform:none}}
+.term-pop-caret{position:absolute;left:var(--caret,24px);top:-7px;width:12px;height:12px;transform:rotate(45deg);background:#101822;
+  border-left:1px solid color-mix(in srgb,var(--term) 26%,#263240);border-top:1px solid color-mix(in srgb,var(--term) 26%,#263240)}
+.gloss-pop[data-side="above"] .term-pop-caret{top:auto;bottom:-7px;transform:rotate(225deg);background:#0b1017}
+.gloss-pop .term-pop-head{display:grid;grid-template-columns:1fr auto;grid-template-areas:"cat close" "title close";align-items:center;gap:6px 10px;padding:14px 14px 10px 16px;border-bottom:1px solid #1c2631;border-radius:14px 14px 0 0}
+.gloss-pop .term-pop-head b{grid-area:title;font-size:15.5px!important;font-weight:650;color:#f5f8fb;letter-spacing:-.005em}
+.gloss-pop .term-pop-close{grid-area:close;align-self:start;width:28px;min-width:28px;height:28px;min-height:28px;border-radius:999px;font-size:17px;color:#7d8a99}
+.gloss-pop .term-pop-close:hover{background:#18212c;color:#fff}
+.term-pop-cat{grid-area:cat;justify-self:start;display:inline-flex;align-items:center;gap:6px;font:650 10.5px var(--sans)!important;letter-spacing:.02em!important;text-transform:none!important;
+  padding:3px 9px 3px 8px!important;border-radius:999px!important;color:color-mix(in srgb,var(--term) 78%,#fff)!important;
+  background:color-mix(in srgb,var(--term) 13%,transparent)!important;border:1px solid color-mix(in srgb,var(--term) 34%,transparent)}
+.term-pop-cat::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--term);box-shadow:0 0 8px var(--term)}
+.gloss-pop .term-mini{margin:12px 16px 0;padding:8px 10px 2px;border-radius:10px;background:#0c131b;border:1px solid #18222d}
+.gloss-pop .term-pop-def{padding:12px 16px 4px!important;margin:0!important;color:#c5ced8!important;font-size:13.4px;line-height:1.62}
+.term-pop-foot{display:grid;gap:10px;padding:12px 16px 15px;margin-top:8px;border-top:1px solid #1c2631}
+.term-pop-ch{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;text-decoration:none;font-size:12.5px;color:#9aa6b3;background:#121a24;border:1px solid #222e3b;transition:border-color .15s,background-color .15s}
+.term-pop-ch b{color:#eef3f7;font-weight:600}
+.term-pop-ch i{margin-left:auto;font-style:normal;color:var(--term);transition:transform .15s}
+.term-pop-ch:hover{background:#16202b;border-color:color-mix(in srgb,var(--term) 50%,#222e3b)}
+.term-pop-ch:hover i{transform:translateX(3px)}
+.term-pop-src{display:grid;gap:5px}
+.term-pop-src>span{font:650 10px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:#6f7c8b;margin-bottom:1px}
+.term-pop-src a{display:grid;gap:1px;padding:7px 11px;border-radius:10px;text-decoration:none;border:1px solid #1d2833;transition:border-color .15s,background-color .15s}
+.term-pop-src a b{font-size:12.6px;font-weight:560;color:#dfe6ee;line-height:1.35}
+.term-pop-src a small{font-size:11px;color:#7c8998}
+.term-pop-src a:hover{background:#121a24;border-color:color-mix(in srgb,var(--term) 45%,#1d2833)}
+.term-pop-src a:hover b{color:#fff}
+.term-pop-src a:focus-visible,.term-pop-ch:focus-visible{outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--term) 60%,transparent)}
+
+/* ----- typography: no orphaned words in headings, fewer ragged paragraphs ----- */
+h1,h2,h3,h4,.narr h4{text-wrap:balance}
+p,li,dd{text-wrap:pretty}
+
+/* ----- glossary chapter ----- */
+.gl-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.gl-bar input{flex:1;max-width:460px;border-radius:999px;padding:10px 16px;font:14px var(--sans);background:#0d131a;border:1px solid #273340;color:var(--tx)}
+.gl-bar input:focus{border-color:#4b5f74;outline:none;box-shadow:0 0 0 3px rgba(96,165,250,.12)}
+.gl-chips{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 18px}
+.gl-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 10px;border-radius:999px;font:560 12.5px var(--sans);color:#aab5c1;background:#0f151d;border:1px solid #232f3c;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
+.gl-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--term,#94a3b8)}
+.gl-chip.term-all::before{background:conic-gradient(var(--t-core),var(--t-xlate),var(--t-memory),var(--t-cache),var(--t-io),var(--t-pref),var(--t-order),var(--t-coh),var(--t-core))}
+.gl-chip small{font:11px var(--mono);color:#6f7c8b}
+.gl-chip:hover{border-color:color-mix(in srgb,var(--term,#94a3b8) 55%,#232f3c);color:#fff}
+.gl-chip.on{color:#fff;background:color-mix(in srgb,var(--term,#94a3b8) 16%,#0f151d);border-color:color-mix(in srgb,var(--term,#94a3b8) 70%,transparent)}
+.glist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.gl-card{--term:#94a3b8;display:flex;flex-direction:column;gap:8px;padding:16px 16px 14px!important;border-radius:14px!important;border-top:2px solid color-mix(in srgb,var(--term) 60%,transparent)!important}
+.gl-card h3{margin:2px 0 0!important;font-size:16px!important}
+.gl-card>p{margin:0!important;font-size:13.6px!important;line-height:1.6}
+.gl-card .term-pop-cat{align-self:flex-start}
+.gl-card .term-pop-foot{margin-top:auto;padding:12px 0 0;border-top:1px solid #1c2631}
+.gl-empty{padding:30px;text-align:center;color:var(--tx3)}
+
+@media (prefers-reduced-motion:reduce){
+  .gloss-pop.pop-in{animation:none}
+  dfn[data-g],.term-pop-ch,.term-pop-ch i,.term-pop-src a,.gl-chip{transition:none}
+}

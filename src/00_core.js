@@ -156,6 +156,7 @@ var App = (function(){
       var a = h('a', {href: '#' + c.id}, nav,
         '<span class="nav-num">' + c.num + '</span><span class="nav-label">' + c.short + '</span><span class="nav-arrow">›</span>');
       a.dataset.id = c.id;
+      a.addEventListener('mouseup', function(){ a.blur(); });
     });
     window.addEventListener('hashchange', function(){ show(location.hash.slice(1)); window.scrollTo({top: 0, behavior: 'auto'}); });
     show(location.hash.slice(1) || chapters[0].id);
@@ -300,6 +301,8 @@ var App = (function(){
     node.parentNode.insertBefore(d, node); d.appendChild(sm); d.appendChild(node); return d;
   }
 
+  var TERM_COLORS = {core:'#a78bfa',xlate:'#60a5fa',cache:'#4ade80',memory:'#22d3ee',io:'#a3e635',order:'#fb7185',coh:'#e879f9',pref:'#fde047'};
+  var TERM_LABEL = {core:'CPU core',xlate:'Translation',cache:'Cache',memory:'DRAM',io:'Devices & I/O',order:'Memory ordering',coh:'Coherence',pref:'Prefetching'};
   function termCategory(key){
     var sets = {
       core:'isa uop mop pc bp btb ras l1i itlb fetchwin predecode decode opcache uq fusion zx modrm rex rename rat crat prf freelist dispatch rob sched wakeup issue port alu agu bypass lsu lq sq sta std stlf disamb retire commit senior squash mispredict spec smt ipc mab',
@@ -316,7 +319,7 @@ var App = (function(){
   }
 
   function glossGraphic(key){
-    var cat = termCategory(key), c = {core:'#a78bfa',xlate:'#60a5fa',cache:'#34d399',memory:'#22d3ee',io:'#f59e0b',order:'#fb7185',coh:'#f97316',pref:'#c084fc'}[cat] || '#94a3b8';
+    var cat = termCategory(key), c = TERM_COLORS[cat] || '#94a3b8';
     function svg(inner){ return '<div class="term-mini" style="--mini:'+c+'"><svg viewBox="0 0 320 92" aria-hidden="true">'+inner+'</svg></div>'; }
     if (key === 'tlb' || key === 'dtlb' || key === 'walk' || key === 'pml4') return svg('<rect x="8" y="28" width="74" height="36" rx="7"/><text x="45" y="50">VA</text><path d="M86 46H120"/><rect x="124" y="18" width="82" height="56" rx="8" class="hot"/><text x="165" y="42">TLB</text><text x="165" y="58" class="s">VPN → PFN</text><path d="M210 46H244"/><rect x="248" y="28" width="64" height="36" rx="7"/><text x="280" y="50">PA</text>');
     if (key === 'rob' || key === 'retire') return svg('<path d="M70 46a42 30 0 1 0 84 0a42 30 0 1 0-84 0" class="ring"/><circle cx="87" cy="27" r="6" class="hot"/><circle cx="137" cy="65" r="6"/><path d="M170 46H236"/><text x="203" y="34" class="s">oldest first</text><rect x="240" y="28" width="70" height="36" rx="7"/><text x="275" y="50">RETIRE</text>');
@@ -721,6 +724,7 @@ var App = (function(){
     for (var j = 0; j < terms.length; j++){
       terms[j].tabIndex = 0; terms[j].setAttribute('role','button');
       terms[j].classList.add('term-' + termCategory(terms[j].dataset.g));
+      if (terms[j].textContent.length <= 24) terms[j].classList.add('term-nowrap');
     }
     if (sec.id === 'ch-core'){ enhanceCoreWorkbench(sec); enhanceCoreInspector(sec); }
     if (sec.id === 'ch-xlate') enhanceTranslationWorkbench(sec);
@@ -737,21 +741,37 @@ var App = (function(){
     var pop = document.getElementById('pop'), locked = false, closeTimer = null, openTimer = null, active = null;
     pop.classList.add('gloss-pop');
     function place(t){
-      var r = t.getBoundingClientRect(), w = Math.min(430, window.innerWidth - 24);
-      pop.style.maxWidth = w + 'px'; pop.style.display = 'block';
-      var ph = pop.offsetHeight, x = Math.max(12, Math.min(r.left, window.innerWidth - w - 12));
-      var y = r.bottom + 10; if (y + ph > window.innerHeight - 12) y = Math.max(12, r.top - ph - 10);
-      pop.style.left = x + 'px'; pop.style.top = y + 'px';
+      var r = t.getBoundingClientRect(), w = Math.min(400, window.innerWidth - 24);
+      pop.style.width = w + 'px'; pop.style.maxWidth = w + 'px'; pop.style.display = 'block';
+      var ph = pop.offsetHeight, x = Math.max(12, Math.min(r.left + r.width / 2 - 36, window.innerWidth - w - 12));
+      var y = r.bottom + 12, side = 'below';
+      if (y + ph > window.innerHeight - 12){ y = Math.max(12, r.top - ph - 12); side = 'above'; }
+      pop.style.left = x + 'px'; pop.style.top = y + 'px'; pop.dataset.side = side;
+      pop.style.setProperty('--caret', Math.max(16, Math.min(w - 28, r.left + Math.min(r.width, 60) / 2 - x - 6)) + 'px');
+    }
+    function hidePop(){ pop.style.display='none'; pop.classList.remove('pop-in'); if(active) active.classList.remove('term-open'); active=null; }
+    function esc(x){ return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+    function footer(key){
+      var out = '', home = App.TERM_HOME && App.TERM_HOME[key], here = location.hash.slice(1), lab = App.CH_LABEL && App.CH_LABEL[home];
+      if (home && lab && home !== here) out += '<a class="term-pop-ch" href="#' + home + '"><span>Taught in</span><b>' + lab[0] + ' \u00b7 ' + lab[1] + '</b><i aria-hidden="true">\u2192</i></a>';
+      var src = (App.SRC && App.SRC[key]) || [];
+      if (src.length) out += '<div class="term-pop-src"><span>Learn more</span>' + src.map(function(x){ return '<a href="' + esc(x[1]) + '" target="_blank" rel="noopener noreferrer"><b>' + esc(x[0]) + '</b><small>' + esc(x[2]) + ' \u2197</small></a>'; }).join('') + '</div>';
+      return out ? '<div class="term-pop-foot">' + out + '</div>' : '';
     }
     function open(t, lock){
-      clearTimeout(closeTimer); active = t; locked = !!lock;
+      clearTimeout(closeTimer);
+      if (active && active !== t) active.classList.remove('term-open');
+      active = t; locked = !!lock; t.classList.add('term-open');
       var key=t.dataset.g,d=G[key],cat=termCategory(key);
       var title=d?d.t:key,def=d?d.d:'(no entry)';
-      pop.innerHTML='<div class="term-pop-head"><span class="term-pop-cat term-'+cat+'">'+cat+'</span><b>'+title+'</b><button type="button" class="term-pop-close" aria-label="Close definition">×</button></div>'+glossGraphic(key)+'<p>'+def+'</p>';
-      pop.querySelector('.term-pop-close').onclick=function(){locked=false;pop.style.display='none';active=null;};
+      pop.className = 'pop gloss-pop term-' + cat;
+      pop.innerHTML='<i class="term-pop-caret" aria-hidden="true"></i><div class="term-pop-head"><span class="term-pop-cat">'+TERM_LABEL[cat]+'</span><b>'+title+'</b><button type="button" class="term-pop-close" aria-label="Close definition">\u00d7</button></div>'+glossGraphic(key)+'<p class="term-pop-def">'+def+'</p>'+footer(key);
+      pop.querySelector('.term-pop-close').onclick=function(){locked=false;hidePop();};
+      var chl = pop.querySelector('.term-pop-ch'); if (chl) chl.onclick = function(){ locked=false; hidePop(); };
       place(t);
+      pop.classList.remove('pop-in'); void pop.offsetWidth; pop.classList.add('pop-in');
     }
-    function scheduleClose(){ clearTimeout(closeTimer); closeTimer=setTimeout(function(){ if(!locked && !pop.matches(':hover')){pop.style.display='none';active=null;} },130); }
+    function scheduleClose(){ clearTimeout(closeTimer); closeTimer=setTimeout(function(){ if(!locked && !pop.matches(':hover')){hidePop();} },220); }
     document.addEventListener('mouseover',function(e){
       var t=e.target.closest&&e.target.closest('dfn[data-g]'); if(!t || t===active || (e.relatedTarget&&t.contains(e.relatedTarget))) return;
       clearTimeout(openTimer); openTimer=setTimeout(function(){open(t,false);},110);
@@ -761,16 +781,16 @@ var App = (function(){
     document.addEventListener('click', function(e){
       var t = e.target.closest && e.target.closest('dfn[data-g]');
       if (t){ open(t, true); e.stopPropagation(); return; }
-      if (!e.target.closest('#pop')){ locked=false; pop.style.display='none'; active=null; }
+      if (!e.target.closest('#pop')){ locked=false; hidePop(); }
     });
     document.addEventListener('focusin',function(e){ var t=e.target&&e.target.matches&&e.target.matches('dfn[data-g]')?e.target:null; if(t)open(t,false); });
     document.addEventListener('focusout',function(e){ if(e.target&&e.target.matches&&e.target.matches('dfn[data-g]'))scheduleClose(); });
     document.addEventListener('keydown', function(e){
       var t = e.target && e.target.matches && e.target.matches('dfn[data-g]') ? e.target : null;
       if (t && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); open(t, true); }
-      if(e.key==='Escape' && active){locked=false;pop.style.display='none';active=null;}
+      if(e.key==='Escape' && active){locked=false;hidePop();}
     });
-    window.addEventListener('scroll', function(){ if(!locked){pop.style.display='none';active=null;} }, {passive:true});
+    window.addEventListener('scroll', function(){ if(!locked){hidePop();} }, {passive:true});
   }
 
   /* ---------- config drawer ---------- */
@@ -861,6 +881,6 @@ var App = (function(){
     return w;
   }
 
-  return {s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
+  return {termCategory: termCategory, TERM_COLORS: TERM_COLORS, TERM_LABEL: TERM_LABEL, s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
           gloss: gloss, g: g, G: G, chapter: chapter, start: start, go: go, stepper: stepper, seg: seg};
 })();

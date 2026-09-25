@@ -667,7 +667,7 @@ body{
 .map-workbench{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:start}
 .map-workbench .map-viz{min-width:0}
 .map-inspector{
-  position:sticky;top:22px;min-height:250px;padding:24px;
+  position:sticky;top:78px;min-height:250px;padding:24px;
   background:var(--ink-panel);border-color:#2c2e32;color:var(--ink-text)
 }
 .map-inspector h3{font-size:22px;line-height:1.15;color:var(--ink-text);letter-spacing:-.03em;margin:6px 0 13px}
@@ -1216,6 +1216,105 @@ svg path.attention-pulse,svg line.attention-pulse,svg .attention-pulse .wire{ani
 /* V5 patch: make the transition wash cover the full visualization, not the old edge-gradient width. */
 .viz-frame::after{width:auto!important;height:auto!important;left:0!important;right:0!important;top:40px!important;bottom:0!important}
 
+/* ========================================================================== */
+/* V6 — capsule terms, sourced definitions, de-collided palette, typography    */
+/* ========================================================================== */
+
+/* One palette for term categories. None of them sits on the amber accent,   */
+/* which is reserved for "active" in every diagram.                          */
+:root{--t-core:#a78bfa;--t-xlate:#60a5fa;--t-cache:#4ade80;--t-memory:#22d3ee;--t-io:#a3e635;--t-order:#fb7185;--t-coh:#e879f9;--t-pref:#fde047}
+.term-core{--term:var(--t-core)!important}.term-xlate{--term:var(--t-xlate)!important}.term-cache{--term:var(--t-cache)!important}.term-memory{--term:var(--t-memory)!important}
+.term-io{--term:var(--t-io)!important}.term-order{--term:var(--t-order)!important}.term-coh{--term:var(--t-coh)!important}.term-pref{--term:var(--t-pref)!important}
+
+/* ----- capsule terms ----- */
+dfn[data-g]{
+  --term:#94a3b8;
+  display:inline;font-style:normal;font-weight:560;text-decoration:none;cursor:pointer;
+  color:color-mix(in srgb,var(--term) 62%,#ffffff);
+  background:color-mix(in srgb,var(--term) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--term) 28%,transparent);
+  border-radius:999px;padding:.02em .48em .06em;margin:0 .04em;
+  box-decoration-break:clone;-webkit-box-decoration-break:clone;box-shadow:none;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease;
+}
+dfn[data-g]:hover,dfn[data-g]:focus-visible,dfn[data-g].term-open{
+  color:#fff;outline:none;
+  background:color-mix(in srgb,var(--term) 24%,transparent);
+  border-color:color-mix(in srgb,var(--term) 72%,transparent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--term) 15%,transparent);
+}
+.mt dfn[data-g],.note dfn[data-g],small dfn[data-g]{padding:0 .38em .02em;font-weight:530}
+dfn[data-g].term-nowrap{white-space:nowrap}
+h1 dfn[data-g],h2 dfn[data-g],h3 dfn[data-g],h4 dfn[data-g]{font-weight:inherit}
+
+/* ----- definition popover ----- */
+.gloss-pop{
+  --term:#94a3b8;
+  padding:0!important;overflow:visible!important;border-radius:14px!important;
+  background:linear-gradient(180deg,#101822 0%,#0b1017 100%)!important;
+  border:1px solid color-mix(in srgb,var(--term) 26%,#263240)!important;
+  box-shadow:0 24px 64px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.025) inset!important;
+}
+.gloss-pop.pop-in{animation:pop-in .2s cubic-bezier(.2,.8,.2,1)}
+.gloss-pop[data-side="above"].pop-in{animation-name:pop-in-up}
+@keyframes pop-in{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes pop-in-up{from{opacity:0;transform:translateY(-6px) scale(.985)}to{opacity:1;transform:none}}
+.term-pop-caret{position:absolute;left:var(--caret,24px);top:-7px;width:12px;height:12px;transform:rotate(45deg);background:#101822;
+  border-left:1px solid color-mix(in srgb,var(--term) 26%,#263240);border-top:1px solid color-mix(in srgb,var(--term) 26%,#263240)}
+.gloss-pop[data-side="above"] .term-pop-caret{top:auto;bottom:-7px;transform:rotate(225deg);background:#0b1017}
+.gloss-pop .term-pop-head{display:grid;grid-template-columns:1fr auto;grid-template-areas:"cat close" "title close";align-items:center;gap:6px 10px;padding:14px 14px 10px 16px;border-bottom:1px solid #1c2631;border-radius:14px 14px 0 0}
+.gloss-pop .term-pop-head b{grid-area:title;font-size:15.5px!important;font-weight:650;color:#f5f8fb;letter-spacing:-.005em}
+.gloss-pop .term-pop-close{grid-area:close;align-self:start;width:28px;min-width:28px;height:28px;min-height:28px;border-radius:999px;font-size:17px;color:#7d8a99}
+.gloss-pop .term-pop-close:hover{background:#18212c;color:#fff}
+.term-pop-cat{grid-area:cat;justify-self:start;display:inline-flex;align-items:center;gap:6px;font:650 10.5px var(--sans)!important;letter-spacing:.02em!important;text-transform:none!important;
+  padding:3px 9px 3px 8px!important;border-radius:999px!important;color:color-mix(in srgb,var(--term) 78%,#fff)!important;
+  background:color-mix(in srgb,var(--term) 13%,transparent)!important;border:1px solid color-mix(in srgb,var(--term) 34%,transparent)}
+.term-pop-cat::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--term);box-shadow:0 0 8px var(--term)}
+.gloss-pop .term-mini{margin:12px 16px 0;padding:8px 10px 2px;border-radius:10px;background:#0c131b;border:1px solid #18222d}
+.gloss-pop .term-pop-def{padding:12px 16px 4px!important;margin:0!important;color:#c5ced8!important;font-size:13.4px;line-height:1.62}
+.term-pop-foot{display:grid;gap:10px;padding:12px 16px 15px;margin-top:8px;border-top:1px solid #1c2631}
+.term-pop-ch{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;text-decoration:none;font-size:12.5px;color:#9aa6b3;background:#121a24;border:1px solid #222e3b;transition:border-color .15s,background-color .15s}
+.term-pop-ch b{color:#eef3f7;font-weight:600}
+.term-pop-ch i{margin-left:auto;font-style:normal;color:var(--term);transition:transform .15s}
+.term-pop-ch:hover{background:#16202b;border-color:color-mix(in srgb,var(--term) 50%,#222e3b)}
+.term-pop-ch:hover i{transform:translateX(3px)}
+.term-pop-src{display:grid;gap:5px}
+.term-pop-src>span{font:650 10px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:#6f7c8b;margin-bottom:1px}
+.term-pop-src a{display:grid;gap:1px;padding:7px 11px;border-radius:10px;text-decoration:none;border:1px solid #1d2833;transition:border-color .15s,background-color .15s}
+.term-pop-src a b{font-size:12.6px;font-weight:560;color:#dfe6ee;line-height:1.35}
+.term-pop-src a small{font-size:11px;color:#7c8998}
+.term-pop-src a:hover{background:#121a24;border-color:color-mix(in srgb,var(--term) 45%,#1d2833)}
+.term-pop-src a:hover b{color:#fff}
+.term-pop-src a:focus-visible,.term-pop-ch:focus-visible{outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--term) 60%,transparent)}
+
+/* ----- typography: no orphaned words in headings, fewer ragged paragraphs ----- */
+h1,h2,h3,h4,.narr h4{text-wrap:balance}
+p,li,dd{text-wrap:pretty}
+
+/* ----- glossary chapter ----- */
+.gl-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.gl-bar input{flex:1;max-width:460px;border-radius:999px;padding:10px 16px;font:14px var(--sans);background:#0d131a;border:1px solid #273340;color:var(--tx)}
+.gl-bar input:focus{border-color:#4b5f74;outline:none;box-shadow:0 0 0 3px rgba(96,165,250,.12)}
+.gl-chips{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 18px}
+.gl-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 10px;border-radius:999px;font:560 12.5px var(--sans);color:#aab5c1;background:#0f151d;border:1px solid #232f3c;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
+.gl-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--term,#94a3b8)}
+.gl-chip.term-all::before{background:conic-gradient(var(--t-core),var(--t-xlate),var(--t-memory),var(--t-cache),var(--t-io),var(--t-pref),var(--t-order),var(--t-coh),var(--t-core))}
+.gl-chip small{font:11px var(--mono);color:#6f7c8b}
+.gl-chip:hover{border-color:color-mix(in srgb,var(--term,#94a3b8) 55%,#232f3c);color:#fff}
+.gl-chip.on{color:#fff;background:color-mix(in srgb,var(--term,#94a3b8) 16%,#0f151d);border-color:color-mix(in srgb,var(--term,#94a3b8) 70%,transparent)}
+.glist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.gl-card{--term:#94a3b8;display:flex;flex-direction:column;gap:8px;padding:16px 16px 14px!important;border-radius:14px!important;border-top:2px solid color-mix(in srgb,var(--term) 60%,transparent)!important}
+.gl-card h3{margin:2px 0 0!important;font-size:16px!important}
+.gl-card>p{margin:0!important;font-size:13.6px!important;line-height:1.6}
+.gl-card .term-pop-cat{align-self:flex-start}
+.gl-card .term-pop-foot{margin-top:auto;padding:12px 0 0;border-top:1px solid #1c2631}
+.gl-empty{padding:30px;text-align:center;color:var(--tx3)}
+
+@media (prefers-reduced-motion:reduce){
+  .gloss-pop.pop-in{animation:none}
+  dfn[data-g],.term-pop-ch,.term-pop-ch i,.term-pop-src a,.gl-chip{transition:none}
+}
+
 </style>
 </head>
 <body>
@@ -1418,6 +1517,7 @@ var App = (function(){
       var a = h('a', {href: '#' + c.id}, nav,
         '<span class="nav-num">' + c.num + '</span><span class="nav-label">' + c.short + '</span><span class="nav-arrow">›</span>');
       a.dataset.id = c.id;
+      a.addEventListener('mouseup', function(){ a.blur(); });
     });
     window.addEventListener('hashchange', function(){ show(location.hash.slice(1)); window.scrollTo({top: 0, behavior: 'auto'}); });
     show(location.hash.slice(1) || chapters[0].id);
@@ -1562,6 +1662,8 @@ var App = (function(){
     node.parentNode.insertBefore(d, node); d.appendChild(sm); d.appendChild(node); return d;
   }
 
+  var TERM_COLORS = {core:'#a78bfa',xlate:'#60a5fa',cache:'#4ade80',memory:'#22d3ee',io:'#a3e635',order:'#fb7185',coh:'#e879f9',pref:'#fde047'};
+  var TERM_LABEL = {core:'CPU core',xlate:'Translation',cache:'Cache',memory:'DRAM',io:'Devices & I/O',order:'Memory ordering',coh:'Coherence',pref:'Prefetching'};
   function termCategory(key){
     var sets = {
       core:'isa uop mop pc bp btb ras l1i itlb fetchwin predecode decode opcache uq fusion zx modrm rex rename rat crat prf freelist dispatch rob sched wakeup issue port alu agu bypass lsu lq sq sta std stlf disamb retire commit senior squash mispredict spec smt ipc mab',
@@ -1578,7 +1680,7 @@ var App = (function(){
   }
 
   function glossGraphic(key){
-    var cat = termCategory(key), c = {core:'#a78bfa',xlate:'#60a5fa',cache:'#34d399',memory:'#22d3ee',io:'#f59e0b',order:'#fb7185',coh:'#f97316',pref:'#c084fc'}[cat] || '#94a3b8';
+    var cat = termCategory(key), c = TERM_COLORS[cat] || '#94a3b8';
     function svg(inner){ return '<div class="term-mini" style="--mini:'+c+'"><svg viewBox="0 0 320 92" aria-hidden="true">'+inner+'</svg></div>'; }
     if (key === 'tlb' || key === 'dtlb' || key === 'walk' || key === 'pml4') return svg('<rect x="8" y="28" width="74" height="36" rx="7"/><text x="45" y="50">VA</text><path d="M86 46H120"/><rect x="124" y="18" width="82" height="56" rx="8" class="hot"/><text x="165" y="42">TLB</text><text x="165" y="58" class="s">VPN → PFN</text><path d="M210 46H244"/><rect x="248" y="28" width="64" height="36" rx="7"/><text x="280" y="50">PA</text>');
     if (key === 'rob' || key === 'retire') return svg('<path d="M70 46a42 30 0 1 0 84 0a42 30 0 1 0-84 0" class="ring"/><circle cx="87" cy="27" r="6" class="hot"/><circle cx="137" cy="65" r="6"/><path d="M170 46H236"/><text x="203" y="34" class="s">oldest first</text><rect x="240" y="28" width="70" height="36" rx="7"/><text x="275" y="50">RETIRE</text>');
@@ -1983,6 +2085,7 @@ var App = (function(){
     for (var j = 0; j < terms.length; j++){
       terms[j].tabIndex = 0; terms[j].setAttribute('role','button');
       terms[j].classList.add('term-' + termCategory(terms[j].dataset.g));
+      if (terms[j].textContent.length <= 24) terms[j].classList.add('term-nowrap');
     }
     if (sec.id === 'ch-core'){ enhanceCoreWorkbench(sec); enhanceCoreInspector(sec); }
     if (sec.id === 'ch-xlate') enhanceTranslationWorkbench(sec);
@@ -1999,21 +2102,37 @@ var App = (function(){
     var pop = document.getElementById('pop'), locked = false, closeTimer = null, openTimer = null, active = null;
     pop.classList.add('gloss-pop');
     function place(t){
-      var r = t.getBoundingClientRect(), w = Math.min(430, window.innerWidth - 24);
-      pop.style.maxWidth = w + 'px'; pop.style.display = 'block';
-      var ph = pop.offsetHeight, x = Math.max(12, Math.min(r.left, window.innerWidth - w - 12));
-      var y = r.bottom + 10; if (y + ph > window.innerHeight - 12) y = Math.max(12, r.top - ph - 10);
-      pop.style.left = x + 'px'; pop.style.top = y + 'px';
+      var r = t.getBoundingClientRect(), w = Math.min(400, window.innerWidth - 24);
+      pop.style.width = w + 'px'; pop.style.maxWidth = w + 'px'; pop.style.display = 'block';
+      var ph = pop.offsetHeight, x = Math.max(12, Math.min(r.left + r.width / 2 - 36, window.innerWidth - w - 12));
+      var y = r.bottom + 12, side = 'below';
+      if (y + ph > window.innerHeight - 12){ y = Math.max(12, r.top - ph - 12); side = 'above'; }
+      pop.style.left = x + 'px'; pop.style.top = y + 'px'; pop.dataset.side = side;
+      pop.style.setProperty('--caret', Math.max(16, Math.min(w - 28, r.left + Math.min(r.width, 60) / 2 - x - 6)) + 'px');
+    }
+    function hidePop(){ pop.style.display='none'; pop.classList.remove('pop-in'); if(active) active.classList.remove('term-open'); active=null; }
+    function esc(x){ return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+    function footer(key){
+      var out = '', home = App.TERM_HOME && App.TERM_HOME[key], here = location.hash.slice(1), lab = App.CH_LABEL && App.CH_LABEL[home];
+      if (home && lab && home !== here) out += '<a class="term-pop-ch" href="#' + home + '"><span>Taught in</span><b>' + lab[0] + ' \u00b7 ' + lab[1] + '</b><i aria-hidden="true">\u2192</i></a>';
+      var src = (App.SRC && App.SRC[key]) || [];
+      if (src.length) out += '<div class="term-pop-src"><span>Learn more</span>' + src.map(function(x){ return '<a href="' + esc(x[1]) + '" target="_blank" rel="noopener noreferrer"><b>' + esc(x[0]) + '</b><small>' + esc(x[2]) + ' \u2197</small></a>'; }).join('') + '</div>';
+      return out ? '<div class="term-pop-foot">' + out + '</div>' : '';
     }
     function open(t, lock){
-      clearTimeout(closeTimer); active = t; locked = !!lock;
+      clearTimeout(closeTimer);
+      if (active && active !== t) active.classList.remove('term-open');
+      active = t; locked = !!lock; t.classList.add('term-open');
       var key=t.dataset.g,d=G[key],cat=termCategory(key);
       var title=d?d.t:key,def=d?d.d:'(no entry)';
-      pop.innerHTML='<div class="term-pop-head"><span class="term-pop-cat term-'+cat+'">'+cat+'</span><b>'+title+'</b><button type="button" class="term-pop-close" aria-label="Close definition">×</button></div>'+glossGraphic(key)+'<p>'+def+'</p>';
-      pop.querySelector('.term-pop-close').onclick=function(){locked=false;pop.style.display='none';active=null;};
+      pop.className = 'pop gloss-pop term-' + cat;
+      pop.innerHTML='<i class="term-pop-caret" aria-hidden="true"></i><div class="term-pop-head"><span class="term-pop-cat">'+TERM_LABEL[cat]+'</span><b>'+title+'</b><button type="button" class="term-pop-close" aria-label="Close definition">\u00d7</button></div>'+glossGraphic(key)+'<p class="term-pop-def">'+def+'</p>'+footer(key);
+      pop.querySelector('.term-pop-close').onclick=function(){locked=false;hidePop();};
+      var chl = pop.querySelector('.term-pop-ch'); if (chl) chl.onclick = function(){ locked=false; hidePop(); };
       place(t);
+      pop.classList.remove('pop-in'); void pop.offsetWidth; pop.classList.add('pop-in');
     }
-    function scheduleClose(){ clearTimeout(closeTimer); closeTimer=setTimeout(function(){ if(!locked && !pop.matches(':hover')){pop.style.display='none';active=null;} },130); }
+    function scheduleClose(){ clearTimeout(closeTimer); closeTimer=setTimeout(function(){ if(!locked && !pop.matches(':hover')){hidePop();} },220); }
     document.addEventListener('mouseover',function(e){
       var t=e.target.closest&&e.target.closest('dfn[data-g]'); if(!t || t===active || (e.relatedTarget&&t.contains(e.relatedTarget))) return;
       clearTimeout(openTimer); openTimer=setTimeout(function(){open(t,false);},110);
@@ -2023,16 +2142,16 @@ var App = (function(){
     document.addEventListener('click', function(e){
       var t = e.target.closest && e.target.closest('dfn[data-g]');
       if (t){ open(t, true); e.stopPropagation(); return; }
-      if (!e.target.closest('#pop')){ locked=false; pop.style.display='none'; active=null; }
+      if (!e.target.closest('#pop')){ locked=false; hidePop(); }
     });
     document.addEventListener('focusin',function(e){ var t=e.target&&e.target.matches&&e.target.matches('dfn[data-g]')?e.target:null; if(t)open(t,false); });
     document.addEventListener('focusout',function(e){ if(e.target&&e.target.matches&&e.target.matches('dfn[data-g]'))scheduleClose(); });
     document.addEventListener('keydown', function(e){
       var t = e.target && e.target.matches && e.target.matches('dfn[data-g]') ? e.target : null;
       if (t && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); open(t, true); }
-      if(e.key==='Escape' && active){locked=false;pop.style.display='none';active=null;}
+      if(e.key==='Escape' && active){locked=false;hidePop();}
     });
-    window.addEventListener('scroll', function(){ if(!locked){pop.style.display='none';active=null;} }, {passive:true});
+    window.addEventListener('scroll', function(){ if(!locked){hidePop();} }, {passive:true});
   }
 
   /* ---------- config drawer ---------- */
@@ -2123,7 +2242,7 @@ var App = (function(){
     return w;
   }
 
-  return {s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
+  return {termCategory: termCategory, TERM_COLORS: TERM_COLORS, TERM_LABEL: TERM_LABEL, s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
           gloss: gloss, g: g, G: G, chapter: chapter, start: start, go: go, stepper: stepper, seg: seg};
 })();
 
@@ -2279,6 +2398,88 @@ d('swpf','software prefetch','Instructions (prefetcht0/t1/t2/nta) that ask the h
 d('late','late prefetch','A prefetch that was issued but whose data had not arrived when the demand access came; the access still waits, but less.');
 d('pollute','cache pollution','Useless prefetched lines evicting useful ones.');
 d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. The reason the whole hierarchy exists.');
+})();
+
+/* ======================= glossary sources + chapter links ======================= */
+(function(){
+  var W = function(t, label){ return [label || t.replace(/_/g, ' '), 'https://en.wikipedia.org/wiki/' + t, 'Wikipedia']; };
+  var S = {
+    agner: ['The microarchitecture of Intel, AMD and VIA CPUs', 'https://www.agner.org/optimize/microarchitecture.pdf', 'Agner Fog'],
+    zen: ['AMD Zen+ microarchitecture', 'https://en.wikipedia.org/wiki/Zen%2B', 'Wikipedia'],
+    zen7: ['AMD Zen: cache and TLB measurements', 'https://www.7-cpu.com/cpu/Zen.html', '7-cpu'],
+    drepper: ['What Every Programmer Should Know About Memory', 'https://www.akkadia.org/drepper/cpumemory.pdf', 'Ulrich Drepper'],
+    sdm: ['Intel 64 and IA-32 Software Developer Manuals', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html', 'Intel'],
+    enc: ['X86-64 Instruction Encoding', 'https://wiki.osdev.org/X86-64_Instruction_Encoding', 'OSDev Wiki'],
+    kpt: ['Page Tables', 'https://docs.kernel.org/mm/page_tables.html', 'Linux kernel docs'],
+    kmb: ['Linux kernel memory barriers', 'https://docs.kernel.org/core-api/wrappers/memory-barriers.html', 'Linux kernel docs'],
+    kthp: ['Transparent Hugepage Support', 'https://docs.kernel.org/admin-guide/mm/transhuge.html', 'Linux kernel docs'],
+    knuma: ['NUMA Memory Policy', 'https://docs.kernel.org/admin-guide/mm/numa_memory_policy.html', 'Linux kernel docs'],
+    kdma: ['Dynamic DMA mapping Guide', 'https://docs.kernel.org/core-api/dma-api-howto.html', 'Linux kernel docs'],
+    tso: ['x86-TSO: A Rigorous and Usable Programmer\u2019s Model', 'https://www.cl.cam.ac.uk/~pes20/weakmemory/cacm.pdf', 'Sewell et al., CACM'],
+    nvme: ['NVM Express specifications', 'https://nvmexpress.org/specifications/', 'NVM Express'],
+    uring: ['io_uring', 'https://en.wikipedia.org/wiki/Io_uring', 'Wikipedia'],
+    gccpf: ['__builtin_prefetch and other builtins', 'https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html', 'GCC manual'],
+    fabric: ['Infinity Fabric (in HyperTransport)', 'https://en.wikipedia.org/wiki/HyperTransport#Infinity_Fabric', 'Wikipedia'],
+    wulf: ['Hitting the Memory Wall: Implications of the Obvious', 'https://libraopen.lib.virginia.edu/downloads/4b29b598d', 'Wulf & McKee, UVA CS'],
+    boom: ['The Load/Store Unit (load queue, store queue, ordering failures)', 'https://docs.boom-core.org/en/latest/sections/load-store-unit.html', 'RISC-V BOOM core docs'],
+    fc: function(i){ return [i.toUpperCase() + ' instruction reference', 'https://www.felixcloutier.com/x86/' + i, 'x86 reference (from the Intel SDM)']; }
+  };
+  var SRC = {
+    isa: [W('Instruction_set_architecture'), S.sdm], uop: [W('Micro-operation'), S.agner], mop: [S.zen, S.agner], pc: [W('Program_counter')],
+    bp: [W('Branch_predictor'), S.agner], btb: [W('Branch_target_predictor'), S.agner], ras: [W('Branch_predictor'), S.agner],
+    l1i: [W('CPU_cache'), S.zen], itlb: [W('Translation_lookaside_buffer'), S.zen], fetchwin: [S.agner, S.zen], predecode: [S.agner, S.enc],
+    decode: [W('Instruction_pipelining'), S.agner], opcache: [S.agner, S.zen], uq: [S.agner, S.zen], fusion: [S.agner],
+    zx: [W('Sign_extension'), S.sdm], modrm: [S.enc, S.sdm], rex: [S.enc, S.sdm],
+    rename: [W('Register_renaming')], rat: [W('Register_renaming')], crat: [W('Register_renaming')], prf: [W('Register_renaming'), W('Register_file')], freelist: [W('Register_renaming')],
+    dispatch: [W('Out-of-order_execution'), S.zen], rob: [W('Re-order_buffer'), S.zen], sched: [W('Reservation_station'), W('Out-of-order_execution')],
+    wakeup: [W('Tomasulo\u2019s_algorithm'.replace('\u2019', "%27"), 'Tomasulo\u2019s algorithm'), W('Out-of-order_execution')], issue: [W('Out-of-order_execution'), S.agner],
+    port: [W('Execution_unit'), S.agner], alu: [W('Arithmetic_logic_unit')], agu: [W('Address_generation_unit')], bypass: [W('Operand_forwarding')],
+    lsu: [W('Load%E2%80%93store_unit', 'Load\u2013store unit'), S.boom], lq: [W('Memory_disambiguation'), S.zen, S.boom], sq: [W('Memory_disambiguation'), S.zen, S.boom],
+    sta: [W('Memory_disambiguation'), S.agner, S.boom], std: [W('Memory_disambiguation'), S.agner, S.boom], stlf: [W('Memory_disambiguation'), S.agner, S.boom], disamb: [W('Memory_disambiguation'), S.boom],
+    retire: [W('Re-order_buffer')], commit: [W('Memory_disambiguation'), S.tso], senior: [S.tso, W('Memory_disambiguation')],
+    squash: [W('Speculative_execution'), W('Branch_predictor')], mispredict: [W('Branch_predictor'), S.agner], spec: [W('Speculative_execution')],
+    smt: [W('Simultaneous_multithreading')], ipc: [W('Instructions_per_cycle')], mab: [W('CPU_cache'), S.drepper],
+    line: [W('CPU_cache'), S.drepper], set: [W('CPU_cache'), S.drepper], way: [W('CPU_cache'), S.drepper], tag: [W('CPU_cache')], index: [W('CPU_cache')], offset: [W('CPU_cache')],
+    hit: [W('CPU_cache'), S.drepper], miss: [W('CPU_cache'), S.drepper], valid: [W('CPU_cache')], dirty: [W('Dirty_bit'), W('Cache_(computing)')],
+    wbk: [W('Cache_(computing)'), S.drepper], wthru: [W('Cache_(computing)')], walloc: [W('Cache_(computing)')], rfo: [W('MESI_protocol'), S.drepper],
+    evict: [W('Cache_replacement_policies')], plru: [W('Cache_replacement_policies'), W('Pseudo-LRU')], vipt: [W('CPU_cache'), S.drepper],
+    incl: [W('Cache_inclusion_policy')], victimc: [W('Victim_cache'), S.zen], shadow: [S.zen], pfilter: [W('Cache_coherence'), S.zen], ccx: [S.zen],
+    mlp: [W('Memory-level_parallelism')], ltu: [S.agner, S.zen7], wset: [W('Working_set')], sloc: [W('Locality_of_reference')], tloc: [W('Locality_of_reference')],
+    sram: [W('Static_random-access_memory')], dramcell: [W('Dynamic_random-access_memory')],
+    va: [W('Virtual_memory'), S.kpt], pa: [W('Physical_address')], page: [W('Page_(computer_memory)')], vpn: [W('Page_table'), S.kpt], pfn: [W('Page_table'), S.kpt],
+    mmu: [W('Memory_management_unit')], tlb: [W('Translation_lookaside_buffer')], dtlb: [W('Translation_lookaside_buffer'), S.zen], pte: [W('Page_table'), S.kpt],
+    pml4: [S.kpt, W('Page_table')], cr3: [W('Control_register'), S.sdm], walk: [W('Page_table'), S.kpt], pwc: [W('Translation_lookaside_buffer'), S.zen7],
+    reach: [W('Translation_lookaside_buffer')], huge: [S.kthp, W('Page_(computer_memory)')], pcid: [W('Translation_lookaside_buffer'), S.sdm],
+    pf: [W('Page_fault'), S.kpt], ftouch: [S.knuma, W('Non-uniform_memory_access')],
+    fabric: [S.fabric, S.zen], umc: [W('Memory_controller')], channel: [W('Multi-channel_memory_architecture'), W('DDR4_SDRAM')], dimm: [W('DIMM'), W('Memory_rank')],
+    bank: [W('Dynamic_random-access_memory'), S.drepper], row: [W('Dynamic_random-access_memory'), S.drepper], rowbuf: [W('Dynamic_random-access_memory'), W('Sense_amplifier')],
+    act: [W('Synchronous_dynamic_random-access_memory'), S.drepper], tcl: [W('Memory_timings'), W('CAS_latency')], burst: [W('DDR4_SDRAM'), W('Synchronous_dynamic_random-access_memory')],
+    refresh: [W('Memory_refresh')],
+    pcie: [W('PCI_Express')], tlp: [W('PCI_Express')], rc: [W('Root_complex')], mmio: [W('Memory-mapped_I/O_and_port-mapped_I/O', 'Memory-mapped I/O')], bar: [W('PCI_configuration_space')],
+    doorbell: [S.nvme, S.uring], dma: [W('Direct_memory_access'), S.kdma], iommu: [W('Input%E2%80%93output_memory_management_unit', 'Input\u2013output memory management unit'), S.kdma],
+    iova: [S.kdma, W('Input%E2%80%93output_memory_management_unit', 'Input\u2013output memory management unit')], msix: [W('Message_Signaled_Interrupts')], nvme: [W('NVM_Express'), S.nvme], iocoh: [W('Direct_memory_access'), S.kdma],
+    memtype: [W('Memory_type_range_register'), S.sdm], pat: [W('Page_attribute_table'), W('Memory_type_range_register')], wc: [W('Write_combining')], nt: [W('Write_combining'), S.drepper],
+    clflush: [S.fc('clflush'), S.fc('clwb')], fence: [W('Memory_barrier'), S.kmb, S.fc('mfence')], tso: [S.tso, W('Memory_ordering')],
+    coh: [W('Cache_coherence')], moesi: [W('MOESI_protocol')], st_m: [W('MOESI_protocol')], st_o: [W('MOESI_protocol')], st_e: [W('MOESI_protocol')], st_s: [W('MOESI_protocol')], st_i: [W('MOESI_protocol')],
+    probe: [W('Bus_snooping'), W('Cache_coherence')], fshare: [W('False_sharing')],
+    pref: [W('Cache_prefetching')], stream: [W('Cache_prefetching')], stride: [W('Cache_prefetching')], swpf: [S.gccpf, W('Cache_prefetching')], late: [W('Cache_prefetching')], pollute: [W('Cache_pollution'), W('Cache_prefetching')],
+    memwall: [S.wulf, W('Random-access_memory')]
+  };
+  /* where each term is taught, for the "explore it" link */
+  var CH = {map: ['00', 'The machine'], code: ['01', 'C \u2192 \u00b5ops'], core: ['02', 'Inside the core'], xlate: ['03', 'VA \u2192 PA'], l1d: ['04', 'L1d lookup'], hier: ['05', 'Down the hierarchy'],
+            dram: ['06', 'DRAM'], stores: ['07', 'Stores'], coh: ['08', 'Coherence'], pref: ['09', 'Prefetchers'], dev: ['10', 'Devices & DMA'], e2e: ['11', 'End to end']};
+  var HOME = {};
+  'isa uop mop pc fetchwin predecode decode opcache fusion zx modrm rex l1i'.split(' ').forEach(function(k){ HOME[k] = 'code'; });
+  'bp btb ras itlb uq rename rat crat prf freelist dispatch rob sched wakeup issue port alu agu bypass lsu lq sq sta std stlf disamb retire squash mispredict spec smt ipc mab'.split(' ').forEach(function(k){ HOME[k] = 'core'; });
+  'va pa page vpn pfn mmu tlb dtlb pte pml4 cr3 walk pwc reach huge pcid pf ftouch'.split(' ').forEach(function(k){ HOME[k] = 'xlate'; });
+  'line set way tag index offset hit miss valid dirty wbk wthru walloc evict plru vipt'.split(' ').forEach(function(k){ HOME[k] = 'l1d'; });
+  'incl victimc shadow pfilter ccx mlp ltu wset sloc tloc sram fabric memwall'.split(' ').forEach(function(k){ HOME[k] = 'hier'; });
+  'dramcell umc channel dimm bank row rowbuf act tcl burst refresh'.split(' ').forEach(function(k){ HOME[k] = 'dram'; });
+  'commit senior rfo memtype pat wc nt clflush fence tso'.split(' ').forEach(function(k){ HOME[k] = 'stores'; });
+  'coh moesi st_m st_o st_e st_s st_i probe fshare'.split(' ').forEach(function(k){ HOME[k] = 'coh'; });
+  'pref stream stride swpf late pollute'.split(' ').forEach(function(k){ HOME[k] = 'pref'; });
+  'pcie tlp rc mmio bar doorbell dma iommu iova msix nvme iocoh'.split(' ').forEach(function(k){ HOME[k] = 'dev'; });
+  App.SRC = SRC; App.TERM_HOME = HOME; App.CH_LABEL = CH;
 })();
 
 /* ======================= chapter: the machine ======================= */
@@ -4541,19 +4742,35 @@ build: function(root){
 
 /* ======================= chapter: glossary ======================= */
 App.chapter({id: 'gloss', num: '12', short: 'Glossary', title: 'Glossary',
-sub: 'Every term used in these chapters, the same definitions the dotted terms open.',
+sub: 'Every term used in these chapters: what it means, which chapter teaches it, and where to read more.',
 build: function(root){
-  var h = App.h;
-  var bar = h('div', {'class': 'stp'}, root);
-  var q = h('input', {type: 'search', placeholder: 'filter terms\u2026', style: 'flex:1;max-width:420px', 'aria-label': 'filter glossary'}, bar);
+  var h = App.h, G = App.G;
+  var keys = Object.keys(G).sort(function(a, b){ return G[a].t.toLowerCase().localeCompare(G[b].t.toLowerCase()); });
+  var CATS = [['all', 'All']].concat(['core', 'xlate', 'cache', 'memory', 'order', 'coh', 'pref', 'io'].map(function(c){ return [c, App.TERM_LABEL[c]]; }));
+  var count = {all: keys.length}; keys.forEach(function(k){ var c = App.termCategory(k); count[c] = (count[c] || 0) + 1; });
+  var bar = h('div', {'class': 'gl-bar'}, root);
+  var q = h('input', {type: 'search', placeholder: 'Search ' + keys.length + ' terms and definitions\u2026', 'aria-label': 'Search the glossary'}, bar);
   var cnt = h('span', {'class': 'note'}, bar);
+  var chips = h('div', {'class': 'gl-chips', role: 'group', 'aria-label': 'Filter by category'}, root);
   var list = h('div', {'class': 'glist'}, root);
-  var keys = Object.keys(App.G).sort(function(a, b){ return App.G[a].t.toLowerCase().localeCompare(App.G[b].t.toLowerCase()); });
+  var cat = 'all', btns = {};
+  function esc(x){ return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+  CATS.forEach(function(c){
+    var b = h('button', {type: 'button', 'class': 'gl-chip term-' + c[0] + (c[0] === 'all' ? ' on' : ''), 'aria-pressed': c[0] === 'all' ? 'true' : 'false'}, chips, c[1] + ' <small>' + (count[c[0]] || 0) + '</small>');
+    b.onclick = function(){ cat = c[0]; for (var k in btns){ btns[k].classList.toggle('on', k === cat); btns[k].setAttribute('aria-pressed', k === cat ? 'true' : 'false'); } draw(); };
+    btns[c[0]] = b;
+  });
+  function card(k){
+    var e = G[k], c = App.termCategory(k), home = App.TERM_HOME[k], lab = App.CH_LABEL[home], src = App.SRC[k] || [];
+    var foot = (lab ? '<a class="term-pop-ch" href="#' + home + '"><span>Taught in</span><b>' + lab[0] + ' \u00b7 ' + lab[1] + '</b><i aria-hidden="true">\u2192</i></a>' : '') +
+      (src.length ? '<div class="term-pop-src"><span>Learn more</span>' + src.map(function(x){ return '<a href="' + esc(x[1]) + '" target="_blank" rel="noopener noreferrer"><b>' + esc(x[0]) + '</b><small>' + esc(x[2]) + ' \u2197</small></a>'; }).join('') + '</div>' : '');
+    return '<article class="card gl-card term-' + c + '"><span class="term-pop-cat">' + App.TERM_LABEL[c] + '</span><h3>' + e.t + '</h3><p>' + e.d + '</p>' + (foot ? '<div class="term-pop-foot">' + foot + '</div>' : '') + '</article>';
+  }
   function draw(){
-    var f = q.value.trim().toLowerCase(), n = 0;
-    list.innerHTML = keys.filter(function(k){ var e = App.G[k]; return !f || e.t.toLowerCase().indexOf(f) >= 0 || e.d.toLowerCase().indexOf(f) >= 0; })
-      .map(function(k){ n++; var e = App.G[k]; return '<div class="card"><h3>' + e.t + '</h3><p>' + e.d + '</p></div>'; }).join('');
-    cnt.textContent = n + ' of ' + keys.length + ' terms';
+    var f = q.value.trim().toLowerCase();
+    var shown = keys.filter(function(k){ var e = G[k]; return (cat === 'all' || App.termCategory(k) === cat) && (!f || e.t.toLowerCase().indexOf(f) >= 0 || e.d.toLowerCase().indexOf(f) >= 0); });
+    list.innerHTML = shown.length ? shown.map(card).join('') : '<div class="gl-empty">No term matches \u201c' + esc(q.value) + '\u201d' + (cat !== 'all' ? ' in ' + App.TERM_LABEL[cat] : '') + '.</div>';
+    cnt.textContent = shown.length + ' of ' + keys.length + ' terms';
   }
   q.oninput = draw; draw();
 }});

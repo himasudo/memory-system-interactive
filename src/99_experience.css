@@ -398,7 +398,7 @@ body{
 .map-workbench{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:start}
 .map-workbench .map-viz{min-width:0}
 .map-inspector{
-  position:sticky;top:22px;min-height:250px;padding:24px;
+  position:sticky;top:78px;min-height:250px;padding:24px;
   background:var(--ink-panel);border-color:#2c2e32;color:var(--ink-text)
 }
 .map-inspector h3{font-size:22px;line-height:1.15;color:var(--ink-text);letter-spacing:-.03em;margin:6px 0 13px}
