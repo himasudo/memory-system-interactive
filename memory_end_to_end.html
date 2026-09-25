@@ -1,0 +1,2216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The memory system, end to end</title>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#f5f4f0; --panel:#ffffff; --sunk:#edebe5; --tx:#1b1b19; --tx2:#57564f; --tx3:#8a887f;
+  --bd:#d8d5cc; --bd2:#b7b3a8; --wire:#a09c91;
+  --a1:#c1502a; --a1bg:#fbe6dc;   /* tag / stores / writeback */
+  --a2:#0f7f5e; --a2bg:#d9f0e7;   /* index / fills / L1 */
+  --a3:#5f4cc2; --a3bg:#e8e4fb;   /* offset / ROB */
+  --a4:#2a67aa; --a4bg:#dbe8f6;   /* data / loads */
+  --ok:#2b8538; --okbg:#dff1dd; --bad:#c0372c; --badbg:#fbe0dd;
+  --act:#bf800d; --actbg:#fbedd0;
+  --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,'Helvetica Neue',sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121215; --panel:#1a1a1f; --sunk:#101013; --tx:#ecebe6; --tx2:#a5a39b; --tx3:#74726c;
+    --bd:#2c2c34; --bd2:#43434d; --wire:#5a5a65;
+    --a1:#f08b62; --a1bg:#3a2016; --a2:#4fd0a4; --a2bg:#0f2f28; --a3:#ab99f7; --a3bg:#241d40;
+    --a4:#79b1ee; --a4bg:#16283d; --ok:#6fd07c; --okbg:#15301a; --bad:#ff7b6f; --badbg:#3b1715;
+    --act:#f2b646; --actbg:#3a2b0f;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121215; --panel:#1a1a1f; --sunk:#101013; --tx:#ecebe6; --tx2:#a5a39b; --tx3:#74726c;
+  --bd:#2c2c34; --bd2:#43434d; --wire:#5a5a65;
+  --a1:#f08b62; --a1bg:#3a2016; --a2:#4fd0a4; --a2bg:#0f2f28; --a3:#ab99f7; --a3bg:#241d40;
+  --a4:#79b1ee; --a4bg:#16283d; --ok:#6fd07c; --okbg:#15301a; --bad:#ff7b6f; --badbg:#3b1715;
+  --act:#f2b646; --actbg:#3a2b0f;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 60px)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+code,.mono{font-family:var(--mono);font-size:.9em}
+button{font:500 13px var(--sans);padding:8px 12px;border-radius:8px;border:1px solid var(--bd2);background:var(--panel);color:var(--tx);cursor:pointer}
+button:hover{border-color:var(--tx3)}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.4;cursor:default;transform:none}
+button.pri{border-color:var(--act);color:var(--act)}
+button.on{background:var(--actbg);border-color:var(--act);color:var(--act)}
+input,select{font:13px var(--mono);padding:7px 9px;border:1px solid var(--bd2);border-radius:7px;background:var(--sunk);color:var(--tx);min-width:0}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--bd);padding-top:env(safe-area-inset-top,0px)}
+.topin{max-width:1320px;margin:0 auto;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.brand{font-weight:600;font-size:15px;white-space:nowrap}
+.brand small{display:block;font-weight:400;font-size:11.5px;color:var(--tx3)}
+.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;padding:2px 0}
+.nav::-webkit-scrollbar{display:none}
+.nav a{flex:none;font-size:12.5px;color:var(--tx2);text-decoration:none;padding:6px 10px;border-radius:7px;border:1px solid transparent;white-space:nowrap}
+.nav a b{font-family:var(--mono);font-weight:500;color:var(--tx3);margin-right:5px;font-size:11px}
+.nav a:hover{border-color:var(--bd)}
+.nav a.cur{background:var(--panel);border-color:var(--bd2);color:var(--tx)}
+.nav a.cur b{color:var(--act)}
+.cfgbtn{flex:none}
+
+.wrap{max-width:1320px;margin:0 auto;padding:22px 14px 60px}
+.ch{display:none}
+.ch.show{display:block}
+.chh{margin-bottom:16px}
+.chh .num{font-family:var(--mono);font-size:12px;color:var(--act);letter-spacing:.06em}
+.chh h1{font-size:25px;font-weight:600;margin:2px 0 6px;letter-spacing:-.01em}
+.chh p{margin:0;color:var(--tx2);max-width:880px}
+.card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:14px 16px}
+.card h3{font-size:14px;font-weight:600;margin:0 0 8px}
+.card p{margin:0 0 8px;font-size:14px;color:var(--tx2)}
+.card p:last-child{margin-bottom:0}
+.card b{color:var(--tx);font-weight:600}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.stack>*+*{margin-top:12px}
+.scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--panel);border:1px solid var(--bd);border-radius:12px}
+.scroller svg{display:block;width:100%;height:auto}
+.note{font-size:12.5px;color:var(--tx3)}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;border:1px solid var(--bd);color:var(--tx2);vertical-align:1px}
+.tag.ok{background:var(--okbg);color:var(--ok);border-color:transparent}
+.tag.bad{background:var(--badbg);color:var(--bad);border-color:transparent}
+.tag.act{background:var(--actbg);color:var(--act);border-color:transparent}
+.tag.pub{background:var(--sunk);color:var(--tx3)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.kv dt{color:var(--tx3)}
+.kv dd{margin:0;font-family:var(--mono);font-size:12.5px}
+
+/* ---------- glossary term ---------- */
+dfn{font-style:normal;border-bottom:1px dotted var(--tx3);cursor:help}
+dfn:hover{border-bottom-color:var(--act);color:var(--tx)}
+.pop{position:fixed;z-index:60;max-width:360px;background:var(--panel);border:1px solid var(--bd2);border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.18);display:none}
+.pop b{display:block;font-size:13.5px;margin-bottom:3px}
+.pop p{margin:0;color:var(--tx2)}
+
+/* ---------- stepper ---------- */
+.stp{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.stp .cnt{font-family:var(--mono);font-size:12px;color:var(--tx3);min-width:64px;text-align:center}
+.stp .grow{flex:1}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.pill{font-size:11px;padding:2px 8px;border-radius:6px;border:1px solid var(--bd);color:var(--tx3);cursor:pointer;background:transparent}
+.pill.done{color:var(--tx2)}
+.pill.cur{background:var(--actbg);color:var(--act);border-color:var(--act)}
+.narr{border-left:3px solid var(--act);padding:10px 14px;background:var(--panel);border-radius:0 10px 10px 0;border-top:1px solid var(--bd);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd)}
+.narr h4{margin:0 0 4px;font-size:15px;font-weight:600}
+.narr p{margin:0;font-size:14px;color:var(--tx2)}
+.narr p+p{margin-top:6px}
+.narr b{color:var(--tx);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;border-radius:0;border-right:1px solid var(--bd);padding:7px 11px;background:var(--panel)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--actbg);color:var(--act)}
+
+/* ---------- config drawer ---------- */
+.drawer{position:fixed;inset:0;z-index:70;display:none;background:rgba(0,0,0,.35)}
+.drawer.show{display:block}
+.drawer .in{position:absolute;right:0;top:0;bottom:0;width:min(420px,100%);background:var(--panel);border-left:1px solid var(--bd);padding:calc(env(safe-area-inset-top,0px) + 18px) 18px calc(env(safe-area-inset-bottom,0px) + 18px);overflow:auto}
+.drawer h2{font-size:17px;margin:0 0 6px}
+.drawer label{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;font-size:13px;margin:8px 0}
+.drawer label span small{display:block;color:var(--tx3);font-size:11.5px}
+
+/* ---------- svg common ---------- */
+svg text{font-family:var(--sans);fill:var(--tx2);font-size:12px}
+svg .h{fill:var(--tx);font-weight:600;font-size:13px}
+svg .s{fill:var(--tx3);font-size:10.5px}
+svg .m{font-family:var(--mono)}
+svg .box{fill:var(--panel);stroke:var(--bd2);stroke-width:1.1}
+svg .sunk{fill:var(--sunk);stroke:var(--bd);stroke-width:1}
+svg .wire{stroke:var(--wire);stroke-width:1.3;fill:none}
+svg .bus{stroke:var(--wire);stroke-width:3;fill:none}
+svg .on.box,svg .on .box{stroke:var(--act);stroke-width:2;fill:var(--actbg)}
+svg .on.wire,svg .on .wire{stroke:var(--act);stroke-width:2.4}
+svg .on.bus,svg .on .bus{stroke:var(--act);stroke-width:4}
+svg .okb{fill:var(--okbg);stroke:var(--ok);stroke-width:1.8}
+svg .badb{fill:var(--badbg);stroke:var(--bad);stroke-width:1.8}
+svg .a1b{fill:var(--a1bg);stroke:var(--a1);stroke-width:1.2}
+svg .a2b{fill:var(--a2bg);stroke:var(--a2);stroke-width:1.2}
+svg .a3b{fill:var(--a3bg);stroke:var(--a3);stroke-width:1.2}
+svg .a4b{fill:var(--a4bg);stroke:var(--a4);stroke-width:1.2}
+svg .dim{opacity:.35}
+svg .flow{fill:none;stroke-width:3;stroke-dasharray:7 5}
+@media (prefers-reduced-motion:no-preference){ svg .flow{animation:dash .9s linear infinite} }
+@keyframes dash{to{stroke-dashoffset:-24}}
+svg .click{cursor:pointer}
+svg .click:hover .box{stroke:var(--act)}
+
+.c2u{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:12px}
+@media (max-width:860px){.c2u{grid-template-columns:minmax(0,1fr)}}
+.src{font:12.5px/1.75 var(--mono);background:var(--sunk);border-radius:8px;padding:8px 0;overflow-x:auto}
+.src .ln{padding:0 10px;white-space:nowrap;cursor:pointer;border-left:3px solid transparent}
+.src .ln:hover{background:color-mix(in srgb,var(--act) 8%,transparent)}
+.src .ln.hl{background:var(--actbg)}
+.src .ln.sel{background:var(--actbg);border-left-color:var(--act)}
+.src .no{display:inline-block;width:26px;color:var(--tx3);user-select:none}
+.src .bytes{display:inline-block;width:200px;color:var(--a1)}
+.src .ins{color:var(--tx)}
+.src .lab{color:var(--a3);padding-left:0;margin-top:2px}
+svg .bc{fill:var(--a4bg);stroke:var(--a4);stroke-width:1}
+svg .bc.bsel{fill:var(--actbg);stroke:var(--act);stroke-width:2}
+.bstream{display:flex;flex-wrap:wrap;gap:3px;font:12.5px var(--mono);margin:6px 0 10px}
+.bstream span{padding:2px 5px;border-radius:4px;background:var(--sunk)}
+.bstream em{font-style:normal;display:inline-flex;gap:3px;padding:2px;border-radius:6px;margin-right:6px}
+.bstream em.g0{background:var(--a4bg)}.bstream em.g1{background:var(--a2bg)}
+.bstream em span{background:transparent}
+.fields{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.fld{border:1.5px solid;border-radius:8px;padding:4px 10px;text-align:center}
+.fld code{display:block;font-size:14px;font-weight:600}
+.fld span{font-size:11px}
+.fld.a1{border-color:var(--a1);background:var(--a1bg);color:var(--a1)}
+.fld.a2{border-color:var(--a2);background:var(--a2bg);color:var(--a2)}
+.fld.a3{border-color:var(--a3);background:var(--a3bg);color:var(--a3)}
+.fld.a4{border-color:var(--a4);background:var(--a4bg);color:var(--a4)}
+.fld.act{border-color:var(--act);background:var(--actbg);color:var(--act)}
+.bitrow{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 10px}
+.bg{text-align:center}
+.bb{display:flex;gap:2px}
+.bb i{font:600 13px var(--mono);font-style:normal;width:20px;height:24px;line-height:24px;border:1px solid var(--bd2);border-radius:4px;background:var(--sunk)}
+.bl{font-size:11px;color:var(--tx3);margin-top:2px}
+.bv{font:12px var(--mono);color:var(--act)}
+.unote{font-family:var(--sans)!important;color:var(--tx3);font-size:12px!important;padding-top:0!important}
+.route{margin:0;padding-left:0;list-style:none;font-size:14px;color:var(--tx2)}
+.route li{margin:5px 0}
+.route b{font-family:var(--mono);color:var(--act);margin-right:6px}
+
+.mt{border-collapse:collapse;width:100%;font-size:12.5px}
+.mt th{text-align:left;font-weight:600;color:var(--tx3);font-size:11px;padding:3px 6px;border-bottom:1px solid var(--bd)}
+.mt td{padding:3px 6px;border-bottom:1px solid var(--bd);font-family:var(--mono);font-size:12px}
+.mt tr:last-child td{border-bottom:0}
+.mt tr.chg td{background:var(--actbg);color:var(--act)}
+.mt td dfn{font-family:var(--sans)}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:1000px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.pgrid{grid-template-columns:minmax(0,1fr)}}
+.pp h3{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.lane{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:4px 0;font-size:12px}
+.lane>span{font:600 11px var(--mono);color:var(--tx3);width:26px}
+.lane i{font:normal 11.5px var(--mono);padding:1px 6px;border-radius:5px;background:var(--a4bg);color:var(--a4)}
+.lane em{font-style:normal;color:var(--tx3);font-size:11.5px}
+.prfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:3px}
+.pr{border:1px solid var(--bd);border-radius:5px;padding:2px 4px;font-size:10.5px;line-height:1.25;min-height:32px}
+.pr b{display:block;font:600 10px var(--mono);color:var(--tx3)}
+.pr span{font-family:var(--mono)}
+.pr.free{opacity:.35}
+.pr.pend{border:1.5px dashed var(--a4);background:var(--a4bg)}
+.pr.rdy{background:var(--okbg);border-color:var(--ok)}
+.pr.nw{outline:2px solid var(--act)}
+.su{display:flex;gap:4px;align-items:center;font-size:12px;margin:3px 0;flex-wrap:wrap}
+.su b{font:600 11.5px var(--mono);min-width:56px}
+.su span{font:11px var(--mono);padding:0 5px;border-radius:4px}
+.su span.r{background:var(--okbg);color:var(--ok)}
+.su span.n{background:var(--sunk);color:var(--tx3)}
+.evl{margin:0;padding-left:18px;font-size:13.5px;color:var(--tx2)}
+.evl li{margin:3px 0}
+.evl b{color:var(--tx);font-family:var(--mono);font-size:12.5px}
+.ring{width:100%;max-width:280px;display:block;margin:0 auto}
+.gantt-w{overflow:auto;max-height:560px;border:1px solid var(--bd);border-radius:8px}
+.gantt{border-collapse:separate;border-spacing:0;font:10.5px var(--mono)}
+.gantt th{position:sticky;top:0;background:var(--panel);z-index:2;font-weight:500;color:var(--tx3);padding:3px 2px;min-width:24px;cursor:pointer;border-bottom:1px solid var(--bd);white-space:nowrap}
+.gantt td{padding:1px 2px;text-align:center;min-width:24px;height:18px;border-right:1px solid color-mix(in srgb,var(--bd) 45%,transparent)}
+.gantt .lbl{position:sticky;left:0;background:var(--panel);z-index:1;text-align:left;padding:1px 8px;min-width:70px;border-right:1px solid var(--bd)}
+.gantt thead .lbl{z-index:3}
+.gantt td.fe{background:var(--a4bg);color:var(--a4)}
+.gantt td.uq{background:var(--sunk);color:var(--tx3)}
+.gantt td.rn{background:var(--a3bg);color:var(--a3)}
+.gantt td.wt{color:var(--tx3)}
+.gantt td.is{background:var(--actbg);color:var(--act);font-weight:600}
+.gantt td.ex{background:var(--a2bg);color:var(--a2)}
+.gantt td.mm{background:var(--a4bg);color:var(--a4);font-weight:600}
+.gantt td.ms{background:var(--badbg);color:var(--bad)}
+.gantt td.wb{background:var(--okbg);color:var(--ok)}
+.gantt td.rt{background:var(--a3);color:#fff;font-weight:600}
+.gantt td.sb{background:var(--a1bg);color:var(--a1)}
+.gantt td.cm{background:var(--a1);color:#fff;font-weight:600}
+.gantt td.xx{background:var(--badbg);color:var(--bad);font-weight:700}
+.gantt td.fut{background:transparent!important;color:transparent!important}
+.gantt td.cur,.gantt th.cur{box-shadow:inset 2px 0 0 var(--act),inset -2px 0 0 var(--act)}
+.gantt tr.sqd td.lbl{color:var(--bad);text-decoration:line-through}
+.gantt tr.act td.lbl{color:var(--act);font-weight:600}
+svg .slot{fill:var(--sunk);stroke:var(--bd);stroke-width:1}
+svg .slot.wait{fill:var(--a4bg);stroke:var(--a4)}
+svg .slot.rdy{fill:var(--okbg);stroke:var(--ok)}
+svg .slot.exec{fill:var(--actbg);stroke:var(--act)}
+svg .slot.done{fill:var(--okbg);stroke:var(--ok)}
+svg .slot.miss{fill:var(--badbg);stroke:var(--bad)}
+svg .slot.sen{fill:var(--a3bg);stroke:var(--a3)}
+svg .slt{font-size:9px;fill:var(--tx)}
+
+.kchain{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+@media (max-width:900px){.kchain{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kchain>div{border:1px solid var(--bd);border-radius:8px;padding:8px 10px;background:var(--sunk);position:relative}
+.kchain>div.on{border-color:var(--act);background:var(--actbg)}
+.kchain code{font-size:12px;font-weight:600;color:var(--tx)}
+.kchain span{display:block;font:11px var(--mono);color:var(--tx3)}
+.kchain p{margin:4px 0 0;font-size:12.5px;color:var(--tx2)}
+
+
+</style>
+</head>
+<body>
+<header class="top"><div class="topin">
+  <div class="brand">Memory, end to end<small>Ryzen 7 3750H &middot; Zen+</small></div>
+  <nav class="nav" id="nav"></nav>
+  <button class="cfgbtn" id="cfgOpen" title="Latency settings">latencies</button>
+</div></header>
+<main class="wrap" id="main"></main>
+<div class="pop" id="pop"></div>
+<div class="drawer" id="cfg"><div class="in" id="cfgIn"></div></div>
+<script>
+/* ======================= core ======================= */
+var App = (function(){
+  var NS = 'http://www.w3.org/2000/svg';
+  function s(tag, attrs, parent, text){
+    var e = document.createElementNS(NS, tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function h(tag, attrs, parent, html){
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs){ if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    if (html !== undefined) e.innerHTML = html;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function hx(v, w){ var t = (typeof v === 'bigint' ? v : BigInt(v)).toString(16); if (w) t = t.padStart(w, '0'); return '0x' + t; }
+  function hb(v){ return v.toString(16).padStart(2, '0'); }
+
+  /* ---------- the running example: one program, one set of addresses ---------- */
+  var EX = {
+    fn: 0x555555555180n, loop: 0x555555555190n, ret: 0x5555555551a1n,
+    data: 0x55555555a2c0n, hist: 0x7ffd4a3c2a80n, rsp: 0x7ffd4a3c2a58n, retAddr: 0x5555555552d4n,
+    n: 3, bytes: [123, 123, 7, 46, 200, 123], histInit: {123: 41, 7: 9, 46: 3, 200: 17},
+    /* VA page -> PFN, fixed for every chapter */
+    pages: { '555555555': 0x2b4e1n, '55555555a': 0x1c07an, '7ffd4a3c2': 0x1a3f7cn, '7ffd4a3c3': 0x0f9d2n },
+    cr3: 0x10a3b000n
+  };
+  EX.histAddr = function(k){ return EX.hist + BigInt(k) * 8n; };
+  EX.pa = function(va){
+    var vpn = (va >> 12n).toString(16), pfn = EX.pages[vpn];
+    return pfn === undefined ? null : (pfn << 12n) | (va & 0xfffn);
+  };
+
+  /* ---------- latency config (published ballpark defaults; user can overwrite with measurements) ---------- */
+  var CFG = { ghz: 4.0, l1: 4, l2: 12, l3: 35, dramNs: 90, tscGhz: 2.297 };
+  var CFG_DEF = JSON.parse(JSON.stringify(CFG));
+  try { var sv = localStorage.getItem('memE2E.cfg'); if (sv){ var o = JSON.parse(sv); for (var k in o) if (k in CFG) CFG[k] = +o[k]; } } catch(e){}
+  var cfgListeners = [];
+  function dramCycles(){ return Math.round(CFG.l3 + CFG.dramNs * CFG.ghz); }
+  function onCfg(fn){ cfgListeners.push(fn); }
+
+  /* ---------- glossary ---------- */
+  var G = {};
+  function gloss(key, title, def){ G[key] = {t: title, d: def}; }
+  function g(key, label){ return '<dfn data-g="' + key + '">' + (label || (G[key] ? G[key].t : key)) + '</dfn>'; }
+
+  /* ---------- chapters + router ---------- */
+  var chapters = [], built = {}, cur = null;
+  function chapter(def){ chapters.push(def); }
+  function show(id){
+    var ch = chapters.filter(function(c){ return c.id === id; })[0] || chapters[0];
+    if (!built[ch.id]){
+      var sec = h('section', {'class': 'ch', id: 'ch-' + ch.id}, document.getElementById('main'));
+      var hd = h('div', {'class': 'chh'}, sec);
+      h('div', {'class': 'num'}, hd, 'CHAPTER ' + ch.num);
+      h('h1', null, hd, ch.title);
+      if (ch.sub) h('p', null, hd, ch.sub);
+      var body = h('div', {'class': 'stack'}, sec);
+      built[ch.id] = {sec: sec, api: ch.build(body) || {}};
+    }
+    for (var k in built) built[k].sec.classList.toggle('show', k === ch.id);
+    cur = ch.id;
+    var links = document.querySelectorAll('#nav a');
+    for (var i = 0; i < links.length; i++) links[i].classList.toggle('cur', links[i].dataset.id === ch.id);
+    var a = document.querySelector('#nav a.cur'); if (a && a.scrollIntoView) a.scrollIntoView({block: 'nearest', inline: 'center'});
+    if (built[ch.id].api.onShow) built[ch.id].api.onShow();
+  }
+  function go(id){ if (location.hash !== '#' + id) location.hash = id; else show(id); window.scrollTo(0, 0); }
+  function start(){
+    var nav = document.getElementById('nav');
+    chapters.forEach(function(c){
+      var a = h('a', {href: '#' + c.id}, nav, '<b>' + c.num + '</b>' + c.short);
+      a.dataset.id = c.id;
+    });
+    window.addEventListener('hashchange', function(){ show(location.hash.slice(1)); window.scrollTo(0, 0); });
+    show(location.hash.slice(1) || chapters[0].id);
+    initPop(); initCfg();
+    document.addEventListener('keydown', function(e){
+      if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+      var api = built[cur] && built[cur].api;
+      if (api && api.key && api.key(e.key)) e.preventDefault();
+    });
+  }
+
+  /* ---------- popover ---------- */
+  function initPop(){
+    var pop = document.getElementById('pop');
+    function place(t){
+      var r = t.getBoundingClientRect(), w = Math.min(360, window.innerWidth - 20);
+      pop.style.maxWidth = w + 'px';
+      pop.style.display = 'block';
+      var ph = pop.offsetHeight, x = Math.max(10, Math.min(r.left, window.innerWidth - w - 10));
+      var y = r.bottom + 8; if (y + ph > window.innerHeight - 10) y = Math.max(10, r.top - ph - 8);
+      pop.style.left = x + 'px'; pop.style.top = y + 'px';
+    }
+    document.addEventListener('click', function(e){
+      var t = e.target.closest && e.target.closest('dfn[data-g]');
+      if (t){
+        var d = G[t.dataset.g];
+        pop.innerHTML = d ? '<b>' + d.t + '</b><p>' + d.d + '</p>' : '<b>' + t.dataset.g + '</b><p>(no entry)</p>';
+        place(t); e.stopPropagation(); return;
+      }
+      if (!e.target.closest('#pop')) pop.style.display = 'none';
+    });
+    window.addEventListener('scroll', function(){ pop.style.display = 'none'; }, {passive: true});
+  }
+
+  /* ---------- config drawer ---------- */
+  function initCfg(){
+    var dr = document.getElementById('cfg'), inn = document.getElementById('cfgIn');
+    var rows = [
+      ['ghz', 'Core clock (GHz)', '3750H max boost is 4.0; base 2.3'],
+      ['l1', 'L1d load-to-use (cycles)', 'published Zen+: 4'],
+      ['l2', 'L2 load-to-use (cycles)', 'published Zen+: 12 minimum'],
+      ['l3', 'L3 load-to-use (cycles)', 'published Zen/Zen+ average: ~35'],
+      ['dramNs', 'DRAM extra latency beyond L3 (ns)', 'ballpark only; depends on DIMMs'],
+      ['tscGhz', 'TSC frequency (GHz)', 'you measured 2.297 in Module 04']
+    ];
+    var html = '<h2>Latency settings</h2><p class="note">Defaults are published Zen/Zen+ figures (WikiChip, 7-cpu.com), <b>not measurements from your machine</b>. After Drill 02, replace them with your own plateau values; every chapter re-runs with the new numbers.</p>';
+    rows.forEach(function(r){ html += '<label><span>' + r[1] + '<small>' + r[2] + '</small></span><input type="number" step="any" min="0" data-k="' + r[0] + '" value="' + CFG[r[0]] + '"></label>'; });
+    html += '<p class="note" id="cfgDram"></p><div style="display:flex;gap:8px;margin-top:12px"><button id="cfgReset">reset to published</button><button class="pri" id="cfgClose" style="margin-left:auto">close</button></div>';
+    inn.innerHTML = html;
+    function upd(){ document.getElementById('cfgDram').textContent = 'DRAM load-to-use at these settings: ' + dramCycles() + ' cycles = ' + (dramCycles() / CFG.ghz).toFixed(1) + ' ns.'; }
+    upd();
+    inn.addEventListener('change', function(e){
+      var k = e.target.dataset && e.target.dataset.k; if (!k) return;
+      var v = parseFloat(e.target.value); if (!(v > 0)){ e.target.value = CFG[k]; return; }
+      CFG[k] = v; try { localStorage.setItem('memE2E.cfg', JSON.stringify(CFG)); } catch(er){}
+      upd(); cfgListeners.forEach(function(f){ f(); });
+    });
+    document.getElementById('cfgReset').onclick = function(){
+      for (var k in CFG_DEF) CFG[k] = CFG_DEF[k];
+      var ins = inn.querySelectorAll('input'); for (var i = 0; i < ins.length; i++) ins[i].value = CFG[ins[i].dataset.k];
+      try { localStorage.removeItem('memE2E.cfg'); } catch(er){}
+      upd(); cfgListeners.forEach(function(f){ f(); });
+    };
+    document.getElementById('cfgOpen').onclick = function(){ dr.classList.add('show'); };
+    document.getElementById('cfgClose').onclick = function(){ dr.classList.remove('show'); };
+    dr.addEventListener('click', function(e){ if (e.target === dr) dr.classList.remove('show'); });
+  }
+
+  /* ---------- stepper: frames = [{t: title, d: html, ...}] ---------- */
+  function stepper(parent, opts){
+    var wrap = h('div', {'class': 'stack'}, parent);
+    var bar = h('div', {'class': 'stp'}, wrap);
+    var bBack = h('button', null, bar, '&larr; back');
+    var cnt = h('span', {'class': 'cnt'}, bar);
+    var bNext = h('button', {'class': 'pri'}, bar, 'next &rarr;');
+    var bReset = h('button', null, bar, 'restart');
+    h('span', {'class': 'grow'}, bar);
+    var pills = h('div', {'class': 'pills'}, bar);
+    var narr = h('div', {'class': 'narr'}, wrap);
+    var frames = [], i = 0;
+    function render(){
+      var f = frames[i];
+      cnt.textContent = (i + 1) + ' / ' + frames.length;
+      bBack.disabled = i === 0; bNext.disabled = i === frames.length - 1;
+      narr.innerHTML = '<h4>' + f.t + '</h4>' + (f.d.charAt(0) === '<' ? f.d : '<p>' + f.d + '</p>');
+      var ps = pills.children;
+      for (var k = 0; k < ps.length; k++) ps[k].className = 'pill' + (k === i ? ' cur' : k < i ? ' done' : '');
+      opts.render(f, i);
+    }
+    function set(fr, keep){
+      frames = fr; if (!keep || i >= frames.length) i = 0;
+      pills.innerHTML = '';
+      if (opts.pills !== false) frames.forEach(function(f, k){
+        var p = h('button', {'class': 'pill'}, pills, f.p || String(k + 1));
+        p.onclick = function(){ i = k; render(); };
+      });
+      render();
+    }
+    bBack.onclick = function(){ if (i > 0){ i--; render(); } };
+    bNext.onclick = function(){ if (i < frames.length - 1){ i++; render(); } };
+    bReset.onclick = function(){ i = 0; render(); };
+    return {
+      el: wrap, set: set, render: render,
+      key: function(k){ if (k === 'ArrowRight'){ bNext.onclick(); return true; } if (k === 'ArrowLeft'){ bBack.onclick(); return true; } return false; },
+      get i(){ return i; }, go: function(k){ i = Math.max(0, Math.min(frames.length - 1, k)); render(); }
+    };
+  }
+
+  function seg(parent, items, onPick, init){
+    var w = h('div', {'class': 'seg'}, parent), bs = [];
+    items.forEach(function(it, k){
+      var b = h('button', null, w, it[1]); bs.push(b);
+      b.onclick = function(){ bs.forEach(function(x){ x.classList.remove('on'); }); b.classList.add('on'); onPick(it[0]); };
+      if (it[0] === init) b.classList.add('on');
+    });
+    return w;
+  }
+
+  return {s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
+          gloss: gloss, g: g, G: G, chapter: chapter, start: start, go: go, stepper: stepper, seg: seg};
+})();
+
+/* ======================= glossary ======================= */
+(function(){
+var d = App.gloss;
+/* --- instructions and front end --- */
+d('isa','ISA','Instruction set architecture: the contract between software and hardware (x86-64 here). It fixes what each instruction does to registers and memory, not how the silicon does it.');
+d('uop','µop (micro-op)','A simple internal operation the core actually schedules and executes. One x86 instruction becomes one or more µops.');
+d('mop','macro-op','AMD\'s tracking unit between x86 instructions and µops. On Zen a macro-op can carry a load, an ALU operation and a store together; the retire queue tracks macro-ops.');
+d('pc','PC / RIP','Program counter: the virtual address of the next instruction to fetch. Called RIP on x86-64.');
+d('bp','branch predictor','Hardware that guesses, before decode, whether a branch is taken and where it goes, so fetch never waits for the branch to execute.');
+d('btb','BTB','Branch target buffer: a cache keyed by fetch address that remembers where previously seen branches jumped. A BTB hit lets fetch redirect in the same cycle.');
+d('ras','RAS','Return address stack: a small hardware stack that pushes on CALL and pops on RET to predict return targets.');
+d('l1i','L1i','Level-1 instruction cache. 64 KB, 4-way on your Zen+ core. Fetch reads 32 bytes per cycle from it.');
+d('itlb','iTLB','Instruction TLB: translates the fetch address (virtual) to a physical address for the L1i tag check.');
+d('fetchwin','fetch window','The aligned block of bytes fetch reads in one cycle (32 bytes on Zen+). Instructions are carved out of it afterwards.');
+d('predecode','predecode / pick','Finds where each variable-length x86 instruction starts and ends inside the fetch window, so decoders get whole instructions.');
+d('decode','decode','Translates x86 instructions into macro-ops / µops. Zen+ decodes up to 4 x86 instructions per cycle.');
+d('opcache','op cache','A cache of already-decoded µops, keyed by instruction address. A hit skips predecode and decode entirely. 2K entries on Zen/Zen+.');
+d('uq','µop queue','A buffer between decode and rename that absorbs rate mismatches between the front end and the back end.');
+d('fusion','macro-fusion','Merging a compare/test with the following conditional jump into one operation. On Zen it happens at dispatch; this model shows it fused from decode on for readability.');
+d('zx','zero extension','Filling the upper bits of a wider destination with zeros. movzbl reads 1 byte and writes 32 bits; writing a 32-bit register also zeroes bits 63:32.');
+d('modrm','ModRM / SIB','Encoding bytes that say which registers and addressing form an instruction uses. SIB adds scale, index and base for addresses like (%rdx,%rax,8).');
+d('rex','REX prefix','A prefix byte (0x40-0x4F) that enables 64-bit operand size (REX.W) and access to r8-r15.');
+/* --- rename / OoO --- */
+d('rename','register renaming','Mapping each architectural register write to a fresh physical register, so only true data dependencies (RAW) remain.');
+d('rat','RAT','Register alias table: for every architectural register, the physical register currently holding its newest value. Read for sources, written for destinations at rename.');
+d('crat','committed RAT','The architectural-state copy of the RAT, updated only at retirement. After a squash the speculative RAT is rebuilt from it.');
+d('prf','PRF','Physical register file: the actual storage for register values. Zen+ has 168 integer entries; each has a ready bit.');
+d('freelist','free list','The list of physical registers holding nothing live. Rename takes from it; retirement (and squash) give registers back.');
+d('dispatch','dispatch / allocate','Placing renamed operations into the back end: one retire-queue entry, scheduler entries, and load/store-queue entries. Stalls if any of those is full.');
+d('rob','ROB / retire queue','Reorder buffer: an in-order circular buffer of every in-flight instruction. Instructions enter in program order, may finish out of order, and leave (retire) only from the head, in order. 192 entries on Zen+ (96 per SMT thread).');
+d('sched','scheduler','A queue of waiting µops that watches for their source operands to become ready and picks ready ones for execution. Zen+ has four 14-entry ALU schedulers and two 14-entry AGU schedulers.');
+d('wakeup','wakeup','When a µop\'s result is about to be produced, its destination tag is broadcast to the schedulers; waiting µops that need that tag mark the operand ready.');
+d('issue','issue / select','Each cycle, each execution port takes the oldest ready µop from its scheduler.');
+d('port','execution port','An entry point into a functional unit. Zen+ integer side: 4 ALU ports and 2 AGU ports.');
+d('alu','ALU','Arithmetic-logic unit: adds, compares, logic, shifts, branch resolution.');
+d('agu','AGU','Address generation unit: computes base + index*scale + displacement for loads and stores.');
+d('bypass','bypass network','Wires that forward a result straight from a unit\'s output to the next µop\'s input, without a round trip through the register file.');
+d('lsu','load/store unit','The part of the core that holds in-flight loads and stores, translates their addresses and accesses the L1d.');
+d('lq','load queue','Holds every in-flight load in program order until it retires. 44 entries on Zen+.');
+d('sq','store queue / store buffer','Holds every in-flight store (address + data) in program order. Before retirement it enables forwarding; after retirement its entries are committed to the L1d one at a time. 44 entries on Zen+.');
+d('sta','store-address µop','The half of a store that computes the address (on an AGU) and writes it into the store-queue entry.');
+d('std','store-data µop','The half of a store that delivers the value to be stored into the store-queue entry.');
+d('stlf','store-to-load forwarding','A load whose address matches an older, not-yet-committed store takes its value from the store queue instead of the cache.');
+d('disamb','memory disambiguation','Deciding whether a load may run before older stores whose addresses are still unknown. Hardware predicts \'no overlap\' and replays the load if that turns out wrong.');
+d('retire','retire','The in-order step where a finished instruction\'s results become architectural state: its old physical registers are freed and its store becomes eligible to commit.');
+d('commit','store commit','Writing a retired store from the store queue into the L1d. Only here does the store become visible to other cores.');
+d('senior','senior store','A store that has retired but still sits in the store queue waiting to commit. It must still forward to younger loads.');
+d('squash','squash / flush','Discarding every instruction younger than a mispredicted branch (or a faulting instruction): their ROB, scheduler, queue entries and physical registers are released.');
+d('mispredict','misprediction','The branch predictor guessed wrong. Detected when the branch executes; costs the refill time of the front end. You measured ~20.8 TSC ticks (~9 ns) per mispredict in Module 05.');
+d('spec','speculative execution','Executing instructions before it is known that they are on the correct path. Their effects stay inside the core until retirement.');
+d('smt','SMT','Simultaneous multithreading: two hardware threads share one core\'s pipeline and caches. Your 3750H has 4 cores, 8 threads.');
+d('ipc','IPC','Instructions retired per cycle.');
+d('mab','MAB / MSHR','Miss address buffer (AMD) / miss status holding register: one entry per outstanding cache-line miss. Later misses to the same line merge into the existing entry.');
+/* --- cache vocabulary --- */
+d('line','cache line','The 64-byte unit every cache level stores and transfers.');
+d('set','set','The group of lines an address\'s index bits select. An address can live only in its own set.');
+d('way','way','One slot within a set. An 8-way cache has 8 places per set for any given index.');
+d('tag','tag','The upper address bits stored with a line so a lookup can confirm which memory block occupies that slot.');
+d('index','index','The address bits that select a set.');
+d('offset','offset','The low 6 address bits that select a byte within a 64-byte line.');
+d('hit','hit','The requested line is present in that cache level.');
+d('miss','miss','The requested line is not present; the request goes to the next level.');
+d('valid','valid bit','Marks whether a way holds a real line. A tag match counts only if valid = 1.');
+d('dirty','dirty bit','Marks that a line was written after it was filled, so the next level holds a stale copy.');
+d('wbk','write-back','A write updates only the cache line and sets its dirty bit; the next level is updated only when the line is evicted.');
+d('wthru','write-through','Every write is also sent to the next level immediately.');
+d('walloc','write-allocate','On a write miss, the line is first fetched into the cache, then written.');
+d('rfo','RFO','Read for ownership: fetching a line with exclusive permission because the core intends to write it. Other cached copies are invalidated.');
+d('evict','eviction','Removing a line from a full set to make room. A dirty victim must be written back first.');
+d('plru','pseudo-LRU','A cheap approximation of least-recently-used replacement: a small binary tree of bits per set that points toward the older half at each level.');
+d('vipt','VIPT','Virtually indexed, physically tagged: the L1 set is chosen with virtual-address bits while the TLB translates in parallel; the tag compare uses the physical address. Works because bits 11:6 are inside the 4 KB page offset and never change in translation.');
+d('incl','inclusive cache','A cache that holds a copy of every line held by the smaller caches above it. Zen+\'s L2 is inclusive of its L1s.');
+d('victimc','victim cache','A cache filled only with lines evicted from the level above. Zen+\'s L3 is filled from L2 victims and is mostly exclusive of the L2s.');
+d('shadow','shadow tags','Copies of every L2\'s tags kept inside the L3. They let the L3 know which core might hold a line without asking all of them.');
+d('pfilter','probe filter','A structure that records which caches may hold a line, so coherence probes go only where needed instead of to every cache.');
+d('ccx','CCX','Core complex: a group of up to four Zen cores sharing one L3. Your 3750H has one CCX with 4 MB of L3.');
+d('mlp','memory-level parallelism','Having several cache misses outstanding at once so their latencies overlap. Zen/Zen+ allow 50 outstanding L2-to-L3 misses per core and 96 L3-to-memory misses.');
+d('ltu','load-to-use latency','Cycles from a load issuing to the first cycle a dependent instruction can use its value.');
+d('wset','working set','The set of addresses a program actively uses during some interval.');
+d('sloc','spatial locality','The tendency to access addresses near recently accessed ones.');
+d('tloc','temporal locality','The tendency to access the same address again soon.');
+d('sram','SRAM','Static RAM: 6 transistors per bit, fast, no refresh. Caches and register files are SRAM.');
+d('dramcell','DRAM cell','One transistor plus one capacitor per bit (1T1C). Dense and cheap, but reading drains the capacitor and charge leaks, so rows need restoring and periodic refresh.');
+/* --- translation --- */
+d('va','virtual address','The address a program uses. 48 bits wide on x86-64 with 4-level paging.');
+d('pa','physical address','The address actually sent to caches and DRAM after translation.');
+d('page','page','The unit of translation: 4 KB by default, also 2 MB and 1 GB huge pages.');
+d('vpn','VPN','Virtual page number: the virtual address with its page-offset bits removed.');
+d('pfn','PFN','Page frame number: the physical page number a VPN maps to.');
+d('mmu','MMU','Memory management unit: the TLBs, page walkers and permission checks that turn virtual addresses into physical ones.');
+d('tlb','TLB','Translation lookaside buffer: a cache of recent VPN-to-PFN translations plus permission bits.');
+d('dtlb','DTLB','Data TLB. Zen+: 64-entry fully associative L1 DTLB (all page sizes) backed by a 1536-entry L2 TLB (no 1 GB pages).');
+d('pte','PTE','Page-table entry: 8 bytes holding a physical frame number plus flag bits (present, writable, user, accessed, dirty, no-execute...).');
+d('pml4','PML4 / PDPT / PD / PT','The four page-table levels on x86-64. Each is one 4 KB page of 512 eight-byte entries, indexed by 9 bits of the virtual address.');
+d('cr3','CR3','The control register holding the physical address of the current process\'s top-level page table (and its PCID). Writing it switches address spaces.');
+d('walk','page walk','Reading the page-table entries level by level to translate an address after a TLB miss. Each step is a real memory load that goes through the data caches.');
+d('pwc','page-walk cache','Caches upper-level page-table entries so a walk can skip levels. 7-cpu.com reports a 64-entry cache for PML4E/PDPE entries on Zen.');
+d('reach','TLB reach','How much memory the TLB can map at once: entries × page size. 64 × 4 KB = 256 KB for the L1 DTLB.');
+d('huge','huge page','A 2 MB (or 1 GB) page. One TLB entry covers 512× (or 262144×) more memory, and the walk ends one (or two) levels early.');
+d('pcid','PCID','Process-context identifier: a 12-bit tag on TLB entries so switching CR3 need not flush every translation.');
+d('pf','page fault','Exception 14 (#PF), raised when a translation is missing or a permission check fails. CR2 receives the faulting address and the kernel handles it.');
+d('ftouch','first-touch','Linux\'s default NUMA policy: a page is physically allocated on the node of the CPU that first writes it, not the one that called malloc.');
+/* --- fabric, DRAM, I/O --- */
+d('fabric','Infinity Fabric (data fabric)','AMD\'s on-chip interconnect linking the CCX, memory controllers, graphics and I/O. Coherent: it routes requests and coherence probes.');
+d('umc','UMC','Unified memory controller: queues memory requests, schedules DRAM commands, enforces timing rules, and performs refresh.');
+d('channel','memory channel','An independent 64-bit data bus plus command/address bus to a set of DIMMs. Your laptop has two.');
+d('dimm','DIMM / rank','A memory module. A rank is the set of chips that together drive the 64-bit bus (8 chips × 8 bits).');
+d('bank','bank / bank group','An independent cell array inside each DRAM chip. DDR4 x8 chips have 16 banks in 4 bank groups; different banks can work in parallel.');
+d('row','row / column','A bank is a matrix of rows × columns. A whole row is opened at once; reads then select columns from it.');
+d('rowbuf','row buffer','The bank\'s sense amplifiers after ACT: they hold the open row. Reads from the open row are fast; any other row needs PRE + ACT first.');
+d('act','ACT / RD / WR / PRE / REF','DRAM commands: activate (open a row into the row buffer), read, write, precharge (close the row), refresh.');
+d('tcl','CL, tRCD, tRP, tRAS','DRAM timings: CL = RD to first data; tRCD = ACT to RD; tRP = PRE to next ACT; tRAS = ACT to PRE minimum.');
+d('burst','burst','One DDR4 read transfers 8 beats on the 64-bit bus: 8 × 8 bytes = 64 bytes, exactly one cache line.');
+d('refresh','refresh','Rewriting every row before its capacitors leak. DDR4 issues REF about every 7.8 µs and covers every row within 64 ms.');
+d('pcie','PCIe','The serial point-to-point link to devices such as the NVMe SSD. Traffic travels as packets called TLPs.');
+d('tlp','TLP','Transaction-layer packet on PCIe: memory read (non-posted, answered by a completion with data), memory write (posted, no reply), message, etc.');
+d('rc','root complex','The CPU-side end of PCIe that turns core and fabric requests into TLPs and device TLPs into memory requests.');
+d('mmio','MMIO','Memory-mapped I/O: device registers appear at physical addresses; ordinary loads and stores to them reach the device instead of DRAM.');
+d('bar','BAR','Base address register: tells the system where a PCIe device\'s MMIO registers sit in the physical address space.');
+d('doorbell','doorbell','An MMIO register the driver writes to tell a device that new work is in a queue.');
+d('dma','DMA','Direct memory access: a device reads or writes host memory itself, without the CPU copying each byte.');
+d('iommu','IOMMU','An MMU for devices: translates device-visible addresses (IOVAs) to physical addresses and blocks access outside what the OS mapped.');
+d('iova','IOVA','I/O virtual address: the address a device uses for DMA when an IOMMU is enabled.');
+d('msix','MSI-X','Message-signaled interrupts: a device raises an interrupt by writing a small message to a special address the interrupt controller watches.');
+d('nvme','NVMe','The SSD protocol built around memory-resident submission and completion queues plus doorbell registers. io_uring was designed around the same ring idea.');
+d('iocoh','I/O coherence','On x86, DMA traffic is snooped against CPU caches: device reads see dirty cached data and device writes invalidate stale cached copies.');
+/* --- memory types, stores, ordering --- */
+d('memtype','memory type','How the caches treat an address range: WB (write-back, normal RAM), WT (write-through), WC (write-combining), UC (uncacheable), WP (write-protect). Set by PAT bits in page tables and by MTRRs.');
+d('pat','PAT / MTRR','Page attribute table (per-page memory type via PTE bits) and memory type range registers (per physical range). Together they decide the memory type.');
+d('wc','write-combining','Stores to WC memory are gathered in a WC buffer and sent out as one full-line write, without reading the line first and without caching it.');
+d('nt','non-temporal store','A store hint (movnti, movntdq) that uses write-combining even on WB memory, avoiding the RFO and not polluting the caches.');
+d('clflush','clflush / clwb','Instructions that write a line back to memory (clwb keeps it cached; clflush/clflushopt also evict it).');
+d('fence','sfence / lfence / mfence','Ordering instructions. mfence waits for the store buffer to drain before later loads run; you measured ~46.5 ticks per mfence in Module 05.');
+d('tso','x86-TSO','x86\'s memory model: every ordering is preserved except a store followed by a load to a different address, which the store buffer can reorder.');
+/* --- coherence --- */
+d('coh','cache coherence','The guarantee that all cores observe a single order of writes to each address, even though each core has private caches.');
+d('moesi','MOESI','AMD\'s coherence states: Modified, Owned, Exclusive, Shared, Invalid.');
+d('st_m','M (Modified)','Only this cache has the line and it is dirty. It may be read and written without asking anyone.');
+d('st_o','O (Owned)','This cache has a dirty copy and other caches share it. The owner answers requests with data; memory is stale.');
+d('st_e','E (Exclusive)','Only this cache has the line and it is clean. A write upgrades it to M silently.');
+d('st_s','S (Shared)','Several caches may hold this clean (or owner-backed) copy. A write first needs the others invalidated.');
+d('st_i','I (Invalid)','The line is not usable in this cache.');
+d('probe','probe / snoop','A coherence message asking another cache to return, downgrade, or invalidate its copy of a line.');
+d('fshare','false sharing','Two cores writing different variables that share one 64-byte line. Each write invalidates the other core\'s copy, so the line bounces between them.');
+/* --- prefetch --- */
+d('pref','hardware prefetcher','Logic that watches the stream of miss/access addresses and fetches lines it predicts will be needed, before the program asks.');
+d('stream','stream prefetcher','Detects accesses to consecutive lines in one direction and runs ahead along them.');
+d('stride','stride prefetcher','Detects a constant distance between successive accesses from the same instruction and fetches ahead by that stride.');
+d('swpf','software prefetch','Instructions (prefetcht0/t1/t2/nta) that ask the hardware to start fetching a line without waiting for the data.');
+d('late','late prefetch','A prefetch that was issued but whose data had not arrived when the demand access came; the access still waits, but less.');
+d('pollute','cache pollution','Useless prefetched lines evicting useful ones.');
+d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. The reason the whole hierarchy exists.');
+})();
+
+/* ======================= chapter: the machine ======================= */
+App.chapter({id: 'map', num: '00', short: 'The machine', title: 'The machine, all of it',
+sub: 'Every structure a memory access can touch on your laptop, from the load/store unit to the DRAM chips and the SSD. Tap any block for what it is, its size, and the chapter that takes it apart.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g;
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 760', style: 'min-width:880px'}, wrap);
+  var info = h('div', {'class': 'card'}, root);
+  var parts = {}, selId = null;
+  var D = {
+    core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, 44-entry load and store queues.', 'core', 'Chapter 02 runs the histogram loop through it cycle by cycle.'],
+    fe: ['Front end', 'Branch predictor + BTB, L1i (64 KB, 4-way) with iTLB, predecode, 4 decoders, 2K-entry op cache, \u00b5op queue.', 'code', 'Chapter 01 shows what it decodes; Chapter 02 shows it running.'],
+    ooo: ['Rename + out-of-order engine', 'RAT and free list, 168-entry PRF, 192-entry ROB, six 14-entry schedulers, 4 ALU and 2 AGU ports.', 'core', ''],
+    lsu: ['Load/store unit + L1d', '44-entry load queue, 44-entry store queue, 64-entry L1 DTLB, 1536-entry L2 TLB, 2 page walkers, 32 KB 8-way L1d. 2 loads + 1 store per cycle, 16 bytes each.', 'l1d', 'Chapter 03 covers translation, Chapter 04 the L1d lookup, Chapter 07 the store path.'],
+    tlb: ['TLBs + page walkers', 'L1 DTLB: 64 entries, fully associative, all page sizes. L2 TLB: 1536 entries, no 1 GB pages. Two hardware walkers read page tables through the data caches.', 'xlate', ''],
+    l2: ['L2 cache (per core)', '512 KB, 8-way, write-back, inclusive of the L1s. 32 bytes/cycle to L1. \u226512 cycles load-to-use (published). Up to 50 outstanding misses to L3 per core.', 'hier', ''],
+    l3: ['L3 cache (shared by the CCX)', '4 MB, 16-way on your APU. A victim cache: filled with lines evicted from the L2s, mostly exclusive of them. Holds shadow tags of every L2 so it acts as a probe filter. ~35 cycles average (published Zen/Zen+).', 'hier', 'Chapter 05 follows a miss through it; Chapter 08 uses its shadow tags for coherence.'],
+    df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; up to 96 outstanding misses from L3 to memory (published Zen/Zen+).', 'hier', ''],
+    umc: ['Memory controllers (UMC \u00d72)', 'One per channel. Queue requests, map physical addresses to channel/bank/row/column, reorder to hit open rows, issue ACT/RD/WR/PRE/REF, enforce DRAM timings.', 'dram', 'Chapter 06.'],
+    dram: ['DDR4 DRAM, 2 channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst = 8 beats \u00d7 8 bytes = 64 bytes, one cache line. Cells are capacitors that must be refreshed.', 'dram', ''],
+    gpu: ['Integrated GPU (Vega)', 'Another client of the same fabric and the same DRAM. It competes with the cores for memory bandwidth.', 'hier', ''],
+    io: ['I/O hub: PCIe root complex + IOMMU', 'Turns device PCIe packets into memory requests and core MMIO accesses into PCIe packets. The IOMMU translates device addresses and blocks DMA outside what the OS mapped. Device DMA is snooped against CPU caches.', 'dev', 'Chapter 10 walks an NVMe read through it.'],
+    nvme: ['NVMe SSD', 'Talks to the CPU through submission/completion rings in RAM, doorbell registers (MMIO), DMA, and MSI-X interrupts.', 'dev', ''],
+    nic: ['Wi-Fi / Ethernet', 'Same pattern as NVMe: descriptor rings in RAM, doorbells, DMA, interrupts.', 'dev', '']
+  };
+  function blk(id, x, y, w, ht, title, lines, cls){
+    var gr = s('g', {'class': 'click'}, sv);
+    s('rect', {x: x, y: y, width: w, height: ht, rx: 8, 'class': 'box' + (cls ? ' ' + cls : '')}, gr);
+    s('text', {x: x + 10, y: y + 18, 'class': 'h'}, gr, title);
+    (lines || []).forEach(function(l, i){ s('text', {x: x + 10, y: y + 36 + i * 15, 'class': i === lines.length - 1 && lines.length > 1 ? 's' : ''}, gr, l); });
+    gr.onclick = function(e){ e.stopPropagation(); pick(id); };
+    parts[id] = gr; return gr;
+  }
+  function lbl(x, y, t, cls, anc){ return s('text', {x: x, y: y, 'class': cls || 's', 'text-anchor': anc || 'start'}, sv, t); }
+  function busL(d, width){ var p = s('path', {d: d, 'class': 'bus'}, sv); return p; }
+  /* package */
+  s('rect', {x: 10, y: 10, width: 1180, height: 560, rx: 14, 'class': 'sunk'}, sv);
+  lbl(24, 32, 'Ryzen 7 3750H package \u2014 "Picasso" APU, one die', 'h');
+  /* CCX */
+  s('rect', {x: 24, y: 44, width: 760, height: 380, rx: 12, fill: 'none', stroke: 'var(--bd2)', 'stroke-dasharray': '5 4'}, sv);
+  lbl(36, 62, 'CCX (core complex): 4 cores share the L3', 's');
+  /* core 0 detailed */
+  s('rect', {x: 36, y: 72, width: 420, height: 206, rx: 10, fill: 'none', stroke: 'var(--bd2)'}, sv);
+  blk('core0', 44, 80, 404, 26, 'Core 0 \u00b7 2 SMT threads', []);
+  blk('fe', 44, 112, 196, 70, 'Front end', ['BP/BTB \u00b7 L1i 64 KB 4-way', 'op cache \u00b7 decode \u00d74'], 'a3b');
+  blk('ooo', 250, 112, 198, 70, 'Out-of-order engine', ['ROB 192 \u00b7 PRF 168', 'sched 6\u00d714 \u00b7 4 ALU + 2 AGU'], 'a3b');
+  blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ 44 \u00b7 SQ 44', 'L1d 32 KB 8-way', '2 loads + 1 store / cycle'], 'a4b');
+  blk('tlb', 302, 188, 146, 82, 'TLBs + walkers', ['L1 DTLB 64', 'L2 TLB 1536', '2 walkers'], 'a4b');
+  blk('l2', 44, 300, 404, 50, 'L2 \u00b7 512 KB \u00b7 8-way \u00b7 inclusive of L1', ['private to this core'], 'a2b');
+  busL('M 170 270 L 170 300'); lbl(176, 290, '32 B/cycle');
+  /* cores 1-3 */
+  [1, 2, 3].forEach(function(n, k){
+    var x = 472 + k * 102;
+    s('rect', {x: x, y: 72, width: 94, height: 206, rx: 10, fill: 'none', stroke: 'var(--bd2)'}, sv);
+    var gr = blk('c' + n, x + 6, 80, 82, 190, 'Core ' + n, ['same as', 'core 0']);
+    gr.onclick = function(e){ e.stopPropagation(); pick('core0'); };
+    s('rect', {x: x + 6, y: 300, width: 82, height: 50, rx: 8, 'class': 'box a2b'}, sv);
+    lbl(x + 14, 318, 'L2 512 KB', 's');
+    busL('M ' + (x + 47) + ' 270 L ' + (x + 47) + ' 300');
+  });
+  blk('l3', 44, 366, 728, 50, 'L3 \u00b7 4 MB \u00b7 16-way \u00b7 victim cache \u00b7 shadow tags of all four L2s', ['shared by cores 0\u20133; filled by L2 evictions'], 'a2b');
+  [170, 519, 621, 723].forEach(function(x){ busL('M ' + x + ' 350 L ' + x + ' 366'); });
+  lbl(176, 362, '32 B/cycle');
+  /* PCIe links: I/O hub straight down to the devices (drawn first, so they pass under the fabric) */
+  busL('M 890 280 L 890 600'); busL('M 1086 280 L 1086 600');
+  /* fabric */
+  blk('df', 24, 440, 1152, 36, 'Infinity Fabric \u2014 data fabric (coherent interconnect)', [], 'a3b');
+  busL('M 400 416 L 400 440');
+  blk('gpu', 800, 44, 376, 110, 'Integrated GPU (Vega)', ['shares DRAM and fabric bandwidth', 'with the CPU cores']);
+  busL('M 800 130 L 792 130 L 792 440');
+  blk('io', 800, 170, 376, 110, 'I/O hub', ['PCIe root complex \u00b7 IOMMU + IOTLB', 'turns MMIO into PCIe packets and', 'device DMA into memory requests']);
+  busL('M 1000 280 L 1000 440');
+  blk('umc', 24, 490, 560, 64, 'Memory controllers: UMC 0 \u00b7 UMC 1', ['address mapping \u00b7 request queues \u00b7 DRAM command scheduling \u00b7 refresh']);
+  busL('M 300 476 L 300 490');
+  /* off-package */
+  blk('dram', 24, 600, 560, 140, 'DDR4 \u2014 channel A and channel B', ['each: 64-bit data bus + command/address bus', 'DIMM \u2192 rank \u2192 8 chips \u2192 16 banks each \u2192 rows \u00d7 columns', 'one 64-byte line = 8 beats of 8 bytes (burst length 8)', 'DDR4-2400: 2400 MT/s \u00d7 8 B = 19.2 GB/s per channel (peak)']);
+  busL('M 160 554 L 160 600'); busL('M 450 554 L 450 600'); lbl(166, 584, 'channel A, 64 bits'); lbl(456, 584, 'channel B, 64 bits');
+  blk('nvme', 800, 600, 180, 140, 'NVMe SSD', ['queues in host RAM', 'doorbells via MMIO', 'DMA + MSI-X']);
+  blk('nic', 996, 600, 180, 140, 'Wi-Fi / NIC', ['descriptor rings', 'DMA + interrupts']);
+  lbl(896, 530, 'PCIe links from the I/O hub');
+  lbl(896, 545, '(packets called TLPs); they do');
+  lbl(896, 560, 'not pass through the fabric');
+  lbl(600, 520, 'off-package from here down \u2193', 's');
+  sv.onclick = function(){ pick(null); };
+
+  function pick(id){
+    selId = id;
+    for (var k in parts) parts[k].setAttribute('class', 'click' + (k === id ? ' on' : ''));
+    if (!id){ info.innerHTML = '<h3>Tap a block</h3><p>Each block explains what it does and which chapter takes it apart. Widths on the wires are published peak transfer sizes.</p>'; return; }
+    var d = D[id];
+    info.innerHTML = '<h3>' + d[0] + '</h3><p>' + d[1] + '</p>' + (d[3] ? '<p>' + d[3] + '</p>' : '') + '<button class="pri" data-go="' + d[2] + '">open the chapter \u2192</button>';
+    info.querySelector('button').onclick = function(){ App.go(d[2]); };
+  }
+  pick(null);
+
+  var path = h('div', {'class': 'card'}, root);
+  path.innerHTML = '<h3>The route this site follows</h3><ol class="route">' +
+    '<li><b>01</b> C \u2192 assembly \u2192 bytes \u2192 \u00b5ops for <code>hist[data[i]]++</code>.</li>' +
+    '<li><b>02</b> Those \u00b5ops through fetch, decode, ' + g('rename') + ', the ' + g('rob') + ', ' + g('sched', 'schedulers') + ', ports, the ' + g('lq', 'load') + ' and ' + g('sq', 'store') + ' queues, retirement and store commit.</li>' +
+    '<li><b>03</b> The virtual address of <code>hist[123]</code> through the ' + g('dtlb') + ', the L2 TLB, a 4-level ' + g('walk') + ', and a ' + g('pf') + '.</li>' +
+    '<li><b>04</b> The physical address through the L1d: set, tag compare, way select, ' + g('plru') + ', eviction and ' + g('wbk') + '.</li>' +
+    '<li><b>05</b> A miss through L2, the L3 ' + g('victimc') + ', the fabric and back, and how misses overlap.</li>' +
+    '<li><b>06</b> DRAM: banks, rows, the ' + g('rowbuf') + ', commands and timings.</li>' +
+    '<li><b>07</b> The store path: store buffer, ' + g('rfo') + ', ' + g('wc') + ', ' + g('memtype', 'memory types') + ', fences.</li>' +
+    '<li><b>08</b> Four cores sharing lines: ' + g('moesi') + ', probes, ' + g('fshare') + '.</li>' +
+    '<li><b>09</b> ' + g('pref', 'Prefetchers') + ' guessing the next line.</li>' +
+    '<li><b>10</b> Devices: ' + g('mmio') + ', ' + g('dma') + ', the ' + g('iommu') + ', interrupts \u2014 an NVMe read end to end.</li>' +
+    '<li><b>11</b> One <code>hist[k]++</code> that misses everywhere, as a single timeline.</li></ol>' +
+    '<p class="note">Dotted terms open a definition. Latencies come from the <b>latencies</b> button (top right): published figures until you replace them with your Drill 02 measurements.</p>';
+}});
+
+/* ======================= chapter: from C to µops ======================= */
+App.chapter({id: 'code', num: '01', short: 'C \u2192 \u00b5ops', title: 'From C to instructions to \u00b5ops',
+sub: 'One line of C becomes a 5-instruction loop body, 17 bytes of machine code, and 7 internal operations per iteration. Everything below is the real output of gcc 13.3 -O2 for this function.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, EX = App.EX;
+  var I = [
+    {off: 0x00, b: '48 85 f6', asm: 'test   %rsi,%rsi', c: 1, f: [['rex', '48'], ['op', '85'], ['modrm', 'f6']],
+     what: 'Sets flags from rsi AND rsi. Checks n \u2264 0.', uops: [['ALU', 'ALU', 'rsi', 'flags', 'Fuses with the jle that follows into one macro-op.']]},
+    {off: 0x03, b: '7e 1c', asm: 'jle    .L1', c: 1, f: [['op', '7e'], ['rel', '1c']],
+     what: 'If n \u2264 0, jump to ret. rel8 = +0x1c: target = 0x05 + 0x1c = 0x21.', uops: [['BR', 'ALU', 'flags', 'rip', 'Fused with test.']]},
+    {off: 0x05, b: '48 01 fe', asm: 'add    %rdi,%rsi', c: 1, f: [['rex', '48'], ['op', '01'], ['modrm', 'fe']],
+     what: 'rsi = data + n: a pointer one past the last byte. gcc replaced the counter i with a moving pointer and this end pointer.', uops: [['ALU', 'ALU', 'rsi, rdi', 'rsi', '']]},
+    {off: 0x08, b: '0f 1f 84 00 00 00 00 00', asm: 'nopl   0x0(%rax,%rax,1)', c: -1, f: [['op', '0f 1f'], ['modrm', '84'], ['sib', '00'], ['disp', '00 00 00 00']],
+     what: 'An 8-byte no-op. It exists only to push the loop start to offset 0x10, a 16-byte boundary. Executed once on entry.', uops: [['NOP', '\u2014', '', '', 'Decoded and retired, does no work.']]},
+    {off: 0x10, b: '0f b6 07', asm: 'movzbl (%rdi),%eax', c: 2, lbl: '.L3', f: [['op', '0f b6'], ['modrm', '07']],
+     what: 'Load 1 byte from [rdi] (data[i]), ' + g('zx', 'zero-extend') + ' it into eax. Writing eax also clears bits 63:32 of rax, so rax holds a clean index 0..255.', uops: [['LD', 'AGU + load pipe', 'rdi', 'rax', 'Zero-extension happens in the load path; no extra ALU \u00b5op.']]},
+    {off: 0x13, b: '48 83 c7 01', asm: 'add    $0x1,%rdi', c: 1, f: [['rex', '48'], ['op', '83'], ['modrm', 'c7'], ['imm', '01']],
+     what: 'rdi += 1: advance the data pointer. This is i++ after strength reduction.', uops: [['ALU', 'ALU', 'rdi', 'rdi', '']]},
+    {off: 0x17, b: '48 83 04 c2 01', asm: 'addq   $0x1,(%rdx,%rax,8)', c: 2, f: [['rex', '48'], ['op', '83'], ['modrm', '04'], ['sib', 'c2'], ['imm', '01']],
+     what: 'hist[rax] += 1, directly in memory. Address = rdx + rax\u00d78 (rdx = hist, 8 = sizeof(long)). One instruction, four pieces of work.',
+     uops: [['LD', 'AGU + load pipe', 'rdx, rax', 'tmp0', 'Reads hist[k].'], ['ALU', 'ALU', 'tmp0', 'tmp1', 'tmp0 + 1.'], ['STA', 'AGU', 'rdx, rax', 'SQ entry: address', g('sta')], ['STD', 'ALU \u2192 SQ', 'tmp1', 'SQ entry: data', g('std') + '. Memory changes only when this store commits after retirement.']]},
+    {off: 0x1c, b: '48 39 f7', asm: 'cmp    %rsi,%rdi', c: 1, f: [['rex', '48'], ['op', '39'], ['modrm', 'f7']],
+     what: 'Flags from rdi \u2212 rsi: has the data pointer reached the end pointer?', uops: [['ALU', 'ALU', 'rdi, rsi', 'flags', g('fusion', 'Macro-fused') + ' with jne on Zen (at dispatch).']]},
+    {off: 0x1f, b: '75 ef', asm: 'jne    .L3', c: 1, f: [['op', '75'], ['rel', 'ef']],
+     what: 'Loop back if not equal. rel8 = 0xef = \u221217: target = 0x21 \u2212 17 = 0x10.', uops: [['BR', 'ALU (branch)', 'flags', 'rip', 'Predicted by the ' + g('btb') + ' long before it executes.']]},
+    {off: 0x21, b: 'c3', asm: 'ret', c: 3, lbl: '.L1', f: [['op', 'c3']],
+     what: 'Pop the return address from [rsp] and jump to it.', uops: [['LD+BR', 'AGU + branch', 'rsp', 'rsp, rip', 'Target predicted by the ' + g('ras') + '.']]}
+  ];
+  var CL = [
+    {t: 'void histogram(const unsigned char *data, long n, long *hist)', a: []},
+    {t: '{', a: []},
+    {t: '    for (long i = 0; i < n; i++)', a: [0, 1, 2, 5, 7, 8]},
+    {t: '        hist[data[i]]++;', a: [4, 6]},
+    {t: '}', a: [9]}
+  ];
+  var FC = {rex: ['REX prefix', 'a1'], op: ['opcode', 'a3'], modrm: ['ModRM', 'a2'], sib: ['SIB', 'a4'], imm: ['immediate', 'act'], rel: ['rel8 offset', 'act'], disp: ['displacement', 'act']};
+  var REG = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi'];
+  var sel = 6;
+
+  var top = h('div', {'class': 'card'}, root);
+  top.innerHTML = '<h3>Where the arguments are</h3><p>The System V x86-64 calling convention passes the first three integer arguments in <code>rdi</code>, <code>rsi</code>, <code>rdx</code>. On entry: <code>rdi = data = ' + App.hx(EX.data) + '</code>, <code>rsi = n = 3</code>, <code>rdx = hist = ' + App.hx(EX.hist) + '</code>. The function starts at <code>' + App.hx(EX.fn) + '</code>, so the loop label <code>.L3</code> is at <code>' + App.hx(EX.loop) + '</code>. These are the same addresses every chapter uses.</p>';
+
+  var three = h('div', {'class': 'c2u'}, root);
+  var cC = h('div', {'class': 'card'}, three, '<h3>C source</h3>');
+  var cS = h('div', {'class': 'card'}, three, '<h3>Assembly and machine code <span class="tag pub">objdump -d</span></h3>');
+  var cpre = h('div', {'class': 'src'}, cC), apre = h('div', {'class': 'src'}, cS);
+  CL.forEach(function(l, i){
+    var d = h('div', {'class': 'ln'}, cpre, '<span class="no">' + (i + 1) + '</span>' + l.t.replace(/ /g, '&nbsp;'));
+    d.onmouseenter = function(){ mark(l.a); }; d.onmouseleave = function(){ mark(null); };
+    d.onclick = function(){ if (l.a.length) pick(l.a[l.a.length - 1]); };
+    l.el = d;
+  });
+  I.forEach(function(ins, i){
+    var d = h('div', {'class': 'ln asm'}, apre, (ins.lbl ? '<div class="lab">' + ins.lbl + ':</div>' : '') +
+      '<span class="no">' + ins.off.toString(16).padStart(2, '0') + '</span><span class="bytes">' + ins.b + '</span><span class="ins">' + ins.asm + '</span>');
+    d.onclick = function(){ pick(i); }; ins.el = d;
+  });
+  h('p', {'class': 'note', style: 'margin-top:8px'}, cS, 'Click an instruction to decode it. Offsets are from the function start ' + App.hx(EX.fn) + '.');
+  h('p', {'class': 'note', style: 'margin-top:8px'}, cC, 'Hover a line to see which instructions came from it. The <code>for</code> line produced the setup and the loop control; the body line produced the load and the read-modify-write.');
+
+  var det = h('div', {'class': 'grid2'}, root);
+  var enc = h('div', {'class': 'card'}, det), uo = h('div', {'class': 'card'}, det);
+
+  /* memory layout of the code */
+  var lay = h('div', {'class': 'card'}, root);
+  lay.innerHTML = '<h3>The same bytes in memory</h3><p>The whole function fits in one 64-byte ' + g('line', 'cache line') + ' (' + App.hx(EX.fn) + '\u2013' + App.hx(EX.fn + 63n) + '). Zen+ fetches a 32-byte ' + g('fetchwin', 'window') + ' that may start on any 16-byte boundary (7-cpu.com). Because gcc aligned <code>.L3</code> to 0x\u2026190, one window starting there holds the entire 17-byte loop, so every iteration needs one fetch. After the first pass the loop\'s decoded \u00b5ops also sit in the ' + g('opcache') + ', and fetch + decode are skipped.</p>';
+  var lsv = s('svg', {viewBox: '0 0 1000 250', 'class': 'lay'}, h('div', {'class': 'scroller', style: 'border:0'}, lay));
+  var cellW = 27, x0 = 112, y0 = 34;
+  var byteOwner = []; I.forEach(function(ins, i){ ins.b.split(' ').forEach(function(_, k){ byteOwner[ins.off + k] = i; }); });
+  var bytes = []; I.forEach(function(ins){ ins.b.split(' ').forEach(function(x){ bytes.push(x); }); });
+  var cells = [];
+  for (var r = 0; r < 2; r++){
+    s('text', {x: 8, y: y0 + r * 92 + 22, 'class': 'm', 'font-size': 11.5}, lsv, App.hx(EX.fn + BigInt(r * 32)).replace('0x55555555', '0x\u2026'));
+    for (var cI = 0; cI < 32; cI++){
+      var o = r * 32 + cI, x = x0 + (cI % 32) * cellW - (cI >= 16 ? 0 : 0), y = y0 + r * 92;
+      var own = byteOwner[o];
+      var rc = s('rect', {x: x, y: y, width: cellW - 2, height: 34, rx: 3, 'class': own === undefined ? 'sunk' : 'bc'}, lsv);
+      var tx = s('text', {x: x + (cellW - 2) / 2, y: y + 21, 'text-anchor': 'middle', 'class': 'm', 'font-size': 10.5}, lsv, o < bytes.length ? bytes[o] : '');
+      if (own !== undefined){ (function(ii){ rc.style.cursor = 'pointer'; rc.onclick = function(){ pick(ii); }; })(own); }
+      cells.push({r: rc, o: own});
+      if (cI % 4 === 0) s('text', {x: x + 2, y: y - 5, 'class': 's m'}, lsv, (o).toString(16));
+    }
+  }
+  /* fetch window bracket from 0x10 to 0x2f */
+  var wx0 = x0 + 16 * cellW, wx1 = x0 + 32 * cellW - 2, wy = y0 + 40;
+  s('path', {d: 'M ' + wx0 + ' ' + wy + ' L ' + wx0 + ' ' + (wy + 8) + ' L ' + wx1 + ' ' + (wy + 8) + ' L ' + wx1 + ' ' + wy, 'class': 'wire', style: 'stroke:var(--act);stroke-width:2'}, lsv);
+  var wx2 = x0 + 16 * cellW - 2, wy2 = y0 + 92 + 40;
+  s('path', {d: 'M ' + x0 + ' ' + wy2 + ' L ' + x0 + ' ' + (wy2 + 8) + ' L ' + wx2 + ' ' + (wy2 + 8) + ' L ' + wx2 + ' ' + wy2, 'class': 'wire', style: 'stroke:var(--act);stroke-width:2'}, lsv);
+  s('text', {x: wx0, y: wy + 24, 'class': 's'}, lsv, 'one 32-byte fetch window starting at \u2026190 (loop starts here) \u2026');
+  s('text', {x: x0, y: wy2 + 24, 'class': 's'}, lsv, '\u2026 continues into the next 16 bytes: the loop ends at \u20261a0, ret at \u20261a1');
+  s('text', {x: x0, y: 240, 'class': 's'}, lsv, 'Grey = bytes after ret (padding / next function). Coloured = this function; click any byte to decode its instruction.');
+
+  /* predecode demo */
+  var pdc = h('div', {'class': 'card'}, root);
+  pdc.innerHTML = '<h3>Why ' + g('predecode') + ' exists</h3><p>x86 instructions are 1 to 15 bytes long, and nothing in a byte says "an instruction starts here". The fetch unit receives a flat stream:</p>' +
+    '<div class="bstream">' + I.slice(4, 9).map(function(ins){ return ins.b.split(' ').map(function(b){ return '<span>' + b + '</span>'; }).join(''); }).join('') + '</div>' +
+    '<p>Predecode marks the boundaries by examining prefixes, opcode and ModRM of each candidate start so that four decoders can work in parallel:</p>' +
+    '<div class="bstream">' + I.slice(4, 9).map(function(ins, k){ return '<em class="g' + (k % 2) + '">' + ins.b.split(' ').map(function(b){ return '<span>' + b + '</span>'; }).join('') + '</em>'; }).join('') + '</div>' +
+    '<p class="note">movzbl (3 bytes) \u00b7 add (4) \u00b7 addq to memory (5) \u00b7 cmp (3) \u00b7 jne (2). 17 bytes, 5 instructions.</p>';
+
+  function bits(v, groups){
+    var b = v.toString(2).padStart(8, '0'), k = 0, out = '<div class="bitrow">';
+    groups.forEach(function(gr){ out += '<div class="bg"><div class="bb">' + b.substr(k, gr[0]).split('').map(function(x){ return '<i>' + x + '</i>'; }).join('') + '</div><div class="bl">' + gr[1] + '</div><div class="bv">' + gr[2] + '</div></div>'; k += gr[0]; });
+    return out + '</div>';
+  }
+  function decodeFields(ins){
+    var out = '';
+    ins.f.forEach(function(f){
+      var v = parseInt(f[1].split(' ')[0], 16);
+      if (f[0] === 'rex') out += '<p><b>REX = 0x' + f[1] + '</b></p>' + bits(v, [[4, 'fixed 0100', ''], [1, 'W', (v >> 3) & 1 ? '64-bit' : '32-bit'], [1, 'R', (v >> 2) & 1], [1, 'X', (v >> 1) & 1], [1, 'B', v & 1]]);
+      if (f[0] === 'modrm'){
+        var mod = v >> 6, reg = (v >> 3) & 7, rm = v & 7;
+        var ext = /^(83|0f 1f)$/.test(ins.f.filter(function(x){ return x[0] === 'op'; })[0][1]);
+        out += '<p><b>ModRM = 0x' + f[1] + '</b></p>' + bits(v, [[2, 'mod', ['[reg]', '[reg]+d8', '[reg]+d32', 'register'][mod]], [3, 'reg', ext ? '/' + reg + (reg === 0 && ins.f[1][1] === '83' ? ' = ADD' : '') : REG[reg] + (ins.b.indexOf('0f b6') === 0 ? ' (eax)' : '')], [3, 'r/m', rm === 4 && mod !== 3 ? 'SIB follows' : REG[rm]]]);
+      }
+      if (f[0] === 'sib') out += '<p><b>SIB = 0x' + f[1] + '</b></p>' + bits(v, [[2, 'scale', '\u00d7' + (1 << (v >> 6))], [3, 'index', REG[(v >> 3) & 7]], [3, 'base', REG[v & 7]]]);
+    });
+    return out;
+  }
+  function mark(list){
+    I.forEach(function(ins, i){ ins.el.classList.toggle('hl', !!list && list.indexOf(i) >= 0); });
+  }
+  function pick(i){
+    sel = i; var ins = I[i];
+    I.forEach(function(x, k){ x.el.classList.toggle('sel', k === i); });
+    CL.forEach(function(l){ l.el.classList.toggle('sel', l.a.indexOf(i) >= 0); });
+    cells.forEach(function(c){ if (c.o !== undefined) c.r.setAttribute('class', 'bc' + (c.o === i ? ' bsel' : '')); });
+    enc.innerHTML = '<h3>Encoding of <code>' + ins.asm.replace(/\s+/, ' ') + '</code></h3><div class="fields">' + ins.f.map(function(f){ return '<div class="fld ' + FC[f[0]][1] + '"><code>' + f[1] + '</code><span>' + FC[f[0]][0] + '</span></div>'; }).join('') + '</div>' +
+      '<p>' + ins.what + '</p>' + decodeFields(ins) +
+      (ins.f.some(function(f){ return f[0] === 'rex'; }) ? '<p class="note">' + g('rex') + ' \u00b7 ' + g('modrm') + '</p>' : '');
+    uo.innerHTML = '<h3>What the core turns it into</h3>' +
+      '<table class="mt"><tr><th>\u00b5op</th><th>unit</th><th>reads</th><th>writes</th></tr>' + ins.uops.map(function(u){ return '<tr><td><b>' + u[0] + '</b></td><td style="font-family:var(--sans)">' + u[1] + '</td><td>' + u[2] + '</td><td>' + u[3] + '</td></tr>' + (u[4] ? '<tr><td colspan="4" class="unote">' + u[4] + '</td></tr>' : ''); }).join('') + '</table>' +
+      '<p class="note" style="margin-top:10px">' + (i === 6 ? 'Shown in the generic 4-\u00b5op form Intel documents for a memory-destination add. AMD tracks memory read-modify-write forms as one ' + g('mop') + ' in the retire queue while executing the same four pieces of work. Chapter 02 runs exactly these four.' : 'Per iteration the loop needs 7 µops: 2 loads, 1 store (address + data), 2 adds and 1 fused compare-and-branch. Those are exactly the 7 rows per iteration in Chapter 02.') + '</p>';
+  }
+  pick(sel);
+}});
+
+/* ======================= pipeline simulator ======================= */
+var PipeSim = (function(){
+var W = {fetch: 4, rename: 4, retire: 4, alu: 4, agu: 2};
+var CAP = {rob: 24, uq: 8, alu: 16, agu: 12, lq: 10, sq: 8, prf: 48, mab: 4};
+var REAL = {rob: '192 (96 per thread)', uq: '72 µops', alu: '4 × 14', agu: '2 × 14', lq: '44', sq: '44', prf: '168', mab: 'not published for L1; 50 L2→L3', fetch: '4 x86 instr/cycle', rename: '6 macro-ops/cycle', retire: '8/cycle'};
+
+function simulate(P){
+  var EX = P.ex, L = EX.loop, hx = function(v){ return '0x' + v.toString(16); };
+  var level = P.level || 'L1', missLat = P.missLat || 0;
+  /* ---------- static code ---------- */
+  var ST = {
+    A: {pc: L,        len: 3, asm: 'movzbl (%rdi),%eax',     uops: [{k: 'LD', d: 'rax', s: ['rdi'], sz: 1, tag: 'ld'}]},
+    B: {pc: L + 3n,   len: 4, asm: 'addq $1,%rdi',           uops: [{k: 'ALU', d: 'rdi', s: ['rdi'], tag: 'add'}]},
+    C: {pc: L + 7n,   len: 5, asm: 'addq $1,(%rdx,%rax,8)',  uops: [{k: 'LD', d: 't0', s: ['rdx', 'rax'], sz: 8, tag: 'ld'},
+                                                                  {k: 'ALU', d: 't1', s: ['t0'], tag: 'add'},
+                                                                  {k: 'STA', s: ['rdx', 'rax'], tag: 'sta'},
+                                                                  {k: 'STD', s: ['t1'], tag: 'std'}]},
+    J: {pc: L + 12n,  len: 5, asm: 'cmpq %rsi,%rdi ; jne .L3', uops: [{k: 'BR', d: 'flags', s: ['rdi', 'rsi'], tag: 'br'}]},
+    R: {pc: EX.ret,   len: 1, asm: 'ret',                    uops: [{k: 'RET', s: ['rsp'], tag: 'ret'}]}
+  };
+  /* ---------- memory (committed values) ---------- */
+  var MEM8 = {}, MEM1 = {};
+  var bytes = EX.bytes.concat([9, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  bytes.forEach(function(b, i){ MEM1[(EX.data + BigInt(i)).toString()] = b; });
+  for (var k in EX.histInit) MEM8[EX.histAddr(+k).toString()] = BigInt(EX.histInit[k]);
+  MEM8[EX.rsp.toString()] = EX.retAddr;
+  function rd(addr, sz){ return sz === 1 ? BigInt(MEM1[addr.toString()] || 0) : (MEM8[addr.toString()] || 0n); }
+  var lineOf = function(a){ return a & ~63n; };
+  var L1 = {}; /* present lines */
+  function addLine(a){ L1[lineOf(a).toString()] = true; }
+  [123, 7, 46, 200, 9, 0].forEach(function(k){ addLine(EX.histAddr(k)); });
+  addLine(EX.rsp);
+  if (level === 'L1') addLine(EX.data);
+
+  /* ---------- state ---------- */
+  var PRF = [];
+  for (var p = 0; p < CAP.prf; p++) PRF.push({val: null, readyAt: Infinity, alloc: false});
+  var init = {rax: 0n, rdx: EX.hist, rsi: EX.data + BigInt(EX.n), rdi: EX.data, rsp: EX.rsp, flags: 0n};
+  var RAT = {}, CRAT = {}, pi = 1;
+  ['rax', 'rdx', 'rsi', 'rdi', 'rsp', 'flags'].forEach(function(a){
+    RAT[a] = CRAT[a] = pi; PRF[pi] = {val: init[a], readyAt: -1, alloc: true}; pi++;
+  });
+  var FREE = []; for (p = pi; p < CAP.prf; p++) FREE.push(p);
+  var FREE0 = FREE.length;
+  var ROB = [], ALUQ = [], AGUQ = [], LQ = [], SQ = [], MAB = [], UQ = [];
+  var FE = {BP: null, IF: null, PD: null, DE: null};
+  var nextPC = L, feResume = 0, iter = 0, seq = 0, useq = 0, robTail = 0;
+  var insts = [], uops = [], snaps = [], violations = [];
+  var mispredicts = 0, retiredN = 0;
+
+  function G(u, c, code){ u.g[c] = code; }
+  function GI(inst, c, code){ inst.uops.forEach(function(u){ u.g[c] = code; }); }
+  function newInst(name){
+    var s = ST[name], it;
+    if (name === 'A') iter++;
+    it = {seq: seq++, name: name, iter: name === 'R' ? 0 : iter, lbl: name === 'R' ? 'R' : name + iter, pc: s.pc, asm: s.asm,
+          wrong: name !== 'R' && iter > EX.n, uops: [], maps: [], temps: [], squashedAt: null, rnAt: null, retAt: null};
+    s.uops.forEach(function(d, i){
+      var u = {id: useq++, inst: it, k: d.k, def: d, lbl: it.lbl + (s.uops.length > 1 ? '.' + d.tag : ''), g: {}, src: [], dst: null, dstArch: d.d || null,
+               issueAt: null, readyAt: Infinity, doneAt: Infinity, port: null, addr: null, val: null, outcome: null, state: 'fe'};
+      it.uops.push(u); uops.push(u);
+    });
+    insts.push(it);
+    return it;
+  }
+  function doneOf(it){ return Math.max.apply(null, it.uops.map(function(u){ return u.doneAt; })); }
+
+  function squashAfter(br, c){
+    var n = 0;
+    function kill(it){
+      it.squashedAt = c; n++;
+      it.maps.forEach(function(m){ FREE.push(m.newP); PRF[m.newP] = {val: null, readyAt: Infinity, alloc: false}; });
+      it.temps.forEach(function(t){ FREE.push(t); PRF[t] = {val: null, readyAt: Infinity, alloc: false}; });
+      it.uops.forEach(function(u){ u.g[c] = 'X'; u.state = 'squashed'; });
+    }
+    ROB = ROB.filter(function(it){ if (it.seq > br.seq){ kill(it); return false; } return true; });
+    ['DE', 'PD', 'IF', 'BP'].forEach(function(st){ if (FE[st]){ FE[st].forEach(function(it){ it.squashedAt = c; n++; it.uops.forEach(function(u){ u.g[c] = 'X'; u.state = 'squashed'; }); }); FE[st] = null; } });
+    UQ.forEach(function(it){ it.squashedAt = c; n++; it.uops.forEach(function(u){ u.g[c] = 'X'; u.state = 'squashed'; }); }); UQ = [];
+    var alive = function(u){ return !u.inst.squashedAt; };
+    ALUQ = ALUQ.filter(alive); AGUQ = AGUQ.filter(alive);
+    LQ = LQ.filter(function(e){ return !e.u.inst.squashedAt; });
+    SQ = SQ.filter(function(e){ return !e.inst.squashedAt; });
+    MAB.forEach(function(m){ m.waiters = m.waiters.filter(alive); });
+    RAT = JSON.parse(JSON.stringify(CRAT));
+    ROB.forEach(function(it){ it.maps.forEach(function(m){ RAT[m.arch] = m.newP; }); });
+    robTail = (br.slot + 1) % CAP.rob;
+    FE = {BP: null, IF: null, PD: null, DE: null};
+    return n;
+  }
+
+  function resolveLoad(u, c, ev){
+    /* store queue search: youngest older store with a known, matching address */
+    var match = null, unknown = [];
+    for (var i = SQ.length - 1; i >= 0; i--){
+      var e = SQ[i];
+      if (e.inst.seq >= u.inst.seq) continue;
+      if (e.addrAt > c){ unknown.push(e); continue; }
+      if (u.def.sz === 8 && e.addr === u.addr){ match = e; break; }
+    }
+    if (match){
+      if (match.dataAt <= c){
+        u.waited = u.outcome === 'fwwait'; u.val = match.data; u.readyAt = c; u.outcome = 'fwd';
+        ev.push('<b>' + u.lbl + '</b> address ' + hx(u.addr) + ' matches older store <b>' + match.inst.lbl + '</b> in the store queue; value ' + match.data + ' is forwarded from the SQ, not read from L1d');
+        return true;
+      }
+      if (u.outcome !== 'fwwait') ev.push('<b>' + u.lbl + '</b> matches older store <b>' + match.inst.lbl + '</b> but its data is not in the SQ yet: the load waits');
+      u.outcome = 'fwwait'; return false;
+    }
+    if (unknown.length) u.specPast = unknown.map(function(e){ return e.inst.seq; });
+    var ln = lineOf(u.addr).toString();
+    if (L1[ln]){
+      u.val = rd(u.addr, u.def.sz); u.readyAt = c; u.outcome = u.outcome === 'miss' ? 'miss' : 'hit';
+      if (u.outcome === 'hit') ev.push('<b>' + u.lbl + '</b> L1d hit: ' + hx(u.addr) + ' (set ' + Number((u.addr >> 6n) & 63n) + ') = ' + u.val);
+      return true;
+    }
+    var m = MAB.filter(function(x){ return x.line === ln; })[0];
+    if (!m){
+      m = {line: ln, lineHex: hx(lineOf(u.addr)), fillAt: u.issueAt + missLat, waiters: [], lvl: level};
+      MAB.push(m);
+      ev.push('<b>' + u.lbl + '</b> misses L1d (line ' + m.lineHex + '): MAB entry allocated, request sent to ' + level + ', data expected in cycle ' + m.fillAt);
+    } else if (m.waiters.indexOf(u) < 0){
+      ev.push('<b>' + u.lbl + '</b> misses the same line: merges into the existing MAB entry, no second request');
+    }
+    if (m.waiters.indexOf(u) < 0) m.waiters.push(u);
+    u.outcome = 'miss';
+    return false;
+  }
+
+  var MAXC = 1200;
+  for (var c = 0; c < MAXC; c++){
+    var ev = [], stall = null, rnNow = [], issued = {};
+    /* 1. retire */
+    var rcount = 0;
+    while (rcount < W.retire && ROB.length && doneOf(ROB[0]) < c){
+      var it = ROB.shift(); it.retAt = c; rcount++; retiredN++;
+      it.maps.forEach(function(m){ FREE.push(m.oldP); PRF[m.oldP] = {val: PRF[m.oldP].val, readyAt: Infinity, alloc: false}; CRAT[m.arch] = m.newP; });
+      it.temps.forEach(function(t){ FREE.push(t); PRF[t] = {val: PRF[t].val, readyAt: Infinity, alloc: false}; });
+      LQ = LQ.filter(function(e){ return e.u.inst !== it; });
+      SQ.forEach(function(e){ if (e.inst === it) e.retiredAt = c; });
+      GI(it, c, 'RT');
+      ev.push('<b>' + it.lbl + '</b> retires' + (it.maps.length ? ': frees ' + it.maps.map(function(m){ return 'p' + m.oldP; }).join(', ') + (it.temps.length ? ' and temps ' + it.temps.map(function(t){ return 'p' + t; }).join(', ') : '') : it.temps.length ? ': frees temps ' + it.temps.map(function(t){ return 'p' + t; }).join(', ') : '') + (it.name === 'C' ? '; its store becomes a senior store' : ''));
+    }
+    /* 2. store commit (one per cycle, only retired stores) */
+    SQ.forEach(function(e){ if (e.retiredAt !== null && e.retiredAt < c && !e.committedAt) e.inst.uops.forEach(function(u){ if (u.k === 'STA') u.g[c] = 'SB'; }); });
+    if (SQ.length && SQ[0].retiredAt !== null && SQ[0].retiredAt < c){
+      var e0 = SQ.shift();
+      MEM8[e0.addr.toString()] = e0.data; e0.committedAt = c;
+      e0.inst.uops.forEach(function(u){ if (u.k === 'STA') u.g[c] = 'CM'; });
+      ev.push('<b>' + e0.inst.lbl + '</b> store commits to L1d: ' + hx(e0.addr) + ' \u2190 ' + e0.data + ' (line now dirty; other cores can see it from here on)');
+    }
+    /* 3. execution events scheduled for this cycle */
+    MAB = MAB.filter(function(m){
+      if (m.fillAt === c){ L1[m.line] = true; ev.push('Line ' + m.lineHex + ' arrives from ' + m.lvl + ' and is filled into L1d; MAB entry released'); return false; }
+      return true;
+    });
+    uops.forEach(function(u){
+      if (u.issueAt === null || u.inst.squashedAt !== null) return;
+      var t = c - u.issueAt;
+      if (u.k === 'BR' && t === 2){
+        var taken = u.val !== 0n;
+        u.inst.actualTaken = taken;
+        if (!taken){
+          mispredicts++;
+          var n = squashAfter(u.inst, c);
+          nextPC = EX.ret; feResume = c + 1;
+          ev.push('<b>' + u.lbl + ' MISPREDICTED</b>: predicted taken, rdi == rsi so it falls through. ' + n + ' younger instructions squashed; RAT rebuilt from the committed RAT plus the older in-flight renames; fetch redirected to ret at ' + hx(EX.ret));
+        } else ev.push('<b>' + u.lbl + '</b> resolves taken, matching the prediction');
+      }
+      if (u.k === 'LD' && u.readyAt === Infinity && t >= 4){
+        if (resolveLoad(u, c, ev)){
+          PRF[u.dst].val = u.val; PRF[u.dst].readyAt = c;
+          u.doneAt = c + 1;
+        }
+      }
+    });
+    /* violation check: any STA whose address just became known vs younger loads that already resolved past it */
+    SQ.forEach(function(e){
+      if (e.addrAt === c) uops.forEach(function(u){
+        if (u.k === 'LD' && u.specPast && u.specPast.indexOf(e.inst.seq) >= 0 && u.addr === e.addr && !u.inst.squashedAt) violations.push({c: c, ld: u.lbl, st: e.inst.lbl});
+      });
+    });
+    /* 4. issue / select */
+    function ready(u){ return u.eligAt <= c && u.src.every(function(p){ return PRF[p].readyAt <= c; }); }
+    var ac = ALUQ.filter(ready).sort(function(a, b){ return a.id - b.id; }).slice(0, W.alu);
+    var gc = [], sta = 0;
+    AGUQ.filter(ready).sort(function(a, b){ return a.id - b.id; }).forEach(function(u){
+      if (gc.length >= W.agu) return;
+      if ((u.k === 'STA' || u.k === 'RET') && sta >= 1) return;
+      if (u.k === 'STA' || u.k === 'RET') sta++;
+      gc.push(u);
+    });
+    function srcv(u, i){ return PRF[u.src[i]].val; }
+    ac.forEach(function(u, i){
+      u.issueAt = c; u.port = 'ALU' + i; u.state = 'exec'; issued[u.port] = u.lbl;
+      G(u, c, 'IS'); G(u, c + 1, 'RR');
+      if (u.k === 'ALU'){ u.val = srcv(u, 0) + 1n; PRF[u.dst].val = u.val; PRF[u.dst].readyAt = c + 1; G(u, c + 2, 'EX'); G(u, c + 3, 'WB'); u.doneAt = c + 3; }
+      if (u.k === 'BR'){ u.val = srcv(u, 0) - srcv(u, 1); PRF[u.dst].val = u.val; PRF[u.dst].readyAt = c + 1; G(u, c + 2, 'BR'); G(u, c + 3, 'WB'); u.doneAt = c + 3; }
+      if (u.k === 'STD'){ u.val = srcv(u, 0); u.sqe.data = u.val; u.sqe.dataAt = c + 3; G(u, c + 2, 'SD'); u.doneAt = c + 3; }
+    });
+    ALUQ = ALUQ.filter(function(u){ return ac.indexOf(u) < 0; });
+    gc.forEach(function(u, i){
+      u.issueAt = c; u.port = 'AGU' + i; u.state = 'exec'; issued[u.port] = u.lbl;
+      G(u, c, 'IS'); G(u, c + 1, 'RR'); G(u, c + 2, 'AG');
+      if (u.k === 'LD'){ u.addr = u.def.sz === 1 ? srcv(u, 0) : srcv(u, 0) + srcv(u, 1) * 8n; G(u, c + 3, 'D1'); G(u, c + 4, 'D2'); }
+      if (u.k === 'STA'){ u.addr = srcv(u, 0) + srcv(u, 1) * 8n; u.sqe.addr = u.addr; u.sqe.addrAt = c + 3; G(u, c + 3, 'D1'); u.doneAt = c + 3; }
+      if (u.k === 'RET'){ u.addr = srcv(u, 0); u.val = rd(u.addr, 8); G(u, c + 3, 'D1'); G(u, c + 4, 'D2'); G(u, c + 5, 'WB'); u.doneAt = c + 5; }
+    });
+    AGUQ = AGUQ.filter(function(u){ return gc.indexOf(u) < 0; });
+    ac.concat(gc).forEach(function(u){ ev.push('<b>' + u.lbl + '</b> issues on ' + u.port); });
+    /* 5. rename + dispatch */
+    var rn = 0;
+    while (rn < W.rename && UQ.length){
+      var it2 = UQ[0], su = it2.uops;
+      var nd = su.filter(function(u){ return u.dstArch; }).length;
+      var na = su.filter(function(u){ return u.k === 'ALU' || u.k === 'BR' || u.k === 'STD'; }).length;
+      var ng = su.length - na, nl = su.filter(function(u){ return u.k === 'LD'; }).length, ns = it2.name === 'C' ? 1 : 0;
+      if (ROB.length >= CAP.rob) stall = 'ROB full';
+      else if (FREE.length < nd) stall = 'free list empty';
+      else if (ALUQ.length + na > CAP.alu) stall = 'ALU scheduler full';
+      else if (AGUQ.length + ng > CAP.agu) stall = 'AGU scheduler full';
+      else if (LQ.length + nl > CAP.lq) stall = 'load queue full';
+      else if (SQ.length + ns > CAP.sq) stall = 'store queue full';
+      if (stall) break;
+      UQ.shift(); rn++; rnNow.push(it2.lbl);
+      var local = {}, sqe = null;
+      if (ns){ sqe = {inst: it2, addr: null, addrAt: Infinity, data: null, dataAt: Infinity, retiredAt: null}; SQ.push(sqe); }
+      su.forEach(function(u){
+        u.src = u.def.s.map(function(a){ return a in local ? local[a] : RAT[a]; });
+        if (u.dstArch){
+          var np = FREE.shift();
+          PRF[np] = {val: null, readyAt: Infinity, alloc: true};
+          u.dst = np;
+          if (u.dstArch.charAt(0) === 't'){ it2.temps.push(np); local[u.dstArch] = np; }
+          else { it2.maps.push({arch: u.dstArch, newP: np, oldP: RAT[u.dstArch]}); RAT[u.dstArch] = np; }
+        }
+        u.eligAt = c + 2; u.state = 'sched'; u.sqe = sqe;
+        G(u, c, 'RN'); G(u, c + 1, 'DS');
+        if (u.k === 'LD'){ LQ.push({u: u}); AGUQ.push(u); }
+        else if (u.k === 'STA' || u.k === 'RET') AGUQ.push(u);
+        else ALUQ.push(u);
+      });
+      it2.rnAt = c; it2.slot = robTail; robTail = (robTail + 1) % CAP.rob; ROB.push(it2);
+      ev.push('<b>' + it2.lbl + '</b> renamed' + (it2.maps.length ? ': ' + it2.maps.map(function(m){ return m.arch + ' \u2192 p' + m.newP + ' (was p' + m.oldP + ')'; }).join(', ') : '') + (it2.temps.length ? (it2.maps.length ? '; ' : ': ') + 'temps ' + it2.temps.map(function(t){ return 'p' + t; }).join(', ') : ''));
+    }
+    if (stall && UQ.length) ev.push('<b>Rename stalls: ' + stall + '</b>');
+    UQ.forEach(function(it3){ GI(it3, c, 'UQ'); });
+    /* 6. front end */
+    if (c >= feResume){
+      if (FE.DE && UQ.length + FE.DE.length <= CAP.uq){ FE.DE.forEach(function(x){ UQ.push(x); GI(x, c, 'UQ'); }); FE.DE = null; }
+      if (!FE.DE && FE.PD){ FE.DE = FE.PD; FE.PD = null; }
+      if (!FE.PD && FE.IF){ FE.PD = FE.IF; FE.IF = null; }
+      if (!FE.IF && FE.BP){ FE.IF = FE.BP; FE.BP = null; }
+      if (!FE.BP && nextPC !== null){
+        var grp = [], pc = nextPC;
+        while (grp.length < W.fetch){
+          var nm = pc === L ? 'A' : pc === L + 3n ? 'B' : pc === L + 7n ? 'C' : pc === L + 12n ? 'J' : pc === EX.ret ? 'R' : null;
+          if (!nm){ pc = null; break; }
+          grp.push(newInst(nm));
+          if (nm === 'J'){ pc = L; break; }
+          if (nm === 'R'){ pc = null; break; }
+          pc = pc + BigInt(ST[nm].len);
+        }
+        nextPC = pc; FE.BP = grp; FE.BP.pc = grp.length ? grp[0].pc : null;
+      }
+      ['BP', 'IF', 'PD', 'DE'].forEach(function(st){ if (FE[st]) FE[st].forEach(function(x){ GI(x, c, st); }); });
+    }
+    /* scheduler wait marks */
+    ALUQ.concat(AGUQ).forEach(function(u){ if (u.eligAt <= c && !u.g[c]) u.g[c] = '\u00b7'; });
+    uops.forEach(function(u){
+      if (u.k === 'LD' && u.issueAt !== null && u.readyAt === Infinity && c > u.issueAt + 4 && !u.inst.squashedAt) u.g[c] = u.outcome === 'fwwait' ? 'fw' : 'ms';
+      if (u.k === 'LD' && u.readyAt === c && c > u.issueAt + 4) u.g[c] = 'DA';
+      if (u.k === 'LD' && u.readyAt !== Infinity && c === u.readyAt + 1) u.g[c] = 'WB';
+    });
+    /* 7. snapshot */
+    snaps.push(snapshot(c, ev, stall, rnNow, issued));
+    if (nextPC === null && !FE.BP && !FE.IF && !FE.PD && !FE.DE && !UQ.length && !ROB.length && !SQ.length){ break; }
+  }
+
+  function uState(u, c){
+    if (u.inst.squashedAt !== null && u.inst.squashedAt <= c) return 'squashed';
+    if (u.issueAt === null) return 'wait';
+    if (u.doneAt < c) return 'done';
+    return 'exec';
+  }
+  function snapshot(c, ev, stall, rnNow, issued){
+    var fe = {}; ['BP', 'IF', 'PD', 'DE'].forEach(function(st){ fe[st] = FE[st] ? FE[st].map(function(x){ return x.lbl; }) : []; });
+    var inStage = function(code){ return uops.filter(function(u){ return u.g[c] === code && !u.inst.squashedAt; }).map(function(u){ return u.lbl; }); };
+    return {
+      c: c, ev: ev, stall: stall, rn: rnNow, issued: issued,
+      fe: fe, fetchPC: FE.BP && FE.BP.pc ? hx(FE.BP.pc) : null, nextPC: nextPC === null ? null : hx(nextPC),
+      uq: UQ.map(function(x){ return x.lbl; }), robHead: ROB.length ? ROB[0].slot : robTail, robTail: robTail,
+      rat: JSON.parse(JSON.stringify(RAT)), crat: JSON.parse(JSON.stringify(CRAT)),
+      free: FREE.slice(),
+      prf: PRF.map(function(r, i){ return {p: i, val: r.val === null ? null : r.val.toString(), ready: r.readyAt <= c, alloc: r.alloc}; }),
+      rob: ROB.map(function(it){
+        var d = doneOf(it) < c;
+        return {lbl: it.lbl, asm: it.asm, slot: it.slot, done: d, wrong: it.wrong, st: d ? 'done' : it.uops.some(function(u){ return u.issueAt !== null; }) ? 'exec' : 'wait'};
+      }),
+      alu: ALUQ.map(function(u){ return {lbl: u.lbl, src: u.src.map(function(p){ return {p: p, r: PRF[p].readyAt <= c}; })}; }),
+      agu: AGUQ.map(function(u){ return {lbl: u.lbl, src: u.src.map(function(p){ return {p: p, r: PRF[p].readyAt <= c}; })}; }),
+      stages: {EX: inStage('EX').concat(inStage('BR')), AG: inStage('AG'), D1: inStage('D1'), D2: inStage('D2'), SD: inStage('SD'), WB: inStage('WB')},
+      lq: LQ.map(function(e){ var u = e.u; return {lbl: u.lbl, addr: u.addr === null ? null : hx(u.addr), st: u.readyAt <= c ? (u.outcome === 'fwd' ? 'forwarded' : u.outcome === 'miss' ? 'filled' : 'hit') : u.outcome === 'miss' ? 'miss' : u.outcome === 'fwwait' ? 'wait data' : u.issueAt === null ? 'waiting' : 'in pipe', val: u.readyAt <= c && u.val !== null ? u.val.toString() : null}; }),
+      sq: SQ.map(function(e){ return {lbl: e.inst.lbl, addr: e.addrAt <= c ? hx(e.addr) : null, data: e.dataAt <= c ? e.data.toString() : null, senior: e.retiredAt !== null && e.retiredAt <= c}; }),
+      mab: MAB.map(function(m){ return {line: m.lineHex, fillAt: m.fillAt, lvl: m.lvl, n: m.waiters.length}; }),
+      l1: {data: !!L1[lineOf(EX.data).toString()]},
+      mem: {h123: MEM8[EX.histAddr(123).toString()].toString(), h7: MEM8[EX.histAddr(7).toString()].toString(), h46: MEM8[EX.histAddr(46).toString()].toString(), h200: MEM8[EX.histAddr(200).toString()].toString()},
+      retired: retiredN, ustate: uops.map(function(u){ return uState(u, c); })
+    };
+  }
+
+  return {
+    snaps: snaps, uops: uops.map(function(u){ return {lbl: u.lbl, inst: u.inst.lbl, k: u.k, wrong: u.inst.wrong, squashedAt: u.inst.squashedAt, g: u.g, port: u.port, outcome: u.outcome, val: u.val === null ? null : u.val.toString(), addr: u.addr === null ? null : hx(u.addr), first: u.inst.uops[0] === u, asm: u.inst.asm}; }),
+    cycles: snaps.length, violations: violations, mispredicts: mispredicts, retired: retiredN,
+    freeStart: FREE0, freeEnd: FREE.length, mem: {h123: MEM8[EX.histAddr(123).toString()], h7: MEM8[EX.histAddr(7).toString()], h46: MEM8[EX.histAddr(46).toString()], h200: MEM8[EX.histAddr(200).toString()]},
+    CAP: CAP, REAL: REAL, W: W
+  };
+}
+return {simulate: simulate, CAP: CAP, REAL: REAL, W: W};
+})();
+
+
+/* ======================= chapter: the core ======================= */
+App.chapter({id: 'core', num: '02', short: 'Inside the core', title: 'Inside the core, cycle by cycle',
+sub: 'The histogram loop running through a cycle-level model of an out-of-order core: every instruction fetched, decoded, renamed, scheduled, executed, retired, and every store committed. Step one cycle at a time and watch each structure change.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, EX = App.EX, CFG = App.CFG, hx = App.hx;
+  var sim = null, cur = 0, level = 'L1', timer = null, cols = [], prevSnap = null;
+  function missLat(){ return level === 'L2' ? CFG.l2 : level === 'L3' ? CFG.l3 : level === 'DRAM' ? App.dramCycles() : 0; }
+
+  /* ---------- intro ---------- */
+  var intro = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, intro,
+    '<h3>What is running</h3><p><code>hist[data[i]]++</code> for 3 iterations with <code>data = {123, 123, 7}</code>, <code>hist[123] = 41</code>, <code>hist[7] = 9</code>. ' +
+    'Iteration 2 reads <code>hist[123]</code> while iteration 1\'s store to it is still in flight, so it needs ' + g('stlf') + '. The loop branch is predicted taken every time, so the third <code>jne</code> ' + g('mispredict', 'mispredicts') + ' and everything fetched after it is ' + g('squash', 'squashed') + '.</p>' +
+    '<p>Each instruction goes through up to 14 stages: <b>BP</b> ' + g('bp', 'predict') + ' · <b>IF</b> fetch from ' + g('l1i') + ' · <b>PD</b> ' + g('predecode') + ' · <b>DE</b> ' + g('decode') + ' · <b>UQ</b> ' + g('uq') + ' · <b>RN</b> ' + g('rename') + ' · <b>DS</b> ' + g('dispatch') +
+    ' · <b>IS</b> ' + g('issue') + ' · <b>RR</b> register read · <b>EX/AG</b> execute or ' + g('agu', 'address generation') + ' · <b>D1</b> ' + g('dtlb') + ' + L1d tag · <b>D2</b> L1d data / SQ check · <b>WB</b> writeback + ' + g('wakeup') + ' · <b>RT</b> ' + g('retire') + ' · then <b>CM</b> ' + g('commit') + ' for stores.</p>');
+  var sizes = h('div', {'class': 'card'}, intro);
+  var R = PipeSim.REAL, C = PipeSim.CAP;
+  sizes.innerHTML = '<h3>Model sizes vs. your Zen+ core</h3><p>Structures are scaled down so every entry fits on screen. Widths and ordering rules follow Zen+ closely; exact sizes do not.</p>' +
+    '<table class="mt"><tr><th></th><th>model</th><th>Zen+</th></tr>' +
+    [['rob', 'ROB', C.rob, R.rob], ['prf', 'physical registers', C.prf, R.prf], ['sched', 'ALU schedulers', C.alu, R.alu], ['sched', 'AGU schedulers', C.agu, R.agu],
+     ['lq', 'load queue', C.lq, R.lq], ['sq', 'store queue', C.sq, R.sq], ['uq', 'µop queue', C.uq + ' instr', R.uq], ['mab', 'miss buffers', C.mab, R.mab],
+     ['decode', 'fetch / decode width', '4', R.fetch], ['rename', 'rename width', '4', R.rename], ['retire', 'retire width', '4', R.retire]]
+    .map(function(r){ return '<tr><td>' + g(r[0], r[1]) + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td></tr>'; }).join('') +
+    '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages; your measured mispredict cost (~20.8 TSC ticks) reflects the real, longer one.</p>';
+
+  /* ---------- controls ---------- */
+  var ctl = h('div', {'class': 'card pctl'}, root);
+  var row1 = h('div', {'class': 'stp'}, ctl);
+  h('span', {'class': 'note'}, row1, 'data[] line is in:');
+  App.seg(row1, [['L1', 'L1d (hit)'], ['L2', 'L2'], ['L3', 'L3'], ['DRAM', 'DRAM']], function(v){ level = v; run(); }, 'L1');
+  var lvlNote = h('span', {'class': 'note'}, row1);
+  var row2 = h('div', {'class': 'stp', style: 'margin-top:10px'}, ctl);
+  var bFirst = h('button', null, row2, '\u23ee'), bPrev = h('button', null, row2, '\u2190 cycle'),
+      cyc = h('span', {'class': 'cnt', style: 'min-width:92px'}, row2),
+      bNext = h('button', {'class': 'pri'}, row2, 'cycle \u2192'), bPlay = h('button', null, row2, '\u25b6 play'),
+      bEvt = h('button', null, row2, 'skip quiet cycles \u21e5');
+  var slider = h('input', {type: 'range', min: 0, max: 1, value: 0, style: 'flex:1;min-width:140px'}, row2);
+  bFirst.onclick = function(){ go(0); }; bPrev.onclick = function(){ go(cur - 1); }; bNext.onclick = function(){ go(cur + 1); };
+  slider.oninput = function(){ go(+slider.value); };
+  bPlay.onclick = function(){
+    if (timer){ clearInterval(timer); timer = null; bPlay.innerHTML = '\u25b6 play'; return; }
+    bPlay.innerHTML = '\u275a\u275a pause';
+    timer = setInterval(function(){ if (cur >= sim.cycles - 1){ bPlay.onclick(); return; } go(cur + 1); }, 650);
+  };
+  bEvt.onclick = function(){
+    for (var c = cur + 1; c < sim.cycles; c++) if (sim.snaps[c].ev.length){ go(c); return; }
+    go(sim.cycles - 1);
+  };
+
+  /* ---------- floorplan ---------- */
+  var fpw = h('div', {'class': 'scroller'}, root);
+  var fp = s('svg', {viewBox: '0 0 1200 445', style: 'min-width:900px'}, fpw);
+  s('defs', null, fp).innerHTML = '<marker id="pa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6"/></marker>';
+  var B = {};
+  function blk(id, x, y, w, ht, title, sub){
+    var gr = s('g', null, fp);
+    s('rect', {x: x, y: y, width: w, height: ht, rx: 8, 'class': 'box'}, gr);
+    s('text', {x: x + 8, y: y + 16, 'class': 'h'}, gr, title);
+    var t2 = s('text', {x: x + w - 8, y: y + 16, 'class': 's m', 'text-anchor': 'end'}, gr, sub || '');
+    B[id] = {g: gr, x: x, y: y, w: w, h: ht, sub: t2};
+    return B[id];
+  }
+  function bar(b, n, y0, hh, x0, w0){
+    var x = x0 !== undefined ? x0 : b.x + 8, w = w0 !== undefined ? w0 : b.w - 16, cw = w / n, cells = [];
+    for (var i = 0; i < n; i++){
+      var r = s('rect', {x: x + i * cw + 1, y: y0, width: cw - 2, height: hh, rx: 2, 'class': 'slot'}, b.g);
+      var t = s('text', {x: x + i * cw + cw / 2, y: y0 + hh / 2 + 3.5, 'text-anchor': 'middle', 'class': 'slt m'}, b.g, '');
+      cells.push({r: r, t: t});
+    }
+    return cells;
+  }
+  function wire(d){ return s('path', {d: d, 'class': 'wire', 'marker-end': 'url(#pa)'}, fp); }
+  var yA = 30, yB = 140, yC = 250, yD = 350;
+  blk('bp', 10, yA, 180, 72, 'Branch pred. · BTB'); B.bp.l = s('text', {x: 18, y: yA + 40, 'class': 'm', 'font-size': 11}, B.bp.g, ''); B.bp.l2 = s('text', {x: 18, y: yA + 58, 'class': 's'}, B.bp.g, '');
+  blk('ic', 205, yA, 160, 72, 'L1i 64K · iTLB'); B.ic.l = s('text', {x: 213, y: yA + 40, 'class': 'm', 'font-size': 11}, B.ic.g, ''); s('text', {x: 213, y: yA + 58, 'class': 's'}, B.ic.g, '32-byte fetch window');
+  blk('pd', 380, yA, 130, 72, 'Predecode'); B.pd.l = s('text', {x: 388, y: yA + 40, 'class': 'm', 'font-size': 11}, B.pd.g, ''); s('text', {x: 388, y: yA + 58, 'class': 's'}, B.pd.g, 'finds boundaries');
+  blk('de', 525, yA, 240, 72, 'Decode ×4 · op cache'); B.de.c = bar(B.de, 4, yA + 30, 32);
+  blk('uq', 780, yA, 410, 72, '\u00b5op queue'); B.uq.c = bar(B.uq, C.uq, yA + 30, 32);
+  blk('rn', 880, yB, 310, 72, 'Rename · RAT · free list'); B.rn.l = s('text', {x: 888, y: yB + 40, 'class': 'm', 'font-size': 11}, B.rn.g, ''); B.rn.l2 = s('text', {x: 888, y: yB + 58, 'class': 's'}, B.rn.g, '');
+  blk('ds', 680, yB, 185, 72, 'Dispatch / allocate'); B.ds.l = s('text', {x: 688, y: yB + 40, 'class': 'm', 'font-size': 11}, B.ds.g, ''); B.ds.l2 = s('text', {x: 688, y: yB + 58, 'class': 's'}, B.ds.g, '');
+  blk('rob', 10, yB, 655, 72, 'ROB / retire queue \u2014 retires from the head, in order'); B.rob.c = bar(B.rob, C.rob, yB + 30, 32);
+  blk('alus', 10, yC, 330, 72, 'ALU schedulers'); B.alus.c = bar(B.alus, C.alu, yC + 30, 32);
+  blk('alup', 355, yC, 330, 72, 'ALU ports'); B.alup.c = bar(B.alup, 4, yC + 30, 32);
+  blk('prf', 700, yC, 490, 72, 'Physical register file'); B.prf.c = [];
+  for (var i = 0; i < C.prf; i++){
+    var col = i % 24, rw = Math.floor(i / 24), x = 708 + col * 19.6, y = yC + 26 + rw * 22;
+    var r = s('rect', {x: x, y: y, width: 18, height: 20, rx: 2, 'class': 'slot'}, B.prf.g);
+    var t = s('text', {x: x + 9, y: y + 13.5, 'text-anchor': 'middle', 'class': 'slt m'}, B.prf.g, i);
+    B.prf.c.push({r: r, t: t});
+  }
+  blk('agus', 10, yD, 250, 72, 'AGU schedulers'); B.agus.c = bar(B.agus, C.agu, yD + 30, 32);
+  blk('agup', 275, yD, 200, 72, 'AGU ports'); B.agup.c = bar(B.agup, 2, yD + 30, 32);
+  blk('lsu', 490, yD, 530, 72, 'Load/store unit');
+  s('text', {x: 498, y: yD + 64, 'class': 's'}, B.lsu.g, 'load queue'); s('text', {x: 770, y: yD + 64, 'class': 's'}, B.lsu.g, 'store queue');
+  B.lsu.lq = bar(B.lsu, C.lq, yD + 24, 26, 498, 260); B.lsu.sq = bar(B.lsu, C.sq, yD + 24, 26, 770, 240);
+  blk('l2', 1035, yD, 155, 72, 'MAB \u2192 L2/L3/DRAM'); B.l2.c = bar(B.l2, C.mab, yD + 30, 32);
+  wire('M 190 66 L 203 66'); wire('M 365 66 L 378 66'); wire('M 510 66 L 523 66'); wire('M 765 66 L 778 66');
+  wire('M 985 102 L 985 138'); wire('M 880 176 L 867 176'); wire('M 680 176 L 667 176');
+  wire('M 772 212 L 772 230 L 175 230 L 175 248'); wire('M 347 230 L 347 336 L 135 336 L 135 348');
+  wire('M 340 286 L 353 286'); wire('M 685 286 L 698 286'); wire('M 260 386 L 273 386'); wire('M 475 386 L 488 386'); wire('M 1020 386 L 1033 386');
+  s('text', {x: 22, y: 440, 'class': 's'}, fp, 'Orange = active this cycle. Slot colours: blue = waiting, amber = executing, green = done / ready, red = miss, purple = senior store.');
+
+  /* ---------- events ---------- */
+  var evc = h('div', {'class': 'card'}, root);
+  var evTitle = h('h3', null, evc), evList = h('ul', {'class': 'evl'}, evc);
+
+  /* ---------- detail panels ---------- */
+  var pg = h('div', {'class': 'pgrid'}, root);
+  function panel(title, term, cap){ var p = h('div', {'class': 'card pp'}, pg); h('h3', null, p, (term ? g(term, title) : title) + (cap ? ' <span class="tag pub">' + cap + '</span>' : '')); return h('div', null, p); }
+  var pFE = panel('Front end', null), pRN = panel('RAT', 'rat', 'rename'), pPRF = panel('Physical registers', 'prf', C.prf + ' of ' + R.prf),
+      pROB = panel('ROB', 'rob', C.rob + ' of ' + R.rob), pSC = panel('Schedulers', 'sched'), pEX = panel('Execution ports', 'port'),
+      pLQ = panel('Load queue', 'lq', C.lq + ' of ' + R.lq), pSQ = panel('Store queue', 'sq', C.sq + ' of ' + R.sq), pMEM = panel('DTLB · L1d · memory', null);
+
+  /* ROB ring */
+  var ring = s('svg', {viewBox: '0 0 260 260', 'class': 'ring'}, pROB), ringCells = [];
+  var cx = 130, cy = 130, R1 = 118, R0 = 78;
+  for (var k = 0; k < C.rob; k++){
+    var a0 = (k / C.rob) * 2 * Math.PI - Math.PI / 2, a1 = ((k + 1) / C.rob) * 2 * Math.PI - Math.PI / 2, am = (a0 + a1) / 2;
+    var p = function(rr, a){ return (cx + rr * Math.cos(a)).toFixed(1) + ' ' + (cy + rr * Math.sin(a)).toFixed(1); };
+    var path = s('path', {d: 'M ' + p(R0, a0) + ' L ' + p(R1, a0) + ' A ' + R1 + ' ' + R1 + ' 0 0 1 ' + p(R1, a1) + ' L ' + p(R0, a1) + ' A ' + R0 + ' ' + R0 + ' 0 0 0 ' + p(R0, a0) + ' Z', 'class': 'slot'}, ring);
+    var tt = s('text', {x: cx + (R0 + R1) / 2 * Math.cos(am), y: cy + (R0 + R1) / 2 * Math.sin(am) + 3.5, 'text-anchor': 'middle', 'class': 'slt m'}, ring, '');
+    ringCells.push({r: path, t: tt, am: am});
+  }
+  var headM = s('text', {'class': 'm', 'font-size': 10, 'text-anchor': 'middle', fill: 'var(--ok)'}, ring, 'head');
+  var tailM = s('text', {'class': 'm', 'font-size': 10, 'text-anchor': 'middle', fill: 'var(--a3)'}, ring, 'tail');
+  var ringC = s('text', {x: cx, y: cy - 4, 'text-anchor': 'middle', 'class': 'h'}, ring, '');
+  s('text', {x: cx, y: cy + 14, 'text-anchor': 'middle', 'class': 's'}, ring, 'entries in flight');
+  var robList = h('div', {'class': 'note', style: 'margin-top:6px'}, pROB);
+
+  /* ---------- gantt ---------- */
+  var gc = h('div', {'class': 'card'}, root);
+  var gh = h('div', {'class': 'stp'}, gc);
+  h('h3', {style: 'margin:0'}, gh, 'Pipeline diagram');
+  h('span', {'class': 'grow'}, gh);
+  var hideSq = h('label', {'class': 'note'}, gh, '<input type="checkbox"> hide squashed rows');
+  hideSq.querySelector('input').onchange = function(){ paintGantt(); };
+  h('p', {'class': 'note', style: 'margin:6px 0 8px'}, gc, 'Rows are \u00b5ops in program order, columns are cycles; it fills in as you step. Click a column header to jump. \u00b7 = waiting in a scheduler, fw = waiting for store data, ms = waiting on a miss, DA = data arrives, X = squashed, SB = senior store, CM = committed to L1d.');
+  var gw = h('div', {'class': 'gantt-w'}, gc);
+
+  function run(){
+    if (timer) bPlay.onclick();
+    sim = PipeSim.simulate({ex: EX, level: level, missLat: missLat()});
+    lvlNote.textContent = level === 'L1' ? 'everything hits' : 'first touch of data[] costs ' + missLat() + ' cycles (latency settings)';
+    slider.max = sim.cycles - 1;
+    buildGantt(); prevSnap = null; go(0);
+  }
+  function buildGantt(){
+    cols = []; var c = 0, n = sim.cycles;
+    while (c < n){
+      var e = c; while (e + 1 < n && !sim.snaps[e + 1].ev.length && !sim.snaps[c].ev.length) e++;
+      if (e - c >= 5){ cols.push({a: c, b: e}); c = e + 1; } else { cols.push({a: c, b: c}); c++; }
+    }
+    var html = '<table class="gantt"><thead><tr><th class="lbl">\u00b5op</th>' + cols.map(function(co, i){ return '<th data-i="' + i + '">' + (co.a === co.b ? co.a : co.a + '\u2013' + co.b) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    sim.uops.forEach(function(u, ri){
+      html += '<tr data-r="' + ri + '"><td class="lbl" title="' + u.asm + '">' + u.lbl + '</td>' + cols.map(function(co){
+        var code = u.g[co.a] || ''; if (co.a !== co.b && !code) code = u.g[co.b] || '';
+        return '<td class="k' + codeCls(code) + '">' + code + '</td>';
+      }).join('') + '</tr>';
+    });
+    gw.innerHTML = html + '</tbody></table>';
+    gw.querySelector('thead').onclick = function(e){ var i = e.target.dataset && e.target.dataset.i; if (i !== undefined) go(cols[+i].a); };
+  }
+  function codeCls(c){
+    return {BP: ' fe', IF: ' fe', PD: ' fe', DE: ' fe', UQ: ' uq', RN: ' rn', DS: ' rn', '\u00b7': ' wt', IS: ' is', RR: ' ex', EX: ' ex', AG: ' ex', BR: ' ex', SD: ' ex',
+            D1: ' mm', D2: ' mm', DA: ' mm', ms: ' ms', fw: ' ms', WB: ' wb', RT: ' rt', SB: ' sb', CM: ' cm', X: ' xx'}[c] || '';
+  }
+  function colOf(c){ for (var i = 0; i < cols.length; i++) if (c >= cols[i].a && c <= cols[i].b) return i; return 0; }
+  function paintGantt(){
+    var ci = colOf(cur), hide = hideSq.querySelector('input').checked;
+    var trs = gw.querySelectorAll('tr');
+    for (var r = 0; r < trs.length; r++){
+      var cells = trs[r].children, ri = trs[r].dataset.r;
+      if (ri !== undefined){
+        var u = sim.uops[+ri], sq = u.squashedAt !== null && cur >= u.squashedAt;
+        trs[r].className = (sq ? 'sqd' : '') + (u.g[cur] && u.g[cur] !== '\u00b7' && !sq ? ' act' : '');
+        trs[r].style.display = (hide && sq) ? 'none' : '';
+        var started = Object.keys(u.g).some(function(k){ return +k <= cur; });
+        trs[r].style.opacity = started ? '' : '.25';
+      }
+      for (var k2 = 1; k2 < cells.length; k2++){
+        cells[k2].classList.toggle('fut', cols[k2 - 1].a > cur);
+        cells[k2].classList.toggle('cur', k2 - 1 === ci);
+      }
+    }
+    var th = gw.querySelector('th[data-i="' + ci + '"]');
+    if (th){ var box = gw.getBoundingClientRect(), tb = th.getBoundingClientRect(); if (tb.left < box.left + 60 || tb.right > box.right) gw.scrollLeft += tb.left - box.left - box.width / 2; }
+  }
+
+  /* ---------- render one cycle ---------- */
+  function slotCls(st){ return 'slot ' + (st || ''); }
+  function fill(cells, items){ cells.forEach(function(c, i){ var it = items[i]; c.r.setAttribute('class', slotCls(it ? it.c : '')); c.t.textContent = it ? it.t : ''; }); }
+  function on(id, v){ B[id].g.setAttribute('class', v ? 'on' : ''); }
+  function short(l){ return l.replace('.ld', '\u1d38').replace('.add', '+').replace('.sta', '\u02e2\u1d2c').replace('.std', '\u02e2\u1d30'); }
+  function go(c){
+    cur = Math.max(0, Math.min(sim.cycles - 1, c));
+    var sn = sim.snaps[cur], pv = cur > 0 ? sim.snaps[cur - 1] : null;
+    slider.value = cur; cyc.textContent = 'cycle ' + cur + ' / ' + (sim.cycles - 1);
+    bPrev.disabled = bFirst.disabled = cur === 0; bNext.disabled = cur === sim.cycles - 1;
+    var ustate = {}; sim.uops.forEach(function(u, i){ ustate[u.lbl] = sn.ustate[i]; });
+    var stC = function(st){ return st === 'done' ? 'done' : st === 'exec' ? 'exec' : 'wait'; };
+    /* floorplan */
+    on('bp', sn.fe.BP.length); B.bp.l.textContent = sn.fetchPC ? 'fetch ' + sn.fetchPC.replace('0x5555555551', '\u2026') : 'idle';
+    B.bp.l2.textContent = sn.fe.BP.length ? 'group: ' + sn.fe.BP.join(' ') : sn.nextPC === null ? 'no more fetch' : '';
+    on('ic', sn.fe.IF.length); B.ic.l.textContent = sn.fe.IF.join(' ') || '\u2014';
+    on('pd', sn.fe.PD.length); B.pd.l.textContent = sn.fe.PD.join(' ') || '\u2014';
+    on('de', sn.fe.DE.length); fill(B.de.c, sn.fe.DE.map(function(l){ return {t: l, c: 'wait'}; }));
+    on('uq', sn.uq.length); fill(B.uq.c, sn.uq.map(function(l){ return {t: l, c: 'wait'}; })); B.uq.sub.textContent = sn.uq.length + '/' + C.uq;
+    on('rn', sn.rn.length); B.rn.l.textContent = sn.rn.length ? sn.rn.join(' ') : '\u2014'; B.rn.l2.textContent = 'free list: ' + sn.free.length + ' regs';
+    on('ds', sn.rn.length || sn.stall); B.ds.l.textContent = sn.stall ? 'STALL' : sn.rn.length ? 'alloc ' + sn.rn.length + ' instr' : '\u2014'; B.ds.l2.textContent = sn.stall || '';
+    var robItems = []; sn.rob.forEach(function(e, i){ robItems[i] = {t: e.lbl, c: e.st}; });
+    fill(B.rob.c, robItems); B.rob.sub.textContent = sn.rob.length + '/' + C.rob; on('rob', sn.ev.some(function(e){ return / retires/.test(e); }));
+    fill(B.alus.c, sn.alu.map(function(u){ return {t: u.lbl.split('.')[0], c: u.src.every(function(x){ return x.r; }) ? 'rdy' : 'wait'}; })); on('alus', sn.alu.length);
+    fill(B.alup.c, ['ALU0', 'ALU1', 'ALU2', 'ALU3'].map(function(p){ return sn.issued[p] ? {t: short(sn.issued[p]), c: 'exec'} : null; })); on('alup', ['ALU0', 'ALU1', 'ALU2', 'ALU3'].some(function(p){ return sn.issued[p]; }));
+    fill(B.agus.c, sn.agu.map(function(u){ return {t: u.lbl.split('.')[0], c: u.src.every(function(x){ return x.r; }) ? 'rdy' : 'wait'}; })); on('agus', sn.agu.length);
+    fill(B.agup.c, ['AGU0', 'AGU1'].map(function(p){ return sn.issued[p] ? {t: short(sn.issued[p]), c: 'exec'} : null; })); on('agup', sn.issued.AGU0 || sn.issued.AGU1);
+    B.prf.c.forEach(function(cc, i){ var r = sn.prf[i]; cc.r.setAttribute('class', 'slot ' + (i === 0 ? '' : !r.alloc ? '' : r.ready ? 'done' : 'wait')); });
+    fill(B.lsu.lq, sn.lq.map(function(e){ return {t: e.lbl.split('.')[0], c: e.st === 'miss' ? 'miss' : /hit|forwarded|filled/.test(e.st) ? 'done' : e.st === 'waiting' ? 'wait' : 'exec'}; }));
+    fill(B.lsu.sq, sn.sq.map(function(e){ return {t: e.lbl, c: e.senior ? 'sen' : e.addr && e.data ? 'done' : 'wait'}; }));
+    on('lsu', sn.stages.AG.length || sn.stages.D1.length || sn.stages.D2.length || sn.stages.SD.length || sn.ev.some(function(e){ return /commits/.test(e); }));
+    fill(B.l2.c, sn.mab.map(function(m){ return {t: m.lvl, c: 'miss'}; })); on('l2', sn.mab.length);
+    /* events */
+    evTitle.innerHTML = 'Cycle ' + cur + (sn.stall ? ' <span class="tag bad">rename stalled: ' + sn.stall + '</span>' : '') + ' <span class="tag pub">retired ' + sn.retired + ' \u00b7 IPC so far ' + (sn.retired / (cur + 1)).toFixed(2) + '</span>';
+    evList.innerHTML = sn.ev.length ? sn.ev.map(function(e){ return '<li>' + e + '</li>'; }).join('') : '<li class="note">Nothing changes state this cycle' + (sn.mab.length ? ': every remaining \u00b5op is waiting on the outstanding miss.' : '.') + '</li>';
+    /* front end panel */
+    pFE.innerHTML = '<dl class="kv"><dt>BTB</dt><dd>jne at \u2026519f \u2192 \u20265190, predicted taken</dd><dt>next fetch</dt><dd>' + (sn.nextPC || 'none (ret fetched)') + '</dd></dl>' +
+      ['BP', 'IF', 'PD', 'DE'].map(function(st){ return '<div class="lane"><span>' + st + '</span>' + (sn.fe[st].map(function(l){ return '<i>' + l + '</i>'; }).join('') || '<em>empty</em>') + '</div>'; }).join('') +
+      '<div class="lane"><span>UQ</span>' + (sn.uq.map(function(l){ return '<i>' + l + '</i>'; }).join('') || '<em>empty</em>') + '</div>';
+    /* rename panel */
+    var archs = ['rax', 'rdi', 'rsi', 'rdx', 'rsp', 'flags'];
+    pRN.innerHTML = '<table class="mt"><tr><th>arch</th><th>speculative</th><th>committed</th></tr>' + archs.map(function(a){
+      var ch = pv && pv.rat[a] !== sn.rat[a];
+      return '<tr' + (ch ? ' class="chg"' : '') + '><td>' + a + '</td><td>p' + sn.rat[a] + '</td><td>p' + sn.crat[a] + '</td></tr>';
+    }).join('') + '</table><div class="note" style="margin-top:8px">' + g('freelist') + ' (' + sn.free.length + '): ' + sn.free.slice(0, 14).map(function(p){ return 'p' + p; }).join(' ') + (sn.free.length > 14 ? ' \u2026' : '') + '</div>';
+    /* PRF panel */
+    pPRF.innerHTML = '<div class="prfg">' + sn.prf.slice(1).map(function(r){
+      var nw = pv && r.ready && !pv.prf[r.p].ready;
+      var v = r.val === null ? '' : (r.val.length > 6 ? '\u2026' + BigInt(r.val).toString(16).slice(-4) : r.val);
+      return '<div class="pr ' + (!r.alloc ? 'free' : r.ready ? 'rdy' : 'pend') + (nw ? ' nw' : '') + '"><b>p' + r.p + '</b><span>' + (r.alloc ? (r.ready ? v : '\u2026') : '') + '</span></div>';
+    }).join('') + '</div><p class="note">Green = value ready (' + g('wakeup') + ' sent), outlined = allocated but not yet written, grey = free. Pointer values shown as \u2026last 4 hex digits.</p>';
+    /* ROB ring */
+    ringCells.forEach(function(rc){ rc.r.setAttribute('class', 'slot'); rc.t.textContent = ''; });
+    sn.rob.forEach(function(e){ var rc = ringCells[e.slot]; rc.r.setAttribute('class', 'slot ' + e.st); rc.t.textContent = e.lbl; });
+    function mark(el, slot, off){ var a = (slot / C.rob) * 2 * Math.PI - Math.PI / 2 + Math.PI / C.rob; el.setAttribute('x', (cx + (R1 + off) * Math.cos(a)).toFixed(1)); el.setAttribute('y', (cy + (R1 + off) * Math.sin(a) + 3).toFixed(1)); }
+    ringC.textContent = sn.rob.length + ' / ' + C.rob;
+    headM.style.display = sn.rob.length ? '' : 'none'; mark(headM, sn.robHead, -52); mark(tailM, sn.robTail, -52);
+    headM.textContent = 'head'; tailM.textContent = sn.rob.length ? 'tail' : 'head = tail';
+    robList.innerHTML = 'Oldest first: ' + (sn.rob.map(function(e){ return e.lbl + (e.st === 'done' ? '\u2713' : ''); }).join(' ') || 'empty') + '. Entries allocate at the tail and retire from the head; a squash moves the tail back.';
+    /* schedulers */
+    function sq(list){ return list.length ? list.map(function(u){ return '<div class="su"><b>' + u.lbl + '</b>' + u.src.map(function(x){ return '<span class="' + (x.r ? 'r' : 'n') + '">p' + x.p + '</span>'; }).join('') + '</div>'; }).join('') : '<em class="note">empty</em>'; }
+    pSC.innerHTML = '<div class="note">ALU (' + sn.alu.length + '/' + C.alu + ')</div>' + sq(sn.alu) + '<div class="note" style="margin-top:8px">AGU (' + sn.agu.length + '/' + C.agu + ')</div>' + sq(sn.agu) +
+      '<p class="note">Green source = physical register ready. A \u00b5op issues when all its sources are green and it is the oldest ready one for a port.</p>';
+    /* execution */
+    pEX.innerHTML = '<table class="mt"><tr><th>port</th><th>issued now</th></tr>' + ['ALU0', 'ALU1', 'ALU2', 'ALU3', 'AGU0', 'AGU1'].map(function(p){ return '<tr><td>' + p + '</td><td>' + (sn.issued[p] || '<em class="note">idle</em>') + '</td></tr>'; }).join('') + '</table>' +
+      ['EX', 'AG', 'D1', 'D2', 'SD', 'WB'].map(function(st){ return '<div class="lane"><span>' + st + '</span>' + (sn.stages[st].map(function(l){ return '<i>' + l + '</i>'; }).join('') || '<em>\u2014</em>') + '</div>'; }).join('') +
+      '<p class="note">EX includes branch resolution. D1 = ' + g('dtlb') + ' + L1d tag check, D2 = L1d data read and ' + g('sq', 'store-queue') + ' search.</p>';
+    /* LQ / SQ */
+    pLQ.innerHTML = sn.lq.length ? '<table class="mt"><tr><th>load</th><th>address</th><th>state</th></tr>' + sn.lq.map(function(e){ return '<tr><td>' + e.lbl + '</td><td class="m">' + (e.addr ? '\u2026' + e.addr.slice(-5) : '?') + '</td><td>' + e.st + (e.val !== null ? ' = ' + e.val : '') + '</td></tr>'; }).join('') + '</table>' : '<em class="note">empty</em>';
+    pSQ.innerHTML = (sn.sq.length ? '<table class="mt"><tr><th>store</th><th>address</th><th>data</th><th></th></tr>' + sn.sq.map(function(e){ return '<tr><td>' + e.lbl + '</td><td class="m">' + (e.addr ? '\u2026' + e.addr.slice(-5) : '?') + '</td><td>' + (e.data || '?') + '</td><td>' + (e.senior ? '<span class="tag act">senior</span>' : '') + '</td></tr>'; }).join('') + '</table>' : '<em class="note">empty</em>') +
+      '<p class="note">Address comes from the ' + g('sta') + ', data from the ' + g('std') + '. Only ' + g('senior', 'senior') + ' (retired) stores may ' + g('commit') + '.</p>';
+    /* memory */
+    var dl = sn.l1.data;
+    pMEM.innerHTML = '<div class="note">' + g('dtlb', 'DTLB') + ' entries used (all hit)</div><table class="mt"><tr><th>VPN</th><th>PFN</th><th>covers</th></tr><tr><td>55555555a</td><td>1c07a</td><td>data[]</td></tr><tr><td>7ffd4a3c2</td><td>1a3f7c</td><td>hist[0..143], stack</td></tr><tr><td>7ffd4a3c3</td><td>0f9d2</td><td>hist[144..255]</td></tr></table>' +
+      '<div class="note" style="margin-top:8px">L1d lines</div><table class="mt"><tr><th>line</th><th>set</th><th></th></tr><tr><td>data[0..63] \u2026a2c0</td><td>11</td><td>' + (dl ? '<span class="tag ok">present</span>' : '<span class="tag bad">absent</span>') + '</td></tr><tr><td>hist[123] \u20262e40</td><td>57</td><td><span class="tag ok">present</span></td></tr><tr><td>hist[7] \u20262a80</td><td>42</td><td><span class="tag ok">present</span></td></tr></table>' +
+      (sn.mab.length ? '<div class="note" style="margin-top:8px">' + g('mab') + ': ' + sn.mab.map(function(m){ return m.line + ' from ' + m.lvl + ', arrives cycle ' + m.fillAt + ', ' + m.n + ' load(s) waiting'; }).join('; ') + '</div>' : '') +
+      '<div class="note" style="margin-top:8px">Committed memory (what another core could read)</div><table class="mt"><tr><td>hist[123]</td><td><b>' + sn.mem.h123 + '</b></td><td>hist[7]</td><td><b>' + sn.mem.h7 + '</b></td></tr><tr><td>hist[46]</td><td>' + sn.mem.h46 + '</td><td>hist[200]</td><td>' + sn.mem.h200 + '</td></tr></table>';
+    paintGantt();
+    prevSnap = sn;
+  }
+
+  App.onCfg(function(){ if (sim) run(); });
+  run();
+  return {key: function(k){ if (k === 'ArrowRight'){ go(cur + 1); return true; } if (k === 'ArrowLeft'){ go(cur - 1); return true; } return false; }};
+}});
+
+/* ======================= chapter: translation ======================= */
+App.chapter({id: 'xlate', num: '03', short: 'VA \u2192 PA', title: 'Virtual to physical: TLBs and the page walk',
+sub: 'Before the L1d can confirm a hit it needs the physical address. This is what happens to the virtual address of hist[123] between the AGU and the tag compare, in five situations.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, EX = App.EX, hx = App.hx;
+  var VA = 0x7ffd4a3c2e58n;
+  var TB = [
+    {n: 'PML4', base: 0x10a3b000n, idx: 255, val: 0x11e2d067n},
+    {n: 'PDPT', base: 0x11e2d000n, idx: 501, val: 0x13f4a067n},
+    {n: 'PD',   base: 0x13f4a000n, idx: 81,  val: 0x1b6e9067n},
+    {n: 'PT',   base: 0x1b6e9000n, idx: 450, val: 0x80000001a3f7c067n}
+  ];
+  var HUGE_PDE = 0x80000001a3e000e7n, FAULT_PTE = 0n;
+  var mode = 'walk', st = null;
+
+  var intro = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, intro, '<h3>Why every access needs this</h3><p>Each process sees its own 48-bit ' + g('va', 'virtual address') + ' space; physical memory is one shared array. The OS keeps a per-process ' + g('pml4', 'page table') + ' mapping 4 KB ' + g('page', 'pages') + ' to physical frames, and the ' + g('mmu') + ' must apply it to every load, store and instruction fetch. Walking four table levels on every access would multiply memory traffic by five, so recent translations are cached in ' + g('tlb', 'TLBs') + '.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>Why it costs nothing on a hit</h3><p>The L1d is ' + g('vipt') + '. Its set index is VA bits 11:6, which lie inside the 12-bit page offset, so they are the same before and after translation. The core starts reading the 8 ways of set 57 with virtual bits while the ' + g('dtlb') + ' translates in parallel; the physical tag is ready in time for the compare. This only works because 64 sets \u00d7 64 B = 4 KB = one page: a bigger L1d at 8 ways would need index bits above bit 11.</p>');
+
+  var ctl = h('div', {'class': 'stp'}, root);
+  h('span', {'class': 'note'}, ctl, 'situation:');
+  App.seg(ctl, [['hit', 'DTLB hit'], ['l2', 'L2 TLB hit'], ['walk', 'full page walk'], ['fault', 'page fault'], ['huge', '2 MB page']], function(v){ mode = v; frames(); }, mode);
+
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 720', style: 'min-width:900px'}, wrap);
+  s('defs', null, sv).innerHTML = '<marker id="xa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="var(--act)"/></marker>';
+  var stp = App.stepper(root, {render: draw});
+  var kern = h('div', {'class': 'card'}, root);
+  var extra = h('div', {'class': 'grid2'}, root);
+
+  /* ---------- VA register ---------- */
+  var E = {};
+  function G(id){ var gr = s('g', null, sv); E[id] = gr; return gr; }
+  var gva = G('va');
+  s('rect', {x: 10, y: 10, width: 770, height: 112, rx: 10, 'class': 'box'}, gva);
+  s('text', {x: 22, y: 30, 'class': 'h'}, gva, 'Virtual address from the AGU');
+  E.vaHex = s('text', {x: 768, y: 30, 'class': 'm', 'text-anchor': 'end', 'font-size': 13}, gva, '');
+  E.fieldR = []; E.fieldT = [];
+  for (var f = 0; f < 5; f++){
+    var r = s('rect', {y: 44, height: 26, rx: 4, fill: 'none', 'stroke-width': 1.6}, gva); E.fieldR.push(r);
+    var t = s('text', {y: 88, 'text-anchor': 'middle', 'font-size': 12}, gva, ''); E.fieldT.push(t);
+    E.fieldT.push(s('text', {y: 104, 'text-anchor': 'middle', 'class': 's'}, gva, ''));
+  }
+  var bitsTx = [], vbin = VA.toString(2).padStart(48, '0');
+  var BW = 14.6, BX = 26;
+  for (var i = 0; i < 48; i++){
+    var gap = (i >= 9 ? 6 : 0) + (i >= 18 ? 6 : 0) + (i >= 27 ? 6 : 0) + (i >= 36 ? 6 : 0);
+    bitsTx.push(s('text', {x: BX + i * BW + gap + 6, y: 62, 'text-anchor': 'middle', 'class': 'm', 'font-size': 12}, gva, vbin[i]));
+  }
+  s('text', {x: 22, y: 118, 'class': 's'}, gva, 'bits 63:48 must copy bit 47 (canonical form); 0x00007ffd\u2026 passes');
+  var gvi = G('vipt');
+  s('rect', {x: 800, y: 10, width: 390, height: 112, rx: 10, 'class': 'box'}, gvi);
+  s('text', {x: 812, y: 30, 'class': 'h'}, gvi, 'L1d, in parallel (VIPT)');
+  s('text', {x: 812, y: 52}, gvi, 'set index = VA[11:6] = 57');
+  s('text', {x: 812, y: 70}, gvi, 'all 8 ways of set 57 are being read');
+  E.viptL = s('text', {x: 812, y: 92, 'class': 'm', 'font-size': 12}, gvi, '');
+  s('text', {x: 812, y: 112, 'class': 's'}, gvi, 'bits 11:0 are identical in VA and PA');
+
+  /* ---------- L1 DTLB CAM ---------- */
+  var gcam = G('cam');
+  s('rect', {x: 10, y: 140, width: 540, height: 196, rx: 10, 'class': 'box'}, gcam);
+  s('text', {x: 22, y: 160, 'class': 'h'}, gcam, 'L1 DTLB \u2014 64 entries, fully associative');
+  s('text', {x: 22, y: 176, 'class': 's'}, gcam, 'the VPN is compared against every entry in the same cycle (a CAM)');
+  var camH = ['V', 'VPN', 'PCID', 'PFN', 'size', 'perm', 'compare'], camX = [24, 48, 180, 236, 322, 372, 440];
+  camH.forEach(function(t, k){ s('text', {x: camX[k], y: 196, 'class': 's'}, gcam, t); });
+  E.camRows = [];
+  for (var k = 0; k < 6; k++){
+    var y = 204 + k * 18;
+    var rr = s('rect', {x: 18, y: y, width: 524, height: 16, rx: 3, 'class': 'sunk'}, gcam);
+    var cells = camX.map(function(x){ return s('text', {x: x, y: y + 12, 'class': 'm', 'font-size': 11}, gcam, ''); });
+    E.camRows.push({r: rr, c: cells});
+  }
+  s('text', {x: 24, y: 330, 'class': 's'}, gcam, '\u2026 58 more entries, all compared at once');
+  /* L2 TLB */
+  var gl2 = G('l2');
+  s('rect', {x: 565, y: 140, width: 300, height: 196, rx: 10, 'class': 'box'}, gl2);
+  s('text', {x: 577, y: 160, 'class': 'h'}, gl2, 'L2 TLB \u2014 1536 entries');
+  s('text', {x: 577, y: 176, 'class': 's'}, gl2, 'checked after an L1 DTLB miss; no 1 GB pages');
+  E.l2Rows = [];
+  for (k = 0; k < 6; k++){
+    var y2 = 190 + k * 19;
+    E.l2Rows.push({r: s('rect', {x: 573, y: y2, width: 284, height: 17, rx: 3, 'class': 'sunk'}, gl2), t: s('text', {x: 581, y: y2 + 13, 'class': 'm', 'font-size': 11}, gl2, '')});
+  }
+  E.l2St = s('text', {x: 577, y: 322, 'font-size': 12}, gl2, '');
+  /* walker */
+  var gw = G('walker');
+  s('rect', {x: 880, y: 140, width: 310, height: 196, rx: 10, 'class': 'box'}, gw);
+  s('text', {x: 892, y: 160, 'class': 'h'}, gw, 'Page walker (\u00d72) + walk cache');
+  s('text', {x: 892, y: 176, 'class': 's'}, gw, 'reads page-table entries through the data caches');
+  E.wl = []; for (k = 0; k < 7; k++) E.wl.push(s('text', {x: 892, y: 200 + k * 18, 'font-size': 12}, gw, ''));
+  /* CR3 + tables */
+  var gcr = G('cr3');
+  s('rect', {x: 10, y: 360, width: 130, height: 76, rx: 10, 'class': 'box'}, gcr);
+  s('text', {x: 22, y: 380, 'class': 'h'}, gcr, 'CR3');
+  s('text', {x: 22, y: 400, 'class': 'm', 'font-size': 11.5}, gcr, '0x10a3b000');
+  s('text', {x: 22, y: 418, 'class': 's'}, gcr, 'PML4 base (PA)');
+  s('text', {x: 22, y: 431, 'class': 's'}, gcr, '+ 12-bit PCID');
+  var TX = [158, 418, 678, 938], TW = 250;
+  E.tab = [];
+  TB.forEach(function(tb, li){
+    var gt = G('t' + li), x = TX[li];
+    s('rect', {x: x, y: 360, width: TW, height: 170, rx: 10, 'class': 'box'}, gt);
+    var ttl = s('text', {x: x + 10, y: 380, 'class': 'h'}, gt, tb.n + ' @ ' + hx(tb.base));
+    var rows = [];
+    for (var q = 0; q < 3; q++){
+      var yy = 392 + q * 24;
+      rows.push({r: s('rect', {x: x + 8, y: yy, width: TW - 16, height: 21, rx: 3, 'class': 'sunk'}, gt),
+                 t: s('text', {x: x + 14, y: yy + 15, 'class': 'm', 'font-size': 11}, gt, '')});
+    }
+    var foot = s('text', {x: x + 10, y: 480, 'class': 's'}, gt, '512 entries \u00d7 8 B = one 4 KB page');
+    var rd = s('text', {x: x + 10, y: 500, 'font-size': 11.5, 'class': 'm'}, gt, '');
+    var rd2 = s('text', {x: x + 10, y: 518, 'class': 's'}, gt, '');
+    E.tab.push({g: gt, rows: rows, rd: rd, rd2: rd2, ttl: ttl});
+  });
+  E.arr = [];
+  [[140, 398, 158], [408, 434, 418], [668, 434, 678], [928, 434, 938]].forEach(function(a){
+    E.arr.push(s('path', {d: 'M ' + a[0] + ' ' + a[1] + ' L ' + (a[2] - 2) + ' ' + a[1], 'class': 'wire', 'marker-end': 'url(#xa)', style: 'opacity:0'}, sv));
+  });
+  /* PTE decode */
+  var gp = G('pte');
+  s('rect', {x: 10, y: 548, width: 770, height: 162, rx: 10, 'class': 'box'}, gp);
+  E.pteT = s('text', {x: 22, y: 568, 'class': 'h'}, gp, 'Entry fields');
+  var PF = [['63', 'NX', 'no-exec'], ['62:52', 'avail', 'OS use'], ['51:12', 'PFN', 'physical frame'], ['11:9', 'avail', 'OS use'], ['8', 'G', 'global'], ['7', 'PS', 'size'], ['6', 'D', 'dirty'], ['5', 'A', 'accessed'], ['4', 'PCD', 'cache off'], ['3', 'PWT', 'write-thru'], ['2', 'U/S', 'user'], ['1', 'R/W', 'writable'], ['0', 'P', 'present']];
+  var PW = [50, 50, 150, 44, 46, 46, 46, 56, 52, 56, 46, 52, 50], px = 22;
+  E.pf = [];
+  PF.forEach(function(f, q){
+    var w = PW[q];
+    var rr = s('rect', {x: px, y: 584, width: w - 3, height: 50, rx: 4, 'class': 'sunk'}, gp);
+    s('text', {x: px + (w - 3) / 2, y: 598, 'text-anchor': 'middle', 'class': 's m'}, gp, f[0]);
+    s('text', {x: px + (w - 3) / 2, y: 614, 'text-anchor': 'middle', 'font-size': 11.5, 'class': 'h'}, gp, f[1]);
+    var v = s('text', {x: px + (w - 3) / 2, y: 629, 'text-anchor': 'middle', 'class': 'm', 'font-size': 11.5}, gp, '');
+    s('text', {x: px + (w - 3) / 2, y: 650, 'text-anchor': 'middle', 'class': 's'}, gp, f[2]);
+    E.pf.push({r: rr, v: v}); px += w;
+  });
+  E.pteN = s('text', {x: 22, y: 676, 'font-size': 12}, gp, '');
+  E.pteN2 = s('text', {x: 22, y: 696, 'font-size': 12, 'class': 's'}, gp, '');
+  /* PA */
+  var gpa = G('pa');
+  s('rect', {x: 800, y: 548, width: 390, height: 162, rx: 10, 'class': 'box'}, gpa);
+  s('text', {x: 812, y: 568, 'class': 'h'}, gpa, 'Physical address');
+  E.paL = []; for (k = 0; k < 6; k++) E.paL.push(s('text', {x: 812, y: 592 + k * 20, 'font-size': k === 0 ? 15 : 12, 'class': k === 0 ? 'm' : ''}, gpa, ''));
+
+  function setBits(huge){
+    var groups = huge ? [[0, 9, 'a3', 'PML4', '255'], [9, 18, 'a4', 'PDPT', '501'], [18, 27, 'a2', 'PD', '81'], [27, 48, 'act', 'offset in 2 MB', '0x1c2e58']] :
+                        [[0, 9, 'a3', 'PML4', '255'], [9, 18, 'a4', 'PDPT', '501'], [18, 27, 'a2', 'PD', '81'], [27, 36, 'a1', 'PT', '450'], [36, 48, 'act', 'offset', '0xe58']];
+    var gx = function(i){ return BX + i * BW + (i >= 9 ? 6 : 0) + (i >= 18 ? 6 : 0) + (i >= 27 ? 6 : 0) + (i >= 36 ? 6 : 0); };
+    for (var q = 0; q < 5; q++){
+      var gg = groups[q], R = E.fieldR[q], T = E.fieldT[q * 2], T2 = E.fieldT[q * 2 + 1];
+      if (!gg){ R.style.display = 'none'; T.textContent = ''; T2.textContent = ''; continue; }
+      R.style.display = '';
+      var xa = gx(gg[0]) - 2, xb = gx(gg[1] - 1) + BW - 1;
+      R.setAttribute('x', xa); R.setAttribute('width', xb - xa); R.setAttribute('stroke', 'var(--' + gg[2] + ')'); R.setAttribute('fill', 'var(--' + gg[2] + 'bg)');
+      T.setAttribute('x', (xa + xb) / 2); T2.setAttribute('x', (xa + xb) / 2);
+      T.textContent = gg[3] + ' \u00b7 ' + gg[4]; T2.textContent = 'bits ' + (47 - gg[0]) + ':' + (47 - gg[1] + 1);
+    }
+    E.vaHex.textContent = '0x00007ffd4a3c2e58  (hist[123], C1.ld)';
+  }
+  var camBase = [['1', '555555555', '001', '2b4e1', '4K', 'r-x'], ['1', '55555555a', '001', '1c07a', '4K', 'rw-'], ['1', '7ffd4a3c3', '001', '0f9d2', '4K', 'rw-'],
+                 ['1', '7f3a91c05', '001', '2e8f0', '4K', 'r-x'], ['1', '7f3a91e2b', '001', '3a0c4', '4K', 'rw-'], ['1', '7ffd4a3c1', '001', '0a47e', '4K', 'rw-'], ['1', '7ffd4a3e9', '001', '11b02', '4K', 'rw-']];
+  var HIT = ['1', '7ffd4a3c2', '001', '1a3f7c', '4K', 'rw-'], HIT2M = ['1', '7ffd4a2 (2M)', '001', '1a3e00', '2M', 'rw-'];
+
+  function frames(){
+    var fr = [];
+    var F = function(p, t, d, o){ o.p = p; o.t = t; o.d = d; fr.push(o); };
+    var huge = mode === 'huge';
+    F('VA', 'The AGU produces the virtual address', 'C1\'s load computed <code>rdx + rax\u00d78 = 0x7ffd4a3c2a80 + 123\u00d78 = 0x7ffd4a3c2e58</code>. For translation it splits into ' + (huge ? 'three 9-bit table indices and a 21-bit offset, because this scenario assumes the region is backed by a 2 MB ' + g('huge', 'huge page') + '.' : 'four 9-bit table indices and a 12-bit page offset. The top 36 bits (0x7ffd4a3c2) are the ' + g('vpn') + '.'), {va: 1, huge: huge});
+    F('lookup', 'L1 DTLB lookup, in parallel with the L1d set read', 'The VPN is broadcast to all 64 L1 DTLB entries; each has its own comparator (VPN and PCID must both match). Meanwhile the L1d reads the 8 ways of set 57 using VA bits 11:6.' + (mode === 'hit' ? ' <b>Entry 3 matches.</b>' : ' <b>No entry matches: L1 DTLB miss.</b> The load cannot complete its tag compare and waits.'), {va: 1, vipt: 1, cam: mode === 'hit' ? 'hit' : 'miss', huge: huge});
+    if (mode === 'hit'){
+      F('PA', 'Physical address in the same cycle', 'PFN 0x1a3f7c from the matching entry, joined with offset 0xe58, gives <b>PA 0x1a3f7ce58</b>. The L1d compares PA tag 0x1a3f7c against the 8 tags it just read (Chapter 04). Translation added no cycles.', {va: 1, vipt: 1, cam: 'hit', pa: 'ok'});
+    } else if (mode === 'l2'){
+      F('L2 TLB', 'L2 TLB hit', 'The L2 TLB (1536 entries) holds the translation. It is slower than the L1 DTLB but far cheaper than a walk. The entry is copied into the L1 DTLB, replacing an older one, and the load replays.', {va: 1, cam: 'miss', l2: 'hit'});
+      F('fill', 'L1 DTLB refilled, load replays', 'Next attempt: the L1 DTLB hits in the new entry and the PA is <b>0x1a3f7ce58</b>.', {va: 1, cam: 'hitnew', l2: 'hit', pa: 'ok'});
+    } else {
+      F('L2 miss', 'L2 TLB miss: start a page walk', 'Neither TLB has the translation. One of the two hardware ' + g('walk', 'page walkers') + ' takes the request. It will read one 8-byte entry per level, each read depending on the previous one.', {va: 1, cam: 'miss', l2: 'miss', walker: 1, huge: huge});
+      var lv = huge ? 3 : 4;
+      for (var q = 0; q < lv; q++){
+        var tb = TB[q], ea = tb.base + BigInt(tb.idx) * 8n;
+        var v = tb.val; if (huge && q === 2) v = HUGE_PDE; if (mode === 'fault' && q === 3) v = FAULT_PTE;
+        var nxt = v & 0x000ffffffffff000n;
+        var d = (q === 0 ? 'CR3 holds the PML4 base 0x10a3b000. ' : 'The previous entry gave this table\'s base ' + hx(tb.base) + '. ') +
+          'Entry address = base + index \u00d7 8 = ' + hx(tb.base) + ' + ' + tb.idx + ' \u00d7 8 = <b>' + hx(ea) + '</b>. The walker issues an 8-byte load to that physical address; it goes through the data caches like any load' + (q < 2 ? ', and upper levels like this one can also come from the ' + g('pwc') : '') + '. ';
+        if (mode === 'fault' && q === 3) d += 'The entry is <b>0</b>: present bit clear. There is no translation.';
+        else if (huge && q === 2) d += 'Value ' + hx(v) + ': <b>PS = 1</b>, so this PDE is the leaf. It maps a whole 2 MB frame at ' + hx(v & 0x000fffffffe00000n) + '; no PT level.';
+        else if (q === 3) d += 'Value ' + hx(v) + ': present, writable, user, accessed, dirty, no-execute. <b>PFN = 0x1a3f7c.</b>';
+        else d += 'Value ' + hx(v) + ': present, points to the next table at <b>' + hx(nxt) + '</b>.';
+        F(tb.n, 'Level ' + (q + 1) + ': read the ' + tb.n + ' entry', d, {va: 1, cam: 'miss', l2: 'miss', walker: 1, lvl: q + 1, pte: q, pteVal: v, huge: huge, fault: mode === 'fault' && q === 3});
+      }
+      if (mode === 'fault'){
+        F('#PF', 'Page fault raised', 'The walker reports "not present". The load is marked faulting in the ROB. Nothing happens until it reaches the ROB head: exceptions are taken in program order, so older instructions retire first and all younger ones are ' + g('squash', 'squashed') + '. Then the CPU writes the faulting address into ' + g('pf', 'CR2') + ', pushes an error code (P = 0: not present; U/S = 1: user mode; W/R: the access type) and jumps to the kernel\'s #PF handler (vector 14).', {va: 1, walker: 1, lvl: 4, pte: 3, pteVal: FAULT_PTE, pa: 'fault', kernel: 1, fault: true});
+        F('kernel', 'Linux allocates the page', 'The handler finds the VMA covering the address, sees an anonymous page never touched, allocates a zeroed 4 KB frame (on the NUMA node of this CPU: ' + g('ftouch') + '), and writes a present PTE. The kernel function chain is shown below the diagram.', {va: 1, walker: 1, lvl: 4, pte: 3, pteVal: TB[3].val, pa: 'fault', kernel: 2, fault: true});
+        F('retry', 'Return and re-execute', 'iretq returns to the faulting instruction, which runs again from the start: TLB miss, walk, now the PTE is present, PFN 0x1a3f7c, <b>PA 0x1a3f7ce58</b>. This was a <b>minor</b> fault (no disk I/O). A <b>major</b> fault would also have to read the page from swap or a file, through the NVMe path of Chapter 10.', {va: 1, lvl: 4, pte: 3, pteVal: TB[3].val, pa: 'ok', cam: 'hitnew', kernel: 3});
+      } else {
+        F('fill', 'Fill the TLBs and replay', huge ? 'The 2 MB translation goes into the L2 TLB and the L1 DTLB. PA = 2 MB frame base 0x1a3e00000 + VA bits 20:0 (0x1c2e58) = <b>0x1a3fc2e58</b> (a different mapping from the 4 KB case, assumed for this scenario). One entry now covers 512 times more memory.' :
+          'The walker writes VPN 0x7ffd4a3c2 \u2192 PFN 0x1a3f7c into the L2 TLB and the L1 DTLB. If the accessed (A) bit had been clear, the walker would have set it in memory; a first write also sets D. The load replays, hits in the L1 DTLB, and gets <b>PA 0x1a3f7ce58</b>.', {va: 1, lvl: huge ? 3 : 4, pte: huge ? 2 : 3, pteVal: huge ? HUGE_PDE : TB[3].val, cam: 'hitnew', pa: 'ok', huge: huge});
+      }
+    }
+    stp.set(fr);
+  }
+
+  function draw(f){
+    setBits(!!f.huge);
+    for (var id in E) if (E[id] && E[id].setAttribute && /^(va|vipt|cam|l2|walker|cr3|t0|t1|t2|t3|pte|pa)$/.test(id)) E[id].setAttribute('class', '');
+    var on = function(id){ E[id].setAttribute('class', 'on'); };
+    if (f.p === 'VA') on('va');
+    if (f.vipt){ on('vipt'); E.viptL.textContent = f.cam === 'hit' ? 'tags ready; waiting for PA tag \u2192 now' : 'tags read; PA tag not yet known'; } else E.viptL.textContent = '';
+    /* CAM */
+    var rows = camBase.slice();
+    if (f.cam === 'hit' || (mode === 'hit')) rows = [camBase[0], camBase[1], HIT].concat(camBase.slice(2, 6));
+    if (f.cam === 'hitnew') rows = [camBase[0], camBase[1], f.huge ? HIT2M : HIT].concat(camBase.slice(2, 6));
+    E.camRows.forEach(function(r, k){
+      var row = rows[k], match = (f.cam === 'hit' || f.cam === 'hitnew') && row === (f.huge ? HIT2M : HIT);
+      row.forEach(function(v, c){ r.c[c].textContent = v; });
+      var searching = f.cam === 'hit' || f.cam === 'miss' || f.cam === 'hitnew';
+      r.c[6].textContent = !searching ? '' : match ? '= match' : '\u2260';
+      r.r.setAttribute('class', match ? 'okb' : 'sunk');
+      r.c[6].setAttribute('fill', match ? 'var(--ok)' : 'var(--tx3)');
+    });
+    if (f.cam) on('cam');
+    /* L2 TLB */
+    var l2rows = ['55555555a \u2192 1c07a', '7ffd4a3c3 \u2192 0f9d2', '7f3a91c05 \u2192 2e8f0', '7ffd4a3c1 \u2192 0a47e', '55555555b \u2192 1c07b', '7f3a91e2b \u2192 3a0c4'];
+    if (mode === 'l2') l2rows[3] = '7ffd4a3c2 \u2192 1a3f7c';
+    E.l2Rows.forEach(function(r, k){ r.t.textContent = l2rows[k]; r.r.setAttribute('class', f.l2 === 'hit' && k === 3 && mode === 'l2' ? 'okb' : 'sunk'); });
+    E.l2St.textContent = f.l2 === 'hit' ? 'hit' : f.l2 === 'miss' ? 'miss \u2192 page walk' : '';
+    E.l2St.setAttribute('fill', f.l2 === 'hit' ? 'var(--ok)' : 'var(--bad)');
+    if (f.l2) on('l2');
+    /* walker text */
+    var wl = [];
+    if (f.walker || f.lvl){
+      wl.push('request: VA 0x7ffd4a3c2e58');
+      for (var q = 0; q < (f.lvl || 0); q++){
+        var tb = TB[q], ea = tb.base + BigInt(tb.idx) * 8n;
+        wl.push((q + 1) + '. read ' + tb.n + 'E @ ' + hx(ea));
+      }
+      if (f.lvl === (f.huge ? 3 : 4)) wl.push(f.fault ? 'result: NOT PRESENT' : 'result: ' + (f.huge ? '2 MB frame 0x1a3e00000' : 'PFN 0x1a3f7c'));
+    }
+    E.wl.forEach(function(t, k){ t.textContent = wl[k] || (k === 0 && !wl.length ? 'idle' : ''); t.setAttribute('fill', /NOT/.test(wl[k] || '') ? 'var(--bad)' : ''); });
+    if (f.walker) on('walker');
+    /* tables */
+    E.tab.forEach(function(t, li){
+      var tb = TB[li], shown = f.lvl && li < f.lvl, isCur = f.lvl === li + 1 && f.p !== 'fill' && f.p !== '#PF' && f.p !== 'kernel' && f.p !== 'retry';
+      var hidden = f.huge && li === 3;
+      t.g.style.opacity = hidden ? .25 : shown ? 1 : .45;
+      var v = tb.val; if (f.huge && li === 2) v = HUGE_PDE; if (mode === 'fault' && li === 3) v = f.kernel >= 2 ? TB[3].val : FAULT_PTE;
+      [-1, 0, 1].forEach(function(dI, k){
+        var idx = tb.idx + dI, row = t.rows[k];
+        var val = dI === 0 ? v : (li === 0 && dI === 1 ? 0n : dI === -1 ? tb.val + (li === 3 ? -4096n : 0x1000n * BigInt(li + 1)) : 0n);
+        row.t.textContent = '[' + idx + '] ' + (shown || dI !== 0 ? hx(val, 16) : '\u2026');
+        row.r.setAttribute('class', dI === 0 && shown ? (mode === 'fault' && li === 3 && f.kernel !== 2 && f.kernel !== 3 ? 'badb' : isCur ? 'on box' : 'okb') : 'sunk');
+      });
+      var ea = tb.base + BigInt(tb.idx) * 8n;
+      t.rd.textContent = shown && !hidden ? 'read ' + hx(ea) : '';
+      t.rd2.textContent = shown && !hidden ? (li < 2 ? 'can hit in the page-walk cache' : 'an 8-byte load through L1d/L2') : hidden ? 'skipped: the PDE was the leaf' : '';
+      if (isCur) t.g.setAttribute('class', 'on');
+    });
+    if (f.lvl) on('cr3');
+    E.arr.forEach(function(a, k){ a.style.opacity = f.lvl && k < f.lvl && !(f.huge && k === 3) ? 1 : 0; });
+    /* PTE decode */
+    if (f.pte !== undefined){
+      var v2 = f.pteVal, lvlN = TB[f.pte].n;
+      E.pteT.textContent = lvlN + '[' + TB[f.pte].idx + '] = ' + hx(v2, 16);
+      var vals = [(v2 >> 63n) & 1n, (v2 >> 52n) & 0x7ffn, (v2 >> 12n) & 0xffffffffffn, (v2 >> 9n) & 7n, (v2 >> 8n) & 1n, (v2 >> 7n) & 1n, (v2 >> 6n) & 1n, (v2 >> 5n) & 1n, (v2 >> 4n) & 1n, (v2 >> 3n) & 1n, (v2 >> 2n) & 1n, (v2 >> 1n) & 1n, v2 & 1n];
+      E.pf.forEach(function(p, k){ p.v.textContent = k === 2 ? hx(vals[k]) : vals[k].toString(); p.r.setAttribute('class', k === 12 && vals[12] === 0n ? 'badb' : (k === 5 && vals[5] === 1n) || k === 2 ? 'a4b' : vals[k] === 1n && k !== 1 && k !== 3 ? 'okb' : 'sunk'); });
+      E.pteN.textContent = v2 === 0n ? 'P = 0: not present. The other bits mean nothing; the OS may store swap information in them.' :
+        (f.huge && f.pte === 2) ? 'PS = 1 at the PD level: a 2 MB leaf. The frame base is bits 51:21.' :
+        f.pte === 3 ? 'Leaf entry. NX = 1 (data, not code). D = 1: this page has been written. PCD = PWT = 0 with PAT \u2192 write-back memory type.' : 'Non-leaf entry: bits 51:12 are the physical address of the next table.';
+      E.pteN2.textContent = f.pte === 3 && v2 !== 0n ? 'The walker also checks permissions here: a user-mode load needs P = 1 and U/S = 1 at every level.' : '';
+      on('pte');
+    } else {
+      E.pteT.textContent = 'Entry fields (a page-table entry is 8 bytes)';
+      E.pf.forEach(function(p){ p.v.textContent = ''; p.r.setAttribute('class', 'sunk'); }); E.pteN.textContent = ''; E.pteN2.textContent = '';
+    }
+    /* PA */
+    var pl = [];
+    if (f.pa === 'ok'){
+      pl = f.huge ? ['0x1a3fc2e58', 'frame 0x1a3e00000 (2 MB) + VA[20:0] 0x1c2e58', 'L1d still indexes with VA[11:6] = 57', 'tag compare uses PA bits 47:12 = 0x1a3fc2', 'TLB reach per entry: 2 MB', ''] :
+                    ['0x1a3f7ce58', 'PFN 0x1a3f7c \u00d7 4096 + offset 0xe58', 'L1d tag compare with PA tag 0x1a3f7c', 'continue in Chapter 04 (set 57)', 'TLB reach per entry: 4 KB', ''];
+      on('pa');
+    } else if (f.pa === 'fault') pl = ['#PF (vector 14)', 'CR2 \u2190 0x7ffd4a3c2e58', 'error code: P = 0, U/S = 1', 'no physical address exists yet', '', ''];
+    else pl = ['\u2014', 'waiting for translation', '', '', '', ''];
+    E.paL.forEach(function(t, k){ t.textContent = pl[k] || ''; t.setAttribute('fill', f.pa === 'fault' && k === 0 ? 'var(--bad)' : ''); });
+    /* kernel card */
+    kern.style.display = mode === 'fault' ? '' : 'none';
+    var K = [['exc_page_fault()', 'arch/x86/mm/fault.c', 'entry point for vector 14; reads CR2'], ['do_user_addr_fault()', 'arch/x86/mm/fault.c', 'finds the VMA containing the address, checks access rights'],
+             ['handle_mm_fault()', 'mm/memory.c', 'generic fault handling; walks/creates the page-table levels'], ['handle_pte_fault()', 'mm/memory.c', 'PTE is empty and the VMA is anonymous'],
+             ['do_anonymous_page()', 'mm/memory.c', 'allocate a zeroed page, build the PTE, set it'], ['iretq', '', 'back to user mode; the faulting instruction restarts']];
+    kern.innerHTML = '<h3>The kernel side of a page fault <span class="tag pub">Linux, recent mainline; names shift between versions</span></h3><div class="kchain">' +
+      K.map(function(k, i){ var act = f.kernel && (f.kernel === 1 ? i === 0 : f.kernel === 2 ? i >= 1 && i <= 4 : i === 5); return '<div class="' + (act ? 'on' : '') + '"><code>' + k[0] + '</code><span>' + k[1] + '</span><p>' + k[2] + '</p></div>'; }).join('') + '</div>';
+  }
+
+  /* reach + context-switch cards */
+  var reach = h('div', {'class': 'card'}, extra);
+  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' on your core</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
+    '<tr><td>L1 DTLB</td><td>64</td><td>256 KB</td><td>128 MB</td></tr><tr><td>L2 TLB</td><td>1536</td><td>6 MB</td><td>3 GB</td></tr></table>' +
+    '<p style="margin-top:8px">Compare with the caches you measured: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
+  var ctx = h('div', {'class': 'card'}, extra);
+  ctx.innerHTML = '<h3>Context switches and ' + g('pcid', 'PCID') + '</h3><p>Switching processes writes a new value into ' + g('cr3') + '. Without PCIDs every non-global TLB entry would have to be discarded, and the next process starts with page walks. With PCIDs each entry carries a 12-bit process tag, so entries from different processes coexist and a switch only changes which tag matches.</p>' +
+    '<p>The kernel removes stale entries itself with <code>invlpg</code> (one page) or a CR3 reload, for example after <code>munmap</code>. On multi-core systems it must also interrupt other cores that may cache the entry (a TLB shootdown).</p>';
+  frames();
+  return {key: stp.key};
+}});
+
+/* ======================= chapter: L1d lookup ======================= */
+App.chapter({id: 'l1d', num: '04', short: 'L1d lookup', title: 'Inside an L1d lookup',
+sub: 'Physical tag in hand, the access meets the 32 KB, 8-way L1d: one set read, eight tags compared at once, one way selected, eight bytes aligned. Then the same set under pressure: fills, pseudo-LRU victims, a dirty eviction and a conflict miss.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, hx = App.hx;
+  /* ---------- page map: same frames as every other chapter ---------- */
+  var PFN = {'7ffd4a3c2': 0x1a3f7cn, '7ffd4a3c1': 0x0a47en, '7ffd4a3c3': 0x0f9d2n, '7f3a91c05': 0x2e8f0n, '7f3a91e2b': 0x3a0c4n, '7ffd4a3e9': 0x11b02n, '55555555a': 0x1c07an, '555555555': 0x2b4e1n};
+  [0x2c417n, 0x09d33n, 0x31a5cn, 0x1e7b0n, 0x27c11n, 0x0c9f4n, 0x35e08n, 0x14a66n, 0x2f1d9n, 0x1b3c2n, 0x0e6a1n, 0x3c77en].forEach(function(p, k){ PFN[(0x7f3a8c000n + BigInt(k)).toString(16)] = p; });
+  function pfnOf(vpn){ var k = vpn.toString(16); if (!(k in PFN)) PFN[k] = 0x20000n | ((vpn * 2654435761n) & 0x1ffffn); return PFN[k]; }
+  function tr(va){ return (pfnOf(va >> 12n) << 12n) | (va & 0xfffn); }
+  function cp(set){ return set.map(function(x){ return {v: x.v, d: x.d, tag: x.tag, words: x.words ? x.words.slice() : null, va: x.va, pa: x.pa}; }); }
+  function mkState(){
+    var st = {sets: [], plru: [], back: {}};
+    st.line = function(pl){ var k = pl.toString(); if (!st.back[k]){ var w = []; for (var i = 0; i < 8; i++) w.push((pl >> 6n) % 900n + BigInt(i) * 100n); st.back[k] = w; } return st.back[k].slice(); };
+    st.back[tr(0x7ffd4a3c2e40n).toString()] = [0n, 0n, 0n, 41n, 0n, 0n, 0n, 0n];
+    for (var si = 0; si < 64; si++){ var set = []; for (var w = 0; w < 8; w++) set.push({v: 0, d: 0, tag: 0n, words: null, va: null, pa: null}); st.sets.push(set); st.plru.push([0, 0, 0, 0, 0, 0, 0]); }
+    function put(si, w, va, d){ var pa = tr(va) & ~63n; st.sets[si][w] = {v: 1, d: d, tag: pa >> 12n, words: st.line(pa), va: va & ~63n, pa: pa}; }
+    for (si = 0; si < 64; si++) if (si !== 57) for (w = 0; w < 5; w++) put(si, w, 0x7f3a90000000n + BigInt(w) * 0x1000n + BigInt(si) * 64n, 0);
+    put(57, 0, 0x7ffd4a3c1e40n, 0); put(57, 1, 0x7f3a91c05e40n, 0); put(57, 3, 0x7ffd4a3c2e40n, 0); put(57, 4, 0x7ffd4a3e9e40n, 1); put(57, 6, 0x7f3a91e2be40n, 0);
+    put(42, 6, 0x7ffd4a3c2a80n, 0); put(11, 6, 0x55555555a2c0n, 0);
+    st.plru[57] = [1, 0, 1, 1, 0, 0, 1];
+    return st;
+  }
+  function touch(b, w){ b[0] = w < 4 ? 1 : 0; if (w < 4) b[1] = (w & 3) < 2 ? 1 : 0; else b[2] = (w & 3) < 2 ? 1 : 0; b[3 + (w >> 1)] = (w & 1) ? 0 : 1; }
+  function victimPath(b){ var n1 = b[0] ? 2 : 1, n2 = 3 + (n1 - 1) * 2 + b[n1]; return {nodes: [0, n1, n2], way: (n2 - 3) * 2 + b[n2]}; }
+  function pathTo(w){ return [0, w < 4 ? 1 : 2, 3 + (w >> 1)]; }
+  function access(st, a){
+    var pa = tr(a.va), si = Number((a.va >> 6n) & 63n), tag = pa >> 12n, off = Number(a.va & 63n), wi = off >> 3;
+    var set = st.sets[si], r = {a: a, va: a.va, pa: pa, si: si, tag: tag, off: off, wi: wi, before: cp(set), pl0: st.plru[si].slice()};
+    r.cmp = set.map(function(x){ return !!x.v && x.tag === tag; });
+    var hw = r.cmp.indexOf(true);
+    if (hw >= 0){ r.hit = true; r.way = hw; }
+    else {
+      r.hit = false;
+      var inv = -1; for (var i = 0; i < 8; i++) if (!set[i].v){ inv = i; break; }
+      if (inv >= 0){ r.way = inv; r.byInvalid = true; } else { var vp = victimPath(st.plru[si]); r.way = vp.way; r.vnodes = vp.nodes; }
+      var old = set[r.way];
+      if (old.v){ r.evict = {va: old.va, pa: old.pa, tag: old.tag, d: old.d, words: old.words.slice()}; if (old.d){ st.back[old.pa.toString()] = old.words.slice(); r.wb = true; } }
+      var ln = pa & ~63n;
+      set[r.way] = {v: 1, d: 0, tag: tag, words: st.line(ln), va: a.va & ~63n, pa: ln};
+    }
+    var L = set[r.way];
+    if (a.st){ r.wasDirty = !!L.d && r.hit; L.words[wi] = a.val; L.d = 1; r.val = a.val; } else r.val = L.words[wi];
+    touch(st.plru[si], r.way); r.pl1 = st.plru[si].slice(); r.after = cp(set);
+    return r;
+  }
+  var custom = [];
+  function presets(){
+    var L = [{va: 0x7ffd4a3c2e58n, who: 'C1.ld reads hist[123]'}, {va: 0x7ffd4a3c2e58n, st: 1, val: 42n, who: 'C1\u2019s store commits: hist[123] = 42'}, {va: 0x7ffd4a3c2e58n, st: 1, val: 43n, who: 'C2\u2019s store commits: hist[123] = 43'}];
+    var st = mkState(); L.forEach(function(a){ access(st, a); });
+    for (var k = 0; k < 12; k++){
+      var a = {va: 0x7f3a8c000e40n + BigInt(k) * 0x1000n, who: 'load buf[' + (k * 512) + '] (another array, 4 KB stride)'};
+      L.push(a); var r = access(st, a);
+      if (r.evict && r.evict.tag === 0x1a3f7cn) break;
+    }
+    L.push({va: 0x7ffd4a3c2e58n, who: 'hist[123] read again'});
+    return L;
+  }
+
+  /* ---------- intro ---------- */
+  var intro = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, intro, '<h3>Geometry</h3><p>32 KB / 64-byte lines = 512 lines, arranged as 64 ' + g('set', 'sets') + ' \u00d7 8 ' + g('way', 'ways') + '. Bits 5:0 are the ' + g('offset') + ', bits 11:6 the ' + g('index') + ', bits 47:12 the ' + g('tag') + '. Index + offset = 12 bits = the page offset, so the set is chosen from the virtual address while the tag comes from the physical address: ' + g('vipt') + ' (Chapter 03).</p>');
+  h('div', {'class': 'card'}, intro, '<h3>What one way stores</h3><p>' + g('valid', 'V') + ', ' + g('dirty', 'D') + ', a 36-bit physical tag and 64 data bytes. The index is never stored: the row it sits in is the index. On a ' + g('wbk', 'write-back') + ' the line\u2019s physical address is rebuilt as tag \u2016 index \u2016 000000. Replacement below is tree ' + g('plru') + '; AMD does not publish the exact L1d policy.</p>');
+
+  /* ---------- SVG ---------- */
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 800', style: 'min-width:920px'}, wrap);
+  var E = {};
+  function box(x, y, w, ht, t, cls){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': cls || 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 18, 'class': 'h'}, gr, t); return gr; }
+  E.va = box(10, 14, 640, 86, 'Virtual address (from the AGU or the store queue)');
+  E.fv = [['VPN \u00b7 bits 47:12 \u2192 DTLB', 20, 300, 'a1'], ['index \u00b7 bits 11:6', 330, 150, 'a2'], ['offset \u00b7 bits 5:0', 490, 150, 'a3']].map(function(f){
+    s('rect', {x: f[1], y: 30, width: f[2], height: 34, rx: 5, 'class': f[3] + 'b'}, E.va);
+    var t = s('text', {x: f[1] + f[2] / 2, y: 52, 'text-anchor': 'middle', 'class': 'm', 'font-size': 13}, E.va, '');
+    s('text', {x: f[1] + f[2] / 2, y: 86, 'text-anchor': 'middle', 'class': 's'}, E.va, f[0]);
+    return t;
+  });
+  E.tlb = box(670, 14, 240, 86, 'DTLB (Chapter 03)');
+  E.tlbT = s('text', {x: 680, y: 50, 'class': 'm', 'font-size': 12}, E.tlb, ''); E.tlbT2 = s('text', {x: 680, y: 72, 'class': 'm', 'font-size': 12}, E.tlb, '');
+  s('text', {x: 680, y: 92, 'class': 's'}, E.tlb, 'physical tag = PA bits 47:12');
+  E.op = box(930, 14, 260, 86, 'Access');
+  E.opT = s('text', {x: 940, y: 50, 'class': 'm', 'font-size': 12.5}, E.op, ''); E.opT2 = s('text', {x: 940, y: 72, 'font-size': 12}, E.op, ''); E.opT3 = s('text', {x: 940, y: 92, 'class': 's'}, E.op, '');
+  /* wires: PA tag bus and index path */
+  E.wTag = s('path', {d: 'M 790 100 L 790 118 L 462 118 L 462 530', 'class': 'wire'}, sv);
+  s('text', {x: 470, y: 132, 'class': 's'}, sv, 'PA tag bus');
+  E.wIdx = s('path', {d: 'M 405 64 L 405 110 L 55 110 L 55 138', 'class': 'wire'}, sv);
+  /* decoder */
+  E.dec = box(10, 140, 92, 400, '');
+  s('text', {x: 20, y: 160, 'class': 'h'}, E.dec, 'row'); s('text', {x: 20, y: 176, 'class': 'h'}, E.dec, 'decoder'); s('text', {x: 20, y: 192, 'class': 's'}, E.dec, '6 \u2192 64');
+  E.wl = [];
+  for (var i = 0; i < 64; i++){ var yy = 206 + i * 5.1; E.wl.push(s('line', {x1: 86, x2: 102, y1: yy, y2: yy, stroke: 'var(--bd2)', 'stroke-width': 1}, E.dec)); }
+  E.wlT = s('text', {x: 20, y: 530, 'class': 's'}, E.dec, '');
+  /* tag array */
+  E.tagA = box(120, 140, 316, 400, 'Tag SRAM \u2014 set 57');
+  ['way', 'V', 'D', 'tag = PA[47:12]'].forEach(function(t, k){ s('text', {x: [128, 162, 192, 226][k], y: 176, 'class': 's'}, E.tagA, t); });
+  E.rows = [];
+  for (var w = 0; w < 8; w++){
+    var y = 184 + w * 44, R = {};
+    R.bg = s('rect', {x: 124, y: y, width: 308, height: 38, rx: 5, 'class': 'sunk'}, E.tagA);
+    s('text', {x: 132, y: y + 24, 'class': 'm', 'font-size': 12}, E.tagA, w);
+    R.vR = s('rect', {x: 156, y: y + 8, width: 24, height: 22, rx: 3, 'class': 'box'}, E.tagA); R.v = s('text', {x: 168, y: y + 24, 'text-anchor': 'middle', 'class': 'm', 'font-size': 12}, E.tagA, '');
+    R.dR = s('rect', {x: 186, y: y + 8, width: 24, height: 22, rx: 3, 'class': 'box'}, E.tagA); R.d = s('text', {x: 198, y: y + 24, 'text-anchor': 'middle', 'class': 'm', 'font-size': 12}, E.tagA, '');
+    R.tR = s('rect', {x: 218, y: y + 8, width: 206, height: 22, rx: 3, 'class': 'box'}, E.tagA); R.t = s('text', {x: 226, y: y + 24, 'class': 'm', 'font-size': 12}, E.tagA, '');
+    R.note = s('text', {x: 330, y: y + 24, 'class': 's'}, E.tagA, '');
+    /* comparator + AND */
+    R.w1 = s('path', {d: 'M 436 ' + (y + 15) + ' L 488 ' + (y + 15), 'class': 'wire'}, sv);
+    R.w2 = s('path', {d: 'M 462 ' + (y + 25) + ' L 488 ' + (y + 25), 'class': 'wire'}, sv);
+    R.cmpC = s('circle', {cx: 502, cy: y + 20, r: 14, 'class': 'box'}, sv);
+    R.cmpT = s('text', {x: 502, y: y + 25, 'text-anchor': 'middle', 'class': 'm', 'font-size': 14}, sv, '=');
+    R.andP = s('path', {d: 'M 526 ' + (y + 8) + ' L 538 ' + (y + 8) + ' A 12 12 0 0 1 538 ' + (y + 32) + ' L 526 ' + (y + 32) + ' Z', 'class': 'box'}, sv);
+    s('text', {x: 529, y: y + 24, 'class': 's', 'font-size': 8.5}, sv, '&');
+    R.hb = s('text', {x: 566, y: y + 25, 'text-anchor': 'middle', 'class': 'm', 'font-size': 13}, sv, '');
+    /* data words */
+    R.words = [];
+    for (var k = 0; k < 8; k++){
+      var x = 592 + k * 51;
+      R.words.push({r: s('rect', {x: x, y: y + 6, width: 48, height: 26, rx: 3, 'class': 'sunk'}, sv), t: s('text', {x: x + 24, y: y + 24, 'text-anchor': 'middle', 'class': 'm', 'font-size': 10.5}, sv, '')});
+    }
+    E.rows.push(R);
+  }
+  s('text', {x: 440, y: 548, 'class': 's'}, sv, 'sense amps \u2192 comparators, AND valid');
+  E.dataA = s('text', {x: 592, y: 162, 'class': 'h'}, sv, 'Data SRAM \u2014 set 57: 8 ways \u00d7 64 bytes');
+  s('text', {x: 592, y: 178, 'class': 's'}, sv, 'each cell = 8 bytes; hist line: hist[120] \u2026 hist[127]');
+  E.mux = s('path', {d: 'M 1004 184 L 1046 214 L 1046 504 L 1004 534 Z', 'class': 'box'}, sv);
+  s('text', {x: 1025, y: 364, 'text-anchor': 'middle', 'class': 's', transform: 'rotate(-90 1025 364)'}, sv, '8:1 way mux');
+  E.selW = s('path', {d: 'M 566 528 L 566 556 L 1025 556 L 1025 522', 'class': 'wire'}, sv);
+  s('text', {x: 700, y: 570, 'class': 's'}, sv, 'hit vector selects a hit; replacement selects a refill way');
+  E.lb = box(1060, 184, 130, 350, '');
+  s('text', {x: 1070, y: 204, 'class': 'h'}, E.lb, 'line buffer'); s('text', {x: 1070, y: 220, 'class': 's'}, E.lb, '64 bytes');
+  s('text', {x: 1070, y: 262, 'class': 'h'}, E.lb, 'aligner');
+  E.alT = s('text', {x: 1070, y: 280, 'class': 's'}, E.lb, '');
+  E.alT2 = s('text', {x: 1070, y: 296, 'class': 's'}, E.lb, '');
+  E.outT = s('text', {x: 1070, y: 340, 'class': 'h'}, E.lb, '');
+  E.outV = s('text', {x: 1070, y: 368, 'class': 'm', 'font-size': 18}, E.lb, '');
+  E.outT2 = s('text', {x: 1070, y: 392, 'class': 's'}, E.lb, '');
+  /* OR, pLRU, L2, stats */
+  E.or = box(10, 590, 220, 196, 'Hit logic');
+  s('path', {d: 'M 30 640 Q 70 640 90 668 Q 70 696 30 696 Q 44 668 30 640 Z', 'class': 'box'}, E.or);
+  s('text', {x: 36, y: 672, 'class': 's'}, E.or, 'OR\u00d78');
+  E.orT = s('text', {x: 104, y: 676, 'class': 'h', 'font-size': 20}, E.or, '');
+  E.orT2 = s('text', {x: 20, y: 730, 'font-size': 12}, E.or, ''); E.orT3 = s('text', {x: 20, y: 750, 'class': 's'}, E.or, '');
+  E.pl = box(245, 590, 355, 196, 'pLRU bits of this set (7 per set)');
+  var NP = [[422, 632], [334, 682], [510, 682], [290, 730], [378, 730], [466, 730], [554, 730]];
+  E.edges = [];
+  [[0, 1], [0, 2], [1, 3], [1, 4], [2, 5], [2, 6]].forEach(function(e){ E.edges.push({e: e, p: s('line', {x1: NP[e[0]][0], y1: NP[e[0]][1], x2: NP[e[1]][0], y2: NP[e[1]][1], 'class': 'wire'}, E.pl)}); });
+  E.leafE = [];
+  for (w = 0; w < 8; w++){ var pn = NP[3 + (w >> 1)], lx = pn[0] + ((w & 1) ? 20 : -20); E.leafE.push(s('line', {x1: pn[0], y1: pn[1], x2: lx, y2: 764, 'class': 'wire'}, E.pl)); s('text', {x: lx, y: 778, 'text-anchor': 'middle', 'class': 's m'}, E.pl, 'w' + w); }
+  E.nodes = NP.map(function(p){ var c = s('circle', {cx: p[0], cy: p[1], r: 13, 'class': 'box'}, E.pl); var t = s('text', {x: p[0], y: p[1] + 4.5, 'text-anchor': 'middle', 'class': 'm', 'font-size': 12}, E.pl, ''); return {c: c, t: t}; });
+  s('text', {x: 255, y: 616, 'class': 's'}, E.pl, 'bit 0 = older side is left, 1 = right');
+  E.l2 = box(615, 590, 330, 196, 'Miss path: MAB \u2192 L2');
+  E.l2T = []; for (i = 0; i < 7; i++) E.l2T.push(s('text', {x: 625, y: 620 + i * 22, 'font-size': 12}, E.l2, ''));
+  E.st = box(960, 590, 230, 196, 'Totals so far');
+  E.stT = []; for (i = 0; i < 7; i++) E.stT.push(s('text', {x: 970, y: 620 + i * 22, 'font-size': 12}, E.st, ''));
+
+  var stp = App.stepper(root, {render: draw, pills: false});
+  var cu = h('div', {'class': 'card'}, root);
+  cu.innerHTML = '<h3>Run your own access</h3><div class="stp"><input class="l1va" value="0x7ffd4a3c5e58" style="width:170px" aria-label="virtual address"><select class="l1op" aria-label="access operation"><option value="ld">load</option><option value="st">store</option></select><input class="l1v" value="7" style="width:70px" aria-label="store value"><button class="pri l1go">add after the sequence</button><button class="l1clr">remove mine</button></div><p class="note l1err" role="alert" style="color:var(--bad);display:none"></p><p class="note">Enter an 8-byte-aligned user address below 0x800000000000. An unknown page gets a model frame and synthetic line data; this is not a page walk. A store value must fit in a signed 64-bit long. A custom store represents a retired store draining into the L1d. Each access runs against the cache state the sequence left behind. Change only bits 12 and up to stay in set 57.</p>';
+  var err = cu.querySelector('.l1err');
+  function showErr(msg){ err.textContent = msg; err.style.display = msg ? '' : 'none'; }
+  cu.querySelector('.l1go').onclick = function(){
+    var addrText = cu.querySelector('.l1va').value.trim();
+    if (!addrText){ showErr('Enter an address such as 0x7ffd4a3c5e58.'); return; }
+    var v; try { v = BigInt(addrText); } catch(e){ showErr('Enter an address such as 0x7ffd4a3c5e58.'); return; }
+    if (v < 0n || v >= 0x800000000000n || v % 8n !== 0n){ showErr('Use an 8-byte-aligned user address below 0x800000000000.'); return; }
+    var op = cu.querySelector('.l1op').value, val = 0n;
+    if (op === 'st'){
+      var valText = cu.querySelector('.l1v').value.trim();
+      if (!valText){ showErr('Enter a signed 64-bit store value.'); return; }
+      try { val = BigInt(valText); } catch(e){ showErr('Enter a signed 64-bit store value.'); return; }
+      if (val < -(1n << 63n) || val >= (1n << 63n)){ showErr('The store value must fit in a signed 64-bit long.'); return; }
+    }
+    showErr('');
+    custom.push({va: v, st: op === 'st' ? 1 : 0, val: val, who: 'your ' + (op === 'st' ? 'store' : 'load')});
+    rebuild(true);
+  };
+  cu.querySelector('.l1clr').onclick = function(){ custom = []; showErr(''); rebuild(false); };
+
+  var R0 = [];
+  function rebuild(toEnd){
+    var list = presets().concat(custom), st = mkState(), tot = {h: 0, m: 0, wb: 0, fill: 0, abs: 0, stores: 0};
+    R0 = list.map(function(a){
+      var r = access(st, a);
+      if (r.hit) tot.h++; else { tot.m++; tot.fill++; } if (r.wb) tot.wb++;
+      if (a.st){ tot.stores++; if (r.hit) tot.abs++; }
+      r.tot = JSON.parse(JSON.stringify(tot)); return r;
+    });
+    var fr = [];
+    R0.forEach(function(r, k){
+      if (k === 0) ['split', 'read', 'compare', 'select'].forEach(function(ph){ fr.push(frame(r, k, ph)); });
+      else if (r.hit) fr.push(frame(r, k, 'all'));
+      else {
+        fr.push(frame(r, k, 'miss'));
+        if (r.wb) fr.push(frame(r, k, 'writeback'));
+        fr.push(frame(r, k, 'fill'));
+      }
+    });
+    stp.set(fr);
+    if (toEnd) stp.go(fr.length - 1);
+  }
+  function tg(t){ return '0x' + t.toString(16).padStart(9, '0'); }
+  function frame(r, k, ph){
+    var f = {r: r, ph: ph, k: k}, a = r.a, n = k + 1, setTxt = 'set ' + r.si;
+    var addr = '<code>' + hx(r.va) + '</code>';
+    if (ph === 'split'){ f.t = 'Access 1, step 1: split the address'; f.d = 'C1\u2019s load of hist[123] arrives with VA ' + addr + '. Bits 11:6 = 111001 = <b>57</b> go straight to the row decoder. Bits 47:12, the VPN 0x7ffd4a3c2, go to the ' + g('dtlb') + ', which returns PFN 0x1a3f7c: the physical tag. Bits 5:0 = <b>24</b> wait until the end, where they pick bytes 24\u201331 of the line.'; return f; }
+    if (ph === 'read'){ f.t = 'Step 2: read the whole set'; f.d = 'The decoder raises wordline 57. In all 8 ways at once, set 57\u2019s V, D and tag bits and its 64 data bytes flow out through the sense amplifiers: 8 tags and 512 data bytes read for one 8-byte load. The hardware reads every way because it does not yet know which one holds the line.'; return f; }
+    if (ph === 'compare'){ f.t = 'Step 3: eight tag compares in parallel'; f.d = 'Eight comparators check PA tag 0x1a3f7c against the eight stored tags in the same cycle; each result is ANDed with its valid bit. <b>Way 3 matches.</b> The OR of the eight hit lines is the hit signal. The comparators are why associativity costs area and power: 8 ways means 8 of them, firing on every access.'; return f; }
+    if (ph === 'select'){ f.t = 'Step 4: select the way, align the bytes'; f.d = 'The hit vector drives the 8:1 way mux: way 3\u2019s 64 bytes reach the line buffer, the aligner takes bytes 24\u201331, and <b>41</b> goes to the load\u2019s destination register. The pLRU bits of set 57 now point away from way 3.'; return f; }
+    if (ph === 'miss'){
+      f.t = 'Access ' + n + ': tag miss in set ' + r.si;
+      f.d = 'The eight valid-gated comparators all output 0 for PA tag <code>' + tg(r.tag) + '</code>. The hit vector is 00000000. The existing tag/data rows are still shown; the MAB requests line <code>' + hx(r.pa & ~63n) + '</code> from L2. ' + (r.byInvalid ? 'Invalid way ' + r.way + ' can receive it.' : 'The set is full; the replacement bits choose way ' + r.way + ' for eviction.');
+      return f;
+    }
+    if (ph === 'writeback'){
+      f.t = 'Access ' + n + ': write back the dirty victim';
+      f.d = 'Before replacement, way ' + r.way + ' holds dirty line <code>' + hx(r.evict.pa) + '</code>. L2 has an older copy, so the 64 cached bytes go to L2. The tag and data rows below still show the old set; the incoming line has not filled its way yet.';
+      return f;
+    }
+    f.t = 'Access ' + n + ': ' + a.who + (ph === 'fill' ? ' — refill' : '');
+    var d = (a.st ? 'Store ' + a.val + ' to ' : 'Load from ') + addr + ' (PA <code>' + hx(r.pa) + '</code>) \u2192 ' + setTxt + ', tag ' + tg(r.tag) + '. ';
+    if (r.hit){
+      d += '<b>Hit in way ' + r.way + '.</b> ';
+      if (a.st) d += r.wasDirty ? (k === 2 ? 'D was already 1: both histogram stores landed in the L1d and <b>nothing went to L2</b>. Two stores, zero bytes of write traffic: ' + g('wbk') + ' coalesces them.' : 'D was already 1. This store changes the cached line; no write-back to L2 happens yet.') : 'Bytes ' + r.off + '\u2013' + (r.off + 7) + ' become ' + a.val + ' and D is set to 1. The L2 copy is now stale; the L1d holds the only current value.';
+      else d += 'Value ' + r.val + '.';
+    } else {
+      d += '<b>Miss:</b> no valid way holds tag ' + tg(r.tag) + '. A ' + g('mab') + ' entry requests the line from L2. ';
+      if (r.byInvalid) d += 'Way ' + r.way + ' is invalid, so it is filled without evicting anything.';
+      else {
+        d += 'All 8 ways are valid, so the pLRU bits choose the victim: <b>way ' + r.way + '</b>' + (r.evict ? ' (' + (r.evict.tag === 0x1a3f7cn ? 'the hist[120..127] line' : 'line ' + hx(r.evict.pa)) + ')' : '') + '. ';
+        d += r.wb ? 'It is dirty, so its 64 bytes are <b>written back to L2</b> before the new line takes the way.' : 'It is clean: the L2 (inclusive) already has an identical copy, so it is dropped.';
+      }
+      if (a.who.indexOf('again') >= 0) d += ' This is a <b>conflict miss</b>: the program touched only ' + (R0.length > 0 ? n - 3 : n) + ' distinct lines, a few hundred bytes, far below 32 KB, but more than 8 of them map to set 57. The line comes back from L2 with value <b>' + r.val + '</b>: the write-back kept it.';
+      else if (!a.st) d += ' Value ' + r.val + '.';
+      if (a.st) d += ' The store then writes bytes ' + r.off + '\u2013' + (r.off + 7) + ' and sets D (' + g('walloc') + ').';
+    }
+    if (r.si === 57 && k >= 3 && k < 5 && !r.hit) d += ' All of these addresses differ only in bits 12 and up, so bits 11:6 are always 57.';
+    f.d = d; return f;
+  }
+  function wordTxt(v){ if (v === null || v === undefined) return ''; return v < 100000n ? v.toString() : '\u2026' + v.toString(16).slice(-4); }
+  function draw(f){
+    var r = f.r, ph = f.ph, showAfter = ph === 'select' || ph === 'all' || ph === 'fill';
+    var res = ph === 'compare' || ph === 'all' || ph === 'select' || ph === 'miss' || ph === 'writeback';
+    var set = showAfter ? r.after : r.before;
+    E.fv[0].textContent = hx(r.va >> 12n); E.fv[1].textContent = r.si + ' = ' + r.si.toString(2).padStart(6, '0'); E.fv[2].textContent = r.off + ' = ' + r.off.toString(2).padStart(6, '0');
+    E.tlbT.textContent = 'VPN ' + (r.va >> 12n).toString(16); E.tlbT2.textContent = '\u2192 PFN ' + (r.pa >> 12n).toString(16) + ' (tag)';
+    E.opT.textContent = (r.a.st ? 'STORE 8 B, value ' + r.a.val : 'LOAD 8 B'); E.opT2.textContent = r.a.who; E.opT3.textContent = 'PA ' + hx(r.pa);
+    var on = function(el, v){ el.setAttribute('class', v ? 'on' : ''); };
+    on(E.va, ph === 'split' || ph === 'all'); on(E.tlb, ph === 'split' || ph === 'all');
+    E.wTag.setAttribute('class', 'wire' + (ph !== 'read' ? ' on' : '')); E.wIdx.setAttribute('class', 'wire' + (ph === 'split' || ph === 'read' || ph === 'all' ? ' on' : ''));
+    on(E.dec, ph === 'read' || ph === 'split' || ph === 'all');
+    E.wl.forEach(function(l, i){ l.setAttribute('stroke', i === r.si ? 'var(--act)' : 'var(--bd2)'); l.setAttribute('stroke-width', i === r.si ? 3 : 1); l.setAttribute('x1', i === r.si ? 60 : 86); });
+    E.wlT.textContent = 'wordline ' + r.si;
+    E.dataA.textContent = 'Data SRAM \u2014 set ' + r.si + ': 8 ways \u00d7 64 bytes';
+    E.tagA.querySelector('.h').textContent = 'Tag SRAM \u2014 set ' + r.si;
+    E.rows.forEach(function(R, w){
+      var x = set[w], hitW = res && r.cmp[w], sel = showAfter && w === r.way;
+      R.bg.setAttribute('class', sel ? (r.hit ? 'okb' : 'a2b') : ph === 'read' ? 'a4b' : 'sunk');
+      R.v.textContent = x.v; R.d.textContent = x.v ? x.d : '';
+      R.dR.setAttribute('class', x.v && x.d ? 'a1b' : 'box'); R.vR.setAttribute('class', x.v ? 'box' : 'sunk');
+      R.t.textContent = x.v ? tg(x.tag) : '\u2014';
+      R.note.textContent = sel && !r.hit ? 'filled' : (x.v && x.tag === 0x1a3f7cn ? 'hist line' : '');
+      R.cmpC.setAttribute('class', res ? (r.cmp[w] ? 'okb' : 'sunk') : ph === 'read' ? 'box' : 'sunk');
+      R.cmpT.textContent = res ? (r.cmp[w] ? '=' : '\u2260') : ph === 'fill' ? '\u00b7' : '=';
+      R.andP.setAttribute('class', hitW ? 'okb' : 'box');
+      R.hb.textContent = res ? (r.cmp[w] ? '1' : '0') : ''; R.hb.setAttribute('fill', res && r.cmp[w] ? 'var(--ok)' : '');
+      R.w1.setAttribute('class', 'wire' + (ph === 'read' || ph === 'compare' ? ' on' : ''));
+      R.w2.setAttribute('class', 'wire' + (ph === 'compare' || ph === 'split' ? ' on' : ''));
+      R.words.forEach(function(c, i){
+        c.t.textContent = x.v ? wordTxt(x.words[i]) : '';
+        var hl = showAfter && w === r.way && i === r.wi;
+        c.r.setAttribute('class', hl ? (r.a.st ? 'a1b' : 'okb') : ph === 'read' && x.v ? 'a4b' : x.v ? 'box' : 'sunk');
+      });
+    });
+    E.mux.setAttribute('class', showAfter ? 'on box' : 'box'); E.selW.setAttribute('class', 'wire' + (showAfter && r.hit ? ' on' : ''));
+    on(E.lb, showAfter);
+    E.alT.textContent = showAfter ? 'offset ' + r.off + ' \u2192 bytes ' + r.off + '\u2013' + (r.off + 7) : '';
+    E.alT2.textContent = showAfter ? 'word ' + r.wi + ' of the line' : '';
+    E.outT.textContent = showAfter ? (r.a.st ? 'store merges' : 'load result') : '';
+    E.outV.textContent = showAfter ? String(r.val) : '';
+    E.outT2.textContent = showAfter ? (r.a.st ? 'into way ' + r.way + ', D = 1' : 'to the destination register') : '';
+    E.orT.textContent = ph === 'fill' ? 'REFILL' : res ? (r.hit ? 'HIT' : 'MISS') : ''; E.orT.setAttribute('fill', r.hit ? 'var(--ok)' : 'var(--bad)');
+    E.orT2.textContent = ph === 'fill' ? 'comparators idle during refill' : res ? 'hit vector (w7..w0): ' + r.cmp.slice().reverse().map(function(b){ return b ? 1 : 0; }).join('') : '';
+    E.orT3.textContent = ph === 'fill' ? 'replacement filled way ' + r.way : res ? (r.hit ? 'selects way ' + r.way : 'no hit way; request L2') : '';
+    on(E.or, res || ph === 'fill');
+    /* pLRU */
+    var bits = showAfter ? r.pl1 : r.pl0, path = showAfter ? pathTo(r.way) : (ph === 'miss' || ph === 'writeback') ? r.vnodes : null;
+    E.nodes.forEach(function(nd, i){ nd.t.textContent = bits[i]; nd.c.setAttribute('class', path && path.indexOf(i) >= 0 ? 'on box' : 'box'); });
+    E.edges.forEach(function(e){ e.p.setAttribute('class', 'wire' + (path && path.indexOf(e.e[0]) >= 0 && path.indexOf(e.e[1]) >= 0 ? ' on' : '')); });
+    E.leafE.forEach(function(l, w){ l.setAttribute('class', 'wire' + (path && w === r.way ? ' on' : '')); });
+    on(E.pl, showAfter || ph === 'miss' || ph === 'writeback');
+    /* miss path */
+    var L = [];
+    if ((showAfter || ph === 'miss' || ph === 'writeback') && !r.hit){
+      L.push('MAB entry: line PA ' + hx(r.pa & ~63n));
+      L.push('victim: way ' + r.way + (r.byInvalid ? ' (invalid, free)' : ' (chosen by pLRU)'));
+      if (r.evict) L.push('evicted: ' + (r.evict.tag === 0x1a3f7cn ? 'hist[120..127]' : 'PA ' + hx(r.evict.pa)) + (r.evict.d ? ', dirty' : ', clean'));
+      if (ph === 'writeback' || showAfter) L.push(r.wb ? '\u2191 64 B written back to L2' : 'no write-back needed');
+      if (showAfter){ L.push('\u2193 64 B filled from L2: 2 \u00d7 32 B transfers'); L.push('new line: V = 1, D = ' + (r.a.st ? '1 (store merged)' : '0')); }
+    } else if (showAfter) L.push('hit: no L2 traffic');
+    E.l2T.forEach(function(t, i){ t.textContent = L[i] || ''; t.setAttribute('fill', /written back/.test(L[i] || '') ? 'var(--a1)' : /filled/.test(L[i] || '') ? 'var(--a2)' : ''); });
+    on(E.l2, (showAfter || ph === 'miss' || ph === 'writeback') && !r.hit);
+    var T = showAfter ? r.tot : f.k ? R0[f.k - 1].tot : {h:0,m:0,fill:0,wb:0,stores:0,abs:0};
+    var S = ['completed accesses: ' + (f.k + (showAfter ? 1 : 0)), 'hits: ' + T.h + '   misses: ' + T.m, 'lines filled from L2: ' + T.fill, 'dirty write-backs: ' + T.wb, 'stores: ' + T.stores + ' (' + T.abs + ' hit the L1d)', 'bytes read from L2: ' + T.fill * 64, 'bytes written to L2: ' + T.wb * 64];
+    E.stT.forEach(function(t, i){ t.textContent = showAfter || f.k > 0 ? S[i] : ''; });
+  }
+  rebuild(false);
+  return {key: stp.key};
+}});
+
+/* ======================= chapter: down the hierarchy ======================= */
+App.chapter({id: 'hier', num: '05', short: 'Down the hierarchy', title: 'Down the hierarchy: L2, L3, fabric, DRAM',
+sub: 'When the L1d misses, the request moves outward until some level has the line, and the line comes back the same way. Where it is found decides whether the load waits 12 cycles or several hundred.',
+build: function(root){
+  var h = App.h, s = App.s, g = App.g, CFG = App.CFG, hx = App.hx;
+  var PA = 0x1a3f7ce58n, LINE = PA & ~63n;
+  var l2set = Number((PA >> 6n) & 1023n), l3set = Number((PA >> 6n) & 4095n);
+  var mode = 'DRAM';
+  var intro = h('div', {'class': 'grid2'}, root);
+  h('div', {'class': 'card'}, intro, '<h3>Same address, bigger caches</h3><p>The line is PA <code>' + hx(LINE) + '</code>. The L2 (512 KB, 8-way) has 1024 sets; a straightforward PA[15:6] indexing model gives <b>set ' + l2set + '</b>. The L3 (4 MB, 16-way) has 4096 logical set slots across four slices; this diagram labels the line by PA[17:6] as logical set <b>' + l3set + '</b>. The exact address-to-slice and set mapping on this laptop is not established here. Beyond the L1, physical bits above bit 11 can affect selection, so translation must complete before an L2 lookup.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>Who keeps copies of what</h3><p>The L2 is ' + g('incl', 'inclusive') + ' of its L1s: evicting a line from L2 also removes it from L1. The L3 is a ' + g('victimc') + ': lines enter it only when an L2 evicts them, and it is mostly exclusive of the L2s (it keeps a copy when the line looks shared by several cores). It also holds ' + g('shadow') + ' of all four L2s, so it knows which core may have a line without asking them.</p>');
+
+  var ctl = h('div', {'class': 'stp'}, root);
+  h('span', {'class': 'note'}, ctl, 'the line for hist[123] is in:');
+  App.seg(ctl, [['L2', 'core 0\u2019s L2'], ['L3', 'the L3'], ['peer', 'core 2\u2019s L2 (modified)'], ['DRAM', 'only DRAM']], function(v){ mode = v; frames(); }, mode);
+
+  var wrap = h('div', {'class': 'scroller'}, root);
+  var sv = s('svg', {viewBox: '0 0 1200 560', style: 'min-width:900px'}, wrap);
+  var P = {};
+  function box(id, x, y, w, ht, t, sub, cls){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': cls || 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 18, 'class': 'h'}, gr, t); if (sub) s('text', {x: x + 10, y: y + 35, 'class': 's'}, gr, sub); P[id] = gr; return gr; }
+  function wire(id, d, ret){ P[id] = s('path', {d: d, 'class': 'wire', 'stroke-width': 2}, sv); P[id].ret = ret; return P[id]; }
+  box('core0', 20, 18, 320, 140, 'Core 0');
+  box('l1', 30, 50, 140, 96, 'LSU + L1d', 'misses here', 'a4b');
+  box('mab', 185, 50, 145, 96, 'MAB', 'one entry per missing line', 'a4b');
+  box('l2', 20, 190, 320, 60, 'L2 \u00b7 core 0', '512 KB \u00b7 8-way \u00b7 set ' + l2set, 'a2b');
+  [1, 2, 3].forEach(function(n, k){
+    var x = 370 + k * 200;
+    box('c' + n, x, 18, 180, 140, 'Core ' + n, 'same structure as core 0');
+    box('c' + n + 'l2', x, 190, 180, 60, 'L2 \u00b7 core ' + n, '512 KB', 'a2b');
+  });
+  box('l3', 20, 282, 930, 96, 'L3 \u00b7 4 MB \u00b7 16-way \u00b7 set ' + l3set + ' \u00b7 victim cache', '', 'a2b');
+  for (var k = 0; k < 4; k++){ s('rect', {x: 30 + k * 228, y: 310, width: 218, height: 30, rx: 5, 'class': 'box'}, P.l3); s('text', {x: 40 + k * 228, y: 330, 'class': 's'}, P.l3, 'slice ' + k + ' \u00b7 1 MB'); }
+  P.sh = s('g', null, sv); s('rect', {x: 30, y: 346, width: 910, height: 24, rx: 5, 'class': 'a3b'}, P.sh); s('text', {x: 40, y: 363, 'font-size': 12}, P.sh, 'shadow tags: a copy of every L2 tag array in the CCX (probe filter)');
+  box('df', 20, 410, 1160, 40, 'Infinity Fabric (data fabric)', '', 'a3b');
+  box('umc', 20, 480, 520, 66, 'Memory controllers: UMC 0 \u00b7 UMC 1', 'queues, address mapping, DRAM commands');
+  box('dram', 640, 480, 540, 66, 'DDR4 channel A \u00b7 channel B', 'rows, banks, ACT / RD / PRE (Chapter 06)');
+  box('meter', 980, 18, 200, 360, 'Elapsed');
+  P.mT = []; for (k = 0; k < 12; k++) P.mT.push(s('text', {x: 992, y: 70 + k * 24, 'font-size': k === 0 ? 22 : 12, 'class': k === 0 ? 'm' : ''}, P.meter, ''));
+  wire('a1', 'M 90 146 L 90 188');
+  wire('a2', 'M 150 250 L 150 280');
+  wire('a3', 'M 660 282 L 660 252');
+  wire('a4', 'M 480 378 L 480 408');
+  wire('a5', 'M 280 450 L 280 478');
+  wire('a6', 'M 540 513 L 638 513');
+  wire('r1', 'M 120 188 L 120 148', 1);
+  wire('r2', 'M 190 280 L 190 252', 1);
+  wire('r3', 'M 690 252 L 690 280 L 700 280', 1);
+  wire('r4', 'M 250 408 L 250 252', 1);
+  s('text', {x: 258, y: 398, 'class': 's'}, sv, '');
+  P.r4t = s('text', {x: 258, y: 396, 'class': 's'}, sv, '');
+  var stp = App.stepper(root, {render: draw});
+
+  function frames(){
+    var L2 = CFG.l2, L3 = CFG.l3, D = App.dramCycles(), ns = function(c){ return (c / CFG.ghz).toFixed(1) + ' ns'; };
+    var fr = [], F = function(p, t, d, on, m){ fr.push({p: p, t: t, d: d, on: on, m: m}); };
+    F('L1 miss', 'The L1d misses', 'The tag compare of Chapter 04 finds no match. A ' + g('mab') + ' entry records the missing line PA <code>' + hx(LINE) + '</code> and which loads wait for it; later loads to the same line merge into this entry. The request goes to the L2.', ['l1', 'mab', 'a1'], ['request sent', 'L1 load-to-use would', 'have been ' + CFG.l1 + ' cycles']);
+    if (mode === 'L2'){
+      F('L2 hit', 'L2 lookup: hit', 'The L2 indexes set ' + l2set + ' with PA bits 15:6 and compares 8 tags. Hit.', ['l2', 'a1'], ['L2 tag compare']);
+      F('fill', 'The line comes back', 'The L1\u2013L2 path is 32 bytes wide, so the 64-byte line takes 2 transfers. It is filled into the L1d (the L1 victim, if dirty, is written into the L2 copy it already has) and the waiting load wakes up. <b>Total \u2248 ' + L2 + ' cycles = ' + ns(L2) + '</b>.', ['l2', 'r1', 'l1'], [L2 + ' cycles', ns(L2), '', 'L2 hit, published', 'minimum: 12 cycles']);
+    } else {
+      F('L2 miss', 'L2 lookup: miss', 'Set ' + l2set + ', 8 tags, no match. The L2 has its own miss tracking: up to 50 outstanding L2\u2192L3 misses per core on Zen/Zen+. The request goes to the L3.', ['l2', 'a2'], ['L2 missed', 'request to L3']);
+      if (mode === 'L3'){
+        F('L3 hit', 'L3 lookup: hit', 'The addressed slice checks the line (logical set ' + l3set + ' in this diagram): hit. In parallel the ' + g('shadow') + ' confirm no other L2 holds the line, so no probe is needed. Slice selection is a model here, not a published mapping for this laptop.', ['l3', 'sh', 'a2'], ['L3 tag compare']);
+        F('move up', 'The line moves up, a victim moves down', 'The line goes to core 0\u2019s L2 and L1d. Because the L3 is mostly exclusive, it normally drops its own copy. The L2 had to evict something from set ' + l2set + ' to make room: that victim goes <b>into</b> the L3. This is the only way the L3 gets filled. <b>Total \u2248 ' + L3 + ' cycles = ' + ns(L3) + '</b>.', ['l3', 'r2', 'r1', 'l2', 'l1'], [L3 + ' cycles', ns(L3), '', 'published Zen/Zen+', 'L3 average: ~35']);
+      } else if (mode === 'peer'){
+        F('shadow tags', 'L3 miss, but the shadow tags know', 'The L3 does not have the line, but its copy of core 2\u2019s L2 tags does: core 2 holds it <b>modified</b> (its value is newer than DRAM). Reading DRAM would return stale data.', ['l3', 'sh', 'a2'], ['L3 missed', 'shadow tag hit:', 'core 2']);
+        F('probe', 'Probe core 2', 'The L3 sends a ' + g('probe') + ' only to core 2 (the other L2s are not disturbed). Core 2\u2019s L2 returns the 64 bytes. Under ' + g('moesi') + ' it keeps its dirty copy as <b>Owned</b> and core 0 gets it <b>Shared</b>; DRAM is not written (Chapter 08). AMD does not publish this latency; a core-to-core ping-pong benchmark measures it.', ['a3', 'c2l2', 'r3', 'r2', 'r1', 'l2', 'l1'], ['cache-to-cache', 'latency: measure it', '(not published)']);
+      } else {
+        F('L3 miss', 'L3 miss, shadow tags miss', 'Neither the L3 nor any CPU L2 in this CCX has the line. The request leaves the CCX through the fabric for system memory. The L3-hit load-to-use figure is a comparison baseline, not a measured timestamp for this step.', ['l3', 'sh', 'a4'], ['L3 missed', 'L3-hit baseline:', CFG.l3 + ' cycles load-to-use']);
+        F('fabric', 'Fabric to the memory controller', 'The fabric routes by physical address to the memory controller for the channel that owns this line. On Zen/Zen+ the fabric clock is reported to equal the memory clock, so faster DIMMs also speed up this hop. Up to 96 L3\u2192memory misses can be outstanding.', ['df', 'a5', 'umc'], ['in the fabric']);
+        F('DRAM', 'DRAM access', 'The controller turns the request into DRAM commands: open the row if needed (ACT), read the column (RD), close rows that conflict (PRE). Chapter 06 steps through exactly this address.', ['umc', 'a6', 'dram'], ['DRAM access', 'see Chapter 06']);
+        F('return', 'The line returns to L2 and L1, not L3', 'Data comes back through the fabric straight to core 0\u2019s L2 and then the L1d. The L3 does <b>not</b> keep a copy: as a victim cache it only receives lines the L2 later evicts. <b>Total \u2248 ' + D + ' cycles = ' + ns(D) + '</b> with the current latency settings (L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns).', ['df', 'r4', 'r1', 'l2', 'l1'], [D + ' cycles', ns(D), '', 'L3 + DRAM extra,', 'from latency settings']);
+      }
+    }
+    stp.set(fr);
+  }
+  function draw(f){
+    for (var id in P){ if (!P[id] || !P[id].setAttribute || id === 'mT' || id === 'r4t') continue;
+      var act = f.on.indexOf(id) >= 0;
+      if (P[id].tagName === 'path') P[id].setAttribute('class', 'wire' + (act ? ' on flow' : ''));
+      else P[id].setAttribute('class', act ? 'on' : '');
+      if (P[id].tagName === 'path' && act) P[id].style.stroke = P[id].ret ? 'var(--a2)' : 'var(--act)';
+      else if (P[id].tagName === 'path') P[id].style.stroke = '';
+    }
+    P.r4t.textContent = f.on.indexOf('r4') >= 0 ? 'data returns to the L2; the L3 is bypassed' : '';
+    P.mT.forEach(function(t, i){ t.textContent = f.m[i] || ''; });
+  }
+  frames();
+
+  /* ---------- ladder ---------- */
+  var lad = h('div', {'class': 'card'}, root);
+  var lsv = s('svg', {viewBox: '0 0 1000 250', style: 'width:100%;height:auto;display:block'}, lad);
+  var cap = h('p', {'class': 'note'}, lad);
+  function ladder(){
+    lsv.innerHTML = '';
+    var L = [['L1d', CFG.l1], ['L2', CFG.l2], ['L3', CFG.l3], ['DRAM', App.dramCycles()]], mx = Math.log10(App.dramCycles() * 1.3);
+    s('text', {x: 10, y: 20, 'class': 'h'}, lsv, 'Load-to-use latency, log scale');
+    L.forEach(function(r, i){
+      var y = 40 + i * 50, w = Math.max(6, (Math.log10(r[1]) / mx) * 760);
+      s('text', {x: 10, y: y + 22, 'class': 'h'}, lsv, r[0]);
+      s('rect', {x: 80, y: y, width: w, height: 32, rx: 4, 'class': ['a4b', 'a2b', 'a3b', 'a1b'][i]}, lsv);
+      s('text', {x: 88 + w, y: y + 21, 'class': 'm', 'font-size': 12}, lsv, r[1] + ' cycles \u00b7 ' + (r[1] / CFG.ghz).toFixed(1) + ' ns \u00b7 ' + (r[1] / CFG.l1).toFixed(0) + '\u00d7 L1');
+    });
+    cap.innerHTML = 'Values come from the latency settings: published Zen/Zen+ figures unless you entered your own. Your Drill 02 sweep measures these four plateaus directly.';
+  }
+  ladder();
+
+  /* ---------- MLP ---------- */
+  var mlp = h('div', {'class': 'card'}, root);
+  h('h3', null, mlp, 'Four misses: overlapped or serialized');
+  var msv = s('svg', {viewBox: '0 0 1000 300', style: 'width:100%;height:auto;display:block'}, mlp);
+  var mcap = h('p', null, mlp);
+  function mlpDraw(){
+    msv.innerHTML = ''; var D = App.dramCycles(), tot = 4 * D + 20, X = function(c){ return 150 + (c / tot) * 820; };
+    s('text', {x: 10, y: 22, 'class': 'h'}, msv, 'independent: a[0], a[64], a[128], a[192]');
+    for (var i = 0; i < 4; i++){ s('rect', {x: X(i), y: 32 + i * 22, width: X(i + D) - X(i), height: 16, rx: 3, 'class': 'a4b'}, msv); s('text', {x: 10, y: 45 + i * 22, 'class': 's'}, msv, 'miss ' + (i + 1)); }
+    s('text', {x: X(D + 3) + 6, y: 110, 'class': 'm', 'font-size': 12}, msv, 'all done at \u2248 ' + (D + 3) + ' cycles');
+    s('text', {x: 10, y: 152, 'class': 'h'}, msv, 'dependent: p = p->next, four times');
+    for (i = 0; i < 4; i++){ s('rect', {x: X(i * D), y: 162 + i * 22, width: X((i + 1) * D) - X(i * D), height: 16, rx: 3, 'class': 'a1b'}, msv); s('text', {x: 10, y: 175 + i * 22, 'class': 's'}, msv, 'miss ' + (i + 1)); }
+    s('text', {x: Math.min(X(4 * D) - 180, 800), y: 270, 'class': 'm', 'font-size': 12}, msv, 'done at \u2248 ' + 4 * D + ' cycles');
+    s('line', {x1: 150, x2: 970, y1: 285, y2: 285, 'class': 'wire'}, msv);
+    s('text', {x: 150, y: 298, 'class': 's'}, msv, '0'); s('text', {x: 970, y: 298, 'class': 's', 'text-anchor': 'end'}, msv, tot + ' cycles');
+    mcap.innerHTML = 'Independent addresses are all known up front, so the core issues the four loads within a few cycles and the misses overlap (' + g('mlp') + '). A pointer chase cannot: each address is the previous load\u2019s data, so each miss starts only when the last one finishes. Zen/Zen+ track 50 outstanding L2\u2192L3 misses per core and 96 L3\u2192memory, so the independent case scales far past four. This gap is why Block C uses pointer chasing to measure true latency.';
+  }
+  mlpDraw();
+
+  var bus = h('div', {'class': 'card'}, root);
+  bus.innerHTML = '<h3>The wires between the levels</h3><table class="mt"><tr><th>link</th><th>width</th><th>one 64-byte line</th><th>source</th></tr>' +
+    '<tr><td>L1d \u2194 L2</td><td>32 B / cycle</td><td>2 transfers</td><td>WikiChip</td></tr>' +
+    '<tr><td>L2 \u2194 L3</td><td>32 B / cycle</td><td>2 transfers</td><td>WikiChip</td></tr>' +
+    '<tr><td>DDR4-2400 channel</td><td>8 B \u00d7 2400 MT/s = 19.2 GB/s peak</td><td>8 transfers = 3.3 ns</td><td>DDR4 arithmetic</td></tr>' +
+    '<tr><td>both channels</td><td>38.4 GB/s peak</td><td></td><td>DDR4 arithmetic</td></tr></table>' +
+    '<p class="note" style="margin-top:8px">Peak numbers only. Sustained bandwidth is lower: DRAM spends time on row switches and refresh (Chapter 06).</p>';
+  App.onCfg(function(){ frames(); ladder(); mlpDraw(); });
+  return {key: stp.key};
+}});
+
+App.start();
+
+</script>
+</body>
+</html>
