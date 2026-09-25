@@ -1912,12 +1912,12 @@ build: function(root){
   E.leafE = [];
   for (w = 0; w < 8; w++){ var pn = NP[3 + (w >> 1)], lx = pn[0] + ((w & 1) ? 20 : -20); E.leafE.push(s('line', {x1: pn[0], y1: pn[1], x2: lx, y2: 764, 'class': 'wire'}, E.pl)); s('text', {x: lx, y: 778, 'text-anchor': 'middle', 'class': 's m'}, E.pl, 'w' + w); }
   E.nodes = NP.map(function(p){ var c = s('circle', {cx: p[0], cy: p[1], r: 13, 'class': 'box'}, E.pl); var t = s('text', {x: p[0], y: p[1] + 4.5, 'text-anchor': 'middle', 'class': 'm', 'font-size': 12}, E.pl, ''); return {c: c, t: t}; });
-  s('text', {x: 255, y: 616, 'class': 's'}, E.pl, 'bit 0 = older side is left, 1 = right');
   E.l2 = box(615, 590, 330, 196, 'Miss path: MAB \u2192 L2');
-  E.l2T = []; for (i = 0; i < 7; i++) E.l2T.push(s('text', {x: 625, y: 620 + i * 22, 'font-size': 12}, E.l2, ''));
+  E.l2T = []; for (i = 0; i < 7; i++) E.l2T.push(s('text', {x: 625, y: 636 + i * 22, 'font-size': 12}, E.l2, ''));
   E.st = box(960, 590, 230, 196, 'Totals so far');
-  E.stT = []; for (i = 0; i < 7; i++) E.stT.push(s('text', {x: 970, y: 620 + i * 22, 'font-size': 12}, E.st, ''));
+  E.stT = []; for (i = 0; i < 7; i++) E.stT.push(s('text', {x: 970, y: 636 + i * 22, 'font-size': 12}, E.st, ''));
 
+  h('p', {'class': 'note'}, root, 'pLRU tree bits: 0 points to the older left half; 1 points to the older right half.');
   var stp = App.stepper(root, {render: draw, pills: false});
   var cu = h('div', {'class': 'card'}, root);
   cu.innerHTML = '<h3>Run your own access</h3><div class="stp"><input class="l1va" value="0x7ffd4a3c5e58" style="width:170px" aria-label="virtual address"><select class="l1op" aria-label="access operation"><option value="ld">load</option><option value="st">store</option></select><input class="l1v" value="7" style="width:70px" aria-label="store value"><button class="pri l1go">add after the sequence</button><button class="l1clr">remove mine</button></div><p class="note l1err" role="alert" style="color:var(--bad);display:none"></p><p class="note">Enter an 8-byte-aligned user address below 0x800000000000. An unknown page gets a model frame and synthetic line data; this is not a page walk. A store value must fit in a signed 64-bit long. A custom store represents a retired store draining into the L1d. Each access runs against the cache state the sequence left behind. Change only bits 12 and up to stay in set 57.</p>';
@@ -2074,7 +2074,7 @@ build: function(root){
 
 /* ======================= chapter: down the hierarchy ======================= */
 App.chapter({id: 'hier', num: '05', short: 'Down the hierarchy', title: 'Down the hierarchy: L2, L3, fabric, DRAM',
-sub: 'When the L1d misses, the request moves outward until some level has the line, and the line comes back the same way. Where it is found decides whether the load waits 12 cycles or several hundred.',
+sub: 'When the L1d misses, the request moves outward until some level has the line, and the line comes back the same way. Where it is found decides the load-to-use latency shown below.',
 build: function(root){
   var h = App.h, s = App.s, g = App.g, CFG = App.CFG, hx = App.hx;
   var PA = 0x1a3f7ce58n, LINE = PA & ~63n;
@@ -2119,9 +2119,9 @@ build: function(root){
   wire('r1', 'M 120 188 L 120 148', 1);
   wire('r2', 'M 190 280 L 190 252', 1);
   wire('r3', 'M 690 252 L 690 280 L 700 280', 1);
-  wire('r4', 'M 250 408 L 250 252', 1);
+  wire('r4', 'M 250 408 L 8 408 L 8 254 L 120 254 L 120 250', 1);
   s('text', {x: 258, y: 398, 'class': 's'}, sv, '');
-  P.r4t = s('text', {x: 258, y: 396, 'class': 's'}, sv, '');
+  P.r4t = s('text', {x: 20, y: 396, 'class': 's'}, sv, '');
   var stp = App.stepper(root, {render: draw});
 
   function frames(){
