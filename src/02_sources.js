@@ -25,7 +25,7 @@
   var SRC = {
     isa: [W('Instruction_set_architecture'), S.sdm], uop: [W('Micro-operation'), S.agner], mop: [S.zen, S.agner], pc: [W('Program_counter')],
     bp: [W('Branch_predictor'), S.agner], btb: [W('Branch_target_predictor'), S.agner], ras: [W('Branch_predictor'), S.agner],
-    l1i: [W('CPU_cache'), S.zen], itlb: [W('Translation_lookaside_buffer'), S.zen], fetchwin: [S.agner, S.zen], predecode: [S.agner, S.enc],
+    l1i: [W('CPU_cache'), S.zen], itlb: [W('Translation_lookaside_buffer'), S.zen], fetchwin: [S.agner, S.zen, S.zen7], predecode: [S.agner, S.enc],
     decode: [W('Instruction_pipelining'), S.agner], opcache: [S.agner, S.zen], uq: [S.agner, S.zen], fusion: [S.agner],
     zx: [W('Sign_extension'), S.sdm], modrm: [S.enc, S.sdm], rex: [S.enc, S.sdm],
     rename: [W('Register_renaming')], rat: [W('Register_renaming')], crat: [W('Register_renaming')], prf: [W('Register_renaming'), W('Register_file')], freelist: [W('Register_renaming')],

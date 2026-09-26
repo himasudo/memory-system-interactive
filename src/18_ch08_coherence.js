@@ -1,6 +1,7 @@
 /* ======================= chapter: coherence ======================= */
-App.chapter({id: 'coh', num: '08', short: 'Coherence', title: 'Four cores, one line: MOESI coherence',
-sub: 'Each core has private caches, yet every core must see one order of writes to each address. The protocol that guarantees it works per 64-byte line, which is why two unrelated variables in one line can slow each other down.',
+App.chapter({id: 'coh', short: 'Coherence', title: 'Four cores, one line: MOESI coherence',
+lede: 'Each core has private caches, yet all cores must agree on the order of writes to each address.',
+points: ['The coherence protocol tracks ownership per 64-byte line.', 'Step through reads and writes and watch each line change state between cores.', 'Two unrelated variables in one line can slow each other down: false sharing.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g;
   var LN = ['A', 'F', 'G1', 'G2'], LD = {A: 'hist[120..127]', F: 'struct { long a, b; }', G1: 'a, padded to its own line', G2: 'b, padded to its own line'};
@@ -14,7 +15,7 @@ build: function(root){
   var intro = h('div', {'class': 'grid2'}, root);
   h('div', {'class': 'card'}, intro, '<h3>The five states</h3><table class="mt"><tr><th></th><th>dirty?</th><th>other copies?</th><th>may write without asking?</th></tr>' +
     '<tr><td>' + g('st_m', 'M') + '</td><td>yes</td><td>none</td><td>yes</td></tr><tr><td>' + g('st_o', 'O') + '</td><td>yes</td><td>possible (S)</td><td>no</td></tr><tr><td>' + g('st_e', 'E') + '</td><td>no</td><td>none</td><td>yes (becomes M)</td></tr><tr><td>' + g('st_s', 'S') + '</td><td>no*</td><td>possible</td><td>no</td></tr><tr><td>' + g('st_i', 'I') + '</td><td colspan="3" style="font-family:var(--sans)">no usable copy</td></tr></table><p class="note" style="margin-top:6px">* An S copy can be newer than DRAM when some cache holds the line in O. AMD64 uses ' + g('moesi') + '; the O state lets a dirty line be shared without first writing it to DRAM.</p>');
-  h('div', {'class': 'card'}, intro, '<h3>Who is asked</h3><p>On your single-CCX APU every request that misses a core\u2019s L2 reaches the L3. Its ' + g('shadow') + ' record which cores hold each line, so ' + g('probe', 'probes') + ' go only to those cores (a ' + g('pfilter') + '), never to all four. This model shows one private cache per core (L1 + L2 together) and counts every message.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>Who is asked</h3><p>On this single-CCX APU every request that misses a core\u2019s L2 reaches the L3. Its ' + g('shadow') + ' record which cores hold each line, so ' + g('probe', 'probes') + ' go only to those cores (a ' + g('pfilter') + '), never to all four. This model shows one private cache per core (L1 + L2 together) and counts every message.</p>');
   var ctl = h('div', {'class': 'stp'}, root);
   App.seg(ctl, Object.keys(SC).map(function(k){ return [k, SC[k].n]; }), function(v){ cur = v; run(false); }, cur);
   var free = h('div', {'class': 'card', style: 'display:none'}, root);
@@ -70,7 +71,7 @@ build: function(root){
           var own = holders.filter(function(j){ return st[j] === 'M' || st[j] === 'O'; })[0], ex = holders.filter(function(j){ return st[j] === 'E'; })[0];
           if (own !== undefined){
             T.probes++; T.c2c++; A.push(['probe', own]); A.push(['c2c', own, c]);
-            d = 'Miss. The shadow tags show core ' + own + ' holding the line dirty (' + st[own] + '). The L3 probes core ' + own + ', which sends its 64 bytes to core ' + c + ' (cache to cache). Core ' + own + ' keeps the dirty data as <b>O</b> (owner); core ' + c + ' gets <b>S</b>. DRAM is not read and not written: it stays stale.';
+            d = 'Miss. The shadow tags show core ' + own + ' holding the line dirty (' + st[own] + '). The L3 probes core ' + own + ', which sends its 64 bytes to core ' + c + ' (cache to cache).\nCore ' + own + ' keeps the dirty data as <b>O</b> (owner); core ' + c + ' gets <b>S</b>. DRAM is not read and not written: it stays stale.';
             st[own] = 'O'; st[c] = 'S'; cv[L][c] = cv[L][own];
           } else if (ex !== undefined){
             T.probes++; T.c2c++; A.push(['probe', ex]); A.push(['c2c', ex, c]);
@@ -105,7 +106,7 @@ build: function(root){
           if (holders.length){ holders.forEach(function(j){ T.probes++; T.inv++; A.push(['inv', j]); st[j] = 'I'; }); d += 'the L3 invalidates core' + (holders.length > 1 ? 's ' : ' ') + holders.join(', ') + '. '; }
           else d += 'no other core holds it, so nothing is invalidated. ';
           d += 'Core ' + c + ' ends in <b>M</b>.';
-          if (L === 'F' && holders.length) d += ' Core ' + c + ' only changed ' + L + '.' + o[3] + ', and core ' + holders[0] + ' never touches ' + o[3] + ': coherence is tracked per 64-byte line, so the whole line moved anyway. This is ' + g('fshare') + '.';
+          if (L === 'F' && holders.length) d += '\nCore ' + c + ' only changed ' + L + '.' + o[3] + ', and core ' + holders[0] + ' never touches ' + o[3] + ': coherence is tracked per 64-byte line, so the whole line moved anyway. This is ' + g('fshare') + '.';
         }
         st[c] = 'M'; cv[L][c] = nv[L];
       } else {
@@ -157,7 +158,7 @@ build: function(root){
     });
     var T = f.T;
     stats.innerHTML = '<h3>Messages so far</h3><table class="mt"><tr><th>probes sent</th><th>invalidations</th><th>cache-to-cache transfers</th><th>DRAM reads</th><th>DRAM writes</th><th>hits (no message)</th></tr><tr><td>' + T.probes + '</td><td>' + T.inv + '</td><td>' + T.c2c + '</td><td>' + T.memR + '</td><td>' + T.memW + '</td><td>' + T.hits + '</td></tr></table>' +
-      (cur === 'fs' || cur === 'pad' ? '<p class="note" style="margin-top:8px">Same six writes in both scenarios. Unpadded: every write after the first moves the line between cores. Padded: two cold misses, then every write is a local hit. <code>____cacheline_aligned_in_smp</code> in the Linux kernel exists to force exactly this padded layout for hot per-CPU and lock structures.</p>' : '<p class="note" style="margin-top:8px">Arrows: amber = request to the L3, purple = probe, red = invalidate, green = data, orange-red = write-back.</p>');
+      (cur === 'fs' || cur === 'pad' ? '<p class="note" style="margin-top:8px">Same six writes in both scenarios:</p><ul class="note note-list"><li><b>Unpadded</b>: every write after the first moves the line between cores.</li><li><b>Padded</b>: two cold misses, then every write is a local hit.</li></ul><p class="note"><code>____cacheline_aligned_in_smp</code> in the Linux kernel exists to force exactly this padded layout for hot per-CPU and lock structures.</p>' : '<p class="note" style="margin-top:8px">Arrows: amber = request to the L3, purple = probe, red = invalidate, green = data, orange-red = write-back.</p>');
   }
   run(false);
   return {key: stp.key};

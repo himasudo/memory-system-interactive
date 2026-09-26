@@ -1,6 +1,7 @@
 /* ======================= chapter: from C to µops ======================= */
-App.chapter({id: 'code', num: '01', short: 'C \u2192 \u00b5ops', title: 'From C to instructions to \u00b5ops',
-sub: 'One line of C becomes a 5-instruction loop body, 17 bytes of machine code, and 7 internal operations per iteration. Everything below is the real output of gcc 13.3 -O2 for this function.',
+App.chapter({id: 'code', short: 'C \u2192 \u00b5ops', title: 'From C to instructions to \u00b5ops',
+lede: 'One line of C, followed down to the operations the core actually executes.',
+points: ['<code>hist[data[i]]++</code> compiles to a 5-instruction loop body.', 'Those 5 instructions are 17 bytes of machine code.', 'The core turns them into 7 internal operations (\u00b5ops) per iteration.', 'Everything shown is real output of gcc 13.3 at <code>-O2</code>.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, EX = App.EX;
   var I = [
@@ -38,7 +39,7 @@ build: function(root){
   var sel = 6;
 
   var top = h('div', {'class': 'card'}, root);
-  top.innerHTML = '<h3>Where the arguments are</h3><p>The System V x86-64 calling convention passes the first three integer arguments in <code>rdi</code>, <code>rsi</code>, <code>rdx</code>. On entry: <code>rdi = data = ' + App.hx(EX.data) + '</code>, <code>rsi = n = 3</code>, <code>rdx = hist = ' + App.hx(EX.hist) + '</code>. The function starts at <code>' + App.hx(EX.fn) + '</code>, so the loop label <code>.L3</code> is at <code>' + App.hx(EX.loop) + '</code>. These are the same addresses every chapter uses.</p>';
+  top.innerHTML = '<h3>Where the arguments are</h3><p>The System V x86-64 calling convention passes the first three integer arguments in the registers <code>rdi</code>, <code>rsi</code> and <code>rdx</code>. On entry:</p><ul class="kv-list"><li><code>rdi</code> = <code>data</code> = <code>' + App.hx(EX.data) + '</code></li><li><code>rsi</code> = <code>n</code> = <code>3</code></li><li><code>rdx</code> = <code>hist</code> = <code>' + App.hx(EX.hist) + '</code></li></ul><p>The function starts at <code>' + App.hx(EX.fn) + '</code>, so the loop label <code>.L3</code> is at <code>' + App.hx(EX.loop) + '</code>. Every chapter uses these same addresses.</p>';
 
   var three = h('div', {'class': 'c2u'}, root);
   var cC = h('div', {'class': 'card'}, three, '<h3>C source</h3>');
@@ -56,6 +57,8 @@ build: function(root){
     d.onclick = function(){ pick(i); }; ins.el = d;
   });
   h('p', {'class': 'note', style: 'margin-top:8px'}, cS, 'Click an instruction to decode it. Offsets are from the function start ' + App.hx(EX.fn) + '.');
+  h('p', {'class': 'note asm-key'}, cS, '<b>Registers</b> ' + g('r_rdi', 'rdi') + ' data pointer, ' + g('r_rsi', 'rsi') + ' end pointer, ' + g('r_rdx', 'rdx') + ' base of hist, ' + g('r_rax', 'rax') + ' the byte data[i].');
+  h('p', {'class': 'note asm-key'}, cS, '<b>Instructions</b> ' + [['i_test', 'test'], ['i_jcc', 'jle'], ['i_add', 'add'], ['i_nop', 'nopl'], ['i_movzx', 'movzbl'], ['i_add', 'addq'], ['i_cmp', 'cmp'], ['i_jcc', 'jne'], ['i_ret', 'ret']].map(function(x){ return g(x[0], x[1]); }).join(' '));
   h('p', {'class': 'note', style: 'margin-top:8px'}, cC, 'Hover a line to see which instructions came from it. The <code>for</code> line produced the setup and the loop control; the body line produced the load and the read-modify-write.');
 
   var det = h('div', {'class': 'grid2'}, root);
@@ -63,7 +66,7 @@ build: function(root){
 
   /* memory layout of the code */
   var lay = h('div', {'class': 'card'}, root);
-  lay.innerHTML = '<h3>The same bytes in memory</h3><p>The whole function fits in one 64-byte ' + g('line', 'cache line') + ' (' + App.hx(EX.fn) + '\u2013' + App.hx(EX.fn + 63n) + '). Zen+ fetches a 32-byte ' + g('fetchwin', 'window') + ' that may start on any 16-byte boundary (7-cpu.com). Because gcc aligned <code>.L3</code> to 0x\u2026190, one window starting there holds the entire 17-byte loop, so every iteration needs one fetch. After the first pass the loop\'s decoded \u00b5ops also sit in the ' + g('opcache') + ', and fetch + decode are skipped.</p>';
+  lay.innerHTML = '<h3>The same bytes in memory</h3><p>The whole function fits in one 64-byte ' + g('line', 'cache line') + ' (' + App.hx(EX.fn) + '\u2013' + App.hx(EX.fn + 63n) + '). Zen+ fetches a 32-byte ' + g('fetchwin', 'window') + ' that may start on any 16-byte boundary.</p><p>Because gcc aligned <code>.L3</code> to 0x\u2026190, one window starting there holds the entire 17-byte loop, so every iteration needs one fetch.</p><p>After the first pass the loop\'s decoded \u00b5ops also sit in the ' + g('opcache') + ', and fetch + decode are skipped.</p>';
   var lsv = s('svg', {viewBox: '0 0 1000 250', 'class': 'lay'}, h('div', {'class': 'scroller', style: 'border:0'}, lay));
   var cellW = 27, x0 = 112, y0 = 34;
   var byteOwner = []; I.forEach(function(ins, i){ ins.b.split(' ').forEach(function(_, k){ byteOwner[ins.off + k] = i; }); });
@@ -96,7 +99,7 @@ build: function(root){
     '<div class="bstream">' + I.slice(4, 9).map(function(ins){ return ins.b.split(' ').map(function(b){ return '<span>' + b + '</span>'; }).join(''); }).join('') + '</div>' +
     '<p>Predecode marks the boundaries by examining prefixes, opcode and ModRM of each candidate start so that four decoders can work in parallel:</p>' +
     '<div class="bstream">' + I.slice(4, 9).map(function(ins, k){ return '<em class="g' + (k % 2) + '">' + ins.b.split(' ').map(function(b){ return '<span>' + b + '</span>'; }).join('') + '</em>'; }).join('') + '</div>' +
-    '<p class="note">movzbl (3 bytes) \u00b7 add (4) \u00b7 addq to memory (5) \u00b7 cmp (3) \u00b7 jne (2). 17 bytes, 5 instructions.</p>';
+    '<p class="note">Sizes: <code>movzbl</code> 3 bytes, <code>add</code> 4, <code>addq</code> to memory 5, <code>cmp</code> 3, <code>jne</code> 2. Total: 17 bytes for 5 instructions.</p>';
 
   function bits(v, groups){
     var b = v.toString(2).padStart(8, '0'), k = 0, out = '<div class="bitrow">';
@@ -130,7 +133,7 @@ build: function(root){
       (ins.f.some(function(f){ return f[0] === 'rex'; }) ? '<p class="note">' + g('rex') + ' \u00b7 ' + g('modrm') + '</p>' : '');
     uo.innerHTML = '<h3>What the core turns it into</h3>' +
       '<table class="mt"><tr><th>\u00b5op</th><th>unit</th><th>reads</th><th>writes</th></tr>' + ins.uops.map(function(u){ return '<tr><td><b>' + u[0] + '</b></td><td style="font-family:var(--sans)">' + u[1] + '</td><td>' + u[2] + '</td><td>' + u[3] + '</td></tr>' + (u[4] ? '<tr><td colspan="4" class="unote">' + u[4] + '</td></tr>' : ''); }).join('') + '</table>' +
-      '<p class="note" style="margin-top:10px">' + (i === 6 ? 'Shown in the generic 4-\u00b5op form Intel documents for a memory-destination add. AMD tracks memory read-modify-write forms as one ' + g('mop') + ' in the retire queue while executing the same four pieces of work. Chapter 02 runs exactly these four.' : 'Per iteration the loop needs 7 µops: 2 loads, 1 store (address + data), 2 adds and 1 fused compare-and-branch. Those are exactly the 7 rows per iteration in Chapter 02.') + '</p>';
+      '<p class="note" style="margin-top:10px">' + (i === 6 ? 'Shown in the generic 4-\u00b5op form Intel documents for a memory-destination add. AMD tracks memory read-modify-write forms as one ' + g('mop') + ' in the retire queue while executing the same four pieces of work. [[ch:core]] runs exactly these four.' : 'Per iteration the loop needs 7 µops: 2 loads, 1 store (address + data), 2 adds and 1 fused compare-and-branch. Those are exactly the 7 rows per iteration in [[ch:core]].') + '</p>';
   }
   pick(sel);
 }});

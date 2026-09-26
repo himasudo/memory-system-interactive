@@ -1,6 +1,7 @@
 /* ======================= chapter: L1d lookup ======================= */
-App.chapter({id: 'l1d', num: '04', short: 'L1d lookup', title: 'Inside an L1d lookup',
-sub: 'Physical tag in hand, the access meets the 32 KB, 8-way L1d: one set read, eight tags compared at once, one way selected, eight bytes aligned. Then the same set under pressure: fills, pseudo-LRU victims, a dirty eviction and a conflict miss.',
+App.chapter({id: 'l1d', short: 'L1d lookup', title: 'Inside an L1d lookup',
+lede: 'The first cache a load checks: 32 KB, 8 ways, 64-byte lines.',
+points: ['Split the physical address into tag, set index and byte offset.', 'Read one set, compare its eight tags at once, and select the matching way.', 'Then fill the same set until it overflows: pseudo-LRU victims, a dirty eviction and a conflict miss.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, hx = App.hx;
   /* ---------- page map: same frames as every other chapter ---------- */
@@ -59,8 +60,8 @@ build: function(root){
 
   /* ---------- intro ---------- */
   var intro = h('div', {'class': 'grid2 l1-intro'}, root);
-  h('div', {'class': 'card'}, intro, '<h3>Geometry</h3><p>32 KB / 64-byte lines = 512 lines, arranged as 64 ' + g('set', 'sets') + ' \u00d7 8 ' + g('way', 'ways') + '. Bits 5:0 are the ' + g('offset') + ', bits 11:6 the ' + g('index') + ', bits 47:12 the ' + g('tag') + '. Index + offset = 12 bits = the page offset, so the set is chosen from the virtual address while the tag comes from the physical address: ' + g('vipt') + ' (Chapter 03).</p>');
-  h('div', {'class': 'card'}, intro, '<h3>What one way stores</h3><p>' + g('valid', 'V') + ', ' + g('dirty', 'D') + ', a 36-bit physical tag and 64 data bytes. The index is never stored: the row it sits in is the index. On a ' + g('wbk', 'write-back') + ' the line\u2019s physical address is rebuilt as tag \u2016 index \u2016 000000. Replacement below is tree ' + g('plru') + '; AMD does not publish the exact L1d policy.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>Geometry</h3><p>32 KB / 64-byte lines = 512 lines, arranged as 64 ' + g('set', 'sets') + ' \u00d7 8 ' + g('way', 'ways') + '. Bits 5:0 are the ' + g('offset') + ', bits 11:6 the ' + g('index') + ', bits 47:12 the ' + g('tag') + '. Index + offset = 12 bits = the page offset, so the set is chosen from the virtual address while the tag comes from the physical address: ' + g('vipt') + ' ([[ch:xlate]]).</p>');
+  h('div', {'class': 'card'}, intro, '<h3>What one way stores</h3><p>' + g('valid', 'V') + ', ' + g('dirty', 'D') + ', a 36-bit physical tag and 64 data bytes. The index is never stored: the row it sits in is the index.</p><p>On a ' + g('wbk', 'write-back') + ' the line\u2019s physical address is rebuilt as tag \u2016 index \u2016 000000.</p><p>Replacement below is tree ' + g('plru') + '; AMD does not publish the exact L1d policy.</p>');
 
   /* ---------- SVG ---------- */
   var wrap = h('div', {'class': 'scroller l1-canvas'}, root);
@@ -74,7 +75,7 @@ build: function(root){
     s('text', {x: f[1] + f[2] / 2, y: 90, 'text-anchor': 'middle', 'class': 's'}, E.va, f[0]);
     return t;
   });
-  E.tlb = box(670, 14, 240, 86, 'DTLB (Chapter 03)');
+  E.tlb = box(670, 14, 240, 86, 'DTLB ([[ch:xlate]])');
   E.tlbT = s('text', {x: 680, y: 50, 'class': 'm', 'font-size': 12}, E.tlb, ''); E.tlbT2 = s('text', {x: 680, y: 72, 'class': 'm', 'font-size': 12}, E.tlb, '');
   s('text', {x: 680, y: 92, 'class': 's'}, E.tlb, 'physical tag = PA bits 47:12');
   E.op = box(930, 14, 260, 86, 'Access');
@@ -154,7 +155,7 @@ build: function(root){
   var stp = App.stepper(root, {render: draw, pills: false});
   stp.el.classList.add('l1-stepper');
   var cu = h('div', {'class': 'card l1-custom'}, root);
-  cu.innerHTML = '<h3>Run your own access</h3><div class="stp"><input class="l1va" value="0x7ffd4a3c5e58" style="width:170px" aria-label="virtual address"><select class="l1op" aria-label="access operation"><option value="ld">load</option><option value="st">store</option></select><input class="l1v" value="7" style="width:70px" aria-label="store value"><button class="pri l1go">add after the sequence</button><button class="l1clr">remove mine</button></div><p class="note l1err" role="alert" style="color:var(--bad);display:none"></p><p class="note">Enter an 8-byte-aligned user address below 0x800000000000. An unknown page gets a model frame and synthetic line data; this is not a page walk. A store value must fit in a signed 64-bit long. A custom store represents a retired store draining into the L1d. Each access runs against the cache state the sequence left behind. Change only bits 12 and up to stay in set 57.</p>';
+  cu.innerHTML = '<h3>Run your own access</h3><div class="stp"><input class="l1va" value="0x7ffd4a3c5e58" style="width:170px" aria-label="virtual address"><select class="l1op" aria-label="access operation"><option value="ld">load</option><option value="st">store</option></select><input class="l1v" value="7" style="width:70px" aria-label="store value"><button class="pri l1go">add after the sequence</button><button class="l1clr">remove mine</button></div><p class="note l1err" role="alert" style="color:var(--bad);display:none"></p><ul class="note note-list"><li>Enter an 8-byte-aligned user address below 0x800000000000.</li><li>Change only bits 12 and up to stay in set 57.</li><li>An unknown page gets a model frame and synthetic line data; this is not a page walk.</li><li>A store value must fit in a signed 64-bit long. A custom store stands for a retired store draining into the L1d.</li><li>Each access runs against the cache state the sequence left behind.</li></ul>';
   var err = cu.querySelector('.l1err');
   var opSel = cu.querySelector('.l1op'), valIn = cu.querySelector('.l1v');
   function syncStoreValue(){
@@ -208,38 +209,38 @@ build: function(root){
   function frame(r, k, ph){
     var f = {r: r, ph: ph, k: k}, a = r.a, n = k + 1, setTxt = 'set ' + r.si;
     var addr = '<code>' + hx(r.va) + '</code>';
-    if (ph === 'split'){ f.t = 'Access 1, step 1: split the address'; f.d = 'C1\u2019s load of hist[123] arrives with VA ' + addr + '. Bits 11:6 = 111001 = <b>57</b> go straight to the row decoder. Bits 47:12, the VPN 0x7ffd4a3c2, go to the ' + g('dtlb') + ', which returns PFN 0x1a3f7c: the physical tag. Bits 5:0 = <b>24</b> wait until the end, where they pick bytes 24\u201331 of the line.'; return f; }
-    if (ph === 'read'){ f.t = 'Step 2: read the whole set'; f.d = 'The decoder raises wordline 57. In all 8 ways at once, set 57\u2019s V, D and tag bits and its 64 data bytes flow out through the sense amplifiers: 8 tags and 512 data bytes read for one 8-byte load. The hardware reads every way because it does not yet know which one holds the line.'; return f; }
-    if (ph === 'compare'){ f.t = 'Step 3: eight tag compares in parallel'; f.d = 'Eight comparators check PA tag 0x1a3f7c against the eight stored tags in the same cycle; each result is ANDed with its valid bit. <b>Way 3 matches.</b> The OR of the eight hit lines is the hit signal. The comparators are why associativity costs area and power: 8 ways means 8 of them, firing on every access.'; return f; }
+    if (ph === 'split'){ f.t = 'Access 1, step 1: split the address'; f.d = 'C1\u2019s load of hist[123] arrives with VA ' + addr + '.\n<ul><li>Bits 11:6 = 111001 = <b>57</b> go straight to the row decoder.</li><li>Bits 47:12, the VPN 0x7ffd4a3c2, go to the ' + g('dtlb') + ', which returns PFN 0x1a3f7c: the physical tag.</li><li>Bits 5:0 = <b>24</b> wait until the end, where they pick bytes 24\u201331 of the line.</li></ul>'; return f; }
+    if (ph === 'read'){ f.t = 'Step 2: read the whole set'; f.d = 'The decoder raises wordline 57. In all 8 ways at once, set 57\u2019s V, D and tag bits and its 64 data bytes flow out through the sense amplifiers: 8 tags and 512 data bytes read for one 8-byte load.\nThe hardware reads every way because it does not yet know which one holds the line.'; return f; }
+    if (ph === 'compare'){ f.t = 'Step 3: eight tag compares in parallel'; f.d = 'Eight comparators check PA tag 0x1a3f7c against the eight stored tags in the same cycle; each result is ANDed with its valid bit. <b>Way 3 matches.</b> The OR of the eight hit lines is the hit signal.\nThe comparators are why associativity costs area and power: 8 ways means 8 of them, firing on every access.'; return f; }
     if (ph === 'select'){ f.t = 'Step 4: select the way, align the bytes'; f.d = 'The hit vector drives the 8:1 way mux: way 3\u2019s 64 bytes reach the line buffer, the aligner takes bytes 24\u201331, and <b>41</b> goes to the load\u2019s destination register. The pLRU bits of set 57 now point away from way 3.'; return f; }
     if (ph === 'miss'){
       f.t = 'Access ' + n + ': tag miss in set ' + r.si;
-      f.d = 'The eight valid-gated comparators all output 0 for PA tag <code>' + tg(r.tag) + '</code>. The hit vector is 00000000. The existing tag/data rows are still shown; the MAB requests line <code>' + hx(r.pa & ~63n) + '</code> from L2. ' + (r.byInvalid ? 'Invalid way ' + r.way + ' can receive it.' : 'The set is full; the replacement bits choose way ' + r.way + ' for eviction.');
+      f.d = 'The eight valid-gated comparators all output 0 for PA tag <code>' + tg(r.tag) + '</code>. The hit vector is 00000000.\nThe existing tag/data rows are still shown; the MAB requests line <code>' + hx(r.pa & ~63n) + '</code> from L2. ' + (r.byInvalid ? 'Invalid way ' + r.way + ' can receive it.' : 'The set is full; the replacement bits choose way ' + r.way + ' for eviction.');
       return f;
     }
     if (ph === 'writeback'){
       f.t = 'Access ' + n + ': write back the dirty victim';
-      f.d = 'Before replacement, way ' + r.way + ' holds dirty line <code>' + hx(r.evict.pa) + '</code>. L2 has an older copy, so the 64 cached bytes go to L2. The tag and data rows below still show the old set; the incoming line has not filled its way yet.';
+      f.d = 'Before replacement, way ' + r.way + ' holds dirty line <code>' + hx(r.evict.pa) + '</code>. L2 has an older copy, so the 64 cached bytes go to L2.\nThe tag and data rows below still show the old set; the incoming line has not filled its way yet.';
       return f;
     }
     f.t = 'Access ' + n + ': ' + a.who + (ph === 'fill' ? ' — refill' : '');
     var d = (a.st ? 'Store ' + a.val + ' to ' : 'Load from ') + addr + ' (PA <code>' + hx(r.pa) + '</code>) \u2192 ' + setTxt + ', tag ' + tg(r.tag) + '. ';
     if (r.hit){
       d += '<b>Hit in way ' + r.way + '.</b> ';
-      if (a.st) d += r.wasDirty ? (k === 2 ? 'D was already 1: both histogram stores landed in the L1d and <b>nothing went to L2</b>. Two stores, zero bytes of write traffic: ' + g('wbk') + ' coalesces them.' : 'D was already 1. This store changes the cached line; no write-back to L2 happens yet.') : 'Bytes ' + r.off + '\u2013' + (r.off + 7) + ' become ' + a.val + ' and D is set to 1. The L2 copy is now stale; the L1d holds the only current value.';
+      if (a.st) d += r.wasDirty ? (k === 2 ? '\nD was already 1: both histogram stores landed in the L1d and <b>nothing went to L2</b>. Two stores, zero bytes of write traffic: ' + g('wbk') + ' coalesces them.' : '\nD was already 1. This store changes the cached line; no write-back to L2 happens yet.') : '\nBytes ' + r.off + '\u2013' + (r.off + 7) + ' become ' + a.val + ' and D is set to 1. The L2 copy is now stale; the L1d holds the only current value.';
       else d += 'Value ' + r.val + '.';
     } else {
-      d += '<b>Miss:</b> no valid way holds tag ' + tg(r.tag) + '. A ' + g('mab') + ' entry requests the line from L2. ';
+      d += '<b>Miss:</b> no valid way holds tag ' + tg(r.tag) + '.\nA ' + g('mab') + ' entry requests the line from L2. ';
       if (r.byInvalid) d += 'Way ' + r.way + ' is invalid, so it is filled without evicting anything.';
       else {
         d += 'All 8 ways are valid, so the pLRU bits choose the victim: <b>way ' + r.way + '</b>' + (r.evict ? ' (' + (r.evict.tag === 0x1a3f7cn ? 'the hist[120..127] line' : 'line ' + hx(r.evict.pa)) + ')' : '') + '. ';
         d += r.wb ? 'It is dirty, so its 64 bytes are <b>written back to L2</b> before the new line takes the way.' : 'It is clean: the L2 (inclusive) already has an identical copy, so it is dropped.';
       }
-      if (a.who.indexOf('again') >= 0) d += ' This is a <b>conflict miss</b>: the program touched only ' + (R0.length > 0 ? n - 3 : n) + ' distinct lines, a few hundred bytes, far below 32 KB, but more than 8 of them map to set 57. The line comes back from L2 with value <b>' + r.val + '</b>: the write-back kept it.';
+      if (a.who.indexOf('again') >= 0) d += '\nThis is a <b>conflict miss</b>: the program touched only ' + (R0.length > 0 ? n - 3 : n) + ' distinct lines, a few hundred bytes, far below 32 KB, but more than 8 of them map to set 57.\nThe line comes back from L2 with value <b>' + r.val + '</b>: the write-back kept it.';
       else if (!a.st) d += ' Value ' + r.val + '.';
       if (a.st) d += ' The store then writes bytes ' + r.off + '\u2013' + (r.off + 7) + ' and sets D (' + g('walloc') + ').';
     }
-    if (r.si === 57 && k >= 3 && k < 5 && !r.hit) d += ' All of these addresses differ only in bits 12 and up, so bits 11:6 are always 57.';
+    if (r.si === 57 && k >= 3 && k < 5 && !r.hit) d += '\nAll of these addresses differ only in bits 12 and up, so bits 11:6 are always 57.';
     f.d = d; return f;
   }
   function wordTxt(v){ if (v === null || v === undefined) return ''; return v > -10000n && v < 100000n ? v.toString() : '\u2026' + BigInt.asUintN(64, v).toString(16).padStart(16, '0').slice(-4); }

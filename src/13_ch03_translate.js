@@ -1,6 +1,7 @@
 /* ======================= chapter: translation ======================= */
-App.chapter({id: 'xlate', num: '03', short: 'VA \u2192 PA', title: 'Virtual to physical: TLBs and the page walk',
-sub: 'Before the L1d can confirm a hit it needs the physical address. This is what happens to the virtual address of hist[123] between the AGU and the tag compare, in five situations.',
+App.chapter({id: 'xlate', short: 'VA \u2192 PA', title: 'Virtual to physical: TLBs and the page walk',
+lede: 'Programs use virtual addresses, but the L1d needs the physical address before it can confirm a hit.',
+points: ['Follow the virtual address of <code>hist[123]</code> from the address unit to the tag compare.', 'Five situations: DTLB hit, L2 TLB hit, full page walk, page fault, and a 2 MB page.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, EX = App.EX, hx = App.hx;
   var VA = 0x7ffd4a3c2e58n;
@@ -15,7 +16,7 @@ build: function(root){
 
   var intro = h('div', {'class': 'grid2'}, root);
   h('div', {'class': 'card'}, intro, '<h3>Why every access needs this</h3><p>Each process sees its own 48-bit ' + g('va', 'virtual address') + ' space; physical memory is one shared array. The OS keeps a per-process ' + g('pml4', 'page table') + ' mapping 4 KB ' + g('page', 'pages') + ' to physical frames, and the ' + g('mmu') + ' must apply it to every load, store and instruction fetch. Walking four table levels on every access would multiply memory traffic by five, so recent translations are cached in ' + g('tlb', 'TLBs') + '.</p>');
-  h('div', {'class': 'card'}, intro, '<h3>Why it costs nothing on a hit</h3><p>The L1d is ' + g('vipt') + '. Its set index is VA bits 11:6, which lie inside the 12-bit page offset, so they are the same before and after translation. The core starts reading the 8 ways of set 57 with virtual bits while the ' + g('dtlb') + ' translates in parallel; the physical tag is ready in time for the compare. This only works because 64 sets \u00d7 64 B = 4 KB = one page: a bigger L1d at 8 ways would need index bits above bit 11.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>Why it costs nothing on a hit</h3><p>The L1d is ' + g('vipt') + '. Its set index is VA bits 11:6, which lie inside the 12-bit page offset, so they are the same before and after translation.</p><p>The core starts reading the 8 ways of set 57 with virtual bits while the ' + g('dtlb') + ' translates in parallel; the physical tag is ready in time for the compare.</p><p>This only works because 64 sets \u00d7 64 B = 4 KB = one page: a bigger L1d at 8 ways would need index bits above bit 11.</p>');
 
   var ctl = h('div', {'class': 'stp'}, root);
   h('span', {'class': 'note'}, ctl, 'situation:');
@@ -164,9 +165,9 @@ build: function(root){
     var F = function(p, t, d, o){ o.p = p; o.t = t; o.d = d; fr.push(o); };
     var huge = mode === 'huge';
     F('VA', 'The AGU produces the virtual address', 'C1\'s load computed <code>rdx + rax\u00d78 = 0x7ffd4a3c2a80 + 123\u00d78 = 0x7ffd4a3c2e58</code>. For translation it splits into ' + (huge ? 'three 9-bit table indices and a 21-bit offset, because this scenario assumes the region is backed by a 2 MB ' + g('huge', 'huge page') + '.' : 'four 9-bit table indices and a 12-bit page offset. The top 36 bits (0x7ffd4a3c2) are the ' + g('vpn') + '.'), {va: 1, huge: huge});
-    F('lookup', 'L1 DTLB lookup, in parallel with the L1d set read', 'The VPN is broadcast to all 64 L1 DTLB entries; each has its own comparator (VPN and PCID must both match). Meanwhile the L1d reads the 8 ways of set 57 using VA bits 11:6.' + (mode === 'hit' ? ' <b>Entry 3 matches.</b>' : ' <b>No entry matches: L1 DTLB miss.</b> The load cannot complete its tag compare and waits.'), {va: 1, vipt: 1, cam: mode === 'hit' ? 'hit' : 'miss', huge: huge});
+    F('lookup', 'L1 DTLB lookup, in parallel with the L1d set read', 'The VPN is broadcast to all 64 L1 DTLB entries; each has its own comparator (VPN and PCID must both match). Meanwhile the L1d reads the 8 ways of set 57 using VA bits 11:6.' + (mode === 'hit' ? '\n<b>Entry 3 matches.</b>' : '\n<b>No entry matches: L1 DTLB miss.</b> The load cannot complete its tag compare and waits.'), {va: 1, vipt: 1, cam: mode === 'hit' ? 'hit' : 'miss', huge: huge});
     if (mode === 'hit'){
-      F('PA', 'Physical address in the same cycle', 'PFN 0x1a3f7c from the matching entry, joined with offset 0xe58, gives <b>PA 0x1a3f7ce58</b>. The L1d compares PA tag 0x1a3f7c against the 8 tags it just read (Chapter 04). Translation added no cycles.', {va: 1, vipt: 1, cam: 'hit', pa: 'ok'});
+      F('PA', 'Physical address in the same cycle', 'PFN 0x1a3f7c from the matching entry, joined with offset 0xe58, gives <b>PA 0x1a3f7ce58</b>. The L1d compares PA tag 0x1a3f7c against the 8 tags it just read ([[ch:l1d]]). Translation added no cycles.', {va: 1, vipt: 1, cam: 'hit', pa: 'ok'});
     } else if (mode === 'l2'){
       F('L2 TLB', 'L2 TLB hit', 'The L2 TLB (1536 entries) holds the translation. It is slower than the L1 DTLB but far cheaper than a walk. The entry is copied into the L1 DTLB, replacing an older one, and the load replays.', {va: 1, cam: 'miss', l2: 'hit'});
       F('fill', 'L1 DTLB refilled, load replays', 'Next attempt: the L1 DTLB hits in the new entry and the PA is <b>0x1a3f7ce58</b>.', {va: 1, cam: 'hitnew', l2: 'hit', pa: 'ok'});
@@ -178,7 +179,7 @@ build: function(root){
         var v = tb.val; if (huge && q === 2) v = HUGE_PDE; if (mode === 'fault' && q === 3) v = FAULT_PTE;
         var nxt = v & 0x000ffffffffff000n;
         var d = (q === 0 ? 'CR3 holds the PML4 base 0x10a3b000. ' : 'The previous entry gave this table\'s base ' + hx(tb.base) + '. ') +
-          'Entry address = base + index \u00d7 8 = ' + hx(tb.base) + ' + ' + tb.idx + ' \u00d7 8 = <b>' + hx(ea) + '</b>. The walker issues an 8-byte load to that physical address; it goes through the data caches like any load' + (q < 2 ? ', and upper levels like this one can also come from the ' + g('pwc') : '') + '. ';
+          'Entry address = base + index \u00d7 8 = ' + hx(tb.base) + ' + ' + tb.idx + ' \u00d7 8 = <b>' + hx(ea) + '</b>.\nThe walker issues an 8-byte load to that physical address; it goes through the data caches like any load' + (q < 2 ? ', and upper levels like this one can also come from the ' + g('pwc') : '') + '.\n';
         if (mode === 'fault' && q === 3) d += 'The entry is <b>0</b>: present bit clear. There is no translation.';
         else if (huge && q === 2) d += 'Value ' + hx(v) + ': <b>PS = 1</b>, so this PDE is the leaf. It maps a whole 2 MB frame at ' + hx(v & 0x000fffffffe00000n) + '; no PT level.';
         else if (q === 3) d += 'Value ' + hx(v) + ': present, writable, user, accessed, dirty, no-execute. <b>PFN = 0x1a3f7c.</b>';
@@ -186,9 +187,9 @@ build: function(root){
         F(tb.n, 'Level ' + (q + 1) + ': read the ' + tb.n + ' entry', d, {va: 1, cam: 'miss', l2: 'miss', walker: 1, lvl: q + 1, pte: q, pteVal: v, huge: huge, fault: mode === 'fault' && q === 3});
       }
       if (mode === 'fault'){
-        F('#PF', 'Page fault raised', 'The walker reports "not present". The load is marked faulting in the ROB. Nothing happens until it reaches the ROB head: exceptions are taken in program order, so older instructions retire first and all younger ones are ' + g('squash', 'squashed') + '. Then the CPU writes the faulting address into ' + g('pf', 'CR2') + ', pushes an error code (P = 0: not present; U/S = 1: user mode; W/R: the access type) and jumps to the kernel\'s #PF handler (vector 14).', {va: 1, walker: 1, lvl: 4, pte: 3, pteVal: FAULT_PTE, pa: 'fault', kernel: 1, fault: true});
+        F('#PF', 'Page fault raised', 'The walker reports "not present". The load is marked faulting in the ROB.\nNothing happens until it reaches the ROB head: exceptions are taken in program order, so older instructions retire first and all younger ones are ' + g('squash', 'squashed') + '.\nThen the CPU writes the faulting address into ' + g('pf', 'CR2') + ', pushes an error code (P = 0: not present; U/S = 1: user mode; W/R: the access type) and jumps to the kernel\'s #PF handler (vector 14).', {va: 1, walker: 1, lvl: 4, pte: 3, pteVal: FAULT_PTE, pa: 'fault', kernel: 1, fault: true});
         F('kernel', 'Linux allocates the page', 'The handler finds the VMA covering the address, sees an anonymous page never touched, allocates a zeroed 4 KB frame (on the NUMA node of this CPU: ' + g('ftouch') + '), and writes a present PTE. The kernel function chain is shown below the diagram.', {va: 1, walker: 1, lvl: 4, pte: 3, pteVal: TB[3].val, pa: 'fault', kernel: 2, fault: true});
-        F('retry', 'Return and re-execute', 'iretq returns to the faulting instruction, which runs again from the start: TLB miss, walk, now the PTE is present, PFN 0x1a3f7c, <b>PA 0x1a3f7ce58</b>. This was a <b>minor</b> fault (no disk I/O). A <b>major</b> fault would also have to read the page from swap or a file, through the NVMe path of Chapter 10.', {va: 1, lvl: 4, pte: 3, pteVal: TB[3].val, pa: 'ok', cam: 'hitnew', kernel: 3});
+        F('retry', 'Return and re-execute', 'iretq returns to the faulting instruction, which runs again from the start: TLB miss, walk, now the PTE is present, PFN 0x1a3f7c, <b>PA 0x1a3f7ce58</b>. This was a <b>minor</b> fault (no disk I/O). A <b>major</b> fault would also have to read the page from swap or a file, through the NVMe path of [[ch:dev]].', {va: 1, lvl: 4, pte: 3, pteVal: TB[3].val, pa: 'ok', cam: 'hitnew', kernel: 3});
       } else {
         F('fill', 'Fill the TLBs and replay', huge ? 'The 2 MB translation goes into the L2 TLB and the L1 DTLB. PA = 2 MB frame base 0x1a3e00000 + VA bits 20:0 (0x1c2e58) = <b>0x1a3fc2e58</b> (a different mapping from the 4 KB case, assumed for this scenario). One entry now covers 512 times more memory.' :
           'The walker writes VPN 0x7ffd4a3c2 \u2192 PFN 0x1a3f7c into the L2 TLB and the L1 DTLB. If the accessed (A) bit had been clear, the walker would have set it in memory; a first write also sets D. The load replays, hits in the L1 DTLB, and gets <b>PA 0x1a3f7ce58</b>.', {va: 1, lvl: huge ? 3 : 4, pte: huge ? 2 : 3, pteVal: huge ? HUGE_PDE : TB[3].val, cam: 'hitnew', pa: 'ok', huge: huge});
@@ -273,7 +274,7 @@ build: function(root){
     var pl = [];
     if (f.pa === 'ok'){
       pl = f.huge ? ['0x1a3fc2e58', 'frame 0x1a3e00000 (2 MB) + VA[20:0] 0x1c2e58', 'L1d still indexes with VA[11:6] = 57', 'tag compare uses PA bits 47:12 = 0x1a3fc2', 'TLB reach per entry: 2 MB', ''] :
-                    ['0x1a3f7ce58', 'PFN 0x1a3f7c \u00d7 4096 + offset 0xe58', 'L1d tag compare with PA tag 0x1a3f7c', 'continue in Chapter 04 (set 57)', 'TLB reach per entry: 4 KB', ''];
+                    ['0x1a3f7ce58', 'PFN 0x1a3f7c \u00d7 4096 + offset 0xe58', 'L1d tag compare with PA tag 0x1a3f7c', 'continue in [[ch:l1d]] (set 57)', 'TLB reach per entry: 4 KB', ''];
       on('pa');
     } else if (f.pa === 'fault') pl = ['#PF (vector 14)', 'CR2 \u2190 0x7ffd4a3c2e58', 'error code: P = 0, U/S = 1', 'no physical address exists yet', '', ''];
     else pl = ['\u2014', 'waiting for translation', '', '', '', ''];
@@ -289,7 +290,7 @@ build: function(root){
 
   /* reach + context-switch cards */
   var reach = h('div', {'class': 'card'}, extra);
-  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' on your core</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
+  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' on a Zen+ core</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
     '<tr><td>L1 DTLB</td><td>64</td><td>256 KB</td><td>128 MB</td></tr><tr><td>L2 TLB</td><td>1536</td><td>6 MB</td><td>3 GB</td></tr></table>' +
     '<p style="margin-top:8px">Compare with the caches you measured: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
   var ctx = h('div', {'class': 'card'}, extra);

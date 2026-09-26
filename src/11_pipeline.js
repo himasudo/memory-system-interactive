@@ -1,6 +1,7 @@
 /* ======================= chapter: the core ======================= */
-App.chapter({id: 'core', num: '02', short: 'Inside the core', title: 'Inside the core, cycle by cycle',
-sub: 'The histogram loop running through a cycle-level model of an out-of-order core: every instruction fetched, decoded, renamed, scheduled, executed, retired, and every store committed. Step one cycle at a time and watch each structure change.',
+App.chapter({id: 'core', short: 'Inside the core', title: 'Inside the core, cycle by cycle',
+lede: 'The histogram loop running through a cycle-level model of an out-of-order core.',
+points: ['Follow each instruction through fetch, decode, rename, scheduling, execution and retirement.', 'Stores wait in the store queue until they commit to the L1d.', 'Step one cycle at a time; every structure updates as you go.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, EX = App.EX, CFG = App.CFG, hx = App.hx;
   var sim = null, cur = 0, level = 'L1', timer = null, cols = [], prevSnap = null;
@@ -21,7 +22,7 @@ build: function(root){
      ['lq', 'load queue', C.lq, R.lq], ['sq', 'store queue', C.sq, R.sq], ['uq', 'µop queue', C.uq + ' instr', R.uq], ['mab', 'miss buffers', C.mab, R.mab],
      ['decode', 'fetch / decode width', '4', R.fetch], ['rename', 'rename width', '4', R.rename], ['retire', 'retire width', '4', R.retire]]
     .map(function(r){ return '<tr><td>' + g(r[0], r[1]) + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td></tr>'; }).join('') +
-    '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages; your measured mispredict cost (~20.8 TSC ticks) reflects the real, longer one.</p>';
+    '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages. A misprediction measured on the Ryzen 7 3750H costs about 20.8 TSC ticks (~9 ns), which reflects the real, longer front end.</p>';
 
   /* ---------- controls ---------- */
   var ctl = h('div', {'class': 'card pctl core-controls'}, root);

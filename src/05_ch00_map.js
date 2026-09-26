@@ -1,6 +1,7 @@
 /* ======================= chapter: the machine ======================= */
-App.chapter({id: 'map', num: '00', short: 'The machine', title: 'The machine, all of it',
-sub: 'Every structure a memory access can touch on your laptop, from the load/store unit to the DRAM chips and the SSD. Tap any block for what it is, its size, and the chapter that takes it apart.',
+App.chapter({id: 'map', short: 'The machine', title: 'The machine, all of it',
+lede: 'Every structure a memory access can touch, from the core\u2019s load/store unit out to the DRAM chips and the SSD.',
+points: ['Click a block to see what it does and its published size.', 'Each block links to the chapter that takes it apart.', 'All sizes come from one real processor, an AMD Ryzen 7 3750H (Zen+). Other x86-64 CPUs use the same kinds of structures with different sizes.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g;
   var work = h('div', {'class': 'map-workbench'}, root);
@@ -9,18 +10,18 @@ build: function(root){
   var info = h('aside', {'class': 'card map-inspector'}, work);
   var parts = {}, selId = null;
   var D = {
-    core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, 44-entry load and store queues.', 'core', 'Chapter 02 runs the histogram loop through it cycle by cycle.'],
-    fe: ['Front end', 'Branch predictor + BTB, L1i (64 KB, 4-way) with iTLB, predecode, 4 decoders, 2K-entry op cache, \u00b5op queue.', 'code', 'Chapter 01 shows what it decodes; Chapter 02 shows it running.'],
+    core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, 44-entry load and store queues.', 'core', '[[ch:core]] runs the histogram loop through it cycle by cycle.'],
+    fe: ['Front end', 'Branch predictor + BTB, L1i (64 KB, 4-way) with iTLB, predecode, 4 decoders, 2K-entry op cache, \u00b5op queue.', 'code', '[[ch:code]] shows what it decodes; [[ch:core]] shows it running.'],
     ooo: ['Rename + out-of-order engine', 'RAT and free list, 168-entry PRF, 192-entry ROB, six 14-entry schedulers, 4 ALU and 2 AGU ports.', 'core', ''],
-    lsu: ['Load/store unit + L1d', '44-entry load queue, 44-entry store queue, 64-entry L1 DTLB, 1536-entry L2 TLB, 2 page walkers, 32 KB 8-way L1d. 2 loads + 1 store per cycle, 16 bytes each.', 'l1d', 'Chapter 03 covers translation, Chapter 04 the L1d lookup, Chapter 07 the store path.'],
+    lsu: ['Load/store unit + L1d', '44-entry load queue, 44-entry store queue, 64-entry L1 DTLB, 1536-entry L2 TLB, 2 page walkers, 32 KB 8-way L1d. 2 loads + 1 store per cycle, 16 bytes each.', 'l1d', '[[ch:xlate]] covers translation, [[ch:l1d]] the L1d lookup, [[ch:stores]] the store path.'],
     tlb: ['TLBs + page walkers', 'L1 DTLB: 64 entries, fully associative, all page sizes. L2 TLB: 1536 entries, no 1 GB pages. Two hardware walkers read page tables through the data caches.', 'xlate', ''],
     l2: ['L2 cache (per core)', '512 KB, 8-way, write-back, inclusive of the L1s. 32 bytes/cycle to L1. \u226512 cycles load-to-use (published). Up to 50 outstanding misses to L3 per core.', 'hier', ''],
-    l3: ['L3 cache (shared by the CCX)', '4 MB, 16-way on your APU. A victim cache: filled with lines evicted from the L2s, mostly exclusive of them. Holds shadow tags of every L2 so it acts as a probe filter. ~35 cycles average (published Zen/Zen+).', 'hier', 'Chapter 05 follows a miss through it; Chapter 08 uses its shadow tags for coherence.'],
+    l3: ['L3 cache (shared by the CCX)', '4 MB, 16-way on the Ryzen 7 3750H. A victim cache: filled with lines evicted from the L2s, mostly exclusive of them. Holds shadow tags of every L2 so it acts as a probe filter. ~35 cycles average (published Zen/Zen+).', 'hier', '[[ch:hier]] follows a miss through it; [[ch:coh]] uses its shadow tags for coherence.'],
     df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; up to 96 outstanding misses from L3 to memory (published Zen/Zen+).', 'hier', ''],
-    umc: ['Memory controllers (UMC \u00d72)', 'One per channel. Queue requests, map physical addresses to channel/bank/row/column, reorder to hit open rows, issue ACT/RD/WR/PRE/REF, enforce DRAM timings.', 'dram', 'Chapter 06.'],
+    umc: ['Memory controllers (UMC \u00d72)', 'One per channel. Queue requests, map physical addresses to channel/bank/row/column, reorder to hit open rows, issue ACT/RD/WR/PRE/REF, enforce DRAM timings.', 'dram', '[[ch:dram]].'],
     dram: ['DDR4 DRAM, 2 channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst = 8 beats \u00d7 8 bytes = 64 bytes, one cache line. Cells are capacitors that must be refreshed.', 'dram', ''],
     gpu: ['Integrated GPU (Vega)', 'Another client of the same fabric and the same DRAM. It competes with the cores for memory bandwidth.', 'hier', ''],
-    io: ['I/O hub: PCIe root complex + IOMMU', 'Turns device PCIe packets into memory requests and core MMIO accesses into PCIe packets. The IOMMU translates device addresses and blocks DMA outside what the OS mapped. Device DMA is snooped against CPU caches.', 'dev', 'Chapter 10 walks an NVMe read through it.'],
+    io: ['I/O hub: PCIe root complex + IOMMU', 'Turns device PCIe packets into memory requests and core MMIO accesses into PCIe packets. The IOMMU translates device addresses and blocks DMA outside what the OS mapped. Device DMA is snooped against CPU caches.', 'dev', '[[ch:dev]] walks an NVMe read through it.'],
     nvme: ['NVMe SSD', 'Talks to the CPU through submission/completion rings in RAM, doorbell registers (MMIO), DMA, and MSI-X interrupts.', 'dev', ''],
     nic: ['Wi-Fi / Ethernet', 'Same pattern as NVMe: descriptor rings in RAM, doorbells, DMA, interrupts.', 'dev', '']
   };
@@ -96,17 +97,18 @@ build: function(root){
 
   var path = h('div', {'class': 'card route-index'}, root);
   path.innerHTML = '<h3>The route this site follows</h3><ol class="route">' +
-    '<li><b>01</b> C \u2192 assembly \u2192 bytes \u2192 \u00b5ops for <code>hist[data[i]]++</code>.</li>' +
-    '<li><b>02</b> Those \u00b5ops through fetch, decode, ' + g('rename') + ', the ' + g('rob') + ', ' + g('sched', 'schedulers') + ', ports, the ' + g('lq', 'load') + ' and ' + g('sq', 'store') + ' queues, retirement and store commit.</li>' +
-    '<li><b>03</b> The virtual address of <code>hist[123]</code> through the ' + g('dtlb') + ', the L2 TLB, a 4-level ' + g('walk') + ', and a ' + g('pf') + '.</li>' +
-    '<li><b>04</b> The physical address through the L1d: set, tag compare, way select, ' + g('plru') + ', eviction and ' + g('wbk') + '.</li>' +
-    '<li><b>05</b> A miss through L2, the L3 ' + g('victimc') + ', the fabric and back, and how misses overlap.</li>' +
-    '<li><b>06</b> DRAM: banks, rows, the ' + g('rowbuf') + ', commands and timings.</li>' +
-    '<li><b>07</b> The store path: store buffer, ' + g('rfo') + ', ' + g('wc') + ', ' + g('memtype', 'memory types') + ', fences.</li>' +
-    '<li><b>08</b> Four cores sharing lines: ' + g('moesi') + ', probes, ' + g('fshare') + '.</li>' +
-    '<li><b>09</b> ' + g('pref', 'Prefetchers') + ' guessing the next line.</li>' +
-    '<li><b>10</b> Devices: ' + g('mmio') + ', ' + g('dma') + ', the ' + g('iommu') + ', interrupts \u2014 an NVMe read end to end.</li>' +
-    '<li><b>11</b> One <code>hist[123]++</code> with every stage on a single timeline.</li>' +
-    '<li><b>12</b> Glossary: every term, searchable.</li></ol>' +
-    '<p class="note">Dotted terms open a definition. The <b>latency model</b> in the sidebar starts with published figures and can be replaced with your own measurements.</p>';
+    '<li><b>[[num:bits]]\u2013[[num:share]]</b> Foundations: bits and hex, addresses, instructions, assembly, cycles, caches, virtual memory, cores and devices.</li>' +
+    '<li><b>[[num:code]]</b> C \u2192 assembly \u2192 bytes \u2192 \u00b5ops for <code>hist[data[i]]++</code>.</li>' +
+    '<li><b>[[num:core]]</b> Those \u00b5ops through fetch, decode, ' + g('rename') + ', the ' + g('rob') + ', ' + g('sched', 'schedulers') + ', ports, the ' + g('lq', 'load') + ' and ' + g('sq', 'store') + ' queues, retirement and store commit.</li>' +
+    '<li><b>[[num:xlate]]</b> The virtual address of <code>hist[123]</code> through the ' + g('dtlb') + ', the L2 TLB, a 4-level ' + g('walk') + ', and a ' + g('pf') + '.</li>' +
+    '<li><b>[[num:l1d]]</b> The physical address through the L1d: set, tag compare, way select, ' + g('plru') + ', eviction and ' + g('wbk') + '.</li>' +
+    '<li><b>[[num:hier]]</b> A miss through L2, the L3 ' + g('victimc') + ', the fabric and back, and how misses overlap.</li>' +
+    '<li><b>[[num:dram]]</b> DRAM: banks, rows, the ' + g('rowbuf') + ', commands and timings.</li>' +
+    '<li><b>[[num:stores]]</b> The store path: store buffer, ' + g('rfo') + ', ' + g('wc') + ', ' + g('memtype', 'memory types') + ', fences.</li>' +
+    '<li><b>[[num:coh]]</b> Four cores sharing lines: ' + g('moesi') + ', probes, ' + g('fshare') + '.</li>' +
+    '<li><b>[[num:pref]]</b> ' + g('pref', 'Prefetchers') + ' guessing the next line.</li>' +
+    '<li><b>[[num:dev]]</b> Devices: ' + g('mmio') + ', ' + g('dma') + ', the ' + g('iommu') + ', interrupts \u2014 an NVMe read end to end.</li>' +
+    '<li><b>[[num:e2e]]</b> One <code>hist[123]++</code> with every stage on a single timeline.</li>' +
+    '<li><b>[[num:gloss]]</b> Glossary: every term, searchable.</li></ol>' +
+    '<p class="note">Colored terms open a definition. The <b>latency model</b> in the sidebar starts with published figures and can be replaced with your own measurements.</p>';
 }});

@@ -1,10 +1,10 @@
 /* ======================= chapter: glossary ======================= */
-App.chapter({id: 'gloss', num: '12', short: 'Glossary', title: 'Glossary',
-sub: 'Every term used in these chapters: what it means, which chapter teaches it, and where to read more.',
+App.chapter({id: 'gloss', ref: true, short: 'Glossary', title: 'Glossary',
+lede: 'Every term on this site: what it means, where it is explained, and where to read more.',
 build: function(root){
   var h = App.h, G = App.G;
   var keys = Object.keys(G).sort(function(a, b){ return G[a].t.toLowerCase().localeCompare(G[b].t.toLowerCase()); });
-  var CATS = [['all', 'All']].concat(['core', 'xlate', 'cache', 'memory', 'order', 'coh', 'pref', 'io'].map(function(c){ return [c, App.TERM_LABEL[c]]; }));
+  var CATS = [['all', 'All']].concat(['basics', 'core', 'xlate', 'cache', 'memory', 'order', 'coh', 'pref', 'io'].map(function(c){ return [c, App.TERM_LABEL[c]]; }));
   var count = {all: keys.length}; keys.forEach(function(k){ var c = App.termCategory(k); count[c] = (count[c] || 0) + 1; });
   var bar = h('div', {'class': 'gl-bar'}, root);
   var q = h('input', {type: 'search', placeholder: 'Search ' + keys.length + ' terms and definitions\u2026', 'aria-label': 'Search the glossary'}, bar);

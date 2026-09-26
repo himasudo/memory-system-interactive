@@ -9,7 +9,7 @@ d('pc','PC / RIP','Program counter: the virtual address of the next instruction 
 d('bp','branch predictor','Hardware that guesses, before decode, whether a branch is taken and where it goes, so fetch never waits for the branch to execute.');
 d('btb','BTB','Branch target buffer: a cache keyed by fetch address that remembers where previously seen branches jumped. A BTB hit lets fetch redirect in the same cycle.');
 d('ras','RAS','Return address stack: a small hardware stack that pushes on CALL and pops on RET to predict return targets.');
-d('l1i','L1i','Level-1 instruction cache. 64 KB, 4-way on your Zen+ core. Fetch reads 32 bytes per cycle from it.');
+d('l1i','L1i','Level-1 instruction cache. 64 KB, 4-way on Zen+. Fetch reads 32 bytes per cycle from it.');
 d('itlb','iTLB','Instruction TLB: translates the fetch address (virtual) to a physical address for the L1i tag check.');
 d('fetchwin','fetch window','The aligned block of bytes fetch reads in one cycle (32 bytes on Zen+). Instructions are carved out of it afterwards.');
 d('predecode','predecode / pick','Finds where each variable-length x86 instruction starts and ends inside the fetch window, so decoders get whole instructions.');
@@ -94,7 +94,7 @@ d('pte','PTE','Page-table entry: 8 bytes holding a physical frame number plus fl
 d('pml4','PML4 / PDPT / PD / PT','The four page-table levels on x86-64. Each is one 4 KB page of 512 eight-byte entries, indexed by 9 bits of the virtual address.');
 d('cr3','CR3','The control register holding the physical address of the current process\'s top-level page table (and its PCID). Writing it switches address spaces.');
 d('walk','page walk','Reading the page-table entries level by level to translate an address after a TLB miss. Each step is a real memory load that goes through the data caches.');
-d('pwc','page-walk cache','Caches upper-level page-table entries so a walk can skip levels. 7-cpu.com reports a 64-entry cache for PML4E/PDPE entries on Zen.');
+d('pwc','page-walk cache','Caches upper-level page-table entries so a walk can skip levels. Published measurements report a 64-entry cache for PML4E/PDPE entries on Zen.');
 d('reach','TLB reach','How much memory the TLB can map at once: entries × page size. 64 × 4 KB = 256 KB for the L1 DTLB.');
 d('huge','huge page','A 2 MB (or 1 GB) page. One TLB entry covers 512× (or 262144×) more memory, and the walk ends one (or two) levels early.');
 d('pcid','PCID','Process-context identifier: a 12-bit tag on TLB entries so switching CR3 need not flush every translation.');
@@ -103,7 +103,7 @@ d('ftouch','first-touch','Linux\'s default NUMA policy: a page is physically all
 /* --- fabric, DRAM, I/O --- */
 d('fabric','Infinity Fabric (data fabric)','AMD\'s on-chip interconnect linking the CCX, memory controllers, graphics and I/O. Coherent: it routes requests and coherence probes.');
 d('umc','UMC','Unified memory controller: queues memory requests, schedules DRAM commands, enforces timing rules, and performs refresh.');
-d('channel','memory channel','An independent 64-bit data bus plus command/address bus to a set of DIMMs. Your laptop has two.');
+d('channel','memory channel','An independent 64-bit data bus plus command/address bus to a set of DIMMs. The Ryzen 7 3750H has two.');
 d('dimm','DIMM / rank','A memory module. A rank is the set of chips that together drive the 64-bit bus (8 chips × 8 bits).');
 d('bank','bank / bank group','An independent cell array inside each DRAM chip. DDR4 x8 chips have 16 banks in 4 bank groups; different banks can work in parallel.');
 d('row','row / column','A bank is a matrix of rows × columns. A whole row is opened at once; reads then select columns from it.');

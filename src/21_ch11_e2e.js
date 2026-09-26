@@ -1,6 +1,7 @@
 /* ======================= chapter: one access end to end ======================= */
-App.chapter({id: 'e2e', num: '11', short: 'End to end', title: 'One hist[123]++, end to end',
-sub: 'C1 from Chapter 02 \u2014 addq $1,(%rdx,%rax,8) on hist[123] \u2014 with every stage from the other chapters laid on one timeline. Pick where the translation and the line are found.',
+App.chapter({id: 'e2e', short: 'End to end', title: 'One hist[123]++, end to end',
+lede: 'One instruction, <code>addq $1,(%rdx,%rax,8)</code> on <code>hist[123]</code>, with every stage from the other chapters on one timeline.',
+points: ['Choose where the translation is found, where the line is found, and whether the DRAM row is open.', 'Read off the critical path and its total latency.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, CFG = App.CFG;
   var o = {tlb: 'hit', lvl: 'DRAM', row: 'closed'};
@@ -25,7 +26,7 @@ build: function(root){
     if (o.tlb === 'walk') add('DTLB + L2 TLB miss, page walk', 2 * CFG.l2 + 2, 'assumed', 'xlate', 'PML4E/PDPTE from the walk cache, PDE and PTE from L2');
     var lat = o.lvl === 'L1' ? CFG.l1 : o.lvl === 'L2' ? CFG.l2 : o.lvl === 'L3' ? CFG.l3 : App.dramCycles();
     add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'published', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns (latency settings)' : 'load-to-use');
-    if (o.lvl === 'DRAM' && o.row !== 'closed') add(o.row === 'hit' ? 'row already open: saves ACT' : 'row conflict: extra PRE', (o.row === 'hit' ? -14.2 : 14.2) * ghz, 'derived', 'dram', 'device-time difference from Chapter 06 (\u00b1 14.2 ns)');
+    if (o.lvl === 'DRAM' && o.row !== 'closed') add(o.row === 'hit' ? 'row already open: saves ACT' : 'row conflict: extra PRE', (o.row === 'hit' ? -14.2 : 14.2) * ghz, 'derived', 'dram', 'device-time difference from [[ch:dram]] (\u00b1 14.2 ns)');
     add('add: tmp + 1', 1, 'published', 'core', '1-cycle ALU op');
     add('store address + data into the SQ', 2, 'model', 'core', 'STA / STD');
     add('retire (older instructions already done)', 1, 'model', 'core', 'ROB head');
@@ -51,9 +52,9 @@ build: function(root){
     tbl.innerHTML = '<h3>Step by step</h3><div style="overflow-x:auto"><table class="mt" style="min-width:560px"><tr><th>step</th><th>cycles</th><th>ns</th><th>total</th><th>source</th><th></th></tr>' + S.map(function(x){
       cum += x.neg ? -x.c : x.c;
       return '<tr><td style="font-family:var(--sans)">' + x.n + '<div class="note">' + x.what + '</div></td><td>' + (x.neg ? '\u2212' : '') + x.c + '</td><td>' + (x.c / ghz).toFixed(1) + '</td><td>' + cum + '</td><td><span class="tag ' + (x.src === 'published' ? 'pub' : x.src === 'model' ? '' : 'act') + '">' + x.src + '</span></td><td><button class="lnk" data-ch="' + x.ch + '">chapter \u2192</button></td></tr>';
-    }).join('') + '</table></div><p class="note" style="margin-top:8px"><b>published</b>: Zen/Zen+ figures from the latency settings (replace them with your own measured plateaus). <b>model</b>: the stage counts of the Chapter 02 model, not measured. <b>assumed</b> / <b>derived</b>: stated in the step.</p>';
+    }).join('') + '</table></div><p class="note" style="margin-top:8px"><b>published</b>: Zen/Zen+ figures from the latency settings (replace them with your own measured plateaus). <b>model</b>: the stage counts of the [[ch:core]] model, not measured. <b>assumed</b> / <b>derived</b>: stated in the step.</p>';
     tbl.querySelectorAll('button.lnk').forEach(function(b){ b.onclick = function(){ App.go(b.dataset.ch); }; });
-    sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale (Chapters 07, 08). Nothing else happens to it until it is evicted, when its 64 bytes are written back to the L2, later enter the L3 as a victim, and eventually reach DRAM through the controller as a write (Chapters 04\u201306). That write-back is off the critical path of this instruction; the core keeps running.</p><p>For comparison: at ' + ghz + ' GHz the loop body runs about one iteration per cycle when everything hits (Chapter 02). A single miss to DRAM costs the time of hundreds of iterations, which is why the hierarchy, the prefetchers and memory-level parallelism exist.</p>';
+    sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale ([[chs:stores,coh]]).</p><p>Nothing else happens to it until it is evicted, when its 64 bytes are written back to the L2, later enter the L3 as a victim, and eventually reach DRAM through the controller as a write ([[chr:l1d,dram]]).</p><p>That write-back is off the critical path of this instruction; the core keeps running.</p><p>For comparison: at ' + ghz + ' GHz the loop body runs about one iteration per cycle when everything hits ([[ch:core]]). A single miss to DRAM costs the time of hundreds of iterations, which is why the hierarchy, the prefetchers and memory-level parallelism exist.</p>';
   }
   App.onCfg(draw);
   draw();

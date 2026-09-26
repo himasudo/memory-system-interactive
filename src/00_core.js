@@ -54,13 +54,11 @@ var App = (function(){
   var chapters = [], built = {}, cur = null;
   function chapter(def){ chapters.push(def); }
 
-  function chapterGroup(num){
-    var n = +num;
-    if (n === 0) return 'Overview';
-    if (n <= 3) return 'Core path';
-    if (n <= 9) return 'Memory system';
-    return 'System path';
-  }
+  var GROUPS = {start: 'Start here', map: 'The machine', code: 'The machine', core: 'The machine', xlate: 'Memory system', l1d: 'Memory system', hier: 'Memory system',
+    dram: 'Memory system', stores: 'Memory system', coh: 'Memory system', pref: 'Memory system', dev: 'System path', e2e: 'System path', gloss: 'Reference'};
+  function chapterGroup(ch){ return (ch && (ch.group || GROUPS[ch.id])) || 'Chapters'; }
+  function chNum(id){ for (var i = 0; i < chapters.length; i++) if (chapters[i].id === id) return chapters[i].num; return '??'; }
+  function chLabel(c){ return c.ref ? c.short : c.num + ' \u00b7 ' + c.short; }
 
   function chapterIndex(id){
     for (var i = 0; i < chapters.length; i++) if (chapters[i].id === id) return i;
@@ -96,9 +94,11 @@ var App = (function(){
   function makeChapterHeader(sec, ch){
     var hd = h('header', {'class': 'chh'}, sec);
     var copy = h('div', {'class': 'ch-copy'}, hd);
-    h('div', {'class': 'num'}, copy, 'CHAPTER ' + ch.num + ' · ' + chapterGroup(ch.num));
+    h('div', {'class': 'num'}, copy, (ch.ref ? 'REFERENCE' : 'CHAPTER ' + ch.num) + ' · ' + chapterGroup(ch));
     h('h1', null, copy, ch.title);
-    if (ch.sub) h('p', null, copy, ch.sub);
+    if (ch.lede) h('p', {'class': 'ch-lede'}, copy, ch.lede);
+    else if (ch.sub) h('p', null, copy, ch.sub);
+    if (ch.points && ch.points.length) h('ul', {'class': 'ch-points'}, copy, ch.points.map(function(p){ return '<li>' + p + '</li>'; }).join(''));
     var art = chapterArt(ch.id);
     if (art){ hd.classList.add('has-art'); hd.appendChild(art); }
   }
@@ -109,12 +109,12 @@ var App = (function(){
     var foot = h('footer', {'class':'chapter-footer','aria-label':'Continue through the atlas'}, sec);
     if (prev){
       var bp = h('button', {'class':'chapter-jump prev',type:'button'}, foot,
-        '<span>← previous</span><strong>' + prev.num + ' · ' + prev.short + '</strong>');
+        '<span>← previous</span><strong>' + chLabel(prev) + '</strong>');
       bp.onclick = function(){ go(prev.id); };
     } else h('span', {'class':'chapter-jump-spacer'}, foot);
     if (next){
       var bn = h('button', {'class':'chapter-jump next',type:'button'}, foot,
-        '<span>next →</span><strong>' + next.num + ' · ' + next.short + '</strong>');
+        '<span>next →</span><strong>' + chLabel(next) + '</strong>');
       bn.onclick = function(){ go(next.id); };
     }
   }
@@ -122,7 +122,7 @@ var App = (function(){
   function show(id){
     var ch = chapters.filter(function(c){ return c.id === id; })[0] || chapters[0];
     if (!built[ch.id]){
-      var sec = h('section', {'class': 'ch ch-' + ch.id, id: 'ch-' + ch.id, 'data-group': chapterGroup(ch.num)}, document.getElementById('main'));
+      var sec = h('section', {'class': 'ch ch-' + ch.id, id: 'ch-' + ch.id, 'data-group': chapterGroup(ch)}, document.getElementById('main'));
       makeChapterHeader(sec, ch);
       var body = h('div', {'class': 'stack chapter-body'}, sec);
       built[ch.id] = {sec: sec, api: ch.build(body) || {}};
@@ -137,8 +137,55 @@ var App = (function(){
     var cn = document.getElementById('crumbNum'), ct = document.getElementById('crumbTitle');
     if (cn) cn.textContent = ch.num;
     if (ct) ct.textContent = ch.short;
+    setTimeout(secNavUpdate, 0);
     closeNav();
     if (built[ch.id].api.onShow) built[ch.id].api.onShow();
+  }
+
+  function route(){
+    var p = location.hash.slice(1).split('/');
+    show(p[0] || chapters[0].id);
+    /* second jump after the workbenches above have finished sizing */
+    if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
+  }
+  function scrollToSection(sid, smooth){
+    var el = document.getElementById(cur + '--' + sid); if (!el) return;
+    el.scrollIntoView({block: 'start', behavior: smooth ? 'smooth' : 'instant'});
+    try { history.replaceState(null, '', '#' + cur + '/' + sid); } catch(e){}
+  }
+  /* ---------- section menu + reading progress (top bar) ---------- */
+  var secNavUpdate = function(){};
+  function initSectionNav(){
+    var btn = document.getElementById('crumbSec'), lab = document.getElementById('crumbSecTitle'), menu = document.getElementById('secMenu'), prog = document.getElementById('readProg');
+    if (!btn || !menu) return;
+    var ticking = false, idx = 0;
+    function list(){ var b = built[cur]; return (b && b.sec._sections) || []; }
+    function update(){
+      ticking = false;
+      var L = list(); idx = 0;
+      var lim = (document.querySelector('.top') || {}).offsetHeight + 120 || 170;
+      for (var i = 0; i < L.length; i++) if (L[i].el.getBoundingClientRect().top <= lim) idx = i;
+      btn.hidden = !L.length;
+      if (L.length) lab.textContent = L[idx].title;
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      if (prog) prog.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0) + ')';
+    }
+    function close(){ menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+    secNavUpdate = update;
+    window.addEventListener('scroll', function(){ if (!ticking){ ticking = true; requestAnimationFrame(update); } }, {passive: true});
+    window.addEventListener('resize', function(){ requestAnimationFrame(update); });
+    btn.onclick = function(e){
+      e.stopPropagation();
+      if (!menu.hidden){ close(); return; }
+      menu.innerHTML = '';
+      list().forEach(function(x, i){
+        var b = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (i === idx ? ' cur' : '')}, menu, '<b>' + String(i + 1).padStart(2, '0') + '</b><span>' + x.title + '</span>');
+        b.onclick = function(){ close(); scrollToSection(x.id, true); };
+      });
+      menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    };
+    document.addEventListener('click', function(e){ if (!menu.hidden && !(e.target.closest && e.target.closest('#secMenu'))) close(); });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape') close(); });
   }
 
   function go(id){
@@ -149,17 +196,20 @@ var App = (function(){
   function start(){
     initTheme();
     initShell();
+    var n = 0; App.CH_LABEL = App.CH_LABEL || {};
+    chapters.forEach(function(c){ c.num = c.ref ? 'A\u2013Z' : String(n++).padStart(2, '0'); App.CH_LABEL[c.id] = [c.num, c.short]; });
     var nav = document.getElementById('nav'), lastGroup = null;
     chapters.forEach(function(c){
-      var grp = chapterGroup(c.num);
+      var grp = chapterGroup(c);
       if (grp !== lastGroup){ h('div', {'class': 'nav-group'}, nav, grp); lastGroup = grp; }
       var a = h('a', {href: '#' + c.id}, nav,
         '<span class="nav-num">' + c.num + '</span><span class="nav-label">' + c.short + '</span><span class="nav-arrow">›</span>');
       a.dataset.id = c.id;
       a.addEventListener('mouseup', function(){ a.blur(); });
     });
-    window.addEventListener('hashchange', function(){ show(location.hash.slice(1)); window.scrollTo({top: 0, behavior: 'auto'}); });
-    show(location.hash.slice(1) || chapters[0].id);
+    initSectionNav();
+    window.addEventListener('hashchange', route);
+    route();
     initPop(); initCfg();
     document.addEventListener('keydown', function(e){
       if (e.key === 'Escape'){
@@ -294,16 +344,19 @@ var App = (function(){
   }
 
   function makeDisclosure(node, title, copy, open){
-    if (!node || node.parentNode && node.parentNode.classList && node.parentNode.classList.contains('concept-disclosure')) return null;
-    var d = document.createElement('details'); d.className = 'concept-disclosure'; d.open = !!open;
-    var sm = document.createElement('summary');
-    sm.innerHTML = '<span><b>' + title + '</b>' + (copy ? '<small>' + copy + '</small>' : '') + '</span><i class="disclosure-chevron" aria-hidden="true">›</i>';
-    node.parentNode.insertBefore(d, node); d.appendChild(sm); d.appendChild(node); return d;
+    /* Formerly a collapsible <details>. Content is always visible now; the wrapper only
+       marks the block so chapter sections can find it. */
+    if (!node || !node.parentNode || (node.parentNode.classList && node.parentNode.classList.contains('concept-disclosure'))) return null;
+    var d = document.createElement('div'); d.className = 'concept-disclosure concept-block';
+    node.parentNode.insertBefore(d, node); d.appendChild(node); return d;
   }
 
-  var TERM_COLORS = {core:'#a78bfa',xlate:'#60a5fa',cache:'#4ade80',memory:'#22d3ee',io:'#a3e635',order:'#fb7185',coh:'#e879f9',pref:'#fde047'};
-  var TERM_LABEL = {core:'CPU core',xlate:'Translation',cache:'Cache',memory:'DRAM',io:'Devices & I/O',order:'Memory ordering',coh:'Coherence',pref:'Prefetching'};
+  var TERM_COLORS = {basics:'#cbd5e1',core:'#a78bfa',xlate:'#60a5fa',cache:'#4ade80',memory:'#22d3ee',io:'#a3e635',order:'#fb7185',coh:'#e879f9',pref:'#fde047'};
+  var TERM_LABEL = {basics:'Foundations',core:'CPU core',xlate:'Translation',cache:'Cache',memory:'DRAM',io:'Devices & I/O',order:'Memory ordering',coh:'Coherence',pref:'Prefetching'};
+  var CAT_EXTRA = {};
+  function setCategory(keys, cat){ keys.split(' ').forEach(function(k){ if (k) CAT_EXTRA[k] = cat; }); }
   function termCategory(key){
+    if (CAT_EXTRA[key]) return CAT_EXTRA[key];
     var sets = {
       core:'isa uop mop pc bp btb ras l1i itlb fetchwin predecode decode opcache uq fusion zx modrm rex rename rat crat prf freelist dispatch rob sched wakeup issue port alu agu bypass lsu lq sq sta std stlf disamb retire commit senior squash mispredict spec smt ipc mab',
       xlate:'va pa page vpn pfn mmu tlb dtlb pte pml4 cr3 walk pwc reach huge pcid pf ftouch',
@@ -367,6 +420,7 @@ var App = (function(){
   }
 
   function compactInputHelp(card){
+    return; /* input rules stay visible */
     if (!card || card.dataset.compactHelp) return; card.dataset.compactHelp='1';
     var ps = card.querySelectorAll('p.note'); if (!ps.length) return;
     var help = ps[ps.length-1]; if (help.classList.contains('l1err')) return;
@@ -375,7 +429,7 @@ var App = (function(){
   }
 
   function enhanceCoreWorkbench(sec){
-    var intro=sec.querySelector('.core-intro'); makeDisclosure(intro,'How the model works','Keep the full model assumptions and Zen+ size comparison available without occupying the simulator viewport.',false);
+    var intro=sec.querySelector('.core-intro'); makeDisclosure(intro,'How the model works','What the model assumes, and how its sizes compare with Zen+.',false);
     var sc=sec.querySelector('.core-floorplan');
     var cam=addFocusStrip(sec,sc,[
       {id:'overview',label:'Overview',box:[0,0,1200,445]},
@@ -386,13 +440,13 @@ var App = (function(){
       {id:'retire',label:'Retire',box:[0,95,700,260]}
     ],{auto:false,follow:false,initial:'overview',label:'hardware view'});
     sec._cameraFocus=cam;
-    var gantt=sec.querySelector('.core-gantt'); makeDisclosure(gantt,'Pipeline timeline','Open the full µop × cycle Gantt only when you need the dense chronology.',false);
+    var gantt=sec.querySelector('.core-gantt'); makeDisclosure(gantt,'Pipeline timeline','Every µop against every cycle.',false);
   }
 
   function enhanceTranslationWorkbench(sec){
     var body=sec.querySelector('.chapter-body'); if(!body || body.dataset.workbench) return; body.dataset.workbench='1';
     var grids=body.querySelectorAll(':scope > .grid2'); if(grids[0]) makeDisclosure(grids[0],'Translation model','Why translation is required and why a DTLB hit overlaps the VIPT L1d lookup.',false);
-    if(grids[1]) makeDisclosure(grids[1],'Deeper translation notes','TLB reach, PCIDs and context-switch behavior stay here when you want the details.',false);
+    if(grids[1]) makeDisclosure(grids[1],'Deeper translation notes','TLB reach, PCIDs and context switches.',false);
     var scenario=null; Array.prototype.some.call(body.children,function(el){ if(el.classList && el.classList.contains('stp') && !el.classList.contains('stepper-bar')){scenario=el; return true;} return false; });
     var step=body.querySelector('.stepper'), sc=body.querySelector('.scroller'); if(!step || !sc) return;
     var frame=sc.closest('.viz-frame');
@@ -413,7 +467,7 @@ var App = (function(){
 
   function enhanceL1Workbench(sec){
     var body=sec.querySelector('.chapter-body'); if(!body || body.dataset.workbench) return; body.dataset.workbench='1';
-    var intro=body.querySelector('.l1-intro'); makeDisclosure(intro,'Cache geometry & metadata','The full set/way/VIPT and line-metadata explanation remains available without pushing the live cache below the fold.',false);
+    var intro=body.querySelector('.l1-intro'); makeDisclosure(intro,'Cache geometry & metadata','Sets, ways, tags, and what is stored with each line.',false);
     var step=body.querySelector('.l1-stepper'), custom=body.querySelector('.l1-custom'), sc=body.querySelector('.l1-canvas'); if(!step||!custom||!sc) return;
     compactInputHelp(custom); custom.classList.add('sticky-input');
     var frame=sc.closest('.viz-frame'), legend=body.querySelector('.l1-legend');
@@ -582,52 +636,32 @@ var App = (function(){
   function makeGuidedJourney(sec, defs){
     if (!sec || sec.dataset.guided || !defs || !defs.length) return; sec.dataset.guided = '1';
     var body = sec.querySelector('.chapter-body'); if (!body) return;
-    var scenes = defs.map(function(d){ return wrapLearningScene(body,d.id,d.title,d.copy,d.nodes); }).filter(Boolean); if (!scenes.length) return;
-    var nav = document.createElement('div'); nav.className = 'learning-journey';
-    var head = h('div', {'class':'journey-head'}, nav, '<div><span>guided chapter</span><strong>One concept at a time</strong></div>');
-    var controls = h('div', {'class':'journey-controls'}, nav);
-    var bPrev = h('button',{type:'button','class':'journey-arrow','aria-label':'Previous learning scene'},controls,'←');
-    var track = h('div', {'class':'journey-track','role':'tablist','aria-label':'Chapter learning path'}, controls);
-    var bNext = h('button',{type:'button','class':'journey-arrow','aria-label':'Next learning scene'},controls,'→');
-    var bAll = h('button',{type:'button','class':'journey-all'},controls,'show all');
-    body.insertBefore(nav, body.firstChild);
-    var buttons=[], current=0, all=false; nav.style.setProperty('--journey-count', scenes.length);
-    scenes.forEach(function(scene,i){
-      var d=defs[i] || {}; var b=h('button',{type:'button','role':'tab','aria-selected':'false'},track,'<b>'+String(i+1).padStart(2,'0')+'</b><span>'+d.title+'</span>');
-      b.onclick=function(){ all=false; bAll.textContent='show all'; select(i,true); }; buttons.push(b);
-      var foot=h('div',{'class':'scene-nav'},scene);
-      if(i>0){ var p=h('button',{type:'button','class':'scene-prev'},foot,'← '+defs[i-1].title); p.onclick=function(){select(i-1,true);}; }
-      else h('span',{'class':'scene-nav-spacer'},foot);
-      if(i<scenes.length-1){ var n=h('button',{type:'button','class':'scene-next pri'},foot,'Continue · '+defs[i+1].title+' →'); n.onclick=function(){select(i+1,true);}; }
-      else { var done=h('button',{type:'button','class':'scene-next pri'},foot,'Chapter complete · review all'); done.onclick=function(){ bAll.click(); }; }
+    var chId = sec.id.replace(/^ch-/, ''), list = [];
+    defs.forEach(function(d){ var el = wrapLearningScene(body, d.id, d.title, d.copy, d.nodes); if (el) list.push({id: d.id, title: d.title, el: el}); });
+    list.forEach(function(x, i){
+      x.el.id = chId + '--' + x.id; x.el.classList.add('scene-active');
+      var k = x.el.querySelector('.scene-kicker'); if (k) k.textContent = String(i + 1).padStart(2, '0');
     });
-    function updateSceneKickers(){ scenes.forEach(function(scene,i){ var k=scene.querySelector('.scene-kicker'); if(k) k.textContent=(i===0?'START HERE · ':'')+(i+1)+' / '+scenes.length; }); }
-    function select(i, scroll){
-      current=Math.max(0,Math.min(scenes.length-1,i)); sec.classList.toggle('guided-all',all);
-      scenes.forEach(function(scene,k){ scene.hidden = !all && k!==current; scene.classList.toggle('scene-active',all || k===current); });
-      buttons.forEach(function(b,k){ var on=k===current&&!all; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
-      bPrev.disabled=all||current===0; bNext.disabled=all||current===scenes.length-1;
-      if(!all){ var scs=scenes[current].querySelectorAll('.scroller'); for(var q=0;q<scs.length;q++) if(scs[q]._vizApply) setTimeout(scs[q]._vizApply,20); }
-      if(scroll){ var r=nav.getBoundingClientRect(); if(r.top < 0 || r.top > 100) nav.scrollIntoView({block:'start',behavior:'smooth'}); }
-    }
-    bPrev.onclick=function(){ if(!all)select(current-1,true); }; bNext.onclick=function(){ if(!all)select(current+1,true); };
-    bAll.onclick=function(){ all=!all; bAll.textContent=all?'focus mode':'show all'; select(current,false); };
-    updateSceneKickers(); select(0,false);
+    sec.classList.add('guided-all', 'long-scroll');
+    sec._sections = list;
+    if (App.applySecFigs) App.applySecFigs(chId, list);
   }
 
   function installGuidedJourney(sec){
     var body=sec.querySelector('.chapter-body'); if(!body) return;
     var ds=sec.querySelectorAll('.concept-disclosure');
     function q(sel){return sec.querySelector(sel);} function kids(sel){return Array.prototype.slice.call(body.querySelectorAll(':scope > '+sel));}
+    var psec = body.querySelectorAll(':scope > .p-sec');
+    if (psec.length){ makeGuidedJourney(sec, Array.prototype.map.call(psec, function(el){ return {id: el.dataset.sec, title: el.dataset.title, copy: el.dataset.copy, nodes: [el]}; })); return; }
     if(sec.id==='ch-map'){
       makeGuidedJourney(sec,[
-        {id:'atlas',title:'See the whole machine',copy:'Start with the system map. Select blocks instead of reading every label at once.',nodes:[q('.map-workbench')]},
-        {id:'route',title:'Follow the route',copy:'Use the chapter route only after the hardware map is familiar.',nodes:[q('.route-index')]}
+        {id:'atlas',title:'See the whole machine',copy:'Click any block to see what it is, how big it is, and which chapter explains it.',nodes:[q('.map-workbench')]},
+        {id:'route',title:'Follow the route',copy:'The order the chapters follow: one stage of a memory access each.',nodes:[q('.route-index')]}
       ]);
     } else if(sec.id==='ch-code'){
       var tops=Array.prototype.slice.call(body.children);
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Anchor the calling convention and the exact running example.',nodes:[tops[0]]},
+        {id:'example',title:'The example',copy:'The C function, its three arguments, and the registers they arrive in.',nodes:[tops[0]]},
         {id:'map',title:'C → assembly',copy:'Hover and select one source line or instruction at a time.',nodes:[tops[1]]},
         {id:'decode',title:'Decode one instruction',copy:'Read the encoding fields and the µops for the selected instruction.',nodes:[tops[2]]},
         {id:'bytes',title:'See the bytes',copy:'Place the same instructions back into memory and the fetch window.',nodes:[tops[3]]},
@@ -635,27 +669,27 @@ var App = (function(){
       ]);
     } else if(sec.id==='ch-core'){
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Understand what the model represents before touching the cycle controls.',nodes:[ds[0]]},
+        {id:'model',title:'The model',copy:'What the simulated core contains, and what it leaves out.',nodes:[ds[0]]},
         {id:'run',title:'Run the core',copy:'Step the machine. The active structures and signal paths change with the cycle.',nodes:[q('.core-controls'),q('.core-viz'),q('.core-events')]},
         {id:'inspect',title:'Inspect state',copy:'Open one structure at a time while keeping the current cycle fixed.',nodes:[q('.inspector-deck'),q('.core-state-grid')]},
-        {id:'timeline',title:'Read the timeline',copy:'Use the dense µop × cycle view only after you have a mental model of the hardware.',nodes:[ds[1]]}
+        {id:'timeline',title:'Read the timeline',copy:'Every µop against every cycle, in one table.',nodes:[ds[1]]}
       ]);
     } else if(sec.id==='ch-xlate'){
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Start with the reason translation exists and what a TLB hit buys you.',nodes:[ds[0]]},
+        {id:'why',title:'Why translate',copy:'Programs use virtual addresses; caches and DRAM need physical ones.',nodes:[ds[0]]},
         {id:'translate',title:'Translate an address',copy:'Walk one virtual address through the TLBs, page walker and physical address.',nodes:[q('.xlate-workbench')]},
         {id:'fault',title:'Handle a fault',copy:'See what changes when translation leaves hardware and enters the kernel.',nodes:[q('.xlate-kernel')]},
-        {id:'depth',title:'Go deeper',copy:'Keep TLB reach, PCID and context-switch details available without crowding the main path.',nodes:[ds[1]]}
+        {id:'depth',title:'Go deeper',copy:'TLB reach, PCIDs, and what a context switch does to the TLBs.',nodes:[ds[1]]}
       ]);
     } else if(sec.id==='ch-l1d'){
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Learn the cache geometry and metadata once, then move into the live lookup.',nodes:[ds[0]]},
+        {id:'layout',title:'Cache layout',copy:'Sets, ways, tags, and the bits stored with every line.',nodes:[ds[0]]},
         {id:'lookup',title:'Run a lookup',copy:'Change the address or operation, then follow the highlighted set, tags, way and miss path.',nodes:[q('.l1-workbench')]}
       ]);
     } else if(sec.id==='ch-hier'){
       var cards=kids('.card');
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Understand inclusion, victim behavior and the role of shadow tags.',nodes:[directChild(body,'.grid2')]},
+        {id:'levels',title:'The levels',copy:'How L2 and L3 relate: inclusion, victim filling and shadow tags.',nodes:[directChild(body,'.grid2')]},
         {id:'miss',title:'Follow one miss',copy:'Choose where the line lives and follow the request outward and the line back.',nodes:[q('.hier-workbench')]},
         {id:'latency',title:'Compare latency',copy:'See how each cache level changes load-to-use time.',nodes:[cards[0]]},
         {id:'parallel',title:'Overlap misses',copy:'Contrast independent memory-level parallelism with a serialized pointer chase.',nodes:[cards[1]]},
@@ -663,7 +697,7 @@ var App = (function(){
       ]);
     } else if(sec.id==='ch-dram'){
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Learn the bank/row model and the timing vocabulary first.',nodes:[directChild(body,'.grid2')]},
+        {id:'banks',title:'Banks and rows',copy:'How a DRAM chip is organized, and the timing names used below.',nodes:[directChild(body,'.grid2')]},
         {id:'commands',title:'Run the commands',copy:'Step ACT, RD, PRE and REF while the view follows the active part of DRAM.',nodes:[q('.dram-workbench')]},
         {id:'meaning',title:'Connect the costs',copy:'Compare row hit, closed-row and conflict costs without losing the device-level picture.',nodes:[directChild(body,'.grid3')]}
       ]);
@@ -671,30 +705,30 @@ var App = (function(){
       var rem=Array.prototype.slice.call(body.children).filter(function(n){return n!==q('.stores-workbench');});
       makeGuidedJourney(sec,[
         {id:'path',title:'Run a store',copy:'Follow execution, retirement, ownership and commit as one guided path.',nodes:[q('.stores-workbench')]},
-        {id:'types',title:'Change the memory type',copy:'Keep write-combining and memory-type rules as a separate concept.',nodes:[rem[0],rem[1]]},
+        {id:'types',title:'Change the memory type',copy:'Write-combining, and the page memory types that change how stores behave.',nodes:[rem[0],rem[1]]},
         {id:'ordering',title:'Reason about ordering',copy:'Finish with fences and the ordering rules that the store queue exposes.',nodes:[rem[2]]}
       ]);
     } else if(sec.id==='ch-coh'){
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Learn the five states and how the L3 directory targets probes.',nodes:[directChild(body,'.grid2')]},
+        {id:'states',title:'The five states',copy:'The MOESI line states, and how the L3 decides which cores to probe.',nodes:[directChild(body,'.grid2')]},
         {id:'run',title:'Run coherence',copy:'Switch scenarios, step one operation at a time, and watch ownership move between cores.',nodes:[q('.coh-workbench')]}
       ]);
     } else if(sec.id==='ch-pref'){
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Separate what the model assumes from what Zen+ actually publishes.',nodes:[directChild(body,'.grid2')]},
+        {id:'known',title:'What is known',copy:'What this model assumes, and what AMD publishes about Zen+ prefetchers.',nodes:[directChild(body,'.grid2')]},
         {id:'experiment',title:'Experiment with prediction',copy:'Change pattern and distance, then compare covered, late and useless prefetches.',nodes:[q('.pref-workbench')]}
       ]);
     } else if(sec.id==='ch-dev'){
       makeGuidedJourney(sec,[
-        {id:'orient',title:'Orient',copy:'Separate MMIO from DMA and understand the two NVMe rings.',nodes:[directChild(body,'.grid2')]},
+        {id:'mechanisms',title:'Two mechanisms',copy:'MMIO: the CPU writes device registers. DMA: the device reads and writes memory.',nodes:[directChild(body,'.grid2')]},
         {id:'trace',title:'Trace one NVMe read',copy:'Step from the submission queue to flash, DMA, interrupt and application read.',nodes:[q('.dev-workbench')]},
-        {id:'connect',title:'Connect the mechanisms',copy:'Use the cross-chapter summary only after the end-to-end path is clear.',nodes:[kids('.grid2').slice(-1)[0]]}
+        {id:'connect',title:'Connect the mechanisms',copy:'How this path reuses mechanisms from earlier chapters.',nodes:[kids('.grid2').slice(-1)[0]]}
       ]);
     } else if(sec.id==='ch-e2e'){
       var top=Array.prototype.slice.call(body.children);
       makeGuidedJourney(sec,[
         {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state, then read the resulting critical path.',nodes:[top[0],top[1]]},
-        {id:'steps',title:'Inspect the critical path',copy:'Open the step table only after the timeline gives you the shape of the cost.',nodes:[top[2]]},
+        {id:'steps',title:'Inspect the critical path',copy:'Each step in order, with its latency.',nodes:[top[2]]},
         {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]}
       ]);
     } else if(sec.id==='ch-gloss'){
@@ -765,7 +799,7 @@ var App = (function(){
       var key=t.dataset.g,d=G[key],cat=termCategory(key);
       var title=d?d.t:key,def=d?d.d:'(no entry)';
       pop.className = 'pop gloss-pop term-' + cat;
-      pop.innerHTML='<i class="term-pop-caret" aria-hidden="true"></i><div class="term-pop-head"><span class="term-pop-cat">'+TERM_LABEL[cat]+'</span><b>'+title+'</b><button type="button" class="term-pop-close" aria-label="Close definition">\u00d7</button></div>'+glossGraphic(key)+'<p class="term-pop-def">'+def+'</p>'+footer(key);
+      pop.innerHTML='<i class="term-pop-caret" aria-hidden="true"></i><div class="term-pop-head"><span class="term-pop-cat">'+TERM_LABEL[cat]+'</span><b>'+title+'</b><button type="button" class="term-pop-close" aria-label="Close definition">\u00d7</button></div>'+glossGraphic(key)+(App.popExtra?App.popExtra(key,t):'')+'<p class="term-pop-def">'+def+'</p>'+footer(key);
       pop.querySelector('.term-pop-close').onclick=function(){locked=false;hidePop();};
       var chl = pop.querySelector('.term-pop-ch'); if (chl) chl.onclick = function(){ locked=false; hidePop(); };
       place(t);
@@ -804,7 +838,7 @@ var App = (function(){
       ['dramNs', 'DRAM extra latency beyond L3 (ns)', 'ballpark only; depends on DIMMs'],
       ['tscGhz', 'TSC frequency (GHz)', 'measure your own with RDTSC against CLOCK_MONOTONIC']
     ];
-    var html = '<h2>Latency model</h2><p class="note">Defaults are published Zen/Zen+ figures (WikiChip, 7-cpu.com), <b>not measurements from your machine</b>. Replace them with your own pointer-chase / working-set measurements and every dependent chapter updates.</p>';
+    var html = '<h2>Latency model</h2><p class="note">Defaults are published Zen/Zen+ figures (<a href="https://www.7-cpu.com/cpu/Zen.html" target="_blank" rel="noopener">7-cpu Zen measurements</a>), <b>not measurements from your machine</b>. Replace them with your own pointer-chase / working-set measurements and every dependent chapter updates.</p>';
     rows.forEach(function(r){ html += '<label><span>' + r[1] + '<small>' + r[2] + '</small></span><input type="number" step="any" min="0" data-k="' + r[0] + '" value="' + CFG[r[0]] + '"></label>'; });
     html += '<p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset published defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
     inn.innerHTML = html;
@@ -827,6 +861,13 @@ var App = (function(){
     dr.addEventListener('click', function(e){ if (e.target === dr) dr.classList.remove('show'); });
   }
 
+  /* ---------- paragraphs: '\n' in narration text starts a new paragraph ---------- */
+  function paras(d){
+    if (!d) return '';
+    if (/^\s*<(p|div|table|figure)\b/i.test(d)) return d;
+    return d.split('\n').map(function(seg){ seg = seg.trim(); if (!seg) return ''; return /^<(ul|ol|table|div|figure)\b/i.test(seg) ? seg : '<p>' + seg + '</p>'; }).join('');
+  }
+
   /* ---------- stepper: frames = [{t: title, d: html, ...}] ---------- */
   function stepper(parent, opts){
     var wrap = h('div', {'class': 'stack stepper'}, parent);
@@ -845,7 +886,7 @@ var App = (function(){
       cnt.textContent = (i + 1) + ' / ' + frames.length;
       bBack.disabled = i === 0; bNext.disabled = i === frames.length - 1;
       progFill.style.width = (frames.length <= 1 ? 100 : (i / (frames.length - 1)) * 100) + '%';
-      narr.innerHTML = '<h4>' + f.t + '</h4>' + (f.d.charAt(0) === '<' ? f.d : '<p>' + f.d + '</p>');
+      narr.innerHTML = '<h4>' + f.t + '</h4>' + paras(f.d);
       var ps = pills.children;
       for (var k = 0; k < ps.length; k++) ps[k].className = 'pill' + (k === i ? ' cur' : k < i ? ' done' : '');
       if (ps[i] && ps[i].scrollIntoView) ps[i].scrollIntoView({block:'nearest',inline:'nearest'});
@@ -881,6 +922,6 @@ var App = (function(){
     return w;
   }
 
-  return {termCategory: termCategory, TERM_COLORS: TERM_COLORS, TERM_LABEL: TERM_LABEL, s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
+  return {paras: paras, chNum: chNum, chapters: chapters, setCategory: setCategory, termCategory: termCategory, TERM_COLORS: TERM_COLORS, TERM_LABEL: TERM_LABEL, s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
           gloss: gloss, g: g, G: G, chapter: chapter, start: start, go: go, stepper: stepper, seg: seg};
 })();

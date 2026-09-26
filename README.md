@@ -20,23 +20,34 @@ The goal is to make low-level memory behavior **visible, stateful, and interacti
 
 ## Chapters
 
-| Route | Chapter | Focus |
-|---|---|---|
-| `00` | **The Machine** | Whole-system map: cores, caches, fabric, memory controllers, DRAM, I/O, devices |
-| `01` | **C → Instructions → µops** | Source, assembly, instruction bytes, decode fields |
-| `02` | **Inside the Core** | OoO execution, register renaming, scheduling, ROB, LSU, forwarding, misprediction |
-| `03` | **Virtual → Physical** | TLBs, page walks, page faults, large pages, PCIDs |
-| `04` | **L1d Lookup** | Sets, ways, tags, data arrays, comparators, pLRU, dirty writeback, conflict misses |
-| `05` | **Down the Hierarchy** | L2, L3, fabric, peer-core lookup, memory controller, DRAM path, MLP |
-| `06` | **DRAM** | Address-to-bank/row/column mapping, row buffer, ACT/RD/PRE/REF, timing parameters, refresh |
-| `07` | **Stores & Memory Types** | Store queue, senior stores, ownership requests, RFO vs. non-temporal stores, memory types, fences |
-| `08` | **Coherence (MOESI)** | Per-core cache states, probes, invalidations, cache-to-cache transfer, false sharing |
-| `09` | **Prefetchers** | Stream/stride detection, prefetch distance, coverage vs. lateness vs. pollution |
-| `10` | **Devices, DMA, IOMMU** | MMIO doorbells, PCIe TLPs, IOMMU translation, coherent DMA, MSI-X interrupts |
-| `11` | **End to End** | One instruction's full critical path, reassembled across every earlier chapter |
-| `12` | **Glossary** | Every term used across the site, searchable |
+Chapters are numbered from their order in the build: `00` Start here, `01`–`08` Foundations (the background a software developer needs), `09`–`20` the hardware path. The glossary is an unnumbered reference.
 
-All 13 chapters are built and live in the integrated application.
+| # | Chapter | Focus |
+|---|---|---|
+| `00` | **Start here** | The running example, two ways in, how to read the pages, where the numbers come from |
+| `01` | **Bits, bytes and hex** | Binary, hexadecimal, powers of two, reading bit ranges such as bits 11:6 |
+| `02` | **Memory and addresses** | Addresses, pointers and arrays, little-endian byte order, alignment and cache lines |
+| `03` | **Instructions and registers** | The ISA, the 16 general-purpose registers, loads and stores, machine code bytes |
+| `04` | **Reading x86 assembly** | AT&T syntax, memory operands, flags and conditional jumps, the example line by line |
+| `05` | **Cycles and latency** | Clock cycles, latency vs throughput, dependency chains, the memory latency ladder |
+| `06` | **Why caches exist** | DRAM vs SRAM, temporal and spatial locality, cache lines, hits and misses, levels |
+| `07` | **Virtual memory** | Processes, pages, 4-level page tables, the TLB and page faults |
+| `08` | **Cores, sharing and devices** | Private caches, coherence, store visibility, MMIO, DMA and interrupts |
+| `09` | **The Machine** | Whole-system map: cores, caches, fabric, memory controllers, DRAM, I/O, devices |
+| `10` | **C → Instructions → µops** | Source, assembly, instruction bytes, decode fields |
+| `11` | **Inside the Core** | OoO execution, register renaming, scheduling, ROB, LSU, forwarding, misprediction |
+| `12` | **Virtual → Physical** | TLBs, page walks, page faults, large pages, PCIDs |
+| `13` | **L1d Lookup** | Sets, ways, tags, data arrays, comparators, pLRU, dirty writeback, conflict misses |
+| `14` | **Down the Hierarchy** | L2, L3, fabric, peer-core lookup, memory controller, DRAM path, MLP |
+| `15` | **DRAM** | Address-to-bank/row/column mapping, row buffer, ACT/RD/PRE/REF, timing parameters, refresh |
+| `16` | **Stores & Memory Types** | Store queue, senior stores, ownership requests, RFO vs. non-temporal stores, memory types |
+| `17` | **Coherence (MOESI)** | Per-core cache states, probes, invalidations, cache-to-cache transfer, false sharing |
+| `18` | **Prefetchers** | Stream/stride detection, prefetch distance, coverage vs. lateness vs. pollution |
+| `19` | **Devices, DMA, IOMMU** | MMIO doorbells, PCIe TLPs, IOMMU translation, coherent DMA, MSI-X interrupts |
+| `20` | **End to End** | One instruction's full critical path, reassembled across every earlier chapter |
+| `A–Z` | **Glossary** | Every term used across the site, searchable (unnumbered reference) |
+
+Every chapter is one long page. Sections are numbered, always visible, and linkable as `#chapter/section` (for example `#l1d/lookup`); the top bar shows the current section, a section menu and reading progress. Sections of the hardware chapters open with a small overview figure before their interactive part.
 
 ---
 
@@ -134,6 +145,19 @@ regenerates `memory_end_to_end.html` from the individual chapter files. Editing 
 
 ---
 
+### Chapter numbers and cross-references
+
+Never write a chapter number by hand: numbers come from build order, so inserting a chapter renumbers everything automatically. In chapter text use tokens, which become links when rendered:
+
+- `[[ch:l1d]]` → "Chapter 13" (a link)
+- `[[chs:stores,coh]]` → "Chapters 16 and 17"
+- `[[chr:hier,dram]]` → "Chapters 14–15"
+- `[[num:l1d]]` → "13" (plain number)
+
+Overview figures: `src/23_section_figs.js` registers one per section with `add(chapter, section, {h, cap, draw, live})`; Foundations chapters lay out text and figures with the `App.P` helpers in `src/04_found_a.js`.
+
+Glossary terms: `g(key, label)` marks a term explicitly. Register names, hex values and acronyms in prose, and mnemonics inside `<code>`, are linked automatically (first occurrence per paragraph; never in headings, captions, or tables without the `autolink` class).
+
 ## Core Idea
 
 The project is built around continuity.
@@ -184,7 +208,7 @@ That lets each chapter build on the same machine state instead of starting over,
 
 ## Status
 
-**Feature-complete for the planned 13-chapter arc (00–12).** Numeric defaults (cache and DRAM latencies) are published figures for a Zen/Zen+-class CPU, clearly marked as such, and are meant to be overwritten with values measured on whatever machine the reader is using — the settings panel makes this the normal way to use the site rather than an edge case.
+**Feature-complete for the 21-chapter arc: Start here, eight Foundations chapters, the twelve hardware chapters, and the glossary.** Numeric defaults (cache and DRAM latencies) are published figures for a Zen/Zen+-class CPU, clearly marked as such, and are meant to be overwritten with values measured on whatever machine the reader is using — the settings panel makes this the normal way to use the site rather than an edge case.
 
 Open follow-ups: broader validation across CPU vendors/generations, and extending the address-mapping and DRAM-timing examples beyond the single illustrative configuration currently shown.
 
