@@ -332,7 +332,7 @@ body.nav-open,body.viz-open{overflow:hidden}
 .mobile-only{display:none!important}
 
 .wrap{max-width:var(--content-max);margin:0 auto;padding:38px 34px 96px}
-.ch{display:none;animation:chapter-in .2s ease-out both}
+.ch{display:none;animation:chapter-in .2s ease-out backwards}
 .ch.show{display:block}
 @keyframes chapter-in{from{opacity:.55;transform:translateY(4px)}to{opacity:1;transform:none}}
 
@@ -1021,6 +1021,7 @@ svg .sunk{fill:#0b1016;stroke:#2b3948}
 /* Keep controls visible without allowing them to cover the diagram. */
 .lab-rail{top:12px}
 .lab-stage{isolation:isolate}
+body.viz-open .lab-stage{isolation:auto}
 .learning-scene.scene-active .lab-stage>.viz-frame .scroller{max-height:calc(100vh - 185px)}
 .ch-core .core-controls{top:78px}
 .ch-core .core-controls+.focus-strip{top:0}
@@ -1128,9 +1129,9 @@ body{background:#07090c;color:#edf2f7}
 .viz-focus{min-width:auto!important;height:28px!important;min-height:28px!important;padding:0 10px!important;border:1px solid #3a4a5b!important;background:#18212b!important;color:#c8d2dc!important}
 .viz-focus:hover{background:#25313e!important;color:#fff!important;border-color:#52667a!important}
 .viz-frame::before,.viz-frame::after{display:none!important}
-.viz-frame.is-fullscreen{inset:8px;display:flex;flex-direction:column;background:#06080b;border-color:#405165}
-.viz-frame.is-fullscreen .scroller{flex:1;min-height:0;display:grid;place-items:center;padding:18px}
-.viz-frame.is-fullscreen .scroller svg{width:100%!important;height:100%!important;max-height:calc(100vh - 118px)}
+.viz-frame.is-fullscreen{inset:8px;margin:0;display:flex;flex-direction:column;background:#06080b;border-color:#405165}
+.viz-frame.is-fullscreen .scroller{flex:1;min-height:0;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;padding:18px}
+.viz-frame.is-fullscreen .scroller svg{width:100%!important;height:100%!important}
 
 /* Focus switcher = the primary visualization navigation. */
 .focus-strip{height:auto;min-height:44px;display:flex;align-items:center;gap:7px;background:#0e151d;border-bottom:1px solid #2e3a48;padding:7px 9px}
