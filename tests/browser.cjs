@@ -116,7 +116,7 @@ async function main(){
       });
     }
   }
-  await check('mobile chapter navigation and section menu',async()=>{await page.locator('#navToggle').click();await page.locator('#nav a[data-id=l1d]').click();assert.equal(await page.locator('#sidebar').evaluate(el=>document.body.classList.contains('nav-open')),false);await page.locator('#crumbSec').click();assert.equal(await page.locator('#secMenu').isVisible(),true);await page.keyboard.press('Escape');});
+  await check('mobile chapter navigation and section menu',async()=>{await page.locator('#navToggle').click();await page.locator('#nav a[data-id=l1d]').click();await page.waitForFunction(()=>document.querySelector('.ch.show')?.id==='ch-l1d'&&!document.body.classList.contains('nav-open'));await page.locator('#crumbSec').click();assert.equal(await page.locator('#secMenu').isVisible(),true);await page.keyboard.press('Escape');});
   assert.deepEqual(errors,[],'uncaught browser errors');
   fs.writeFileSync(path.join(output,'browser-report.json'),JSON.stringify({browser:browser.version(),checked,failures,errors},null,2));
   console.log(JSON.stringify({browser:browser.version(),passed:checked.length,failures,errors},null,2));
