@@ -16,26 +16,10 @@ build: function(root){
   var sv = s('svg', {viewBox: '0 0 1000 120', style: 'width:100%;min-width:640px;height:auto;display:block'}, bar);
   var tbl = h('div', {'class': 'card'}, root);
   var sum = h('div', {'class': 'card'}, root);
-  function steps(){
-    var ghz = CFG.ghz, S = [];
-    var add = function(n, c, src, ch, what){ S.push({n: n, c: Math.max(0, Math.round(c)), src: src, ch: ch, what: what}); };
-    add('front end: fetch, predecode, decode, \u00b5op queue', 5, 'model', 'core', 'L1i hit, op cache or decoders');
-    add('rename + dispatch', 2, 'model', 'core', 'RAT, free list, ROB, scheduler, LQ/SQ entries');
-    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'published', 'core', 'the address depends on this load');
-    add('AGU: rdx + rax\u00d78', 1, 'model', 'core', 'VA 0x7ffd4a3c2e58');
-    if (o.tlb === 'walk') add('DTLB + L2 TLB miss, page walk', 2 * CFG.l2 + 2, 'assumed', 'xlate', 'PML4E/PDPTE from the walk cache, PDE and PTE from L2');
-    var lat = o.lvl === 'L1' ? CFG.l1 : o.lvl === 'L2' ? CFG.l2 : o.lvl === 'L3' ? CFG.l3 : App.dramCycles();
-    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'published', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns (latency settings)' : 'load-to-use');
-    if (o.lvl === 'DRAM' && o.row !== 'closed') add(o.row === 'hit' ? 'row already open: saves ACT' : 'row conflict: extra PRE', (o.row === 'hit' ? -14.2 : 14.2) * ghz, 'derived', 'dram', 'device-time difference from [[ch:dram]] (\u00b1 14.2 ns)');
-    add('add: tmp + 1', 1, 'published', 'core', '1-cycle ALU op');
-    add('store address + data into the SQ', 2, 'model', 'core', 'STA / STD');
-    add('retire (older instructions already done)', 1, 'model', 'core', 'ROB head');
-    add('commit to L1d: line is E after the load, becomes M', 1, 'model', 'stores', 'no RFO needed');
-    S.forEach(function(x){ if (x.n.indexOf('row already open') === 0) x.neg = true; });
-    return S;
-  }
+  function steps(){ return App.E2E.steps(o); }
   var COL = {core: 'a3b', xlate: 'a4b', l1d: 'a2b', hier: 'a2b', dram: 'a1b', stores: 'a3b'};
   function draw(){
+    if (PLATE) PLATE.set(o);
     var S = steps(), ghz = CFG.ghz, tot = 0;
     S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
     sv.innerHTML = ''; var x0 = 10, W = 980, acc = 0;
@@ -56,6 +40,7 @@ build: function(root){
     tbl.querySelectorAll('button.lnk').forEach(function(b){ b.onclick = function(){ App.go(b.dataset.ch); }; });
     sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale ([[chs:stores,coh]]).</p><p>Nothing else happens to it until it is evicted, when its 64 bytes are written back to the L2, later enter the L3 as a victim, and eventually reach DRAM through the controller as a write ([[chr:l1d,dram]]).</p><p>That write-back is off the critical path of this instruction; the core keeps running.</p><p>For comparison: at ' + ghz + ' GHz the loop body runs about one iteration per cycle when everything hits ([[ch:core]]). A single miss to DRAM costs the time of hundreds of iterations, which is why the hierarchy, the prefetchers and memory-level parallelism exist.</p>';
   }
+  var PLATE = App.Plates.e2e(root, o);
   App.onCfg(draw);
   draw();
 }});

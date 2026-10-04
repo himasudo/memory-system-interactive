@@ -3,8 +3,8 @@ App.chapter({id: 'hier', short: 'Down the hierarchy', title: 'Down the hierarchy
 lede: 'When the L1d misses, the request moves outward until some level has the line.',
 points: ['Follow the request to the L2, the L3, another core, or DRAM.', 'The line comes back the same way it went out.', 'Where it was found decides how long the load waits.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g, CFG = App.CFG, hx = App.hx;
-  var PA = 0x1a3f7ce58n, LINE = PA & ~63n;
+  var h = App.h, s = App.s, g = App.g, CFG = App.CFG, hx = App.hx, HW = App.HW;
+  var PA = 0x1a3f7ce58n, LINE = PA & ~63n, l1set = Number((PA >> 6n) & 63n), DR = HW.dramMap(LINE);
   var l2set = Number((PA >> 6n) & 1023n), l3set = Number((PA >> 6n) & 4095n);
   var mode = 'DRAM';
   var intro = h('div', {'class': 'grid2'}, root);
@@ -22,21 +22,44 @@ build: function(root){
   function wire(id, d, ret){ P[id] = s('path', {d: d, 'class': 'wire', 'stroke-width': 2}, sv); P[id].ret = ret; return P[id]; }
   box('core0', 20, 18, 320, 140, 'Core 0');
   box('l1', 30, 50, 140, 96, 'LSU + L1d', 'misses here', 'a4b');
+  HW.txt(P.l1, 40, 101, 'L1d \u00b7 8 ways \u00b7 set ' + l1set, {size: 9, fill: 'var(--tx3)'});
+  HW.assoc(P.l1, 40, 106, 120, 32, {ways: 8, rows: 3, hot: 1});
   box('mab', 185, 50, 145, 96, 'MAB', 'one entry per missing line', 'a4b');
+  HW.rect(P.mab, 195, 93, 125, 14, 'box', 3); HW.txt(P.mab, 201, 103.5, hx(LINE) + ' \u2190 C1.ld', {size: 9, fill: 'var(--tx)', cls: 'm'});
+  [0, 1].forEach(function(k){ HW.rect(P.mab, 195, 110 + k * 17, 125, 14, 'sunk', 3); HW.txt(P.mab, 201, 120.5 + k * 17, 'free', {size: 9, fill: 'var(--tx3)'}); });
   box('l2', 20, 190, 320, 60, 'L2 \u00b7 core 0', '512 KB \u00b7 8-way \u00b7 set ' + l2set, 'a2b');
+  HW.assoc(P.l2, 214, 197, 116, 46, {ways: 8, rows: 4, hot: 1});
   [1, 2, 3].forEach(function(n, k){
     var x = 370 + k * 200;
-    box('c' + n, x, 18, 180, 140, 'Core ' + n, 'same structure as core 0');
-    box('c' + n + 'l2', x, 190, 180, 60, 'L2 \u00b7 core ' + n, '512 KB', 'a2b');
+    box('c' + n, x, 18, 180, 140, 'Core ' + n, '');
+    HW.blocks(P['c' + n], x + 10, 50, 160, 96, [{t: 'LSU + L1d', sub: 'its own loads', cls: 'a4b'}, {t: 'MAB', sub: 'its own misses', cls: 'a4b'}], {cols: 2, gap: 8});
+    HW.assoc(P['c' + n], x + 16, 104, 64, 30, {ways: 8, rows: 3});
+    [0, 1, 2].forEach(function(r){ HW.rect(P['c' + n], x + 100, 86 + r * 17, 64, 14, 'sunk', 3); HW.txt(P['c' + n], x + 105, 96.5 + r * 17, 'free', {size: 8.5, fill: 'var(--tx3)'}); });
+    box('c' + n + 'l2', x, 190, 180, 60, 'L2 \u00b7 core ' + n, '512 KB \u00b7 set ' + l2set, 'a2b');
+    HW.assoc(P['c' + n + 'l2'], x + 96, 197, 74, 46, {ways: 8, rows: 4, hot: 1});
   });
   box('l3', 20, 282, 930, 96, 'L3 \u00b7 4 MB \u00b7 16-way \u00b7 set ' + l3set + ' \u00b7 victim cache', '', 'a2b');
   for (var k = 0; k < 4; k++){ s('rect', {x: 30 + k * 228, y: 310, width: 218, height: 30, rx: 5, 'class': 'box'}, P.l3); s('text', {x: 40 + k * 228, y: 330, 'class': 's'}, P.l3, 'slice ' + k + ' \u00b7 1 MB'); }
   P.sh = s('g', null, sv); s('rect', {x: 30, y: 346, width: 910, height: 24, rx: 5, 'class': 'a3b'}, P.sh); s('text', {x: 40, y: 363, 'font-size': 12}, P.sh, 'shadow tags: a copy of every L2 tag array in the CCX (probe filter)');
   box('df', 20, 410, 1160, 40, 'Infinity Fabric (data fabric)', '', 'a3b');
   box('umc', 20, 480, 520, 66, 'Memory controllers: UMC 0 \u00b7 UMC 1', 'queues, address mapping, DRAM commands');
+  HW.txt(P.umc, 300, 495, 'request queue', {size: 8.5, fill: 'var(--tx3)'});
+  for (k = 0; k < 8; k++) HW.rect(P.umc, 300 + k * 12, 499, 10, 14, k === 0 ? 'box' : 'sunk', 2);
+  HW.blocks(P.umc, 404, 486, 128, 30, [{t: 'command scheduler', sub: 'ACT \u00b7 RD \u00b7 PRE \u00b7 REF', cls: 'sunk'}], {size: 9, subSize: 8});
+  HW.txt(P.umc, 300, 533, 'address map: PA \u2192 ch \u00b7 BG \u00b7 bank \u00b7 row \u00b7 col', {size: 8.5, fill: 'var(--tx3)'});
   box('dram', 640, 480, 540, 66, 'DDR4 channel A \u00b7 channel B', 'rows, banks, ACT / RD / PRE ([[ch:dram]])');
+  HW.dram(P.dram, 932, 485, {hot: DR, cell: 4, labW: 26, chipGap: 3, rowGap: 4});
+  HW.txt(P.dram, 650, 534, 'this line: channel ' + DR.ch + ' (' + 'AB'[DR.ch] + ') \u00b7 bank group ' + DR.bg + ' \u00b7 bank ' + DR.bank + ' \u00b7 row ' + DR.row, {size: 9.5, fill: 'var(--tx3)'});
   box('meter', 980, 18, 200, 360, 'Elapsed');
-  P.mT = []; for (k = 0; k < 12; k++) P.mT.push(s('text', {x: 992, y: 70 + k * 24, 'font-size': k === 0 ? 22 : 12, 'class': k === 0 ? 'm' : ''}, P.meter, ''));
+  P.mT = []; for (k = 0; k < 5; k++) P.mT.push(s('text', {x: 992, y: 70 + k * 24, 'font-size': k === 0 ? 22 : 12, 'class': k === 0 ? 'm' : ''}, P.meter, ''));
+  var LAD = HW.ladder(P.meter, 990, 192, 182, 180);
+  var LEVEL = {'L1 miss': 'L1d', 'L2 hit': 'L2', 'L2 miss': 'L2', 'fill': 'L2', 'L3 hit': 'L3', 'move up': 'L3', 'shadow tags': 'L3', 'L3 miss': 'L3', 'probe': 'core 2', 'fabric': 'DRAM', 'DRAM': 'DRAM', 'return': 'DRAM'};
+  function levels(){
+    var L = [{k: 'L1d', c: CFG.l1, cls: 'a4b'}, {k: 'L2', c: CFG.l2, cls: 'a2b'}, {k: 'L3', c: CFG.l3, cls: 'a3b'}];
+    if (mode === 'peer') L.push({k: 'core 2', c: null});
+    L.push({k: 'DRAM', c: App.dramCycles(), cls: 'a1b'});
+    return L;
+  }
   wire('a1', 'M 90 146 L 90 188');
   wire('a2', 'M 150 250 L 150 280');
   wire('a3', 'M 660 282 L 660 252');
@@ -85,6 +108,7 @@ build: function(root){
     }
     P.r4t.textContent = f.on.indexOf('r4') >= 0 ? 'data returns to the L2; the L3 is bypassed' : '';
     P.mT.forEach(function(t, i){ t.textContent = f.m[i] || ''; });
+    LAD.set(levels(), LEVEL[f.p]);
   }
   frames();
 

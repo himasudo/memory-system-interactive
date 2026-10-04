@@ -68,6 +68,7 @@ d('walloc','write-allocate','On a write miss, the line is first fetched into the
 d('rfo','RFO','Read for ownership: fetching a line with exclusive permission because the core intends to write it. Other cached copies are invalidated.');
 d('evict','eviction','Removing a line from a full set to make room. A dirty victim must be written back first.');
 d('plru','pseudo-LRU','A cheap approximation of least-recently-used replacement: a small binary tree of bits per set that points toward the older half at each level.');
+d('waypred','way predictor (\u00b5tag)','AMD\u2019s L1d guesses which way holds a line from a \u00b5tag, a small hash of virtual-address bits, and reads only that way to save power. The full physical tag is still compared. A \u00b5tag that matches nothing counts as a miss, and a line can sit in the L1d under only one \u00b5tag at a time. The hash is undocumented; Lipp et al. reverse-engineered it on Zen and Zen+.');
 d('vipt','VIPT','Virtually indexed, physically tagged: the L1 set is chosen with virtual-address bits while the TLB translates in parallel; the tag compare uses the physical address. Works because bits 11:6 are inside the 4 KB page offset and never change in translation.');
 d('incl','inclusive cache','A cache that holds a copy of every line held by the smaller caches above it. Zen+\'s L2 is inclusive of its L1s.');
 d('victimc','victim cache','A cache filled only with lines evicted from the level above. Zen+\'s L3 is filled from L2 victims and is mostly exclusive of the L2s.');

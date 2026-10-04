@@ -3,7 +3,7 @@ App.chapter({id: 'coh', short: 'Coherence', title: 'Four cores, one line: MOESI 
 lede: 'Each core has private caches, yet all cores must agree on the order of writes to each address.',
 points: ['The coherence protocol tracks ownership per 64-byte line.', 'Step through reads and writes and watch each line change state between cores.', 'Two unrelated variables in one line can slow each other down: false sharing.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g;
+  var h = App.h, s = App.s, g = App.g, HW = App.HW, DR = HW.dramMap(0x1a3f7ce40n);
   var LN = ['A', 'F', 'G1', 'G2'], LD = {A: 'hist[120..127]', F: 'struct { long a, b; }', G1: 'a, padded to its own line', G2: 'b, padded to its own line'};
   var SC = {
     share: {n: 'Read sharing, write, owner', ops: [[0, 'r', 'A'], [1, 'r', 'A'], [2, 'r', 'A'], [3, 'w', 'A'], [0, 'r', 'A'], [1, 'r', 'A'], [3, 'e', 'A']]},
@@ -49,9 +49,12 @@ build: function(root){
   E.l3 = s('g', null, sv); s('rect', {x: 20, y: 222, width: 1160, height: 76, rx: 9, 'class': 'a3b'}, E.l3);
   s('text', {x: 32, y: 244, 'class': 'h'}, E.l3, 'L3 shadow tags: which cores hold each line');
   E.l3T = s('text', {x: 32, y: 270, 'class': 'm', 'font-size': 12.5}, E.l3, ''); E.l3T2 = s('text', {x: 32, y: 290, 'class': 's'}, E.l3, '');
+  E.l3P = HW.presence(E.l3, 822, 228, {cw: 28, ch: 18, lw: 30, head: function(c){ return 'c' + c; }});
   E.dr = s('g', null, sv); s('rect', {x: 20, y: 340, width: 1160, height: 76, rx: 9, 'class': 'box'}, E.dr);
   s('text', {x: 32, y: 362, 'class': 'h'}, E.dr, 'DRAM');
   E.drT = s('text', {x: 32, y: 388, 'class': 'm', 'font-size': 12.5}, E.dr, ''); E.drT2 = s('text', {x: 32, y: 406, 'class': 's'}, E.dr, '');
+  E.drD = HW.dram(E.dr, 940, 349, {hot: DR, hotCls: 'sunk', cell: 4, labW: 26, chipGap: 3, rowGap: 6});
+  E.drC = HW.txt(E.dr, 90, 362, '', {size: 9.5, fill: 'var(--tx3)'});
   E.arr = s('g', null, sv);
   var stp = App.stepper(root, {render: draw, pills: false});
   var stats = h('div', {'class': 'card'}, root);
@@ -135,7 +138,7 @@ build: function(root){
     E.cores.forEach(function(cc, c){
       cc.rows.forEach(function(R, k){
         var L = LN[k], sn = f.snap[L], st = sn.st[c], show = used.indexOf(L) >= 0;
-        R.r.style.opacity = show ? 1 : .3; R.st.textContent = show ? st : ''; R.st.setAttribute('fill', COL[st]);
+        R.r.style.opacity = show ? 1 : .3; R.st.textContent = show ? st : ''; R.st.style.fill = COL[st];
         R.v.textContent = show ? (st === 'I' ? LD[L] : 'version ' + sn.cv[c] + (sn.cv[c] < sn.nv ? ' (stale!)' : '')) : '';
         R.r.setAttribute('class', show && f.L === L && f.c === c ? 'on box' : 'sunk');
       });
@@ -143,6 +146,10 @@ build: function(root){
     });
     E.l3T.textContent = used.map(function(L){ var hs = [0, 1, 2, 3].filter(function(j){ return f.snap[L].st[j] !== 'I'; }); return L + ': ' + (hs.length ? 'cores ' + hs.join(', ') : 'nobody'); }).join('     ');
     E.l3T2.textContent = 'probes go only to the cores listed here';
+    E.l3P.draw(used.map(function(L){ return {label: L, st: f.snap[L].st}; }));
+    var hasA = used.indexOf('A') >= 0;
+    E.drD.setHot(hasA ? 'a4b' : 'sunk');
+    E.drC.textContent = hasA ? 'line A = hist[120..127]: channel ' + DR.ch + ' (' + 'AB'[DR.ch] + ') \u00b7 bank group ' + DR.bg + ' \u00b7 bank ' + DR.bank + ' \u00b7 row ' + DR.row : 'addresses of F, G1 and G2 are not modeled';
     E.drT.textContent = used.map(function(L){ var sn = f.snap[L]; return L + ': version ' + sn.mv + (sn.mv < sn.nv ? ' (stale: newest is ' + sn.nv + ' in a cache)' : ' (current)'); }).join('     ');
     E.drT2.textContent = 'O and M lines are newer than DRAM until written back';
     E.arr.innerHTML = '';

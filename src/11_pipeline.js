@@ -270,5 +270,6 @@ build: function(root){
 
   App.onCfg(function(){ if (sim) run(); });
   run();
+  App.Plates.core(root);
   return {key: function(k){ if (k === 'ArrowRight'){ go(cur + 1); return true; } if (k === 'ArrowLeft'){ go(cur - 1); return true; } return false; }};
 }});

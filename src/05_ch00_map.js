@@ -3,7 +3,7 @@ App.chapter({id: 'map', short: 'The machine', title: 'The machine, all of it',
 lede: 'Every structure a memory access can touch, from the core\u2019s load/store unit out to the DRAM chips and the SSD.',
 points: ['Click a block to see what it does and its published size.', 'Each block links to the chapter that takes it apart.', 'All sizes come from one real processor, an AMD Ryzen 7 3750H (Zen+). Other x86-64 CPUs use the same kinds of structures with different sizes.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g;
+  var h = App.h, s = App.s, g = App.g, HW = App.HW;
   var work = h('div', {'class': 'map-workbench'}, root);
   var wrap = h('div', {'class': 'scroller map-canvas'}, work);
   var sv = s('svg', {viewBox: '0 0 1200 760', style: 'min-width:880px'}, wrap);
@@ -20,10 +20,10 @@ build: function(root){
     df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; up to 96 outstanding misses from L3 to memory (published Zen/Zen+).', 'hier', ''],
     umc: ['Memory controllers (UMC \u00d72)', 'One per channel. Queue requests, map physical addresses to channel/bank/row/column, reorder to hit open rows, issue ACT/RD/WR/PRE/REF, enforce DRAM timings.', 'dram', '[[ch:dram]].'],
     dram: ['DDR4 DRAM, 2 channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst = 8 beats \u00d7 8 bytes = 64 bytes, one cache line. Cells are capacitors that must be refreshed.', 'dram', ''],
-    gpu: ['Integrated GPU (Vega)', 'Another client of the same fabric and the same DRAM. It competes with the cores for memory bandwidth.', 'hier', ''],
+    gpu: ['Integrated GPU (Radeon RX Vega 10)', '10 compute units (640 shaders) sharing a GPU L2. Another client of the same fabric and the same DRAM: it competes with the cores for memory bandwidth.', 'hier', ''],
     io: ['I/O hub: PCIe root complex + IOMMU', 'Turns device PCIe packets into memory requests and core MMIO accesses into PCIe packets. The IOMMU translates device addresses and blocks DMA outside what the OS mapped. Device DMA is snooped against CPU caches.', 'dev', '[[ch:dev]] walks an NVMe read through it.'],
     nvme: ['NVMe SSD', 'Talks to the CPU through submission/completion rings in RAM, doorbell registers (MMIO), DMA, and MSI-X interrupts.', 'dev', ''],
-    nic: ['Wi-Fi / Ethernet', 'Same pattern as NVMe: descriptor rings in RAM, doorbells, DMA, interrupts.', 'dev', '']
+    nic: ['Wi-Fi / Ethernet', 'Same pattern as NVMe: TX and RX descriptor rings in host RAM, doorbell registers the driver writes over MMIO, a DMA engine that reads the rings and packet buffers, and MSI-X interrupts.', 'dev', '']
   };
   function blk(id, x, y, w, ht, title, lines, cls){
     var gr = s('g', {'class': 'click'}, sv);
@@ -49,15 +49,23 @@ build: function(root){
   blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ 44 \u00b7 SQ 44', 'L1d 32 KB 8-way', '2 loads + 1 store / cycle'], 'a4b');
   blk('tlb', 302, 188, 146, 82, 'TLBs + walkers', ['L1 DTLB 64', 'L2 TLB 1536', '2 walkers'], 'a4b');
   blk('l2', 44, 300, 404, 50, 'L2 \u00b7 512 KB \u00b7 8-way \u00b7 inclusive of L1', ['private to this core'], 'a2b');
+  HW.assoc(parts.l2, 356, 307, 84, 36, {ways: 8, rows: 4});
   busL('M 170 270 L 170 300'); lbl(176, 290, '32 B/cycle');
   /* cores 1-3 */
   [1, 2, 3].forEach(function(n, k){
     var x = 472 + k * 102;
     s('rect', {x: x, y: 72, width: 94, height: 206, rx: 10, fill: 'none', stroke: 'var(--bd2)'}, sv);
-    var gr = blk('c' + n, x + 6, 80, 82, 190, 'Core ' + n, ['same as', 'core 0']);
+    var gr = blk('c' + n, x + 6, 80, 82, 190, 'Core ' + n, []);
+    HW.blocks(gr, x + 12, 106, 70, 156, [
+      {t: 'Front end', sub: 'L1i \u00b7 decode', cls: 'a3b'},
+      {t: 'OoO engine', sub: 'ROB \u00b7 PRF', cls: 'a3b'},
+      {t: 'LSU + L1d', sub: 'LQ \u00b7 SQ', cls: 'a4b'},
+      {t: 'TLBs', sub: '+ 2 walkers', cls: 'a4b'}
+    ], {gap: 5});
     gr.onclick = function(e){ e.stopPropagation(); pick('core0'); };
     s('rect', {x: x + 6, y: 300, width: 82, height: 50, rx: 8, 'class': 'box a2b'}, sv);
     lbl(x + 14, 318, 'L2 512 KB', 's');
+    HW.assoc(sv, x + 14, 324, 66, 19, {ways: 8, rows: 3});
     busL('M ' + (x + 47) + ' 270 L ' + (x + 47) + ' 300');
   });
   blk('l3', 44, 366, 728, 50, 'L3 \u00b7 4 MB \u00b7 16-way \u00b7 victim cache \u00b7 shadow tags of all four L2s', ['shared by cores 0\u20133; filled by L2 evictions'], 'a2b');
@@ -68,7 +76,14 @@ build: function(root){
   /* fabric */
   blk('df', 24, 440, 1152, 36, 'Infinity Fabric \u2014 data fabric (coherent interconnect)', [], 'a3b');
   busL('M 400 416 L 400 440');
-  blk('gpu', 800, 44, 376, 110, 'Integrated GPU (Vega)', ['shares DRAM and fabric bandwidth', 'with the CPU cores']);
+  var gpu = blk('gpu', 800, 44, 376, 110, 'Integrated GPU \u2014 Radeon RX Vega 10', []);
+  for (var cu = 0; cu < 10; cu++){
+    var cux = 810 + (cu % 5) * 50, cuy = 70 + Math.floor(cu / 5) * 26;
+    HW.rect(gpu, cux, cuy, 46, 22, 'a3b', 3); HW.txt(gpu, cux + 23, cuy + 15, 'CU ' + cu, {size: 9, anchor: 'middle', fill: 'var(--tx)'});
+  }
+  HW.blocks(gpu, 1066, 70, 100, 48, [{t: 'GPU L2', sub: 'shared by the CUs', cls: 'sunk'}]);
+  HW.rect(gpu, 806, 124, 92, 24, 'a3b', 4); HW.txt(gpu, 852, 140, 'fabric port', {size: 9.5, anchor: 'middle', fill: 'var(--tx)'});
+  HW.txt(gpu, 908, 140, 'same fabric and DRAM as the cores', {size: 9.5, fill: 'var(--tx3)'});
   busL('M 800 130 L 792 130 L 792 440');
   blk('io', 800, 170, 376, 110, 'I/O hub', ['PCIe root complex \u00b7 IOMMU + IOTLB', 'turns MMIO into PCIe packets and', 'device DMA into memory requests']);
   busL('M 1000 280 L 1000 440');
@@ -78,7 +93,14 @@ build: function(root){
   blk('dram', 24, 600, 560, 140, 'DDR4 \u2014 channel A and channel B', ['each: 64-bit data bus + command/address bus', 'DIMM \u2192 rank \u2192 8 chips \u2192 16 banks each \u2192 rows \u00d7 columns', 'one 64-byte line = 8 beats of 8 bytes (burst length 8)', 'DDR4-2400: 2400 MT/s \u00d7 8 B = 19.2 GB/s per channel (peak)']);
   busL('M 160 554 L 160 600'); busL('M 450 554 L 450 600'); lbl(166, 584, 'channel A, 64 bits'); lbl(456, 584, 'channel B, 64 bits');
   blk('nvme', 800, 600, 180, 140, 'NVMe SSD', ['queues in host RAM', 'doorbells via MMIO', 'DMA + MSI-X']);
-  blk('nic', 996, 600, 180, 140, 'Wi-Fi / NIC', ['descriptor rings', 'DMA + interrupts']);
+  var nic = blk('nic', 996, 600, 180, 140, 'Wi-Fi / NIC', []);
+  HW.blocks(nic, 1004, 628, 164, 24, [{t: 'doorbells', cls: 'a3b'}, {t: 'DMA', cls: 'a3b'}, {t: 'MSI-X', cls: 'a3b'}], {cols: 3, gap: 4, size: 9});
+  ['TX', 'RX'].forEach(function(nm, r){
+    var ry = 664 + r * 24;
+    HW.txt(nic, 1006, ry + 11, nm + ' ring', {size: 9, fill: 'var(--tx2)'});
+    for (var k = 0; k < 8; k++) s('rect', {x: 1052 + k * 14.5, y: ry, width: 12, height: 15, rx: 2, 'class': 'sunk', style: 'stroke-dasharray:2 1.5'}, nic);
+  });
+  HW.txt(nic, 1006, 726, 'rings live in host RAM', {size: 9, fill: 'var(--tx3)'});
   lbl(896, 530, 'PCIe links from the I/O hub');
   lbl(896, 545, '(packets called TLPs); they do');
   lbl(896, 560, 'not pass through the fabric');

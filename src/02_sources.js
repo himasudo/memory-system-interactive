@@ -5,6 +5,7 @@
     agner: ['The microarchitecture of Intel, AMD and VIA CPUs', 'https://www.agner.org/optimize/microarchitecture.pdf', 'Agner Fog'],
     zen: ['AMD Zen+ microarchitecture', 'https://en.wikipedia.org/wiki/Zen%2B', 'Wikipedia'],
     zen7: ['AMD Zen: cache and TLB measurements', 'https://www.7-cpu.com/cpu/Zen.html', '7-cpu'],
+    takeaway: ['Take A Way: Exploring the Security Implications of AMD\u2019s Cache Way Predictors', 'https://misc0110.net/files/takeaway.pdf', 'Lipp et al., 2020'],
     drepper: ['What Every Programmer Should Know About Memory', 'https://www.akkadia.org/drepper/cpumemory.pdf', 'Ulrich Drepper'],
     sdm: ['Intel 64 and IA-32 Software Developer Manuals', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html', 'Intel'],
     enc: ['X86-64 Instruction Encoding', 'https://wiki.osdev.org/X86-64_Instruction_Encoding', 'OSDev Wiki'],
@@ -40,7 +41,7 @@
     line: [W('CPU_cache'), S.drepper], set: [W('CPU_cache'), S.drepper], way: [W('CPU_cache'), S.drepper], tag: [W('CPU_cache')], index: [W('CPU_cache')], offset: [W('CPU_cache')],
     hit: [W('CPU_cache'), S.drepper], miss: [W('CPU_cache'), S.drepper], valid: [W('CPU_cache')], dirty: [W('Dirty_bit'), W('Cache_(computing)')],
     wbk: [W('Cache_(computing)'), S.drepper], wthru: [W('Cache_(computing)')], walloc: [W('Cache_(computing)')], rfo: [W('MESI_protocol'), S.drepper],
-    evict: [W('Cache_replacement_policies')], plru: [W('Cache_replacement_policies'), W('Pseudo-LRU')], vipt: [W('CPU_cache'), S.drepper],
+    evict: [W('Cache_replacement_policies')], plru: [W('Cache_replacement_policies'), W('Pseudo-LRU')], vipt: [W('CPU_cache'), S.drepper], waypred: [S.takeaway],
     incl: [W('Cache_inclusion_policy')], victimc: [W('Victim_cache'), S.zen], shadow: [S.zen], pfilter: [W('Cache_coherence'), S.zen], ccx: [S.zen],
     mlp: [W('Memory-level_parallelism')], ltu: [S.agner, S.zen7], wset: [W('Working_set')], sloc: [W('Locality_of_reference')], tloc: [W('Locality_of_reference')],
     sram: [W('Static_random-access_memory')], dramcell: [W('Dynamic_random-access_memory')],
@@ -70,7 +71,7 @@
   'isa uop mop pc fetchwin predecode decode opcache fusion zx modrm rex l1i'.split(' ').forEach(function(k){ HOME[k] = 'code'; });
   'bp btb ras itlb uq rename rat crat prf freelist dispatch rob sched wakeup issue port alu agu bypass lsu lq sq sta std stlf disamb retire squash mispredict spec smt ipc mab'.split(' ').forEach(function(k){ HOME[k] = 'core'; });
   'va pa page vpn pfn mmu tlb dtlb pte pml4 cr3 walk pwc reach huge pcid pf ftouch'.split(' ').forEach(function(k){ HOME[k] = 'xlate'; });
-  'line set way tag index offset hit miss valid dirty wbk wthru walloc evict plru vipt'.split(' ').forEach(function(k){ HOME[k] = 'l1d'; });
+  'line set way tag index offset hit miss valid dirty wbk wthru walloc evict plru vipt waypred'.split(' ').forEach(function(k){ HOME[k] = 'l1d'; });
   'incl victimc shadow pfilter ccx mlp ltu wset sloc tloc sram fabric memwall'.split(' ').forEach(function(k){ HOME[k] = 'hier'; });
   'dramcell umc channel dimm bank row rowbuf act tcl burst refresh'.split(' ').forEach(function(k){ HOME[k] = 'dram'; });
   'commit senior rfo memtype pat wc nt clflush fence tso'.split(' ').forEach(function(k){ HOME[k] = 'stores'; });

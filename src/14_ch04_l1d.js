@@ -125,6 +125,10 @@ build: function(root){
   s('text', {x: 1025, y: 364, 'text-anchor': 'middle', 'class': 's', transform: 'rotate(-90 1025 364)'}, sv, '8:1 way mux');
   E.selW = s('path', {d: 'M 566 528 L 566 556 L 1025 556 L 1025 522', 'class': 'wire'}, sv);
   s('text', {x: 700, y: 570, 'class': 's'}, sv, 'hit vector selects a hit; replacement selects a refill way');
+  /* Zen+ way predictor (\u00b5tag): lights during steps 2-3 */
+  E.wp = box(1060, 104, 130, 74, 'Way predictor');
+  E.wpT = s('text', {x: 1070, y: 142, 'class': 'm', style: 'font-size:11px'}, E.wp, '');
+  E.wpT2 = s('text', {x: 1070, y: 160, 'class': 's'}, E.wp, '');
   E.lb = box(1060, 184, 130, 350, '');
   s('text', {x: 1070, y: 204, 'class': 'h'}, E.lb, 'line buffer'); s('text', {x: 1070, y: 220, 'class': 's'}, E.lb, '64 bytes');
   s('text', {x: 1070, y: 262, 'class': 'h'}, E.lb, 'aligner');
@@ -210,8 +214,8 @@ build: function(root){
     var f = {r: r, ph: ph, k: k}, a = r.a, n = k + 1, setTxt = 'set ' + r.si;
     var addr = '<code>' + hx(r.va) + '</code>';
     if (ph === 'split'){ f.t = 'Access 1, step 1: split the address'; f.d = 'C1\u2019s load of hist[123] arrives with VA ' + addr + '.\n<ul><li>Bits 11:6 = 111001 = <b>57</b> go straight to the row decoder.</li><li>Bits 47:12, the VPN 0x7ffd4a3c2, go to the ' + g('dtlb') + ', which returns PFN 0x1a3f7c: the physical tag.</li><li>Bits 5:0 = <b>24</b> wait until the end, where they pick bytes 24\u201331 of the line.</li></ul>'; return f; }
-    if (ph === 'read'){ f.t = 'Step 2: read the whole set'; f.d = 'The decoder raises wordline 57. In all 8 ways at once, set 57\u2019s V, D and tag bits and its 64 data bytes flow out through the sense amplifiers: 8 tags and 512 data bytes read for one 8-byte load.\nThe hardware reads every way because it does not yet know which one holds the line.'; return f; }
-    if (ph === 'compare'){ f.t = 'Step 3: eight tag compares in parallel'; f.d = 'Eight comparators check PA tag 0x1a3f7c against the eight stored tags in the same cycle; each result is ANDed with its valid bit. <b>Way 3 matches.</b> The OR of the eight hit lines is the hit signal.\nThe comparators are why associativity costs area and power: 8 ways means 8 of them, firing on every access.'; return f; }
+    if (ph === 'read'){ f.t = 'Step 2: read the set (textbook) or one way (Zen+)'; f.d = 'The decoder raises wordline 57. <b>Textbook model:</b> in all 8 ways at once, set 57\u2019s V, D and tag bits and its 64 data bytes flow out through the sense amplifiers: 8 tags and 512 data bytes read for one 8-byte load, because the hardware does not yet know which way holds the line.\n<b>What Zen+ does instead:</b> a ' + g('waypred') + ' hashes virtual-address bits into a \u00b5tag and picks the way before any tag compare, so ' + (r.hit ? 'only way ' + r.way + '\u2019s data is read' : 'no way matches and the access goes straight to the miss path') + '. It saves power; the full tag compare in step 3 still decides hit or miss. AMD does not document the hash; Lipp et al. reverse-engineered it in 2020 and tested Zen and Zen+.'; return f; }
+    if (ph === 'compare'){ f.t = 'Step 3: eight tag compares in parallel'; f.d = 'Eight comparators check PA tag 0x1a3f7c against the eight stored tags in the same cycle; each result is ANDed with its valid bit. <b>Way 3 matches.</b> The OR of the eight hit lines is the hit signal.\nIn the textbook model, 8 ways means 8 comparators firing on every access. On Zen+ the predicted way\u2019s full physical tag is still checked against 0x1a3f7c: that check is what makes a wrong prediction safe. A \u00b5tag that matches nothing is handled as an L1 miss, and because a line is cached under one \u00b5tag at a time, touching it through a second virtual alias evicts it.'; return f; }
     if (ph === 'select'){ f.t = 'Step 4: select the way, align the bytes'; f.d = 'The hit vector drives the 8:1 way mux: way 3\u2019s 64 bytes reach the line buffer, the aligner takes bytes 24\u201331, and <b>41</b> goes to the load\u2019s destination register. The pLRU bits of set 57 now point away from way 3.'; return f; }
     if (ph === 'miss'){
       f.t = 'Access ' + n + ': tag miss in set ' + r.si;
@@ -254,6 +258,9 @@ build: function(root){
     E.opT.textContent = (r.a.st ? 'STORE 8 B, value ' + decimalTxt(r.a.val) : 'LOAD 8 B'); E.opT2.textContent = r.a.who; E.opT3.textContent = 'PA ' + hx(r.pa);
     var on = function(el, v){ el.setAttribute('class', v ? 'on' : ''); };
     on(E.va, ph === 'split' || ph === 'all'); on(E.tlb, ph === 'split' || ph === 'all');
+    var wpOn = ph === 'read' || ph === 'compare'; on(E.wp, wpOn);
+    E.wpT.textContent = wpOn ? (r.hit ? '\u00b5tag \u2192 way ' + r.way : '\u00b5tag: no match') : '\u00b5tag(VA) \u2192 way';
+    E.wpT2.textContent = wpOn ? (r.hit ? 'Zen+: 1 of 8 ways read' : 'handled as a miss') : 'Zen+ only (step 2)';
     E.wTag.setAttribute('class', 'wire' + (ph !== 'read' ? ' on' : '')); E.wIdx.setAttribute('class', 'wire' + (ph === 'split' || ph === 'read' || ph === 'all' ? ' on' : ''));
     on(E.dec, ph === 'read' || ph === 'split' || ph === 'all');
     E.wl.forEach(function(l, i){ l.setAttribute('stroke', i === r.si ? 'var(--act)' : 'var(--bd2)'); l.setAttribute('stroke-width', i === r.si ? 3 : 1); l.setAttribute('x1', i === r.si ? 60 : 86); });
@@ -312,5 +319,6 @@ build: function(root){
     E.stT.forEach(function(t, i){ t.textContent = showAfter || f.k > 0 ? S[i] : ''; });
   }
   rebuild(false);
+  App.Plates.l1d(root);
   return {key: stp.key};
 }});

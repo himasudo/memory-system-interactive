@@ -3,7 +3,8 @@ App.chapter({id: 'stores', short: 'Stores', title: 'The store path, memory types
 lede: 'A store stays private to its core until it leaves the store queue.',
 points: ['It can leave only once the L1d owns the line.', 'The cost depends on which other cores hold that line.', 'The page\u2019s memory type and any fences around the store also change the cost.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g, hx = App.hx;
+  var h = App.h, s = App.s, g = App.g, hx = App.hx, HW = App.HW;
+  var LINE = 0x1a3f7ce40n, DR = HW.dramMap(LINE), STC = {M: 'var(--a1)', E: 'var(--a2)', S: 'var(--a4)'};
   var mode = 'E';
   var ctl = h('div', {'class': 'stp'}, root);
   h('span', {'class': 'note'}, ctl, 'before C1\u2019s store commits, the hist[123] line is:');
@@ -19,12 +20,22 @@ build: function(root){
   E.sqN = s('text', {x: 32, y: 222, 'class': 's'}, E.sq, 'commits in program order, one per cycle');
   E.l1 = box(310, 40, 290, 208, 'L1d \u2014 line hist[120..127]');
   E.l1T = [0, 1, 2, 3, 4].map(function(k){ return s('text', {x: 322, y: 92 + k * 30, 'font-size': k === 0 ? 22 : 12.5, 'class': k === 0 ? 'm' : ''}, E.l1, ''); });
+  E.l1W = HW.words(E.l1, 320, 222, 270, 22, {labels: ['[120]', '[121]', '[122]', '[123]', '[124]', '[125]', '[126]', '[127]'], hot: 3});
   E.c1 = box(630, 10, 250, 250, 'Core 1 \u2014 its caches');
   E.c1T = [0, 1, 2].map(function(k){ return s('text', {x: 642, y: 80 + k * 30, 'font-size': k === 0 ? 22 : 12.5, 'class': k === 0 ? 'm' : ''}, E.c1, ''); });
+  E.c1C = [['L1d', Number((LINE >> 6n) & 63n), 170], ['L2', Number((LINE >> 6n) & 1023n), 216]].map(function(c){
+    HW.txt(E.c1, 642, c[2], c[0] + ' \u00b7 set ' + c[1] + ' \u00b7 this line:', {size: 9.5, fill: 'var(--tx3)'});
+    return {a: HW.assoc(E.c1, 642, c[2] + 5, 176, 24, {ways: 8, rows: 3, hot: 1, hotCls: 'sunk'}), st: HW.txt(E.c1, 830, c[2] + 22, '', {size: 13, weight: 700, cls: 'm'})};
+  });
   E.l3 = box(900, 10, 290, 250, 'L3 + shadow tags');
   E.l3T = [0, 1, 2, 3].map(function(k){ return s('text', {x: 912, y: 60 + k * 26, 'font-size': 12.5}, E.l3, ''); });
+  HW.slices(E.l3, 912, 150, 266, 40, {n: 4, label: function(k){ return 's' + k + ' \u00b7 1 MB'; }});
+  HW.txt(E.l3, 912, 208, 'shadow tags for hist[120..127]', {size: 9.5, fill: 'var(--tx3)'});
+  E.l3P = HW.presence(E.l3, 912, 213, {cw: 52, ch: 20, lw: 0});
   E.dr = box(10, 320, 1180, 70, 'DRAM');
   E.drT = s('text', {x: 22, y: 366, 'font-size': 13}, E.dr, '');
+  HW.dram(E.dr, 640, 330, {side: true, hot: DR, cell: 4, labW: 26, chipGap: 3, colGap: 16});
+  HW.txt(E.dr, 640, 379, 'hist[120..127] lives in channel ' + DR.ch + ' (' + 'AB'[DR.ch] + ') \u00b7 bank group ' + DR.bg + ' \u00b7 bank ' + DR.bank + ' \u00b7 row ' + DR.row + ' \u00b7 8 bits from every chip per beat', {size: 9.5, fill: 'var(--tx3)'});
   var A = {};
   function arrow(id, d){ A[id] = s('path', {d: d, 'class': 'wire', 'stroke-width': 2, 'marker-end': 'url(#sa)', style: 'opacity:.18'}, sv); }
   arrow('commit', 'M 282 118 L 308 118');
@@ -60,7 +71,10 @@ build: function(root){
       var st = f.sq[k], R = E.sqR[k];
       R.t.textContent = st === 'none' ? '' : e[0] + '   ' + e[1]; R.t2.textContent = SQS[st][0]; R.r.setAttribute('class', SQS[st][1]);
     });
-    E.l1T[0].textContent = f.l0; E.l1T[0].setAttribute('fill', f.l0 === 'M' ? 'var(--a1)' : f.l0 === 'E' ? 'var(--a2)' : f.l0 === 'S' ? 'var(--a4)' : 'var(--tx3)');
+    E.l1T[0].textContent = f.l0; E.l1T[0].style.fill = STC[f.l0] || 'var(--tx3)';
+    E.l1W.set(f.v0, f.l0 === 'M' ? 'a1b' : f.l0 === '\u2014' ? 'sunk' : 'a4b');
+    E.c1C.forEach(function(c){ c.a.hot.forEach(function(r){ r.setAttribute('class', f.c1 === 'S' ? 'a4b' : 'sunk'); }); c.st.textContent = f.c1 === 'S' ? 'S' : '\u2013'; c.st.style.fill = f.c1 === 'S' ? 'var(--a4)' : 'var(--tx3)'; });
+    E.l3P.draw([{label: '', st: [f.l0 === '\u2014' ? 'I' : f.l0, f.c1, 'I', 'I']}]);
     E.l1T[1].textContent = f.l0 === '\u2014' ? 'not present' : {M: 'Modified: dirty, only copy', E: 'Exclusive: clean, only copy', S: 'Shared: read-only here'}[f.l0];
     E.l1T[2].textContent = f.v0 === null ? '' : 'hist[123] = ' + f.v0;
     E.l1T[3].textContent = f.l0 === 'M' ? 'D = 1' : f.l0 === '\u2014' ? '' : 'D = 0';

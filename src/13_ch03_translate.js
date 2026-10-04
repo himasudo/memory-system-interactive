@@ -4,13 +4,8 @@ lede: 'Programs use virtual addresses, but the L1d needs the physical address be
 points: ['Follow the virtual address of <code>hist[123]</code> from the address unit to the tag compare.', 'Five situations: DTLB hit, L2 TLB hit, full page walk, page fault, and a 2 MB page.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, EX = App.EX, hx = App.hx;
-  var VA = 0x7ffd4a3c2e58n;
-  var TB = [
-    {n: 'PML4', base: 0x10a3b000n, idx: 255, val: 0x11e2d067n},
-    {n: 'PDPT', base: 0x11e2d000n, idx: 501, val: 0x13f4a067n},
-    {n: 'PD',   base: 0x13f4a000n, idx: 81,  val: 0x1b6e9067n},
-    {n: 'PT',   base: 0x1b6e9000n, idx: 450, val: 0x80000001a3f7c067n}
-  ];
+  var VA = App.WALK.va;
+  var TB = App.WALK.levels.map(function(x){ return Object.assign({}, x); });
   var HUGE_PDE = 0x80000001a3e000e7n, FAULT_PTE = 0n;
   var mode = 'walk', st = null;
 
@@ -297,5 +292,6 @@ build: function(root){
   ctx.innerHTML = '<h3>Context switches and ' + g('pcid', 'PCID') + '</h3><p>Switching processes writes a new value into ' + g('cr3') + '. Without PCIDs every non-global TLB entry would have to be discarded, and the next process starts with page walks. With PCIDs each entry carries a 12-bit process tag, so entries from different processes coexist and a switch only changes which tag matches.</p>' +
     '<p>The kernel removes stale entries itself with <code>invlpg</code> (one page) or a CR3 reload, for example after <code>munmap</code>. On multi-core systems it must also interrupt other cores that may cache the entry (a TLB shootdown).</p>';
   frames();
+  App.Plates.xlate(root);
   return {key: stp.key};
 }});

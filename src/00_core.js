@@ -671,6 +671,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'model',title:'The model',copy:'What the simulated core contains, and what it leaves out.',nodes:[ds[0]]},
         {id:'run',title:'Run the core',copy:'Step the machine. The active structures and signal paths change with the cycle.',nodes:[q('.core-controls'),q('.core-viz'),q('.core-events')]},
+        {id:'real',title:'The real core, at real sizes',copy:'Every Zen+ queue at its published size, with one loop iteration marked.',nodes:[q('.plate-core')]},
         {id:'inspect',title:'Inspect state',copy:'Open one structure at a time while keeping the current cycle fixed.',nodes:[q('.inspector-deck'),q('.core-state-grid')]},
         {id:'timeline',title:'Read the timeline',copy:'Every µop against every cycle, in one table.',nodes:[ds[1]]}
       ]);
@@ -678,13 +679,15 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'why',title:'Why translate',copy:'Programs use virtual addresses; caches and DRAM need physical ones.',nodes:[ds[0]]},
         {id:'translate',title:'Translate an address',copy:'Walk one virtual address through the TLBs, page walker and physical address.',nodes:[q('.xlate-workbench')]},
+        {id:'walk',title:'The walk, bit by bit',copy:'The address bits, the four table reads at their real entry addresses, and the leaf entry decoded.',nodes:[q('.plate-xlate')]},
         {id:'fault',title:'Handle a fault',copy:'See what changes when translation leaves hardware and enters the kernel.',nodes:[q('.xlate-kernel')]},
         {id:'depth',title:'Go deeper',copy:'TLB reach, PCIDs, and what a context switch does to the TLBs.',nodes:[ds[1]]}
       ]);
     } else if(sec.id==='ch-l1d'){
       makeGuidedJourney(sec,[
         {id:'layout',title:'Cache layout',copy:'Sets, ways, tags, and the bits stored with every line.',nodes:[ds[0]]},
-        {id:'lookup',title:'Run a lookup',copy:'Change the address or operation, then follow the highlighted set, tags, way and miss path.',nodes:[q('.l1-workbench')]}
+        {id:'lookup',title:'Run a lookup',copy:'Change the address or operation, then follow the highlighted set, tags, way and miss path.',nodes:[q('.l1-workbench')]},
+        {id:'arrays',title:'The arrays, to scale',copy:'Tag and data SRAM drawn to one bit scale, with the Zen+ way predictor.',nodes:[q('.plate-l1d')]}
       ]);
     } else if(sec.id==='ch-hier'){
       var cards=kids('.card');
@@ -699,6 +702,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'banks',title:'Banks and rows',copy:'How a DRAM chip is organized, and the timing names used below.',nodes:[directChild(body,'.grid2')]},
         {id:'commands',title:'Run the commands',copy:'Step ACT, RD, PRE and REF while the view follows the active part of DRAM.',nodes:[q('.dram-workbench')]},
+        {id:'chip',title:'Inside one chip',copy:'From address bits to subarrays and capacitors, then the command and data bus.',nodes:[q('.plate-dram')]},
         {id:'meaning',title:'Connect the costs',copy:'Compare row hit, closed-row and conflict costs without losing the device-level picture.',nodes:[directChild(body,'.grid3')]}
       ]);
     } else if(sec.id==='ch-stores'){
@@ -729,6 +733,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state, then read the resulting critical path.',nodes:[top[0],top[1]]},
         {id:'steps',title:'Inspect the critical path',copy:'Each step in order, with its latency.',nodes:[top[2]]},
+        {id:'timeline',title:'One time axis',copy:'Every stage to scale, then the first cycles magnified.',nodes:[q('.plate-e2e')]},
         {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]}
       ]);
     } else if(sec.id==='ch-gloss'){
@@ -754,6 +759,7 @@ var App = (function(){
 
   function enhanceChapter(sec){
     var sc = sec.querySelectorAll('.scroller'); for (var i = 0; i < sc.length; i++) enhanceScroller(sc[i]);
+    for (var i2 = 0; i2 < sc.length; i2++) if (sc[i2]._views && !sc[i2].dataset.focusStrip) addFocusStrip(sec, sc[i2], sc[i2]._views, {initial: sc[i2]._views[0].id, label: sc[i2]._viewLabel, follow: false});
     var terms = sec.querySelectorAll('dfn[data-g]');
     for (var j = 0; j < terms.length; j++){
       terms[j].tabIndex = 0; terms[j].setAttribute('role','button');

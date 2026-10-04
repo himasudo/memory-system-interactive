@@ -859,7 +859,8 @@ dfn[data-g]:hover,dfn[data-g]:focus-visible{color:#fff;background:color-mix(in s
 /* Simulator workbench: controls stay present while the hardware remains large. */
 .sim-workbench{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start;margin-top:22px}
 .lab-rail{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--bd2) transparent;padding-right:2px}
-.lab-rail>*+*{margin-top:10px!important}.lab-stage{min-width:0;position:relative}.lab-stage>.viz-frame{margin-top:0!important}
+.lab-rail>*+*{margin-top:10px!important}
+.lab-rail>*{min-width:0}.lab-stage{min-width:0;position:relative}.lab-stage>.viz-frame{margin-top:0!important}
 .lab-rail .stepper{border-color:#263342;background:#0c1118}.lab-rail .stepper-bar{position:static!important;background:#101720;grid-template-columns:auto auto auto auto;gap:5px}.lab-rail .stepper-bar .pills{grid-column:1/-1;justify-content:flex-start;border-top:1px solid #243140;padding-top:6px}.lab-rail .narr{padding:15px 16px 16px;background:#0d151d}.lab-rail .narr p{font-size:12.6px}.lab-rail .narr h4{font-size:14px}.scenario-dock{position:sticky;top:0;z-index:4;padding:10px;border:1px solid #263342;border-radius:7px;background:rgba(12,17,24,.96);backdrop-filter:blur(12px)}.scenario-dock>.note{width:100%;font:700 9px var(--mono);letter-spacing:.08em;text-transform:uppercase}.scenario-dock .seg{width:100%}.scenario-dock .seg button{font-size:10.5px;padding-left:7px;padding-right:7px}
 .sticky-input{position:sticky;top:0;z-index:5;padding:12px!important;background:rgba(12,17,24,.97)!important;backdrop-filter:blur(14px);border-color:#2b3948!important}.sticky-input>h3{font-size:12px!important;text-transform:uppercase;letter-spacing:.07em;color:#8493a3;margin-bottom:8px!important}.sticky-input .stp{display:grid!important;grid-template-columns:1fr 88px;gap:6px!important}.sticky-input .l1va{grid-column:1/-1;width:100%!important}.sticky-input .l1v{width:100%!important}.sticky-input .l1go{grid-column:1/-1}.sticky-input .l1clr{grid-column:1/-1;background:transparent}.control-help{margin-top:7px}.control-help summary{cursor:pointer;color:var(--tx3);font:600 9.5px var(--mono);text-transform:uppercase;letter-spacing:.05em}.control-help p{margin-top:6px!important;font-size:10.5px!important}.l1err{grid-column:1/-1}
 
@@ -2151,6 +2152,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'model',title:'The model',copy:'What the simulated core contains, and what it leaves out.',nodes:[ds[0]]},
         {id:'run',title:'Run the core',copy:'Step the machine. The active structures and signal paths change with the cycle.',nodes:[q('.core-controls'),q('.core-viz'),q('.core-events')]},
+        {id:'real',title:'The real core, at real sizes',copy:'Every Zen+ queue at its published size, with one loop iteration marked.',nodes:[q('.plate-core')]},
         {id:'inspect',title:'Inspect state',copy:'Open one structure at a time while keeping the current cycle fixed.',nodes:[q('.inspector-deck'),q('.core-state-grid')]},
         {id:'timeline',title:'Read the timeline',copy:'Every µop against every cycle, in one table.',nodes:[ds[1]]}
       ]);
@@ -2158,13 +2160,15 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'why',title:'Why translate',copy:'Programs use virtual addresses; caches and DRAM need physical ones.',nodes:[ds[0]]},
         {id:'translate',title:'Translate an address',copy:'Walk one virtual address through the TLBs, page walker and physical address.',nodes:[q('.xlate-workbench')]},
+        {id:'walk',title:'The walk, bit by bit',copy:'The address bits, the four table reads at their real entry addresses, and the leaf entry decoded.',nodes:[q('.plate-xlate')]},
         {id:'fault',title:'Handle a fault',copy:'See what changes when translation leaves hardware and enters the kernel.',nodes:[q('.xlate-kernel')]},
         {id:'depth',title:'Go deeper',copy:'TLB reach, PCIDs, and what a context switch does to the TLBs.',nodes:[ds[1]]}
       ]);
     } else if(sec.id==='ch-l1d'){
       makeGuidedJourney(sec,[
         {id:'layout',title:'Cache layout',copy:'Sets, ways, tags, and the bits stored with every line.',nodes:[ds[0]]},
-        {id:'lookup',title:'Run a lookup',copy:'Change the address or operation, then follow the highlighted set, tags, way and miss path.',nodes:[q('.l1-workbench')]}
+        {id:'lookup',title:'Run a lookup',copy:'Change the address or operation, then follow the highlighted set, tags, way and miss path.',nodes:[q('.l1-workbench')]},
+        {id:'arrays',title:'The arrays, to scale',copy:'Tag and data SRAM drawn to one bit scale, with the Zen+ way predictor.',nodes:[q('.plate-l1d')]}
       ]);
     } else if(sec.id==='ch-hier'){
       var cards=kids('.card');
@@ -2179,6 +2183,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'banks',title:'Banks and rows',copy:'How a DRAM chip is organized, and the timing names used below.',nodes:[directChild(body,'.grid2')]},
         {id:'commands',title:'Run the commands',copy:'Step ACT, RD, PRE and REF while the view follows the active part of DRAM.',nodes:[q('.dram-workbench')]},
+        {id:'chip',title:'Inside one chip',copy:'From address bits to subarrays and capacitors, then the command and data bus.',nodes:[q('.plate-dram')]},
         {id:'meaning',title:'Connect the costs',copy:'Compare row hit, closed-row and conflict costs without losing the device-level picture.',nodes:[directChild(body,'.grid3')]}
       ]);
     } else if(sec.id==='ch-stores'){
@@ -2209,6 +2214,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state, then read the resulting critical path.',nodes:[top[0],top[1]]},
         {id:'steps',title:'Inspect the critical path',copy:'Each step in order, with its latency.',nodes:[top[2]]},
+        {id:'timeline',title:'One time axis',copy:'Every stage to scale, then the first cycles magnified.',nodes:[q('.plate-e2e')]},
         {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]}
       ]);
     } else if(sec.id==='ch-gloss'){
@@ -2234,6 +2240,7 @@ var App = (function(){
 
   function enhanceChapter(sec){
     var sc = sec.querySelectorAll('.scroller'); for (var i = 0; i < sc.length; i++) enhanceScroller(sc[i]);
+    for (var i2 = 0; i2 < sc.length; i2++) if (sc[i2]._views && !sc[i2].dataset.focusStrip) addFocusStrip(sec, sc[i2], sc[i2]._views, {initial: sc[i2]._views[0].id, label: sc[i2]._viewLabel, follow: false});
     var terms = sec.querySelectorAll('dfn[data-g]');
     for (var j = 0; j < terms.length; j++){
       terms[j].tabIndex = 0; terms[j].setAttribute('role','button');
@@ -2476,6 +2483,7 @@ d('walloc','write-allocate','On a write miss, the line is first fetched into the
 d('rfo','RFO','Read for ownership: fetching a line with exclusive permission because the core intends to write it. Other cached copies are invalidated.');
 d('evict','eviction','Removing a line from a full set to make room. A dirty victim must be written back first.');
 d('plru','pseudo-LRU','A cheap approximation of least-recently-used replacement: a small binary tree of bits per set that points toward the older half at each level.');
+d('waypred','way predictor (\u00b5tag)','AMD\u2019s L1d guesses which way holds a line from a \u00b5tag, a small hash of virtual-address bits, and reads only that way to save power. The full physical tag is still compared. A \u00b5tag that matches nothing counts as a miss, and a line can sit in the L1d under only one \u00b5tag at a time. The hash is undocumented; Lipp et al. reverse-engineered it on Zen and Zen+.');
 d('vipt','VIPT','Virtually indexed, physically tagged: the L1 set is chosen with virtual-address bits while the TLB translates in parallel; the tag compare uses the physical address. Works because bits 11:6 are inside the 4 KB page offset and never change in translation.');
 d('incl','inclusive cache','A cache that holds a copy of every line held by the smaller caches above it. Zen+\'s L2 is inclusive of its L1s.');
 d('victimc','victim cache','A cache filled only with lines evicted from the level above. Zen+\'s L3 is filled from L2 victims and is mostly exclusive of the L2s.');
@@ -2567,6 +2575,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
     agner: ['The microarchitecture of Intel, AMD and VIA CPUs', 'https://www.agner.org/optimize/microarchitecture.pdf', 'Agner Fog'],
     zen: ['AMD Zen+ microarchitecture', 'https://en.wikipedia.org/wiki/Zen%2B', 'Wikipedia'],
     zen7: ['AMD Zen: cache and TLB measurements', 'https://www.7-cpu.com/cpu/Zen.html', '7-cpu'],
+    takeaway: ['Take A Way: Exploring the Security Implications of AMD\u2019s Cache Way Predictors', 'https://misc0110.net/files/takeaway.pdf', 'Lipp et al., 2020'],
     drepper: ['What Every Programmer Should Know About Memory', 'https://www.akkadia.org/drepper/cpumemory.pdf', 'Ulrich Drepper'],
     sdm: ['Intel 64 and IA-32 Software Developer Manuals', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html', 'Intel'],
     enc: ['X86-64 Instruction Encoding', 'https://wiki.osdev.org/X86-64_Instruction_Encoding', 'OSDev Wiki'],
@@ -2602,7 +2611,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
     line: [W('CPU_cache'), S.drepper], set: [W('CPU_cache'), S.drepper], way: [W('CPU_cache'), S.drepper], tag: [W('CPU_cache')], index: [W('CPU_cache')], offset: [W('CPU_cache')],
     hit: [W('CPU_cache'), S.drepper], miss: [W('CPU_cache'), S.drepper], valid: [W('CPU_cache')], dirty: [W('Dirty_bit'), W('Cache_(computing)')],
     wbk: [W('Cache_(computing)'), S.drepper], wthru: [W('Cache_(computing)')], walloc: [W('Cache_(computing)')], rfo: [W('MESI_protocol'), S.drepper],
-    evict: [W('Cache_replacement_policies')], plru: [W('Cache_replacement_policies'), W('Pseudo-LRU')], vipt: [W('CPU_cache'), S.drepper],
+    evict: [W('Cache_replacement_policies')], plru: [W('Cache_replacement_policies'), W('Pseudo-LRU')], vipt: [W('CPU_cache'), S.drepper], waypred: [S.takeaway],
     incl: [W('Cache_inclusion_policy')], victimc: [W('Victim_cache'), S.zen], shadow: [S.zen], pfilter: [W('Cache_coherence'), S.zen], ccx: [S.zen],
     mlp: [W('Memory-level_parallelism')], ltu: [S.agner, S.zen7], wset: [W('Working_set')], sloc: [W('Locality_of_reference')], tloc: [W('Locality_of_reference')],
     sram: [W('Static_random-access_memory')], dramcell: [W('Dynamic_random-access_memory')],
@@ -2632,7 +2641,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
   'isa uop mop pc fetchwin predecode decode opcache fusion zx modrm rex l1i'.split(' ').forEach(function(k){ HOME[k] = 'code'; });
   'bp btb ras itlb uq rename rat crat prf freelist dispatch rob sched wakeup issue port alu agu bypass lsu lq sq sta std stlf disamb retire squash mispredict spec smt ipc mab'.split(' ').forEach(function(k){ HOME[k] = 'core'; });
   'va pa page vpn pfn mmu tlb dtlb pte pml4 cr3 walk pwc reach huge pcid pf ftouch'.split(' ').forEach(function(k){ HOME[k] = 'xlate'; });
-  'line set way tag index offset hit miss valid dirty wbk wthru walloc evict plru vipt'.split(' ').forEach(function(k){ HOME[k] = 'l1d'; });
+  'line set way tag index offset hit miss valid dirty wbk wthru walloc evict plru vipt waypred'.split(' ').forEach(function(k){ HOME[k] = 'l1d'; });
   'incl victimc shadow pfilter ccx mlp ltu wset sloc tloc sram fabric memwall'.split(' ').forEach(function(k){ HOME[k] = 'hier'; });
   'dramcell umc channel dimm bank row rowbuf act tcl burst refresh'.split(' ').forEach(function(k){ HOME[k] = 'dram'; });
   'commit senior rfo memtype pat wc nt clflush fence tso'.split(' ').forEach(function(k){ HOME[k] = 'stores'; });
@@ -3428,12 +3437,564 @@ build: function(root){
   }});
 }});
 
+/* ======================= shared hardware parts ======================= */
+/* Drawing helpers for structures that several chapters show: core blocks, set-associative arrays,
+   L3 slices, shadow tags, DRAM ranks, cache lines, device pipelines and a latency ladder.
+   Each helper draws inside a box the chapter has already laid out, so chapter geometry and the
+   view-tab camera boxes do not move.
+   Highlight convention: a cell that stands for the running example gets class 'box', so it lights up
+   with its parent group when the chapter marks that group 'on' (svg .on .box). Every other cell uses
+   'sunk' or a colour class and never lights by itself.
+   Text size and colour are set with inline style: the stylesheet overrides SVG presentation
+   attributes such as font-size="10" or fill="...". */
+(function(){
+  var s = App.s;
+  /* MOESI state -> [letter, cell class, text colour] */
+  var STATE = {M: ['M', 'a1b', 'var(--a1)'], O: ['O', 'a3b', 'var(--a3)'], E: ['E', 'a2b', 'var(--a2)'], S: ['S', 'a4b', 'var(--a4)'], I: ['\u2013', 'sunk', 'var(--tx3)']};
+
+  function txt(g, x, y, t, o){
+    o = o || {};
+    var st = 'font-size:' + (o.size || 10) + 'px';
+    if (o.fill) st += ';fill:' + o.fill;
+    if (o.weight) st += ';font-weight:' + o.weight;
+    return s('text', {x: x, y: y, 'class': o.cls || '', 'text-anchor': o.anchor || 'start', style: st}, g, t == null ? '' : String(t));
+  }
+  function rect(g, x, y, w, h, cls, rx){ return s('rect', {x: x, y: y, width: w, height: h, rx: rx == null ? 3 : rx, 'class': cls || 'sunk'}, g); }
+
+  /* Labelled sub-blocks in a grid. items: [{t, sub, cls}] */
+  function blocks(g, x, y, w, h, items, o){
+    o = o || {};
+    var cols = o.cols || 1, gap = o.gap == null ? 5 : o.gap, rows = Math.ceil(items.length / cols);
+    var bw = (w - gap * (cols - 1)) / cols, bh = (h - gap * (rows - 1)) / rows, out = [];
+    items.forEach(function(it, i){
+      var bx = x + (i % cols) * (bw + gap), by = y + Math.floor(i / cols) * (bh + gap), gg = s('g', null, g);
+      rect(gg, bx, by, bw, bh, it.cls || 'sunk', 4);
+      txt(gg, bx + 6, by + Math.min(14, bh / 2 + 4), it.t, {size: o.size || 10, fill: 'var(--tx)', weight: 600});
+      if (it.sub && bh >= 24) txt(gg, bx + 6, by + Math.min(26, bh - 6), it.sub, {size: o.subSize || 8.5, fill: 'var(--tx3)'});
+      out.push(gg);
+    });
+    return out;
+  }
+
+  /* A set-associative array: rows = sets (a few drawn), columns = ways. Row `hot` is the running
+     example's set; its cells get o.hotCls ('box' by default) so they light with the parent. */
+  function assoc(g, x, y, w, h, o){
+    o = o || {};
+    var ways = o.ways || 8, rows = o.rows || 4, gap = o.gap == null ? 1.5 : o.gap, hot = o.hot == null ? -1 : o.hot;
+    var cw = (w - gap * (ways - 1)) / ways, ch = (h - gap * (rows - 1)) / rows, grid = [];
+    for (var r = 0; r < rows; r++){
+      var row = [];
+      for (var k = 0; k < ways; k++) row.push(rect(g, x + k * (cw + gap), y + r * (ch + gap), cw, ch, r === hot ? (o.hotCls || 'box') : (o.cls || 'sunk'), 1.5));
+      grid.push(row);
+    }
+    return {grid: grid, hot: hot >= 0 ? grid[hot] : null, rowY: function(r){ return y + r * (ch + gap); }, ch: ch};
+  }
+
+  /* L3 slices, each with its ways drawn as thin stripes. */
+  function slices(g, x, y, w, h, o){
+    o = o || {};
+    var n = o.n || 4, gap = o.gap == null ? 6 : o.gap, sw = (w - gap * (n - 1)) / n, ways = o.ways || 16, out = [];
+    for (var k = 0; k < n; k++){
+      var sx = x + k * (sw + gap), gg = s('g', null, g);
+      rect(gg, sx, y, sw, h, 'sunk', 4);
+      txt(gg, sx + 5, y + 11, o.label ? o.label(k) : 'slice ' + k, {size: 9, fill: 'var(--tx2)'});
+      var top = y + 15, bh = h - 19, step = (sw - 8) / ways;
+      if (bh > 3) for (var w2 = 0; w2 < ways; w2++) s('rect', {x: sx + 4 + w2 * step, y: top, width: Math.max(1, step - 1), height: bh, 'class': 'a2b', style: 'stroke-width:.4'}, gg);
+      out.push(gg);
+    }
+    return out;
+  }
+
+  /* Shadow-tag style grid: one row per line, one column per core, cell = that core's state. */
+  function presence(g, x, y, o){
+    o = o || {};
+    var cw = o.cw || 30, ch = o.ch || 18, lw = o.lw || 34, gap = 3, cores = o.cores || 4, root = s('g', null, g);
+    function draw(lines){
+      while (root.firstChild) root.removeChild(root.firstChild);
+      for (var c = 0; c < cores; c++) txt(root, x + lw + c * (cw + gap) + cw / 2, y + 8, o.head ? o.head(c) : 'core ' + c, {size: 8.5, anchor: 'middle', fill: 'var(--tx3)'});
+      lines.forEach(function(L, r){
+        var ry = y + 12 + r * (ch + gap);
+        txt(root, x, ry + ch / 2 + 3.5, L.label, {size: 10, fill: 'var(--tx2)', cls: 'm'});
+        for (var c = 0; c < cores; c++){
+          var S = STATE[L.st[c]] || STATE.I, cx = x + lw + c * (cw + gap);
+          rect(root, cx, ry, cw, ch, S[1], 3);
+          txt(root, cx + cw / 2, ry + ch / 2 + 4, S[0], {size: 11, anchor: 'middle', fill: S[2], weight: 700, cls: 'm'});
+        }
+      });
+    }
+    return {draw: draw};
+  }
+
+  /* DRAM: channels -> one rank of x8 chips -> 4 bank groups x 4 banks per chip.
+     o.hot = {ch, bg, bank}: that bank is drawn in every chip of the channel, because one
+     64-byte burst takes 8 bits from each chip of the rank. */
+  function dram(g, x, y, o){
+    o = o || {};
+    var chans = o.channels || ['A', 'B'], chips = o.chips || 8, cell = o.cell || 4, cg = 1, chipW = 4 * cell + 3 * cg + 4;
+    var chipGap = o.chipGap == null ? 3 : o.chipGap, labW = o.labW == null ? 26 : o.labW, rowGap = o.rowGap == null ? 6 : o.rowGap;
+    var hot = o.hot, hotCells = [], chanW = labW + chips * chipW + (chips - 1) * chipGap, colGap = o.colGap || 14;
+    chans.forEach(function(nm, ci){
+      var ox = o.side ? x + ci * (chanW + colGap) : x, oy = o.side ? y : y + ci * (chipW + rowGap);
+      txt(g, ox, oy + chipW / 2 + 3.5, 'ch ' + nm, {size: 9.5, fill: 'var(--tx2)'});
+      for (var k = 0; k < chips; k++){
+        var cx = ox + labW + k * (chipW + chipGap);
+        s('rect', {x: cx, y: oy, width: chipW, height: chipW, rx: 2.5, style: 'fill:none;stroke:var(--bd2);stroke-width:1'}, g);
+        for (var bg = 0; bg < 4; bg++) for (var b = 0; b < 4; b++){
+          var isHot = !!hot && hot.ch === ci && hot.bg === bg && hot.bank === b;
+          var r = rect(g, cx + 2 + b * (cell + cg), oy + 2 + bg * (cell + cg), cell, cell, isHot ? (o.hotCls || 'box') : 'sunk', 1);
+          if (isHot) hotCells.push(r);
+        }
+      }
+    });
+    return {setHot: function(cls){ hotCells.forEach(function(r){ r.setAttribute('class', cls); }); }};
+  }
+
+  /* One 64-byte line as eight 8-byte words. Word `hot` carries a value set per step. */
+  function words(g, x, y, w, h, o){
+    o = o || {};
+    var labels = o.labels || ['0', '1', '2', '3', '4', '5', '6', '7'], n = labels.length, gap = 3, cw = (w - gap * (n - 1)) / n, cells = [];
+    for (var k = 0; k < n; k++){
+      var cx = x + k * (cw + gap), r = rect(g, cx, y, cw, h, 'sunk', 3);
+      txt(g, cx + cw / 2, y + 9, labels[k], {size: 8, anchor: 'middle', fill: 'var(--tx3)'});
+      cells.push({r: r, v: txt(g, cx + cw / 2, y + h - 4, k === o.hot ? '' : '\u00b7', {size: 9.5, anchor: 'middle', fill: 'var(--tx2)', cls: 'm'})});
+    }
+    return {set: function(val, cls){ var c = cells[o.hot]; c.v.textContent = val == null ? '' : String(val); c.r.setAttribute('class', cls || 'sunk'); }};
+  }
+
+  /* A left-to-right pipeline of stages. set(active, done[]) lights one stage and marks finished ones. */
+  function pipeline(g, x, y, w, h, labels){
+    var n = labels.length, gap = 4, sw = (w - gap * (n - 1)) / n, st = [];
+    s('path', {d: 'M ' + x + ' ' + (y + h / 2) + ' L ' + (x + w) + ' ' + (y + h / 2), 'class': 'wire'}, g);
+    labels.forEach(function(l, k){
+      var sx = x + k * (sw + gap);
+      st.push({r: rect(g, sx, y, sw, h, 'sunk', 4), t: txt(g, sx + sw / 2, y + h / 2 + 3.5, l, {size: 8.5, anchor: 'middle', fill: 'var(--tx2)'})});
+    });
+    function set(active, done){
+      st.forEach(function(o, k){
+        var on = k === active, dn = !!done && done.indexOf(k) >= 0;
+        o.r.setAttribute('class', on ? 'box on' : dn ? 'okb' : 'sunk');
+        o.t.style.fill = on ? 'var(--tx)' : dn ? 'var(--ok)' : 'var(--tx2)';
+      });
+    }
+    set(-1);
+    return {set: set};
+  }
+
+  /* Vertical latency ladder, log scale. levels: [{k, c (cycles or null = not published), cls}].
+     Levels before `cur` are drawn as passed, `cur` is lit, later ones stay dim. */
+  function ladder(g, x, y, w, h){
+    var root = s('g', null, g);
+    function set(levels, cur){
+      while (root.firstChild) root.removeChild(root.firstChild);
+      txt(root, x, y + 9, 'load-to-use, log scale', {size: 9, fill: 'var(--tx3)'});
+      var known = levels.filter(function(L){ return L.c; }).map(function(L){ return L.c; });
+      var mx = Math.log10(Math.max.apply(null, known) * 1.25), top = y + 18, rh = (h - 18) / levels.length, bw = w - 44;
+      var ci = -1; levels.forEach(function(L, i){ if (L.k === cur) ci = i; });
+      levels.forEach(function(L, i){
+        var ry = top + i * rh, isCur = i === ci, passed = ci >= 0 && i < ci, bx = x + 42;
+        txt(root, x, ry + 12, L.k, {size: 9.5, fill: isCur ? 'var(--tx)' : 'var(--tx2)', weight: isCur ? 700 : 400});
+        if (L.c){
+          rect(root, bx, ry + 3, Math.max(4, Math.log10(L.c) / mx * bw), 11, isCur ? 'box on' : passed ? L.cls : 'sunk', 2);
+          txt(root, bx, ry + 25, L.c + ' cycles' + (passed ? ' \u00b7 missed' : ''), {size: 8.5, fill: 'var(--tx3)'});
+        } else {
+          s('rect', {x: bx, y: ry + 3, width: bw * 0.62, height: 11, rx: 2, 'class': isCur ? 'box on' : 'sunk', style: 'stroke-dasharray:3 2'}, root);
+          txt(root, bx, ry + 25, 'not published', {size: 8.5, fill: 'var(--tx3)'});
+        }
+      });
+    }
+    return {set: set};
+  }
+
+  /* Physical address -> DRAM coordinates with the example layout used by the DRAM chapter
+     (bit 6 channel, bits 13:7 column, 15:14 bank, 17:16 bank group, 33:18 row). */
+  function dramMap(pa){ return {ch: Number((pa >> 6n) & 1n), col: Number((pa >> 7n) & 127n), bank: Number((pa >> 14n) & 3n), bg: Number((pa >> 16n) & 3n), row: Number((pa >> 18n) & 0xffffn)}; }
+
+  App.HW = {STATE: STATE, txt: txt, rect: rect, blocks: blocks, assoc: assoc, slices: slices, presence: presence, dram: dram, words: words, pipeline: pipeline, ladder: ladder, dramMap: dramMap};
+})();
+
+/* ======================= full-width plates ======================= */
+/* Large, detailed diagrams ("plates") shown inside their chapters and again on the Atlas page.
+   Chapters are built lazily, so everything a plate needs lives here: the shared data below is the
+   single source the chapters read too (DDR4 timings, the four DRAM requests, the page walk, the
+   end-to-end step model).
+   A plate is a .scroller with one SVG; it sets scroller._views so the core attaches the usual view
+   tabs (no zoom buttons). Each builder returns {set(state)} where the chapter can drive it. */
+(function(){
+  var h = App.h, s = App.s, HW = App.HW, T = HW.txt, R = HW.rect;
+
+  /* ---------- shared data ---------- */
+  /* DDR4-2400 timings in memory-clock cycles (tCK in ns), used by the DRAM chapter. */
+  App.DDR4 = {tck: 0.833, CL: 17, RCD: 17, RP: 17, RAS: 39, BL: 4, RRDL: 6, CCDL: 6, RTP: 9};
+  /* The DRAM chapter's four requests: A is the hist[123] line. */
+  App.DRAMREQ = [
+    {id: 'A', what: 'hist[120..127] (C1.ld)', pa: 0x1a3f7ce40n, arr: 0, kind: 'closed', rd: 17},
+    {id: 'D', what: 'data[0..63] (A1)', pa: 0x1c07a2c0n, arr: 0, kind: 'closed', rd: 23},
+    {id: 'B', what: 'hist[136..143]', pa: 0x1a3f7cec0n, arr: 5, kind: 'hit', rd: 29},
+    {id: 'C', what: 'a line 256 KB higher', pa: 0x1a3fbce40n, arr: 10, kind: 'conflict', rd: 73}
+  ];
+  /* The page walk of the translation chapter. */
+  App.WALK = {va: 0x7ffd4a3c2e58n, cr3: 0x10a3b000n, levels: [
+    {n: 'PML4', base: 0x10a3b000n, idx: 255, val: 0x11e2d067n},
+    {n: 'PDPT', base: 0x11e2d000n, idx: 501, val: 0x13f4a067n},
+    {n: 'PD',   base: 0x13f4a000n, idx: 81,  val: 0x1b6e9067n},
+    {n: 'PT',   base: 0x1b6e9000n, idx: 450, val: 0x80000001a3f7c067n}
+  ]};
+  /* The end-to-end chapter's critical-path model. o = {tlb: 'hit'|'walk', lvl: 'L1'|'L2'|'L3'|'DRAM', row: 'hit'|'closed'|'conflict'} */
+  App.E2E = {steps: function(o){
+    var CFG = App.CFG, ghz = CFG.ghz, S = [];
+    var add = function(n, c, src, ch, what, sh){ S.push({n: n, c: Math.max(0, Math.round(c)), src: src, ch: ch, what: what, sh: sh || n}); };
+    add('front end: fetch, predecode, decode, \u00b5op queue', 5, 'model', 'core', 'L1i hit, op cache or decoders', 'front end');
+    add('rename + dispatch', 2, 'model', 'core', 'RAT, free list, ROB, scheduler, LQ/SQ entries', 'rename');
+    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'published', 'core', 'the address depends on this load', 'wait for rax');
+    add('AGU: rdx + rax\u00d78', 1, 'model', 'core', 'VA 0x7ffd4a3c2e58', 'AGU');
+    if (o.tlb === 'walk') add('DTLB + L2 TLB miss, page walk', 2 * CFG.l2 + 2, 'assumed', 'xlate', 'PML4E/PDPTE from the walk cache, PDE and PTE from L2', 'page walk');
+    var lat = o.lvl === 'L1' ? CFG.l1 : o.lvl === 'L2' ? CFG.l2 : o.lvl === 'L3' ? CFG.l3 : App.dramCycles();
+    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'published', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns (latency settings)' : 'load-to-use', 'load hist[123]');
+    if (o.lvl === 'DRAM' && o.row !== 'closed') add(o.row === 'hit' ? 'row already open: saves ACT' : 'row conflict: extra PRE', (o.row === 'hit' ? -14.2 : 14.2) * ghz, 'derived', 'dram', 'device-time difference from [[ch:dram]] (\u00b1 14.2 ns)');
+    add('add: tmp + 1', 1, 'published', 'core', '1-cycle ALU op');
+    add('store address + data into the SQ', 2, 'model', 'core', 'STA / STD');
+    add('retire (older instructions already done)', 1, 'model', 'core', 'ROB head');
+    add('commit to L1d: line is E after the load, becomes M', 1, 'model', 'stores', 'no RFO needed');
+    S.forEach(function(x){ if (x.n.indexOf('row already open') === 0) x.neg = true; });
+    return S;
+  }};
+
+  /* ---------- scaffold ---------- */
+  function plate(container, o){
+    var wrap = h('div', {'class': 'plate-scene' + (o.cls ? ' ' + o.cls : '')}, container);
+    if (o.caption) h('p', {'class': 'note plate-caption'}, wrap, o.caption);
+    var sc = h('div', {'class': 'scroller plate-canvas'}, wrap);
+    var sv = s('svg', {viewBox: '0 0 ' + o.w + ' ' + o.h, style: 'min-width:' + (o.minW || 900) + 'px'}, sc);
+    s('defs', null, sv).innerHTML = '<marker id="pl-ar-' + o.id + '" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="context-stroke"/></marker>';
+    sc._views = o.views; sc._viewLabel = o.viewLabel || 'plate view';
+    return {wrap: wrap, sc: sc, sv: sv, arrow: 'url(#pl-ar-' + o.id + ')'};
+  }
+  function line(g, x1, y1, x2, y2, cls, extra){ var a = {x1: x1, y1: y1, x2: x2, y2: y2, 'class': cls || 'wire'}; for (var k in extra || {}) a[k] = extra[k]; return s('line', a, g); }
+  function path(g, d, cls, extra){ var a = {d: d, 'class': cls || 'wire'}; for (var k in extra || {}) a[k] = extra[k]; return s('path', a, g); }
+  function head(g, x, y, t){ return T(g, x, y, t, {size: 13.5, fill: 'var(--tx)', weight: 650}); }
+  function setCls(el, c){ el.setAttribute('class', c); }
+
+  /* ---------- plate 1: inside one DDR4 x8 chip ---------- */
+  function dramPlate(container){
+    var D = App.DDR4, F = HW.dramMap, Q = {};
+    App.DRAMREQ.forEach(function(r){ Q[r.id] = {r: r, f: F(r.pa)}; });
+    var A = Q.A.f;
+    var P = plate(container, {id: 'dram', w: 1200, h: 792, cls: 'plate-dram',
+      caption: 'Request A (the hist[123] line) from physical address to capacitors, then the same requests on the channel\u2019s command and data bus. Device structure is the standard DDR4 x8 organisation; subarray sizes vary by vendor.',
+      views: [{id: 'overview', label: 'Whole plate', box: [0, 0, 1200, 792]}, {id: 'path', label: 'Address \u2192 chip', box: [0, 0, 1200, 176]},
+              {id: 'bank', label: 'Subarrays + cells', box: [0, 178, 1200, 366]}, {id: 'timing', label: 'Command timing', box: [0, 548, 1200, 244]}]});
+    var sv = P.sv, E = {};
+
+    /* band 1: address -> rank -> chip -> bank */
+    R(sv, 10, 12, 300, 156, 'box', 9); head(sv, 22, 34, 'Physical address'); T(sv, 22, 52, '0x' + Q.A.r.pa.toString(16), {size: 12, cls: 'm', fill: 'var(--tx2)'});
+    var segs = [[33, 18, 'a1b'], [17, 16, 'a3b'], [15, 14, 'a3b'], [13, 7, 'a2b'], [6, 6, 'a4b'], [5, 0, 'sunk']];
+    segs.forEach(function(sg){ var x = 22 + (33 - sg[0]) * 8; R(sv, x, 64, (sg[0] - sg[1] + 1) * 8 - 1, 16, sg[2], 2); T(sv, x, 61, sg[0], {size: 8, fill: 'var(--tx3)'}); });
+    T(sv, 22, 100, 'bits 33:18 \u2192 row ' + A.row, {size: 10.5, fill: 'var(--a1)'});
+    T(sv, 22, 116, 'bits 17:16 \u2192 bank group ' + A.bg + ' \u00b7 15:14 \u2192 bank ' + A.bank, {size: 10.5, fill: 'var(--a3)'});
+    T(sv, 22, 132, 'bits 13:7 \u2192 column ' + A.col + ' \u00b7 bit 6 \u2192 channel ' + A.ch + ' (' + 'AB'[A.ch] + ')', {size: 10.5, fill: 'var(--a2)'});
+    T(sv, 22, 154, 'example layout used throughout this site', {size: 9.5, fill: 'var(--tx3)'});
+    path(sv, 'M 312 90 L 328 90', 'wire', {'marker-end': P.arrow});
+    R(sv, 330, 12, 270, 156, 'box', 9); head(sv, 342, 34, 'Channel ' + A.ch + ' (' + 'AB'[A.ch] + '): one rank');
+    for (var k = 0; k < 8; k++){ R(sv, 344 + k * 31, 48, 26, 42, 'a4b', 3); T(sv, 357 + k * 31, 73, k, {size: 9, anchor: 'middle', fill: 'var(--tx)'}); T(sv, 357 + k * 31, 102, 'DQ' + k * 8, {size: 7.5, anchor: 'middle', fill: 'var(--tx3)'}); }
+    T(sv, 342, 124, 'each x8 chip drives 8 of the 64 data bits', {size: 10, fill: 'var(--tx2)'});
+    T(sv, 342, 140, 'the same ACT / RD goes to all 8 chips', {size: 10, fill: 'var(--tx2)'});
+    T(sv, 342, 156, '8 chips \u00d7 8 bits \u00d7 8 beats = 64 bytes', {size: 10, fill: 'var(--tx2)'});
+    path(sv, 'M 602 90 L 618 90', 'wire', {'marker-end': P.arrow});
+    R(sv, 620, 12, 250, 156, 'box', 9); head(sv, 632, 34, 'One chip: 16 banks');
+    E.bank = {};
+    for (var bg = 0; bg < 4; bg++){
+      T(sv, 632, 58 + bg * 28, 'BG' + bg, {size: 9, fill: 'var(--tx3)'});
+      for (var b = 0; b < 4; b++){ var r = R(sv, 664 + b * 49, 44 + bg * 28, 44, 22, 'sunk', 3); E.bank[bg + '/' + b] = r; T(sv, 686 + b * 49, 59 + bg * 28, 'bank ' + b, {size: 8.5, anchor: 'middle', fill: 'var(--tx2)'}); }
+    }
+    path(sv, 'M 872 90 L 888 90', 'wire', {'marker-end': P.arrow});
+    R(sv, 890, 12, 300, 156, 'box', 9); head(sv, 902, 34, 'Bank ' + A.bank + ': 65,536 rows \u00d7 1 KB');
+    R(sv, 902, 42, 276, 80, 'sunk', 3);
+    var ry = 42 + 80 * (A.row / 65536);
+    E.bankRow = line(sv, 902, ry, 1178, ry, 'wire', {style: 'stroke:var(--a1);stroke-width:2.2'});
+    T(sv, 1176, ry - 4, 'row ' + A.row, {size: 9, anchor: 'end', fill: 'var(--a1)'});
+    E.rowbuf = R(sv, 902, 126, 276, 14, 'a2b', 2);
+    var cx = 902 + 276 * (A.col / 128);
+    path(sv, 'M ' + cx + ' 124 l -4 -6 l 8 0 z', 'wire', {style: 'fill:var(--a2);stroke:none'});
+    T(sv, 902, 158, 'row buffer = sense amps \u00b7 column ' + A.col + ' marked', {size: 9.5, fill: 'var(--tx3)'});
+
+    /* band 2: subarrays + cell array */
+    R(sv, 10, 186, 380, 352, 'box', 9); head(sv, 22, 208, 'Bank ' + A.bank + ', physically: subarrays');
+    R(sv, 22, 220, 18, 280, 'a3b', 3); T(sv, 35, 360, 'row decoder', {size: 9, anchor: 'middle', fill: 'var(--tx2)'}).setAttribute('transform', 'rotate(-90 35 360)');
+    for (k = 0; k < 8; k++){
+      var y = 220 + k * 35;
+      R(sv, 48, y, 330, 25, k === 4 ? 'a1b' : 'sunk', 3);
+      R(sv, 48, y + 27, 330, 6, 'a2b', 1.5);
+      if (k === 0) T(sv, 56, y + 16, 'subarray', {size: 9.5, fill: 'var(--tx3)'});
+      if (k === 1) T(sv, 372, y + 16, '\u2191 local sense-amp stripe', {size: 9, anchor: 'end', fill: 'var(--tx3)'});
+      if (k === 4) T(sv, 56, y + 16, 'the subarray holding row ' + A.row, {size: 9.5, fill: 'var(--tx)'});
+    }
+    T(sv, 22, 516, 'rows per subarray: a few hundred to ~1,000 (vendor-specific)', {size: 9.5, fill: 'var(--tx3)'});
+    T(sv, 22, 530, 'neighbouring subarrays share each sense-amp stripe', {size: 9.5, fill: 'var(--tx3)'});
+    path(sv, 'M 378 360 L 408 196 M 378 385 L 408 536', 'wire', {style: 'stroke-dasharray:4 3;opacity:.6'});
+
+    R(sv, 410, 186, 780, 352, 'box', 9); head(sv, 422, 208, 'Cell array around row ' + A.row + ': one transistor + one capacitor per bit');
+    E.eq = T(sv, 1178, 208, 'bitlines held at VDD/2 between activations', {size: 9.5, anchor: 'end', fill: 'var(--tx3)'});
+    var rows = [A.row - 2, A.row - 1, A.row, A.row + 1, A.row + 2, A.row + 3], BLX = [], WLY = [];
+    for (var j = 0; j < 12; j++) BLX.push(526 + j * 54);
+    rows.forEach(function(rw, i){ WLY.push(240 + i * 38); });
+    E.bl = BLX.map(function(x){ return line(sv, x, 224, x, 466, 'wire'); });
+    E.wl = {}; rows.forEach(function(rw, i){ E.wl[rw] = line(sv, 498, WLY[i], 1182, WLY[i], 'wire'); T(sv, 422, WLY[i] + 4, 'row ' + rw, {size: 9.5, cls: 'm', fill: rw === A.row || rw === A.row + 1 ? 'var(--tx)' : 'var(--tx3)'}); });
+    E.cells = {};
+    rows.forEach(function(rw, i){
+      E.cells[rw] = [];
+      BLX.forEach(function(x, jj){
+        var bit = ((rw * 7 + jj * 13) % 5) < 2, y0 = WLY[i];
+        line(sv, x, y0 + 12, x + 12, y0 + 12, 'wire');
+        line(sv, x + 16, y0, x + 16, y0 + 6, 'wire');
+        var tr = R(sv, x + 11, y0 + 6, 10, 10, 'sunk', 1.5);
+        var cap = s('circle', {cx: x + 30, cy: y0 + 12, r: 5, 'class': bit ? 'a2b' : 'sunk'}, sv);
+        line(sv, x + 21, y0 + 12, x + 25, y0 + 12, 'wire');
+        E.cells[rw].push({tr: tr, cap: cap, bit: bit});
+      });
+    });
+    E.sa = BLX.map(function(x){ return path(sv, 'M ' + (x - 9) + ' 470 L ' + (x + 9) + ' 470 L ' + x + ' 486 z', 'a2b'); });
+    T(sv, 422, 482, 'sense amps', {size: 9.5, fill: 'var(--tx2)'});
+    E.col = path(sv, 'M ' + (BLX[4] - 10) + ' 494 L ' + (BLX[4] - 10) + ' 500 L ' + (BLX[11] + 10) + ' 500 L ' + (BLX[11] + 10) + ' 494', 'wire');
+    E.colT = T(sv, (BLX[4] + BLX[11]) / 2, 516, 'one column access: 64 bits from this chip\u2019s row buffer (8 drawn)', {size: 10, anchor: 'middle', fill: 'var(--tx2)'});
+    T(sv, 1182, 532, 'global I/O \u2192 64-bit prefetch \u2192 8 beats on DQ0\u20137', {size: 10, anchor: 'end', fill: 'var(--tx3)'});
+
+    /* band 3: command / data bus timing */
+    R(sv, 10, 552, 1180, 236, 'box', 9);
+    head(sv, 22, 574, 'DDR4-2400, channel ' + A.ch + ': commands and data (tCK = ' + D.tck + ' ns)');
+    var X = function(c){ return 150 + c * 10; };
+    var lanes = [['CK', 590], ['CMD', 620], ['BG / bank', 652], ['ADDR', 682], ['DQ', 714]];
+    lanes.forEach(function(l){ T(sv, 22, l[1] + 15, l[0], {size: 10.5, fill: 'var(--tx2)'}); });
+    var ck = 'M ' + X(0) + ' 604'; for (var c = 0; c < 100; c++) ck += ' L ' + X(c) + ' 592 L ' + (X(c) + 5) + ' 592 L ' + (X(c) + 5) + ' 604 L ' + X(c + 1) + ' 604';
+    path(sv, ck, 'wire', {style: 'opacity:.55'});
+    var cmds = [[0, 'ACT', 'A'], [6, 'ACT', 'D'], [Q.A.r.rd, 'RD', 'A'], [Q.D.r.rd, 'RD', 'D'], [Q.B.r.rd, 'RD', 'B'], [D.RAS, 'PRE', 'C'], [D.RAS + D.RP, 'ACT', 'C'], [Q.C.r.rd, 'RD', 'C']];
+    E.cmd = cmds.map(function(cm){
+      var f = Q[cm[2]].f, x = X(cm[0]);
+      var bx = R(sv, x, 620, 32, 22, 'sunk', 3); T(sv, x + 16, 635, cm[1], {size: 9.5, anchor: 'middle', fill: 'var(--tx)'});
+      R(sv, x, 652, 32, 22, 'sunk', 3); T(sv, x + 16, 667, f.bg + '/' + f.bank, {size: 9, anchor: 'middle', fill: 'var(--tx2)', cls: 'm'});
+      R(sv, x, 682, cm[1] === 'RD' ? 32 : 46, 22, 'sunk', 3); T(sv, x + 4, 697, cm[1] === 'ACT' ? 'r' + f.row : cm[1] === 'RD' ? 'c' + f.col : 'all', {size: 8.5, fill: 'var(--tx2)', cls: 'm'});
+      T(sv, x + 16, 616, cm[2], {size: 9, anchor: 'middle', fill: 'var(--tx3)'});
+      return {t: cm[0], k: cm[1] + ' ' + cm[2], r: bx};
+    });
+    E.dq = ['A', 'D', 'B', 'C'].map(function(id){
+      var t0 = Q[id].r.rd + D.CL, x = X(t0);
+      var r2 = R(sv, x, 714, D.BL * 10, 22, 'a4b', 3); T(sv, x + D.BL * 5, 729, id, {size: 10, anchor: 'middle', fill: 'var(--tx)'});
+      return {id: id, r: r2};
+    });
+    [0, Q.A.r.rd, Q.A.r.rd + D.CL, D.RAS, D.RAS + D.RP, Q.C.r.rd, Q.C.r.rd + D.CL].forEach(function(t){ line(sv, X(t), 744, X(t), 750, 'wire'); T(sv, X(t), 760, t, {size: 9, anchor: 'middle', fill: 'var(--tx3)'}); });
+    var ns = function(c){ return (c * D.tck).toFixed(1) + ' ns'; };
+    var brk = function(a, b, y, t){ path(sv, 'M ' + X(a) + ' ' + (y - 6) + ' L ' + X(a) + ' ' + y + ' L ' + X(b) + ' ' + y + ' L ' + X(b) + ' ' + (y - 6), 'wire', {style: 'opacity:.7'}); T(sv, (X(a) + X(b)) / 2, y + 12, t, {size: 9, anchor: 'middle', fill: 'var(--tx2)'}); };
+    brk(0, D.RCD, 768, 'tRCD ' + D.RCD + ' = ' + ns(D.RCD)); brk(D.RCD, D.RCD + D.CL, 768, 'CL ' + D.CL + ' = ' + ns(D.CL));
+    brk(D.RAS, D.RAS + D.RP, 768, 'tRP ' + D.RP + ' = ' + ns(D.RP)); brk(Q.C.r.rd, Q.C.r.rd + D.CL + D.BL, 768, 'conflict: data at ' + (Q.C.r.rd + D.CL));
+    T(sv, 1180, 760, 'cycles', {size: 9, anchor: 'end', fill: 'var(--tx3)'});
+
+    /* step state from the DRAM chapter's frames */
+    function set(p){
+      p = p || '';
+      var req = (p.match(/ ([ABCD])$/) || [])[1] || (p === 'PRE' ? 'C' : ''), f = req ? Q[req].f : null;
+      for (var key in E.bank) setCls(E.bank[key], 'sunk');
+      if (f) setCls(E.bank[f.bg + '/' + f.bank], 'box on'); else setCls(E.bank[A.bg + '/' + A.bank], 'a1b');
+      var actRow = p === 'ACT A' ? A.row : p === 'ACT C' ? A.row + 1 : null, open = /^(ACT A|RD A|RD B)$/.test(p) ? A.row : /^(ACT C|RD C)$/.test(p) ? A.row + 1 : null;
+      for (var rw in E.wl) E.wl[rw].setAttribute('class', 'wire' + (+rw === actRow ? ' on' : ''));
+      for (rw in E.cells) E.cells[rw].forEach(function(c){ setCls(c.tr, +rw === open ? 'box on' : 'sunk'); });
+      E.bl.forEach(function(l){ l.setAttribute('class', 'wire' + (p === 'PRE' ? ' on' : '')); });
+      E.eq.style.fill = p === 'PRE' ? 'var(--act)' : 'var(--tx3)';
+      E.sa.forEach(function(t){ setCls(t, open !== null ? 'okb' : 'a2b'); });
+      E.col.setAttribute('class', 'wire' + (/^RD/.test(p) ? ' on' : ''));
+      E.cmd.forEach(function(c){ setCls(c.r, c.k === p || (p === 'PRE' && c.k === 'PRE C') ? 'box on' : 'sunk'); });
+      E.dq.forEach(function(d){ setCls(d.r, p === 'RD ' + d.id ? 'box on' : 'a4b'); });
+      E.bankRow.style.stroke = open === A.row ? 'var(--act)' : 'var(--a1)';
+    }
+    set('');
+    return {set: set};
+  }
+
+  /* ---------- plate 2: the L1d arrays at real proportions ---------- */
+  function l1dPlate(container){
+    var P = plate(container, {id: 'l1d', w: 1200, h: 712, cls: 'plate-l1d',
+      caption: 'The 32 KB L1d as two SRAM arrays drawn to one bit scale: each way of data (512 bits) is 13.5\u00d7 wider than its tag entry (36-bit tag + V + D). Set 57 is the hist[123] lookup; way 3 holds the line.',
+      views: [{id: 'overview', label: 'Whole plate', box: [0, 0, 1200, 712]}, {id: 'predict', label: 'Address + predictor', box: [0, 40, 262, 400]},
+              {id: 'arrays', label: 'Tag + data arrays', box: [254, 44, 946, 546]}, {id: 'output', label: 'Way mux + aligner', box: [254, 590, 946, 122]}]});
+    var sv = P.sv, W = 0.19, tw = 38 * W, dw = 512 * W, rowH = 6, gapR = 1, y0 = 84, tx0 = 270, dx0 = 352;
+    head(sv, 20, 28, 'L1d, 32 KB = 64 sets \u00d7 8 ways \u00d7 64 B');
+    R(sv, 20, 46, 230, 78, 'box', 8); T(sv, 30, 66, 'Virtual address', {size: 11, weight: 650, fill: 'var(--tx)'}); T(sv, 30, 84, '0x7ffd4a3c2e58', {size: 11.5, cls: 'm', fill: 'var(--tx2)'}); T(sv, 30, 102, 'index 11:6 = 57 \u00b7 offset 5:0 = 24', {size: 10, fill: 'var(--tx3)'}); T(sv, 30, 116, 'VPN 47:12 \u2192 DTLB', {size: 10, fill: 'var(--tx3)'});
+    R(sv, 20, 136, 230, 124, 'box on', 8); T(sv, 30, 156, 'Way predictor (Zen+)', {size: 11, weight: 650, fill: 'var(--tx)'});
+    ['\u00b5tag = hash of VA bits', 'predicts way 3 of set 57', 'only that way\u2019s data is read', 'full tag still compared', 'hash undocumented; reverse-', 'engineered by Lipp et al., 2020'].forEach(function(t, i){ T(sv, 30, 174 + i * 14, t, {size: 10, fill: i < 4 ? 'var(--tx2)' : 'var(--tx3)'}); });
+    R(sv, 20, 272, 230, 72, 'box', 8); T(sv, 30, 292, 'DTLB', {size: 11, weight: 650, fill: 'var(--tx)'}); T(sv, 30, 310, 'VPN 0x7ffd4a3c2 \u2192 PFN 0x1a3f7c', {size: 10, cls: 'm', fill: 'var(--tx2)'}); T(sv, 30, 326, 'physical tag = PA[47:12]', {size: 10, fill: 'var(--tx3)'});
+    R(sv, 20, 356, 230, 70, 'box', 8); T(sv, 30, 376, 'Row decoder', {size: 11, weight: 650, fill: 'var(--tx)'}); T(sv, 30, 394, 'raises wordline 57 of 64', {size: 10, fill: 'var(--tx2)'}); T(sv, 30, 410, 'in both arrays at once', {size: 10, fill: 'var(--tx3)'});
+    T(sv, tx0, 66, 'tag', {size: 10, fill: 'var(--tx2)'}); T(sv, dx0, 66, 'data: 8 ways \u00d7 64 bytes per set', {size: 10, fill: 'var(--tx2)'});
+    for (var w = 0; w < 8; w++){ T(sv, dx0 + w * (dw + 2) + dw / 2, 78, 'way ' + w, {size: 8.5, anchor: 'middle', fill: 'var(--tx3)'}); }
+    for (var r = 0; r < 64; r++){
+      var y = y0 + r * (rowH + gapR), hot = r === 57;
+      for (w = 0; w < 8; w++){
+        R(sv, tx0 + w * (tw + 1), y, tw, rowH, hot && w === 3 ? 'box on' : hot ? 'a4b' : 'sunk', 1);
+        R(sv, dx0 + w * (dw + 2), y, dw, rowH, hot && w === 3 ? 'box on' : hot ? 'a4b' : 'sunk', 1);
+      }
+      if (r % 8 === 0 && Math.abs(r - 57) > 3) T(sv, tx0 - 6, y + 6, r, {size: 8, anchor: 'end', fill: 'var(--tx3)'});
+    }
+    var yh = y0 + 57 * (rowH + gapR);
+    T(sv, tx0 - 6, yh + 6, '57', {size: 9, anchor: 'end', fill: 'var(--act)', weight: 700});
+    T(sv, dx0 + 8 * (dw + 2) + 2, yh + 6, 'set 57', {size: 9.5, fill: 'var(--act)'});
+    var yb = y0 + 64 * (rowH + gapR) + 10;
+    T(sv, tx0, yb + 8, 'tag array: 512 \u00d7 38 bits \u2248 2.4 KB', {size: 9.5, fill: 'var(--tx3)'});
+    T(sv, dx0 + 120, yb + 8, 'data array: 512 lines \u00d7 64 B = 32 KB', {size: 9.5, fill: 'var(--tx3)'});
+    R(sv, 760, yb + 16, 10, 8, 'a4b', 1); T(sv, 774, yb + 24, 'textbook: all 8 ways of set 57 read (8 tags + 512 B)', {size: 9.5, fill: 'var(--tx2)'});
+    R(sv, 760, yb + 30, 10, 8, 'box on', 1); T(sv, 774, yb + 38, 'Zen+: the predicted way only (1 tag + 64 B)', {size: 9.5, fill: 'var(--tx2)'});
+    var mx = dx0 + 3 * (dw + 2) + dw / 2;
+    path(sv, 'M ' + mx + ' ' + (yh + 6) + ' L ' + mx + ' 600', 'wire on', {'marker-end': P.arrow, style: 'stroke-dasharray:5 4'});
+    R(sv, 262, 600, 930, 108, 'box', 9); T(sv, 274, 620, 'Way mux \u2192 line buffer (way 3 of set 57) \u2192 aligner', {size: 11, weight: 650, fill: 'var(--tx)'});
+    var wd = HW.words(sv, 274, 632, 560, 30, {labels: ['[120]', '[121]', '[122]', '[123]', '[124]', '[125]', '[126]', '[127]'], hot: 3}); wd.set('41', 'box on');
+    path(sv, 'M 842 648 L 900 648', 'wire on', {'marker-end': P.arrow});
+    T(sv, 908, 644, 'bytes 24\u201331 \u2192 41', {size: 12, cls: 'm', fill: 'var(--tx)'}); T(sv, 908, 662, 'into the load\u2019s destination register', {size: 10, fill: 'var(--tx3)'});
+    T(sv, 274, 692, 'The hit is confirmed by the full physical tag compare (0x1a3f7c) on way 3; a \u00b5tag that matches nothing sends the access to the miss path.', {size: 10, fill: 'var(--tx3)'});
+    return {set: function(){}};
+  }
+
+  /* ---------- plate 3: one hist[123]++ on one time axis ---------- */
+  function e2ePlate(container, o0){
+    var P = plate(container, {id: 'e2e', w: 1200, h: 600, cls: 'plate-e2e',
+      caption: 'Every stage of the critical path on one to-scale time axis, then the first cycles magnified. Uses the same model as the step table and the latency settings, so it redraws when they change.',
+      views: [{id: 'overview', label: 'Whole path', box: [0, 0, 1200, 600]}, {id: 'early', label: 'First cycles', box: [0, 470, 1200, 130]}]});
+    var sv = P.sv, root = s('g', null, sv), o = o0 || {tlb: 'hit', lvl: 'DRAM', row: 'closed'};
+    var COL = {core: 'a3b', xlate: 'a4b', l1d: 'a2b', hier: 'a2b', dram: 'a1b', stores: 'a3b'}, SRC = {published: 'var(--a2)', model: 'var(--tx3)', assumed: 'var(--a3)', derived: 'var(--a1)'};
+    function draw(){
+      while (root.firstChild) root.removeChild(root.firstChild);
+      var S = App.E2E.steps(o), ghz = App.CFG.ghz, tot = 0, pos = 0, x0 = 430, W = 720;
+      S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
+      var span = S.reduce(function(m, x){ pos += x.neg ? -x.c : x.c; return Math.max(m, pos); }, 0), sc = W / Math.max(1, span);
+      head(root, 20, 30, 'Critical path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
+      T(root, 20, 48, 'one row per stage; bar start = when it begins, width = how long it takes', {size: 10, fill: 'var(--tx3)'});
+      var cum = 0;
+      S.forEach(function(x, i){
+        var y = 64 + i * 32, a = x.neg ? cum - x.c : cum, wdt = Math.max(2, x.c * sc);
+        T(root, 20, y + 15, x.n, {size: 11, fill: 'var(--tx2)'});
+        var bar = R(root, x0 + a * sc, y + 3, wdt, 18, x.neg ? 'okb' : COL[x.ch] || 'box', 3);
+        if (x.neg) bar.setAttribute('style', 'stroke-dasharray:4 3');
+        var lx = x0 + (x.neg ? a : a + x.c) * sc + 6, flip = lx + 60 > 1195, inside = flip && wdt > 90;
+        T(root, inside ? lx - 14 : flip ? x0 + a * sc - 6 : lx, y + 16, (x.neg ? '\u2212' : '') + x.c + ' cyc', {size: 10, cls: 'm', fill: inside ? 'var(--tx)' : 'var(--tx2)', anchor: flip ? 'end' : 'start'});
+        T(root, x0 - 10, y + 16, x.src, {size: 9, anchor: 'end', fill: SRC[x.src] || 'var(--tx3)'});
+        cum += x.neg ? -x.c : x.c;
+      });
+      var yAx = 64 + S.length * 32 + 6;
+      line(root, x0, yAx, x0 + W, yAx, 'wire');
+      [0, .25, .5, .75, 1].forEach(function(f){ var c = Math.round(span * f); line(root, x0 + c * sc, yAx, x0 + c * sc, yAx + 5, 'wire'); T(root, x0 + c * sc, yAx + 17, c, {size: 9, anchor: 'middle', fill: 'var(--tx3)'}); });
+      T(root, x0 + W, yAx + 30, 'cycles at ' + ghz + ' GHz', {size: 9, anchor: 'end', fill: 'var(--tx3)'});
+      var zy = 488, Z = 20, zsc = W / Z, zc = 0;
+      R(root, 10, zy - 14, 1180, 120, 'box', 9);
+      head(root, 20, zy + 6, 'The first ' + Z + ' cycles, magnified');
+      T(root, 20, zy + 24, 'pipeline stages are cheap; the wait starts at the load', {size: 10, fill: 'var(--tx3)'});
+      S.some(function(x){
+        if (x.neg) return false;
+        var a = zc, b = Math.min(Z, zc + x.c);
+        if (b > a){ R(root, x0 + a * zsc, zy + 34, Math.max(2, (b - a) * zsc - 2), 26, COL[x.ch] || 'box', 3); if ((b - a) * zsc >= 26) T(root, x0 + a * zsc + (b - a) * zsc / 2 - 1, zy + 51, x.sh, {size: 9.5, anchor: 'middle', fill: 'var(--tx)'}); }
+        zc += x.c; return zc >= Z;
+      });
+      line(root, x0, zy + 66, x0 + W, zy + 66, 'wire');
+      for (var c = 0; c <= Z; c += 2){ line(root, x0 + c * zsc, zy + 66, x0 + c * zsc, zy + 71, 'wire'); T(root, x0 + c * zsc, zy + 83, c, {size: 9, anchor: 'middle', fill: 'var(--tx3)'}); }
+      T(root, 20, zy + 51, 'bar colour = chapter', {size: 9.5, fill: 'var(--tx3)'});
+    }
+    draw(); App.onCfg(draw);
+    return {set: function(no){ if (no) o = no; draw(); }};
+  }
+
+  /* ---------- plate 4: the page walk, bit by bit ---------- */
+  function xlatePlate(container){
+    var Wk = App.WALK, va = Wk.va, L = Wk.levels, hex = function(v){ return '0x' + v.toString(16); };
+    var P = plate(container, {id: 'xlate', w: 1200, h: 668, cls: 'plate-xlate',
+      caption: 'VA 0x7ffd4a3c2e58 split into its four 9-bit table indices and its page offset, the four table reads with their real entry addresses, and the leaf entry decoded bit by bit.',
+      views: [{id: 'overview', label: 'Whole walk', box: [0, 0, 1200, 668]}, {id: 'va', label: 'Address bits', box: [0, 0, 1200, 150]},
+              {id: 'walk', label: 'Four table reads', box: [0, 150, 1200, 270]}, {id: 'pte', label: 'Leaf entry', box: [0, 420, 1200, 248]}]});
+    var sv = P.sv, bx = function(i){ return 50 + (63 - i) * 17; };
+    function bits(y, val, fields){
+      for (var i = 63; i >= 0; i--){
+        var b = Number((val >> BigInt(i)) & 1n), f = fields.filter(function(fd){ return i <= fd[0] && i >= fd[1]; })[0];
+        R(sv, bx(i), y, 15, 22, f ? f[3] : 'sunk', 2); T(sv, bx(i) + 7.5, y + 15.5, b, {size: 10.5, anchor: 'middle', cls: 'm', fill: b ? 'var(--tx)' : 'var(--tx3)'});
+      }
+      [63, 48, 47, 39, 38, 30, 29, 21, 20, 12, 11, 0].forEach(function(i){ T(sv, bx(i) + 7.5, y - 4, i, {size: 8, anchor: 'middle', fill: 'var(--tx3)'}); });
+      fields.forEach(function(fd){
+        var x1 = bx(fd[0]), x2 = bx(fd[1]) + 15, yb = y + 28;
+        path(sv, 'M ' + x1 + ' ' + yb + ' L ' + x1 + ' ' + (yb + 5) + ' L ' + x2 + ' ' + (yb + 5) + ' L ' + x2 + ' ' + yb, 'wire', {style: 'opacity:.7'});
+        if (fd[2]) T(sv, (x1 + x2) / 2, yb + (fd[0] === fd[1] && fd[0] % 2 ? 30 : 18), fd[2], {size: 9.5, anchor: 'middle', fill: 'var(--tx2)'});
+      });
+    }
+    head(sv, 20, 26, 'Virtual address ' + hex(va) + ' (64 bits)');
+    var ix = function(sh){ return Number((va >> BigInt(sh)) & 511n); };
+    bits(48, va, [[63, 48, 'sign extension of bit 47', 'sunk'], [47, 39, 'PML4 index ' + ix(39), 'a3b'], [38, 30, 'PDPT index ' + ix(30), 'a4b'], [29, 21, 'PD index ' + ix(21), 'a3b'], [20, 12, 'PT index ' + ix(12), 'a4b'], [11, 0, 'page offset ' + hex(va & 4095n), 'a2b']]);
+    R(sv, 20, 168, 120, 84, 'a3b', 8); T(sv, 30, 190, 'CR3', {size: 12, weight: 650, fill: 'var(--tx)'}); T(sv, 30, 210, hex(Wk.cr3), {size: 11, cls: 'm', fill: 'var(--tx2)'}); T(sv, 30, 228, 'PML4 base', {size: 9.5, fill: 'var(--tx3)'}); T(sv, 30, 242, '(per process)', {size: 9.5, fill: 'var(--tx3)'});
+    L.forEach(function(lv, k){
+      var x = 160 + k * 258, ea = lv.base + BigInt(lv.idx * 8), leaf = k === 3, nx = lv.val & 0x000ffffffffff000n;
+      R(sv, x, 160, 244, 250, 'box', 9);
+      T(sv, x + 10, 180, lv.n + ' table', {size: 12.5, weight: 650, fill: 'var(--tx)'}); T(sv, x + 10, 196, '4 KB = 512 entries \u00d7 8 B', {size: 9.5, fill: 'var(--tx3)'});
+      T(sv, x + 10, 212, 'base ' + hex(lv.base), {size: 10, cls: 'm', fill: 'var(--tx2)'});
+      R(sv, x + 10, 222, 26, 176, 'sunk', 3);
+      var ey = 222 + 176 * (lv.idx / 512); R(sv, x + 10, ey - 2, 26, 5, 'box on', 1);
+      path(sv, 'M ' + (x + 36) + ' ' + ey + ' L ' + (x + 44) + ' ' + ey, 'wire on');
+      T(sv, x + 50, 240, 'entry ' + lv.idx + ' of 512, at', {size: 9.5, fill: 'var(--act)'}); T(sv, x + 50, 254, hex(ea), {size: 10, cls: 'm', fill: 'var(--tx2)'});
+      T(sv, x + 50, 270, '= base + ' + lv.idx + ' \u00d7 8', {size: 9, fill: 'var(--tx3)'});
+      T(sv, x + 50, 300, 'value', {size: 9, fill: 'var(--tx3)'}); T(sv, x + 50, 314, hex(lv.val), {size: 10, cls: 'm', fill: 'var(--tx)'});
+      T(sv, x + 50, 336, leaf ? 'leaf: PFN ' + hex(nx >> 12n) : 'next table at ' + hex(nx), {size: 9.5, fill: 'var(--tx2)'});
+      T(sv, x + 50, 352, leaf ? 'NX, D, A, U/S, R/W, P set' : 'P, R/W, U/S, A set', {size: 9.5, fill: 'var(--tx3)'});
+      if (k < 3) path(sv, 'M ' + (x + 244) + ' 286 L ' + (x + 256) + ' 286', 'wire on', {'marker-end': P.arrow});
+    });
+    path(sv, 'M 140 210 L 158 210', 'wire on', {'marker-end': P.arrow});
+    var pte = L[3].val, pfn = (pte & 0x000ffffffffff000n) >> 12n;
+    head(sv, 20, 444, 'Leaf PTE ' + hex(pte) + ', decoded');
+    bits(466, pte, [[63, 63, 'NX', 'a1b'], [62, 52, 'available', 'sunk'], [51, 12, 'PFN ' + hex(pfn), 'a2b'], [11, 9, 'avail', 'sunk'], [8, 8, 'G', 'sunk'], [7, 7, 'PAT', 'sunk'], [6, 6, 'D', 'a3b'], [5, 5, 'A', 'a3b'], [4, 4, 'PCD', 'sunk'], [3, 3, 'PWT', 'sunk'], [2, 2, 'U/S', 'a4b'], [1, 1, 'R/W', 'a4b'], [0, 0, 'P', 'a4b']]);
+    R(sv, 20, 546, 1160, 112, 'box', 9);
+    T(sv, 34, 572, 'PA = PFN ' + hex(pfn) + ' \u00d7 4096 + offset ' + hex(va & 4095n) + ' = ' + hex((pfn << 12n) | (va & 4095n)), {size: 13, cls: 'm', fill: 'var(--tx)'});
+    T(sv, 34, 596, 'NX = 1: data, not code \u00b7 U/S = 1: user page \u00b7 R/W = 1: writable \u00b7 P = 1: present', {size: 11, fill: 'var(--tx2)'});
+    T(sv, 34, 616, 'A = 1 and D = 1: read and written since the OS last cleared them \u00b7 PCD = PWT = PAT = 0 \u2192 write-back memory type', {size: 11, fill: 'var(--tx2)'});
+    T(sv, 34, 638, 'Bits 51:12 hold the frame number; 62:52 and 11:9 are ignored by the walker and free for the OS (Linux uses some of them).', {size: 10, fill: 'var(--tx3)'});
+    return {set: function(){}};
+  }
+
+  /* ---------- plate 5: the Zen+ core at real sizes ---------- */
+  function corePlate(container){
+    var P = plate(container, {id: 'core', w: 1200, h: 640, cls: 'plate-core',
+      caption: 'Every queue drawn with its published Zen+ size, one cell per entry. The amber cells are one iteration of the hist[data[i]]++ loop as this site\u2019s core model counts it: 7 \u00b5ops, 2 loads, 1 store.',
+      views: [{id: 'overview', label: 'Whole core', box: [0, 0, 1200, 640]}, {id: 'front', label: 'Front end', box: [0, 30, 330, 610]},
+              {id: 'ooo', label: 'Rename + ROB + schedulers', box: [320, 30, 520, 610]}, {id: 'lsu', label: 'Load/store unit', box: [830, 30, 370, 610]}]});
+    var sv = P.sv;
+    function grid(x, y, cols, n, cw, ch, hot, title, sub){
+      head(sv, x, y - 26, title); if (sub) T(sv, x, y - 10, sub, {size: 9.5, fill: 'var(--tx3)'});
+      for (var i = 0; i < n; i++) R(sv, x + (i % cols) * (cw + 2), y + Math.floor(i / cols) * (ch + 2), cw, ch, i < hot ? 'box on' : 'sunk', 1.5);
+      return y + Math.ceil(n / cols) * (ch + 2);
+    }
+    head(sv, 20, 26, 'Zen+ core, one cell per entry');
+    R(sv, 20, 46, 290, 50, 'a3b', 6); T(sv, 30, 66, 'L1i 64 KB, 4-way \u00b7 iTLB', {size: 11, fill: 'var(--tx)'}); T(sv, 30, 84, 'branch predictor + BTB in front', {size: 9.5, fill: 'var(--tx3)'});
+    R(sv, 20, 104, 140, 50, 'a3b', 6); T(sv, 30, 124, 'op cache', {size: 11, fill: 'var(--tx)'}); T(sv, 30, 142, '2K entries', {size: 9.5, fill: 'var(--tx3)'});
+    R(sv, 170, 104, 140, 50, 'a3b', 6); T(sv, 180, 124, 'decode \u00d7 4', {size: 11, fill: 'var(--tx)'}); T(sv, 180, 142, '4 x86 instr / cycle', {size: 9.5, fill: 'var(--tx3)'});
+    grid(20, 202, 12, 72, 21, 12, 7, '\u00b5op queue: 72', 'feeds rename');
+    R(sv, 20, 330, 290, 64, 'a3b', 6); T(sv, 30, 352, 'rename: RAT + free list', {size: 11, fill: 'var(--tx)'}); T(sv, 30, 370, '6 macro-ops / cycle into the back end', {size: 9.5, fill: 'var(--tx3)'}); T(sv, 30, 386, 'retire: 8 / cycle', {size: 9.5, fill: 'var(--tx3)'});
+    R(sv, 20, 404, 290, 120, 'sunk', 6); T(sv, 30, 424, 'one loop iteration (this site\u2019s model)', {size: 10.5, fill: 'var(--tx)'});
+    ['LD   data[i]', 'ALU  rdi += 1', 'LD   hist[k]', 'ALU  + 1', 'STA + STD  hist[k]', 'ALU  cmp + jne (fused)'].forEach(function(t, i){ T(sv, 30, 442 + i * 13, t, {size: 9.5, cls: 'm', fill: 'var(--tx2)'}); });
+    R(sv, 20, 534, 290, 48, 'sunk', 6); T(sv, 30, 552, 'FP / SIMD unit', {size: 10.5, fill: 'var(--tx3)'}); T(sv, 30, 568, 'not used by this loop, not drawn', {size: 9.5, fill: 'var(--tx3)'});
+    var yR = grid(340, 72, 24, 192, 18, 10, 7, 'ROB (retire queue): 192', '96 per thread with SMT');
+    grid(340, yR + 52, 24, 168, 18, 10, 4, 'integer physical registers: 168', 'this iteration writes rax, rdi, tmp0, tmp1');
+    var sy = 444;
+    head(sv, 340, sy - 26, 'schedulers: 4 ALU \u00d7 14 + 2 AGU \u00d7 14'); T(sv, 340, sy - 10, 'this iteration: 4 ALU-side + 3 AGU-side \u00b5ops', {size: 9.5, fill: 'var(--tx3)'});
+    ['ALU0', 'ALU1', 'ALU2', 'ALU3', 'AGU0', 'AGU1'].forEach(function(nm, q){
+      var x = 340 + q * 80; T(sv, x, sy + 8, nm, {size: 9, fill: 'var(--tx3)'});
+      var hot = q < 4 ? 1 : q === 4 ? 2 : 1;
+      for (var i = 0; i < 14; i++) R(sv, x, sy + 14 + i * 9, 70, 7, i < hot ? 'box on' : 'sunk', 1);
+    });
+    T(sv, 340, 602, 'execution: 4 ALU ports + 2 AGU ports', {size: 10, fill: 'var(--tx2)'});
+    var ly = grid(860, 72, 11, 44, 26, 12, 2, 'load queue: 44', 'two loads per iteration');
+    var sy2 = grid(860, ly + 52, 11, 44, 26, 12, 1, 'store queue: 44', 'one store per iteration (STA + STD)');
+    R(sv, 860, sy2 + 20, 320, 56, 'a4b', 6); T(sv, 870, sy2 + 40, 'L1d 32 KB 8-way \u00b7 2 loads + 1 store / cycle', {size: 10.5, fill: 'var(--tx)'}); T(sv, 870, sy2 + 58, 'way predictor (\u00b5tag) picks the way to read', {size: 9.5, fill: 'var(--tx3)'});
+    R(sv, 860, sy2 + 84, 320, 56, 'a4b', 6); T(sv, 870, sy2 + 104, 'L1 DTLB 64 \u00b7 L2 TLB 1536 \u00b7 2 walkers', {size: 10.5, fill: 'var(--tx)'}); T(sv, 870, sy2 + 122, 'L1 miss buffers (MAB): count not published', {size: 9.5, fill: 'var(--tx3)'});
+    R(sv, 860, sy2 + 148, 320, 56, 'a2b', 6); T(sv, 870, sy2 + 168, 'L2 512 KB 8-way, inclusive of L1', {size: 10.5, fill: 'var(--tx)'}); T(sv, 870, sy2 + 186, 'up to 50 outstanding misses to the L3', {size: 9.5, fill: 'var(--tx3)'});
+    return {set: function(){}};
+  }
+
+  App.Plates = {plate: plate, dram: dramPlate, l1d: l1dPlate, e2e: e2ePlate, xlate: xlatePlate, core: corePlate};
+})();
+
 /* ======================= chapter: the machine ======================= */
 App.chapter({id: 'map', short: 'The machine', title: 'The machine, all of it',
 lede: 'Every structure a memory access can touch, from the core\u2019s load/store unit out to the DRAM chips and the SSD.',
 points: ['Click a block to see what it does and its published size.', 'Each block links to the chapter that takes it apart.', 'All sizes come from one real processor, an AMD Ryzen 7 3750H (Zen+). Other x86-64 CPUs use the same kinds of structures with different sizes.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g;
+  var h = App.h, s = App.s, g = App.g, HW = App.HW;
   var work = h('div', {'class': 'map-workbench'}, root);
   var wrap = h('div', {'class': 'scroller map-canvas'}, work);
   var sv = s('svg', {viewBox: '0 0 1200 760', style: 'min-width:880px'}, wrap);
@@ -3450,10 +4011,10 @@ build: function(root){
     df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; up to 96 outstanding misses from L3 to memory (published Zen/Zen+).', 'hier', ''],
     umc: ['Memory controllers (UMC \u00d72)', 'One per channel. Queue requests, map physical addresses to channel/bank/row/column, reorder to hit open rows, issue ACT/RD/WR/PRE/REF, enforce DRAM timings.', 'dram', '[[ch:dram]].'],
     dram: ['DDR4 DRAM, 2 channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst = 8 beats \u00d7 8 bytes = 64 bytes, one cache line. Cells are capacitors that must be refreshed.', 'dram', ''],
-    gpu: ['Integrated GPU (Vega)', 'Another client of the same fabric and the same DRAM. It competes with the cores for memory bandwidth.', 'hier', ''],
+    gpu: ['Integrated GPU (Radeon RX Vega 10)', '10 compute units (640 shaders) sharing a GPU L2. Another client of the same fabric and the same DRAM: it competes with the cores for memory bandwidth.', 'hier', ''],
     io: ['I/O hub: PCIe root complex + IOMMU', 'Turns device PCIe packets into memory requests and core MMIO accesses into PCIe packets. The IOMMU translates device addresses and blocks DMA outside what the OS mapped. Device DMA is snooped against CPU caches.', 'dev', '[[ch:dev]] walks an NVMe read through it.'],
     nvme: ['NVMe SSD', 'Talks to the CPU through submission/completion rings in RAM, doorbell registers (MMIO), DMA, and MSI-X interrupts.', 'dev', ''],
-    nic: ['Wi-Fi / Ethernet', 'Same pattern as NVMe: descriptor rings in RAM, doorbells, DMA, interrupts.', 'dev', '']
+    nic: ['Wi-Fi / Ethernet', 'Same pattern as NVMe: TX and RX descriptor rings in host RAM, doorbell registers the driver writes over MMIO, a DMA engine that reads the rings and packet buffers, and MSI-X interrupts.', 'dev', '']
   };
   function blk(id, x, y, w, ht, title, lines, cls){
     var gr = s('g', {'class': 'click'}, sv);
@@ -3479,15 +4040,23 @@ build: function(root){
   blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ 44 \u00b7 SQ 44', 'L1d 32 KB 8-way', '2 loads + 1 store / cycle'], 'a4b');
   blk('tlb', 302, 188, 146, 82, 'TLBs + walkers', ['L1 DTLB 64', 'L2 TLB 1536', '2 walkers'], 'a4b');
   blk('l2', 44, 300, 404, 50, 'L2 \u00b7 512 KB \u00b7 8-way \u00b7 inclusive of L1', ['private to this core'], 'a2b');
+  HW.assoc(parts.l2, 356, 307, 84, 36, {ways: 8, rows: 4});
   busL('M 170 270 L 170 300'); lbl(176, 290, '32 B/cycle');
   /* cores 1-3 */
   [1, 2, 3].forEach(function(n, k){
     var x = 472 + k * 102;
     s('rect', {x: x, y: 72, width: 94, height: 206, rx: 10, fill: 'none', stroke: 'var(--bd2)'}, sv);
-    var gr = blk('c' + n, x + 6, 80, 82, 190, 'Core ' + n, ['same as', 'core 0']);
+    var gr = blk('c' + n, x + 6, 80, 82, 190, 'Core ' + n, []);
+    HW.blocks(gr, x + 12, 106, 70, 156, [
+      {t: 'Front end', sub: 'L1i \u00b7 decode', cls: 'a3b'},
+      {t: 'OoO engine', sub: 'ROB \u00b7 PRF', cls: 'a3b'},
+      {t: 'LSU + L1d', sub: 'LQ \u00b7 SQ', cls: 'a4b'},
+      {t: 'TLBs', sub: '+ 2 walkers', cls: 'a4b'}
+    ], {gap: 5});
     gr.onclick = function(e){ e.stopPropagation(); pick('core0'); };
     s('rect', {x: x + 6, y: 300, width: 82, height: 50, rx: 8, 'class': 'box a2b'}, sv);
     lbl(x + 14, 318, 'L2 512 KB', 's');
+    HW.assoc(sv, x + 14, 324, 66, 19, {ways: 8, rows: 3});
     busL('M ' + (x + 47) + ' 270 L ' + (x + 47) + ' 300');
   });
   blk('l3', 44, 366, 728, 50, 'L3 \u00b7 4 MB \u00b7 16-way \u00b7 victim cache \u00b7 shadow tags of all four L2s', ['shared by cores 0\u20133; filled by L2 evictions'], 'a2b');
@@ -3498,7 +4067,14 @@ build: function(root){
   /* fabric */
   blk('df', 24, 440, 1152, 36, 'Infinity Fabric \u2014 data fabric (coherent interconnect)', [], 'a3b');
   busL('M 400 416 L 400 440');
-  blk('gpu', 800, 44, 376, 110, 'Integrated GPU (Vega)', ['shares DRAM and fabric bandwidth', 'with the CPU cores']);
+  var gpu = blk('gpu', 800, 44, 376, 110, 'Integrated GPU \u2014 Radeon RX Vega 10', []);
+  for (var cu = 0; cu < 10; cu++){
+    var cux = 810 + (cu % 5) * 50, cuy = 70 + Math.floor(cu / 5) * 26;
+    HW.rect(gpu, cux, cuy, 46, 22, 'a3b', 3); HW.txt(gpu, cux + 23, cuy + 15, 'CU ' + cu, {size: 9, anchor: 'middle', fill: 'var(--tx)'});
+  }
+  HW.blocks(gpu, 1066, 70, 100, 48, [{t: 'GPU L2', sub: 'shared by the CUs', cls: 'sunk'}]);
+  HW.rect(gpu, 806, 124, 92, 24, 'a3b', 4); HW.txt(gpu, 852, 140, 'fabric port', {size: 9.5, anchor: 'middle', fill: 'var(--tx)'});
+  HW.txt(gpu, 908, 140, 'same fabric and DRAM as the cores', {size: 9.5, fill: 'var(--tx3)'});
   busL('M 800 130 L 792 130 L 792 440');
   blk('io', 800, 170, 376, 110, 'I/O hub', ['PCIe root complex \u00b7 IOMMU + IOTLB', 'turns MMIO into PCIe packets and', 'device DMA into memory requests']);
   busL('M 1000 280 L 1000 440');
@@ -3508,7 +4084,14 @@ build: function(root){
   blk('dram', 24, 600, 560, 140, 'DDR4 \u2014 channel A and channel B', ['each: 64-bit data bus + command/address bus', 'DIMM \u2192 rank \u2192 8 chips \u2192 16 banks each \u2192 rows \u00d7 columns', 'one 64-byte line = 8 beats of 8 bytes (burst length 8)', 'DDR4-2400: 2400 MT/s \u00d7 8 B = 19.2 GB/s per channel (peak)']);
   busL('M 160 554 L 160 600'); busL('M 450 554 L 450 600'); lbl(166, 584, 'channel A, 64 bits'); lbl(456, 584, 'channel B, 64 bits');
   blk('nvme', 800, 600, 180, 140, 'NVMe SSD', ['queues in host RAM', 'doorbells via MMIO', 'DMA + MSI-X']);
-  blk('nic', 996, 600, 180, 140, 'Wi-Fi / NIC', ['descriptor rings', 'DMA + interrupts']);
+  var nic = blk('nic', 996, 600, 180, 140, 'Wi-Fi / NIC', []);
+  HW.blocks(nic, 1004, 628, 164, 24, [{t: 'doorbells', cls: 'a3b'}, {t: 'DMA', cls: 'a3b'}, {t: 'MSI-X', cls: 'a3b'}], {cols: 3, gap: 4, size: 9});
+  ['TX', 'RX'].forEach(function(nm, r){
+    var ry = 664 + r * 24;
+    HW.txt(nic, 1006, ry + 11, nm + ' ring', {size: 9, fill: 'var(--tx2)'});
+    for (var k = 0; k < 8; k++) s('rect', {x: 1052 + k * 14.5, y: ry, width: 12, height: 15, rx: 2, 'class': 'sunk', style: 'stroke-dasharray:2 1.5'}, nic);
+  });
+  HW.txt(nic, 1006, 726, 'rings live in host RAM', {size: 9, fill: 'var(--tx3)'});
   lbl(896, 530, 'PCIe links from the I/O hub');
   lbl(896, 545, '(packets called TLPs); they do');
   lbl(896, 560, 'not pass through the fabric');
@@ -4276,6 +4859,7 @@ build: function(root){
 
   App.onCfg(function(){ if (sim) run(); });
   run();
+  App.Plates.core(root);
   return {key: function(k){ if (k === 'ArrowRight'){ go(cur + 1); return true; } if (k === 'ArrowLeft'){ go(cur - 1); return true; } return false; }};
 }});
 
@@ -4285,13 +4869,8 @@ lede: 'Programs use virtual addresses, but the L1d needs the physical address be
 points: ['Follow the virtual address of <code>hist[123]</code> from the address unit to the tag compare.', 'Five situations: DTLB hit, L2 TLB hit, full page walk, page fault, and a 2 MB page.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, EX = App.EX, hx = App.hx;
-  var VA = 0x7ffd4a3c2e58n;
-  var TB = [
-    {n: 'PML4', base: 0x10a3b000n, idx: 255, val: 0x11e2d067n},
-    {n: 'PDPT', base: 0x11e2d000n, idx: 501, val: 0x13f4a067n},
-    {n: 'PD',   base: 0x13f4a000n, idx: 81,  val: 0x1b6e9067n},
-    {n: 'PT',   base: 0x1b6e9000n, idx: 450, val: 0x80000001a3f7c067n}
-  ];
+  var VA = App.WALK.va;
+  var TB = App.WALK.levels.map(function(x){ return Object.assign({}, x); });
   var HUGE_PDE = 0x80000001a3e000e7n, FAULT_PTE = 0n;
   var mode = 'walk', st = null;
 
@@ -4578,6 +5157,7 @@ build: function(root){
   ctx.innerHTML = '<h3>Context switches and ' + g('pcid', 'PCID') + '</h3><p>Switching processes writes a new value into ' + g('cr3') + '. Without PCIDs every non-global TLB entry would have to be discarded, and the next process starts with page walks. With PCIDs each entry carries a 12-bit process tag, so entries from different processes coexist and a switch only changes which tag matches.</p>' +
     '<p>The kernel removes stale entries itself with <code>invlpg</code> (one page) or a CR3 reload, for example after <code>munmap</code>. On multi-core systems it must also interrupt other cores that may cache the entry (a TLB shootdown).</p>';
   frames();
+  App.Plates.xlate(root);
   return {key: stp.key};
 }});
 
@@ -4708,6 +5288,10 @@ build: function(root){
   s('text', {x: 1025, y: 364, 'text-anchor': 'middle', 'class': 's', transform: 'rotate(-90 1025 364)'}, sv, '8:1 way mux');
   E.selW = s('path', {d: 'M 566 528 L 566 556 L 1025 556 L 1025 522', 'class': 'wire'}, sv);
   s('text', {x: 700, y: 570, 'class': 's'}, sv, 'hit vector selects a hit; replacement selects a refill way');
+  /* Zen+ way predictor (\u00b5tag): lights during steps 2-3 */
+  E.wp = box(1060, 104, 130, 74, 'Way predictor');
+  E.wpT = s('text', {x: 1070, y: 142, 'class': 'm', style: 'font-size:11px'}, E.wp, '');
+  E.wpT2 = s('text', {x: 1070, y: 160, 'class': 's'}, E.wp, '');
   E.lb = box(1060, 184, 130, 350, '');
   s('text', {x: 1070, y: 204, 'class': 'h'}, E.lb, 'line buffer'); s('text', {x: 1070, y: 220, 'class': 's'}, E.lb, '64 bytes');
   s('text', {x: 1070, y: 262, 'class': 'h'}, E.lb, 'aligner');
@@ -4793,8 +5377,8 @@ build: function(root){
     var f = {r: r, ph: ph, k: k}, a = r.a, n = k + 1, setTxt = 'set ' + r.si;
     var addr = '<code>' + hx(r.va) + '</code>';
     if (ph === 'split'){ f.t = 'Access 1, step 1: split the address'; f.d = 'C1\u2019s load of hist[123] arrives with VA ' + addr + '.\n<ul><li>Bits 11:6 = 111001 = <b>57</b> go straight to the row decoder.</li><li>Bits 47:12, the VPN 0x7ffd4a3c2, go to the ' + g('dtlb') + ', which returns PFN 0x1a3f7c: the physical tag.</li><li>Bits 5:0 = <b>24</b> wait until the end, where they pick bytes 24\u201331 of the line.</li></ul>'; return f; }
-    if (ph === 'read'){ f.t = 'Step 2: read the whole set'; f.d = 'The decoder raises wordline 57. In all 8 ways at once, set 57\u2019s V, D and tag bits and its 64 data bytes flow out through the sense amplifiers: 8 tags and 512 data bytes read for one 8-byte load.\nThe hardware reads every way because it does not yet know which one holds the line.'; return f; }
-    if (ph === 'compare'){ f.t = 'Step 3: eight tag compares in parallel'; f.d = 'Eight comparators check PA tag 0x1a3f7c against the eight stored tags in the same cycle; each result is ANDed with its valid bit. <b>Way 3 matches.</b> The OR of the eight hit lines is the hit signal.\nThe comparators are why associativity costs area and power: 8 ways means 8 of them, firing on every access.'; return f; }
+    if (ph === 'read'){ f.t = 'Step 2: read the set (textbook) or one way (Zen+)'; f.d = 'The decoder raises wordline 57. <b>Textbook model:</b> in all 8 ways at once, set 57\u2019s V, D and tag bits and its 64 data bytes flow out through the sense amplifiers: 8 tags and 512 data bytes read for one 8-byte load, because the hardware does not yet know which way holds the line.\n<b>What Zen+ does instead:</b> a ' + g('waypred') + ' hashes virtual-address bits into a \u00b5tag and picks the way before any tag compare, so ' + (r.hit ? 'only way ' + r.way + '\u2019s data is read' : 'no way matches and the access goes straight to the miss path') + '. It saves power; the full tag compare in step 3 still decides hit or miss. AMD does not document the hash; Lipp et al. reverse-engineered it in 2020 and tested Zen and Zen+.'; return f; }
+    if (ph === 'compare'){ f.t = 'Step 3: eight tag compares in parallel'; f.d = 'Eight comparators check PA tag 0x1a3f7c against the eight stored tags in the same cycle; each result is ANDed with its valid bit. <b>Way 3 matches.</b> The OR of the eight hit lines is the hit signal.\nIn the textbook model, 8 ways means 8 comparators firing on every access. On Zen+ the predicted way\u2019s full physical tag is still checked against 0x1a3f7c: that check is what makes a wrong prediction safe. A \u00b5tag that matches nothing is handled as an L1 miss, and because a line is cached under one \u00b5tag at a time, touching it through a second virtual alias evicts it.'; return f; }
     if (ph === 'select'){ f.t = 'Step 4: select the way, align the bytes'; f.d = 'The hit vector drives the 8:1 way mux: way 3\u2019s 64 bytes reach the line buffer, the aligner takes bytes 24\u201331, and <b>41</b> goes to the load\u2019s destination register. The pLRU bits of set 57 now point away from way 3.'; return f; }
     if (ph === 'miss'){
       f.t = 'Access ' + n + ': tag miss in set ' + r.si;
@@ -4837,6 +5421,9 @@ build: function(root){
     E.opT.textContent = (r.a.st ? 'STORE 8 B, value ' + decimalTxt(r.a.val) : 'LOAD 8 B'); E.opT2.textContent = r.a.who; E.opT3.textContent = 'PA ' + hx(r.pa);
     var on = function(el, v){ el.setAttribute('class', v ? 'on' : ''); };
     on(E.va, ph === 'split' || ph === 'all'); on(E.tlb, ph === 'split' || ph === 'all');
+    var wpOn = ph === 'read' || ph === 'compare'; on(E.wp, wpOn);
+    E.wpT.textContent = wpOn ? (r.hit ? '\u00b5tag \u2192 way ' + r.way : '\u00b5tag: no match') : '\u00b5tag(VA) \u2192 way';
+    E.wpT2.textContent = wpOn ? (r.hit ? 'Zen+: 1 of 8 ways read' : 'handled as a miss') : 'Zen+ only (step 2)';
     E.wTag.setAttribute('class', 'wire' + (ph !== 'read' ? ' on' : '')); E.wIdx.setAttribute('class', 'wire' + (ph === 'split' || ph === 'read' || ph === 'all' ? ' on' : ''));
     on(E.dec, ph === 'read' || ph === 'split' || ph === 'all');
     E.wl.forEach(function(l, i){ l.setAttribute('stroke', i === r.si ? 'var(--act)' : 'var(--bd2)'); l.setAttribute('stroke-width', i === r.si ? 3 : 1); l.setAttribute('x1', i === r.si ? 60 : 86); });
@@ -4895,6 +5482,7 @@ build: function(root){
     E.stT.forEach(function(t, i){ t.textContent = showAfter || f.k > 0 ? S[i] : ''; });
   }
   rebuild(false);
+  App.Plates.l1d(root);
   return {key: stp.key};
 }});
 
@@ -4903,8 +5491,8 @@ App.chapter({id: 'hier', short: 'Down the hierarchy', title: 'Down the hierarchy
 lede: 'When the L1d misses, the request moves outward until some level has the line.',
 points: ['Follow the request to the L2, the L3, another core, or DRAM.', 'The line comes back the same way it went out.', 'Where it was found decides how long the load waits.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g, CFG = App.CFG, hx = App.hx;
-  var PA = 0x1a3f7ce58n, LINE = PA & ~63n;
+  var h = App.h, s = App.s, g = App.g, CFG = App.CFG, hx = App.hx, HW = App.HW;
+  var PA = 0x1a3f7ce58n, LINE = PA & ~63n, l1set = Number((PA >> 6n) & 63n), DR = HW.dramMap(LINE);
   var l2set = Number((PA >> 6n) & 1023n), l3set = Number((PA >> 6n) & 4095n);
   var mode = 'DRAM';
   var intro = h('div', {'class': 'grid2'}, root);
@@ -4922,21 +5510,44 @@ build: function(root){
   function wire(id, d, ret){ P[id] = s('path', {d: d, 'class': 'wire', 'stroke-width': 2}, sv); P[id].ret = ret; return P[id]; }
   box('core0', 20, 18, 320, 140, 'Core 0');
   box('l1', 30, 50, 140, 96, 'LSU + L1d', 'misses here', 'a4b');
+  HW.txt(P.l1, 40, 101, 'L1d \u00b7 8 ways \u00b7 set ' + l1set, {size: 9, fill: 'var(--tx3)'});
+  HW.assoc(P.l1, 40, 106, 120, 32, {ways: 8, rows: 3, hot: 1});
   box('mab', 185, 50, 145, 96, 'MAB', 'one entry per missing line', 'a4b');
+  HW.rect(P.mab, 195, 93, 125, 14, 'box', 3); HW.txt(P.mab, 201, 103.5, hx(LINE) + ' \u2190 C1.ld', {size: 9, fill: 'var(--tx)', cls: 'm'});
+  [0, 1].forEach(function(k){ HW.rect(P.mab, 195, 110 + k * 17, 125, 14, 'sunk', 3); HW.txt(P.mab, 201, 120.5 + k * 17, 'free', {size: 9, fill: 'var(--tx3)'}); });
   box('l2', 20, 190, 320, 60, 'L2 \u00b7 core 0', '512 KB \u00b7 8-way \u00b7 set ' + l2set, 'a2b');
+  HW.assoc(P.l2, 214, 197, 116, 46, {ways: 8, rows: 4, hot: 1});
   [1, 2, 3].forEach(function(n, k){
     var x = 370 + k * 200;
-    box('c' + n, x, 18, 180, 140, 'Core ' + n, 'same structure as core 0');
-    box('c' + n + 'l2', x, 190, 180, 60, 'L2 \u00b7 core ' + n, '512 KB', 'a2b');
+    box('c' + n, x, 18, 180, 140, 'Core ' + n, '');
+    HW.blocks(P['c' + n], x + 10, 50, 160, 96, [{t: 'LSU + L1d', sub: 'its own loads', cls: 'a4b'}, {t: 'MAB', sub: 'its own misses', cls: 'a4b'}], {cols: 2, gap: 8});
+    HW.assoc(P['c' + n], x + 16, 104, 64, 30, {ways: 8, rows: 3});
+    [0, 1, 2].forEach(function(r){ HW.rect(P['c' + n], x + 100, 86 + r * 17, 64, 14, 'sunk', 3); HW.txt(P['c' + n], x + 105, 96.5 + r * 17, 'free', {size: 8.5, fill: 'var(--tx3)'}); });
+    box('c' + n + 'l2', x, 190, 180, 60, 'L2 \u00b7 core ' + n, '512 KB \u00b7 set ' + l2set, 'a2b');
+    HW.assoc(P['c' + n + 'l2'], x + 96, 197, 74, 46, {ways: 8, rows: 4, hot: 1});
   });
   box('l3', 20, 282, 930, 96, 'L3 \u00b7 4 MB \u00b7 16-way \u00b7 set ' + l3set + ' \u00b7 victim cache', '', 'a2b');
   for (var k = 0; k < 4; k++){ s('rect', {x: 30 + k * 228, y: 310, width: 218, height: 30, rx: 5, 'class': 'box'}, P.l3); s('text', {x: 40 + k * 228, y: 330, 'class': 's'}, P.l3, 'slice ' + k + ' \u00b7 1 MB'); }
   P.sh = s('g', null, sv); s('rect', {x: 30, y: 346, width: 910, height: 24, rx: 5, 'class': 'a3b'}, P.sh); s('text', {x: 40, y: 363, 'font-size': 12}, P.sh, 'shadow tags: a copy of every L2 tag array in the CCX (probe filter)');
   box('df', 20, 410, 1160, 40, 'Infinity Fabric (data fabric)', '', 'a3b');
   box('umc', 20, 480, 520, 66, 'Memory controllers: UMC 0 \u00b7 UMC 1', 'queues, address mapping, DRAM commands');
+  HW.txt(P.umc, 300, 495, 'request queue', {size: 8.5, fill: 'var(--tx3)'});
+  for (k = 0; k < 8; k++) HW.rect(P.umc, 300 + k * 12, 499, 10, 14, k === 0 ? 'box' : 'sunk', 2);
+  HW.blocks(P.umc, 404, 486, 128, 30, [{t: 'command scheduler', sub: 'ACT \u00b7 RD \u00b7 PRE \u00b7 REF', cls: 'sunk'}], {size: 9, subSize: 8});
+  HW.txt(P.umc, 300, 533, 'address map: PA \u2192 ch \u00b7 BG \u00b7 bank \u00b7 row \u00b7 col', {size: 8.5, fill: 'var(--tx3)'});
   box('dram', 640, 480, 540, 66, 'DDR4 channel A \u00b7 channel B', 'rows, banks, ACT / RD / PRE ([[ch:dram]])');
+  HW.dram(P.dram, 932, 485, {hot: DR, cell: 4, labW: 26, chipGap: 3, rowGap: 4});
+  HW.txt(P.dram, 650, 534, 'this line: channel ' + DR.ch + ' (' + 'AB'[DR.ch] + ') \u00b7 bank group ' + DR.bg + ' \u00b7 bank ' + DR.bank + ' \u00b7 row ' + DR.row, {size: 9.5, fill: 'var(--tx3)'});
   box('meter', 980, 18, 200, 360, 'Elapsed');
-  P.mT = []; for (k = 0; k < 12; k++) P.mT.push(s('text', {x: 992, y: 70 + k * 24, 'font-size': k === 0 ? 22 : 12, 'class': k === 0 ? 'm' : ''}, P.meter, ''));
+  P.mT = []; for (k = 0; k < 5; k++) P.mT.push(s('text', {x: 992, y: 70 + k * 24, 'font-size': k === 0 ? 22 : 12, 'class': k === 0 ? 'm' : ''}, P.meter, ''));
+  var LAD = HW.ladder(P.meter, 990, 192, 182, 180);
+  var LEVEL = {'L1 miss': 'L1d', 'L2 hit': 'L2', 'L2 miss': 'L2', 'fill': 'L2', 'L3 hit': 'L3', 'move up': 'L3', 'shadow tags': 'L3', 'L3 miss': 'L3', 'probe': 'core 2', 'fabric': 'DRAM', 'DRAM': 'DRAM', 'return': 'DRAM'};
+  function levels(){
+    var L = [{k: 'L1d', c: CFG.l1, cls: 'a4b'}, {k: 'L2', c: CFG.l2, cls: 'a2b'}, {k: 'L3', c: CFG.l3, cls: 'a3b'}];
+    if (mode === 'peer') L.push({k: 'core 2', c: null});
+    L.push({k: 'DRAM', c: App.dramCycles(), cls: 'a1b'});
+    return L;
+  }
   wire('a1', 'M 90 146 L 90 188');
   wire('a2', 'M 150 250 L 150 280');
   wire('a3', 'M 660 282 L 660 252');
@@ -4985,6 +5596,7 @@ build: function(root){
     }
     P.r4t.textContent = f.on.indexOf('r4') >= 0 ? 'data returns to the L2; the L3 is bypassed' : '';
     P.mT.forEach(function(t, i){ t.textContent = f.m[i] || ''; });
+    LAD.set(levels(), LEVEL[f.p]);
   }
   frames();
 
@@ -5042,15 +5654,10 @@ lede: 'The memory controller turns each 64-byte read into a short sequence of DR
 points: ['DRAM is split into banks, and each bank into rows.', 'Reading from a row that is already open is fast; opening a different row costs extra time.', 'Step the commands (ACT, RD, PRE, REF) and see where the time goes.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, hx = App.hx;
-  var T = {tck: 0.833, CL: 17, RCD: 17, RP: 17, RAS: 39, BL: 4, RRDL: 6, CCDL: 6, RTP: 9};
+  var T = App.DDR4;
   function ns(t){ return (t * T.tck).toFixed(1) + ' ns'; }
   function F(pa){ return {byte: Number(pa & 63n), ch: Number((pa >> 6n) & 1n), col: Number((pa >> 7n) & 127n), bank: Number((pa >> 14n) & 3n), bg: Number((pa >> 16n) & 3n), row: Number((pa >> 18n) & 0xffffn)}; }
-  var REQ = [
-    {id: 'A', what: 'hist[120..127] (C1.ld)', pa: 0x1a3f7ce40n, arr: 0, kind: 'closed', rd: 17},
-    {id: 'D', what: 'data[0..63] (A1)', pa: 0x1c07a2c0n, arr: 0, kind: 'closed', rd: 23},
-    {id: 'B', what: 'hist[136..143]', pa: 0x1a3f7cec0n, arr: 5, kind: 'hit', rd: 29},
-    {id: 'C', what: 'a line 256 KB higher', pa: 0x1a3fbce40n, arr: 10, kind: 'conflict', rd: 73}
-  ];
+  var REQ = App.DRAMREQ.map(function(r){ return Object.assign({}, r); });
   REQ.forEach(function(r){ r.f = F(r.pa); r.data = r.rd + T.CL; });
   var CMD = [{t: 0, c: 'ACT', r: 'A', b: 3, x: 'row 26877'}, {t: 6, c: 'ACT', r: 'D', b: 2, x: 'row 1793'}, {t: 17, c: 'RD', r: 'A', b: 3, x: 'col 28'},
              {t: 23, c: 'RD', r: 'D', b: 2, x: 'col 69'}, {t: 29, c: 'RD', r: 'B', b: 3, x: 'col 29'}, {t: 39, c: 'PRE', r: 'C', b: 3, x: 'close'},
@@ -5126,6 +5733,7 @@ build: function(root){
   var stp = App.stepper(root, {render: draw});
   function draw(ff){
     var fr = ff.fr;
+    if (PLATE) PLATE.set(fr.p);
     var sel = REQ.filter(function(r){ return r.id === fr.sel; })[0] || REQ[0], f = sel.f;
     E.af.forEach(function(a){ var v = {row: f.row, BG: f.bg, bank: f.bank, column: f.col, ch: f.ch, byte: f.byte}[a.f[0]]; a.t.textContent = String(v); });
     E.aT.textContent = fr.ref ? 'refresh applies to every row of every bank' : sel.id + ': PA ' + hx(sel.pa) + ' \u2192 ch ' + f.ch + ', BG ' + f.bg + ', bank ' + f.bank + ', row ' + f.row + ', column ' + f.col;
@@ -5174,6 +5782,8 @@ build: function(root){
   h('div', {'class': 'card'}, cards, '<h3>Three prices for the same read</h3><table class="mt"><tr><th>row state</th><th>commands</th><th>device time</th></tr><tr><td>hit</td><td>RD</td><td>21 tCK \u00b7 17.5 ns</td></tr><tr><td>closed</td><td>ACT, RD</td><td>38 tCK \u00b7 31.7 ns</td></tr><tr><td>conflict</td><td>PRE, ACT, RD</td><td>55+ tCK \u00b7 45.8+ ns</td></tr></table><p class="note" style="margin-top:6px">Device time from the command to the last data beat. Load-to-use latency also includes the core, caches, fabric and controller queues.</p>');
   h('div', {'class': 'card'}, cards, '<h3>Why a cache line is 64 bytes, from this side</h3><p>DDR4 transfers in ' + g('burst', 'bursts') + ' of 8 beats on a 64-bit bus: 8 \u00d7 8 B = 64 B. One burst is one line, and the fixed costs (ACT, CL, command slots) are paid once per burst. [[ch:l1d]]\u2019s line size and this burst size were chosen together.</p>');
   h('div', {'class': 'card'}, cards, '<h3>Why DRAM needs rows at all</h3><p>One cell is a transistor and a capacitor holding a few femtocoulombs.</p><p>Sensing it requires a sense amplifier, which is large, so each bank has one row of them shared by all its rows. Opening a row moves thousands of bits into those amplifiers at once; after that, column reads are cheap.</p><p>The same small charge is why cells leak and need ' + g('refresh') + '.</p>');
+  var PLATE = App.Plates.dram(root);
+  stp.render();
   return {key: stp.key};
 }});
 
@@ -5182,7 +5792,8 @@ App.chapter({id: 'stores', short: 'Stores', title: 'The store path, memory types
 lede: 'A store stays private to its core until it leaves the store queue.',
 points: ['It can leave only once the L1d owns the line.', 'The cost depends on which other cores hold that line.', 'The page\u2019s memory type and any fences around the store also change the cost.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g, hx = App.hx;
+  var h = App.h, s = App.s, g = App.g, hx = App.hx, HW = App.HW;
+  var LINE = 0x1a3f7ce40n, DR = HW.dramMap(LINE), STC = {M: 'var(--a1)', E: 'var(--a2)', S: 'var(--a4)'};
   var mode = 'E';
   var ctl = h('div', {'class': 'stp'}, root);
   h('span', {'class': 'note'}, ctl, 'before C1\u2019s store commits, the hist[123] line is:');
@@ -5198,12 +5809,22 @@ build: function(root){
   E.sqN = s('text', {x: 32, y: 222, 'class': 's'}, E.sq, 'commits in program order, one per cycle');
   E.l1 = box(310, 40, 290, 208, 'L1d \u2014 line hist[120..127]');
   E.l1T = [0, 1, 2, 3, 4].map(function(k){ return s('text', {x: 322, y: 92 + k * 30, 'font-size': k === 0 ? 22 : 12.5, 'class': k === 0 ? 'm' : ''}, E.l1, ''); });
+  E.l1W = HW.words(E.l1, 320, 222, 270, 22, {labels: ['[120]', '[121]', '[122]', '[123]', '[124]', '[125]', '[126]', '[127]'], hot: 3});
   E.c1 = box(630, 10, 250, 250, 'Core 1 \u2014 its caches');
   E.c1T = [0, 1, 2].map(function(k){ return s('text', {x: 642, y: 80 + k * 30, 'font-size': k === 0 ? 22 : 12.5, 'class': k === 0 ? 'm' : ''}, E.c1, ''); });
+  E.c1C = [['L1d', Number((LINE >> 6n) & 63n), 170], ['L2', Number((LINE >> 6n) & 1023n), 216]].map(function(c){
+    HW.txt(E.c1, 642, c[2], c[0] + ' \u00b7 set ' + c[1] + ' \u00b7 this line:', {size: 9.5, fill: 'var(--tx3)'});
+    return {a: HW.assoc(E.c1, 642, c[2] + 5, 176, 24, {ways: 8, rows: 3, hot: 1, hotCls: 'sunk'}), st: HW.txt(E.c1, 830, c[2] + 22, '', {size: 13, weight: 700, cls: 'm'})};
+  });
   E.l3 = box(900, 10, 290, 250, 'L3 + shadow tags');
   E.l3T = [0, 1, 2, 3].map(function(k){ return s('text', {x: 912, y: 60 + k * 26, 'font-size': 12.5}, E.l3, ''); });
+  HW.slices(E.l3, 912, 150, 266, 40, {n: 4, label: function(k){ return 's' + k + ' \u00b7 1 MB'; }});
+  HW.txt(E.l3, 912, 208, 'shadow tags for hist[120..127]', {size: 9.5, fill: 'var(--tx3)'});
+  E.l3P = HW.presence(E.l3, 912, 213, {cw: 52, ch: 20, lw: 0});
   E.dr = box(10, 320, 1180, 70, 'DRAM');
   E.drT = s('text', {x: 22, y: 366, 'font-size': 13}, E.dr, '');
+  HW.dram(E.dr, 640, 330, {side: true, hot: DR, cell: 4, labW: 26, chipGap: 3, colGap: 16});
+  HW.txt(E.dr, 640, 379, 'hist[120..127] lives in channel ' + DR.ch + ' (' + 'AB'[DR.ch] + ') \u00b7 bank group ' + DR.bg + ' \u00b7 bank ' + DR.bank + ' \u00b7 row ' + DR.row + ' \u00b7 8 bits from every chip per beat', {size: 9.5, fill: 'var(--tx3)'});
   var A = {};
   function arrow(id, d){ A[id] = s('path', {d: d, 'class': 'wire', 'stroke-width': 2, 'marker-end': 'url(#sa)', style: 'opacity:.18'}, sv); }
   arrow('commit', 'M 282 118 L 308 118');
@@ -5239,7 +5860,10 @@ build: function(root){
       var st = f.sq[k], R = E.sqR[k];
       R.t.textContent = st === 'none' ? '' : e[0] + '   ' + e[1]; R.t2.textContent = SQS[st][0]; R.r.setAttribute('class', SQS[st][1]);
     });
-    E.l1T[0].textContent = f.l0; E.l1T[0].setAttribute('fill', f.l0 === 'M' ? 'var(--a1)' : f.l0 === 'E' ? 'var(--a2)' : f.l0 === 'S' ? 'var(--a4)' : 'var(--tx3)');
+    E.l1T[0].textContent = f.l0; E.l1T[0].style.fill = STC[f.l0] || 'var(--tx3)';
+    E.l1W.set(f.v0, f.l0 === 'M' ? 'a1b' : f.l0 === '\u2014' ? 'sunk' : 'a4b');
+    E.c1C.forEach(function(c){ c.a.hot.forEach(function(r){ r.setAttribute('class', f.c1 === 'S' ? 'a4b' : 'sunk'); }); c.st.textContent = f.c1 === 'S' ? 'S' : '\u2013'; c.st.style.fill = f.c1 === 'S' ? 'var(--a4)' : 'var(--tx3)'; });
+    E.l3P.draw([{label: '', st: [f.l0 === '\u2014' ? 'I' : f.l0, f.c1, 'I', 'I']}]);
     E.l1T[1].textContent = f.l0 === '\u2014' ? 'not present' : {M: 'Modified: dirty, only copy', E: 'Exclusive: clean, only copy', S: 'Shared: read-only here'}[f.l0];
     E.l1T[2].textContent = f.v0 === null ? '' : 'hist[123] = ' + f.v0;
     E.l1T[3].textContent = f.l0 === 'M' ? 'D = 1' : f.l0 === '\u2014' ? '' : 'D = 0';
@@ -5295,7 +5919,7 @@ App.chapter({id: 'coh', short: 'Coherence', title: 'Four cores, one line: MOESI 
 lede: 'Each core has private caches, yet all cores must agree on the order of writes to each address.',
 points: ['The coherence protocol tracks ownership per 64-byte line.', 'Step through reads and writes and watch each line change state between cores.', 'Two unrelated variables in one line can slow each other down: false sharing.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g;
+  var h = App.h, s = App.s, g = App.g, HW = App.HW, DR = HW.dramMap(0x1a3f7ce40n);
   var LN = ['A', 'F', 'G1', 'G2'], LD = {A: 'hist[120..127]', F: 'struct { long a, b; }', G1: 'a, padded to its own line', G2: 'b, padded to its own line'};
   var SC = {
     share: {n: 'Read sharing, write, owner', ops: [[0, 'r', 'A'], [1, 'r', 'A'], [2, 'r', 'A'], [3, 'w', 'A'], [0, 'r', 'A'], [1, 'r', 'A'], [3, 'e', 'A']]},
@@ -5341,9 +5965,12 @@ build: function(root){
   E.l3 = s('g', null, sv); s('rect', {x: 20, y: 222, width: 1160, height: 76, rx: 9, 'class': 'a3b'}, E.l3);
   s('text', {x: 32, y: 244, 'class': 'h'}, E.l3, 'L3 shadow tags: which cores hold each line');
   E.l3T = s('text', {x: 32, y: 270, 'class': 'm', 'font-size': 12.5}, E.l3, ''); E.l3T2 = s('text', {x: 32, y: 290, 'class': 's'}, E.l3, '');
+  E.l3P = HW.presence(E.l3, 822, 228, {cw: 28, ch: 18, lw: 30, head: function(c){ return 'c' + c; }});
   E.dr = s('g', null, sv); s('rect', {x: 20, y: 340, width: 1160, height: 76, rx: 9, 'class': 'box'}, E.dr);
   s('text', {x: 32, y: 362, 'class': 'h'}, E.dr, 'DRAM');
   E.drT = s('text', {x: 32, y: 388, 'class': 'm', 'font-size': 12.5}, E.dr, ''); E.drT2 = s('text', {x: 32, y: 406, 'class': 's'}, E.dr, '');
+  E.drD = HW.dram(E.dr, 940, 349, {hot: DR, hotCls: 'sunk', cell: 4, labW: 26, chipGap: 3, rowGap: 6});
+  E.drC = HW.txt(E.dr, 90, 362, '', {size: 9.5, fill: 'var(--tx3)'});
   E.arr = s('g', null, sv);
   var stp = App.stepper(root, {render: draw, pills: false});
   var stats = h('div', {'class': 'card'}, root);
@@ -5427,7 +6054,7 @@ build: function(root){
     E.cores.forEach(function(cc, c){
       cc.rows.forEach(function(R, k){
         var L = LN[k], sn = f.snap[L], st = sn.st[c], show = used.indexOf(L) >= 0;
-        R.r.style.opacity = show ? 1 : .3; R.st.textContent = show ? st : ''; R.st.setAttribute('fill', COL[st]);
+        R.r.style.opacity = show ? 1 : .3; R.st.textContent = show ? st : ''; R.st.style.fill = COL[st];
         R.v.textContent = show ? (st === 'I' ? LD[L] : 'version ' + sn.cv[c] + (sn.cv[c] < sn.nv ? ' (stale!)' : '')) : '';
         R.r.setAttribute('class', show && f.L === L && f.c === c ? 'on box' : 'sunk');
       });
@@ -5435,6 +6062,10 @@ build: function(root){
     });
     E.l3T.textContent = used.map(function(L){ var hs = [0, 1, 2, 3].filter(function(j){ return f.snap[L].st[j] !== 'I'; }); return L + ': ' + (hs.length ? 'cores ' + hs.join(', ') : 'nobody'); }).join('     ');
     E.l3T2.textContent = 'probes go only to the cores listed here';
+    E.l3P.draw(used.map(function(L){ return {label: L, st: f.snap[L].st}; }));
+    var hasA = used.indexOf('A') >= 0;
+    E.drD.setHot(hasA ? 'a4b' : 'sunk');
+    E.drC.textContent = hasA ? 'line A = hist[120..127]: channel ' + DR.ch + ' (' + 'AB'[DR.ch] + ') \u00b7 bank group ' + DR.bg + ' \u00b7 bank ' + DR.bank + ' \u00b7 row ' + DR.row : 'addresses of F, G1 and G2 are not modeled';
     E.drT.textContent = used.map(function(L){ var sn = f.snap[L]; return L + ': version ' + sn.mv + (sn.mv < sn.nv ? ' (stale: newest is ' + sn.nv + ' in a cache)' : ' (current)'); }).join('     ');
     E.drT2.textContent = 'O and M lines are newer than DRAM until written back';
     E.arr.innerHTML = '';
@@ -5549,7 +6180,7 @@ App.chapter({id: 'dev', short: 'Devices & DMA', title: 'Devices: MMIO, DMA, the 
 lede: 'One 4 KB read from an NVMe SSD, from the io_uring request to the application reading the data.',
 points: ['The CPU talks to the SSD by writing device registers (MMIO).', 'The SSD reads and writes host memory itself (DMA), through the IOMMU.', 'Those device accesses stay coherent with the CPU caches.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g;
+  var h = App.h, s = App.s, g = App.g, HW = App.HW;
   var intro = h('div', {'class': 'grid2'}, root);
   h('div', {'class': 'card'}, intro, '<h3>Two ways the CPU and a device touch</h3><p>' + g('mmio') + ': device registers sit at physical addresses inside the device\u2019s ' + g('bar') + '; the CPU reads or writes them with ordinary <code>mov</code> instructions on pages mapped uncacheable (UC, [[ch:stores]]). ' + g('dma') + ': the device itself reads and writes host memory, which is how bulk data moves. NVMe uses MMIO only for tiny ' + g('doorbell', 'doorbells') + ' and DMA for everything else.</p>');
   h('div', {'class': 'card'}, intro, '<h3>The queues</h3><p>' + g('nvme') + ' works through rings in host RAM: a submission queue of 64-byte commands and a completion queue of 16-byte entries, each with head and tail indices. The driver produces commands and the SSD consumes them; the SSD produces completions and the driver consumes them. io_uring (Modules 25\u201326) uses the same design between user space and the kernel.</p>');
@@ -5582,7 +6213,10 @@ build: function(root){
   s('rect', {x: 900, y: 44, width: 280, height: 110, rx: 5, 'class': 'a3b'}, E.ssd); s('text', {x: 910, y: 64, 'font-size': 12}, E.ssd, 'BAR0 registers (MMIO)');
   E.db1 = s('text', {x: 910, y: 88, 'class': 'm', 'font-size': 11.5}, E.ssd, ''); E.db2 = s('text', {x: 910, y: 110, 'class': 'm', 'font-size': 11.5}, E.ssd, ''); s('text', {x: 910, y: 140, 'class': 's'}, E.ssd, 'doorbell stride 4 B; admin queue 0 at 0x1000/0x1004');
   E.ctl = s('rect', {x: 900, y: 170, width: 280, height: 150, rx: 5, 'class': 'box'}, E.ssd); s('text', {x: 910, y: 192, 'font-size': 12}, E.ssd, 'controller + DMA engine');
-  E.ctT = [0, 1, 2, 3].map(function(k){ return s('text', {x: 910, y: 216 + k * 22, 'font-size': 11.5}, E.ssd, ''); });
+  E.ctT = [0, 1, 2].map(function(k){ return s('text', {x: 910, y: 216 + k * 22, 'font-size': 11.5}, E.ssd, ''); });
+  E.pipe = HW.pipeline(E.ssd, 908, 270, 264, 24, ['doorbell', 'fetch', 'NAND', 'DMA', 'CQE', 'MSI-X']);
+  HW.txt(E.ssd, 908, 310, 'one command through the controller', {size: 9, fill: 'var(--tx3)'});
+  var PIPE = {MWr: [0, []], fetch: [1, [0]], flash: [2, [0, 1]], data: [3, [0, 1, 2]], CQE: [4, [0, 1, 2, 3]], 'MSI-X': [5, [0, 1, 2, 3, 4]], consume: [0, [1, 2, 3, 4, 5]], use: [-1, [0, 1, 2, 3, 4, 5]]};
   E.nand = s('rect', {x: 900, y: 336, width: 280, height: 240, rx: 5, 'class': 'box'}, E.ssd); s('text', {x: 910, y: 358, 'font-size': 12}, E.ssd, 'NAND flash');
   for (i = 0; i < 24; i++) s('rect', {x: 912 + (i % 6) * 44, y: 372 + Math.floor(i / 6) * 48, width: 38, height: 40, rx: 3, 'class': 'sunk'}, E.ssd);
   E.nT = s('text', {x: 910, y: 568, 'class': 's'}, E.ssd, '');
@@ -5622,6 +6256,7 @@ build: function(root){
     E.bufT2.textContent = fr.buf ? 'IOVA 0xfff02000 \u2192 physical frame chosen by the OS' : '';
     E.db1.textContent = 'SQ1 tail doorbell (0x1008) = ' + fr.db[0]; E.db2.textContent = 'CQ1 head doorbell (0x100C) = ' + fr.db[1];
     E.ctT.forEach(function(t, k){ t.textContent = fr.ct[k] || ''; });
+    var ps = PIPE[fr.p] || [-1, []]; E.pipe.set(ps[0], ps[1]);
     E.nT.textContent = fr.nand ? 'reading: tens of \u00b5s is typical (not measured)' : '';
     E.ioT.textContent = fr.iommu ? fr.iommu[0] : ''; E.ioT2.textContent = fr.iommu ? fr.iommu[1] : ''; E.ioT3.textContent = fr.iommu ? 'device can reach only mapped pages' : '';
     E.io.setAttribute('class', fr.iommu ? 'on box' : 'box'); E.rc.setAttribute('class', fr.hl.indexOf('hub') >= 0 && !fr.iommu && fr.p !== 'MSI-X' ? 'on box' : 'box');
@@ -5657,26 +6292,10 @@ build: function(root){
   var sv = s('svg', {viewBox: '0 0 1000 120', style: 'width:100%;min-width:640px;height:auto;display:block'}, bar);
   var tbl = h('div', {'class': 'card'}, root);
   var sum = h('div', {'class': 'card'}, root);
-  function steps(){
-    var ghz = CFG.ghz, S = [];
-    var add = function(n, c, src, ch, what){ S.push({n: n, c: Math.max(0, Math.round(c)), src: src, ch: ch, what: what}); };
-    add('front end: fetch, predecode, decode, \u00b5op queue', 5, 'model', 'core', 'L1i hit, op cache or decoders');
-    add('rename + dispatch', 2, 'model', 'core', 'RAT, free list, ROB, scheduler, LQ/SQ entries');
-    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'published', 'core', 'the address depends on this load');
-    add('AGU: rdx + rax\u00d78', 1, 'model', 'core', 'VA 0x7ffd4a3c2e58');
-    if (o.tlb === 'walk') add('DTLB + L2 TLB miss, page walk', 2 * CFG.l2 + 2, 'assumed', 'xlate', 'PML4E/PDPTE from the walk cache, PDE and PTE from L2');
-    var lat = o.lvl === 'L1' ? CFG.l1 : o.lvl === 'L2' ? CFG.l2 : o.lvl === 'L3' ? CFG.l3 : App.dramCycles();
-    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'published', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns (latency settings)' : 'load-to-use');
-    if (o.lvl === 'DRAM' && o.row !== 'closed') add(o.row === 'hit' ? 'row already open: saves ACT' : 'row conflict: extra PRE', (o.row === 'hit' ? -14.2 : 14.2) * ghz, 'derived', 'dram', 'device-time difference from [[ch:dram]] (\u00b1 14.2 ns)');
-    add('add: tmp + 1', 1, 'published', 'core', '1-cycle ALU op');
-    add('store address + data into the SQ', 2, 'model', 'core', 'STA / STD');
-    add('retire (older instructions already done)', 1, 'model', 'core', 'ROB head');
-    add('commit to L1d: line is E after the load, becomes M', 1, 'model', 'stores', 'no RFO needed');
-    S.forEach(function(x){ if (x.n.indexOf('row already open') === 0) x.neg = true; });
-    return S;
-  }
+  function steps(){ return App.E2E.steps(o); }
   var COL = {core: 'a3b', xlate: 'a4b', l1d: 'a2b', hier: 'a2b', dram: 'a1b', stores: 'a3b'};
   function draw(){
+    if (PLATE) PLATE.set(o);
     var S = steps(), ghz = CFG.ghz, tot = 0;
     S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
     sv.innerHTML = ''; var x0 = 10, W = 980, acc = 0;
@@ -5697,8 +6316,28 @@ build: function(root){
     tbl.querySelectorAll('button.lnk').forEach(function(b){ b.onclick = function(){ App.go(b.dataset.ch); }; });
     sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale ([[chs:stores,coh]]).</p><p>Nothing else happens to it until it is evicted, when its 64 bytes are written back to the L2, later enter the L3 as a victim, and eventually reach DRAM through the controller as a write ([[chr:l1d,dram]]).</p><p>That write-back is off the critical path of this instruction; the core keeps running.</p><p>For comparison: at ' + ghz + ' GHz the loop body runs about one iteration per cycle when everything hits ([[ch:core]]). A single miss to DRAM costs the time of hundreds of iterations, which is why the hierarchy, the prefetchers and memory-level parallelism exist.</p>';
   }
+  var PLATE = App.Plates.e2e(root, o);
   App.onCfg(draw);
   draw();
+}});
+
+/* ======================= atlas: every plate on one page ======================= */
+App.chapter({id: 'atlas', ref: true, group: 'Reference', short: 'Atlas', title: 'Hardware atlas',
+lede: 'Every full-width plate from the chapters on one page: the real structures, drawn to scale where the size is the point.',
+points: ['The tabs above each plate frame one part of it; focus canvas fills the screen.', 'Each plate is the same drawing its chapter steps through.'],
+build: function(root){
+  var h = App.h;
+  [['dram', 'Inside one DDR4 chip', 'Address bits to subarrays and capacitors, then the command and data bus.'],
+   ['l1d', 'The L1d arrays, to scale', 'Tag and data SRAM at one bit scale, with the Zen+ way predictor.'],
+   ['xlate', 'The page walk, bit by bit', 'Address bits, four table reads at their real entry addresses, and the leaf entry decoded.'],
+   ['core', 'The Zen+ core at real sizes', 'Every queue at its published size, with one loop iteration marked.'],
+   ['e2e', 'One hist[123]++ on one time axis', 'Every stage of the critical path to scale, then the first cycles magnified.']
+  ].forEach(function(p){
+    var sec = h('div', {'class': 'p-sec', 'data-sec': p[0], 'data-title': p[1], 'data-copy': p[2]}, root);
+    App.Plates[p[0]](sec);
+    var b = h('button', {'class': 'ghost', type: 'button', style: 'margin-top:10px'}, sec, 'step through it in [[ch:' + p[0] + ']] \u2192');
+    b.onclick = function(){ App.go(p[0]); };
+  });
 }});
 
 /* ======================= chapter: glossary ======================= */

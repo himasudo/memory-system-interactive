@@ -20,7 +20,7 @@ The goal is to make low-level memory behavior **visible, stateful, and interacti
 
 ## Chapters
 
-Chapters are numbered from their order in the build: `00` Start here, `01`–`08` Foundations (the background a software developer needs), `09`–`20` the hardware path. The glossary is an unnumbered reference.
+Chapters are numbered from their order in the build: `00` Start here, `01`–`08` Foundations (the background a software developer needs), `09`–`20` the hardware path. The Atlas and the glossary are unnumbered references.
 
 | # | Chapter | Focus |
 |---|---|---|
@@ -45,9 +45,10 @@ Chapters are numbered from their order in the build: `00` Start here, `01`–`08
 | `18` | **Prefetchers** | Stream/stride detection, prefetch distance, coverage vs. lateness vs. pollution |
 | `19` | **Devices, DMA, IOMMU** | MMIO doorbells, PCIe TLPs, IOMMU translation, coherent DMA, MSI-X interrupts |
 | `20` | **End to End** | One instruction's full critical path, reassembled across every earlier chapter |
+| ref | **Atlas** | Every full-width plate on one page: DRAM chip, L1d arrays, page walk, Zen+ core, end-to-end timeline |
 | `A–Z` | **Glossary** | Every term used across the site, searchable (unnumbered reference) |
 
-Every chapter is one long page. Sections are numbered, always visible, and linkable as `#chapter/section` (for example `#l1d/lookup`); the top bar shows the current section, a section menu and reading progress. Sections of the hardware chapters open with a small overview figure before their interactive part.
+Every chapter is one long page. Sections are numbered, always visible, and linkable as `#chapter/section` (for example `#l1d/lookup`); the top bar shows the current section, a section menu and reading progress. Sections of the hardware chapters open with a small overview figure before their interactive part. Five chapters also carry a full-width plate (a large, detailed drawing of the real structure with view tabs), and the DRAM chapter adds a 3D view of the rank, chip, bank and cells that follows its stepper.
 
 ---
 
@@ -60,7 +61,8 @@ Every chapter is one long page. Sections are numbered, always visible, and linka
 - **Clear separation** between measured values, published values, and simplified models.
 - **Explicit uncertainty** where hardware behavior is undocumented.
 - **Responsive visualizations** with light and dark theme support, down to mobile widths.
-- **No framework dependency** — the application is plain HTML, CSS, SVG, and JavaScript.
+- **No framework dependency** — the application is plain HTML, CSS, SVG, and JavaScript. The one exception is the 3D DRAM scene: a pinned three.js bundle (`vendor/dram3d.js`) fetched only when that scene scrolls into view. Without it (no WebGL, or opened from `file://`) the page works and the scene shows a note pointing to the 2D plate.
+- **No manual zoom on 2D diagrams** — views are switched with tabs; only the 3D scene can be orbited and zoomed.
 
 ---
 
@@ -108,13 +110,19 @@ Using a local HTTP server is preferable to opening the page directly through `fi
 ```text
 .
 ├── index.html
-├── memory_end_to_end.html
+├── memory_end_to_end.html   built by build.py from shell.html + src/
+├── build.py
+├── shell.html
+├── src/                     chapter, core, glossary and CSS modules
+├── src3d/dram3d.js          3D DRAM scene source (three.js)
+├── vendor/                  dram3d.js bundle + three.js licence
+├── tools/                   build_3d.sh, check_links.py
 └── README.md
 ```
 
 ### `memory_end_to_end.html`
 
-The main application and source of truth. A single self-contained file (no build step required to run it) containing:
+The main application. A single self-contained file (no build step required to run it, apart from the optional 3D scene in `vendor/`) containing:
 
 - the chapter router
 - shared glossary
@@ -142,6 +150,12 @@ python3 build.py
 ```
 
 regenerates `memory_end_to_end.html` from the individual chapter files. Editing the shipped HTML directly also works fine for small fixes; the modular source is only useful for larger changes across chapters.
+
+Shared drawing code and data:
+
+- `src/04_shared_hw.js` (`App.HW`): parts drawn in several chapters (core blocks, set-associative arrays, L3 slices, shadow-tag grids, DRAM ranks, cache-line words, device pipelines, the latency ladder). Each draws inside an existing box; a cell with class `box` lights up with its parent group.
+- `src/04_shared_plates.js` (`App.Plates`): the five full-width plates, plus data the chapters share with them: `App.DDR4`, `App.DRAMREQ`, `App.WALK`, `App.E2E.steps(options)`. Any `.scroller` that sets `_views` gets the standard view tabs.
+- The 3D scene: edit `src3d/dram3d.js`, then run `tools/build_3d.sh` (Node.js; pins three.js 0.186.1 and esbuild 0.28.2) to rebuild `vendor/dram3d.js`.
 
 ---
 

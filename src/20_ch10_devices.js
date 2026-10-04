@@ -3,7 +3,7 @@ App.chapter({id: 'dev', short: 'Devices & DMA', title: 'Devices: MMIO, DMA, the 
 lede: 'One 4 KB read from an NVMe SSD, from the io_uring request to the application reading the data.',
 points: ['The CPU talks to the SSD by writing device registers (MMIO).', 'The SSD reads and writes host memory itself (DMA), through the IOMMU.', 'Those device accesses stay coherent with the CPU caches.'],
 build: function(root){
-  var h = App.h, s = App.s, g = App.g;
+  var h = App.h, s = App.s, g = App.g, HW = App.HW;
   var intro = h('div', {'class': 'grid2'}, root);
   h('div', {'class': 'card'}, intro, '<h3>Two ways the CPU and a device touch</h3><p>' + g('mmio') + ': device registers sit at physical addresses inside the device\u2019s ' + g('bar') + '; the CPU reads or writes them with ordinary <code>mov</code> instructions on pages mapped uncacheable (UC, [[ch:stores]]). ' + g('dma') + ': the device itself reads and writes host memory, which is how bulk data moves. NVMe uses MMIO only for tiny ' + g('doorbell', 'doorbells') + ' and DMA for everything else.</p>');
   h('div', {'class': 'card'}, intro, '<h3>The queues</h3><p>' + g('nvme') + ' works through rings in host RAM: a submission queue of 64-byte commands and a completion queue of 16-byte entries, each with head and tail indices. The driver produces commands and the SSD consumes them; the SSD produces completions and the driver consumes them. io_uring (Modules 25\u201326) uses the same design between user space and the kernel.</p>');
@@ -36,7 +36,10 @@ build: function(root){
   s('rect', {x: 900, y: 44, width: 280, height: 110, rx: 5, 'class': 'a3b'}, E.ssd); s('text', {x: 910, y: 64, 'font-size': 12}, E.ssd, 'BAR0 registers (MMIO)');
   E.db1 = s('text', {x: 910, y: 88, 'class': 'm', 'font-size': 11.5}, E.ssd, ''); E.db2 = s('text', {x: 910, y: 110, 'class': 'm', 'font-size': 11.5}, E.ssd, ''); s('text', {x: 910, y: 140, 'class': 's'}, E.ssd, 'doorbell stride 4 B; admin queue 0 at 0x1000/0x1004');
   E.ctl = s('rect', {x: 900, y: 170, width: 280, height: 150, rx: 5, 'class': 'box'}, E.ssd); s('text', {x: 910, y: 192, 'font-size': 12}, E.ssd, 'controller + DMA engine');
-  E.ctT = [0, 1, 2, 3].map(function(k){ return s('text', {x: 910, y: 216 + k * 22, 'font-size': 11.5}, E.ssd, ''); });
+  E.ctT = [0, 1, 2].map(function(k){ return s('text', {x: 910, y: 216 + k * 22, 'font-size': 11.5}, E.ssd, ''); });
+  E.pipe = HW.pipeline(E.ssd, 908, 270, 264, 24, ['doorbell', 'fetch', 'NAND', 'DMA', 'CQE', 'MSI-X']);
+  HW.txt(E.ssd, 908, 310, 'one command through the controller', {size: 9, fill: 'var(--tx3)'});
+  var PIPE = {MWr: [0, []], fetch: [1, [0]], flash: [2, [0, 1]], data: [3, [0, 1, 2]], CQE: [4, [0, 1, 2, 3]], 'MSI-X': [5, [0, 1, 2, 3, 4]], consume: [0, [1, 2, 3, 4, 5]], use: [-1, [0, 1, 2, 3, 4, 5]]};
   E.nand = s('rect', {x: 900, y: 336, width: 280, height: 240, rx: 5, 'class': 'box'}, E.ssd); s('text', {x: 910, y: 358, 'font-size': 12}, E.ssd, 'NAND flash');
   for (i = 0; i < 24; i++) s('rect', {x: 912 + (i % 6) * 44, y: 372 + Math.floor(i / 6) * 48, width: 38, height: 40, rx: 3, 'class': 'sunk'}, E.ssd);
   E.nT = s('text', {x: 910, y: 568, 'class': 's'}, E.ssd, '');
@@ -76,6 +79,7 @@ build: function(root){
     E.bufT2.textContent = fr.buf ? 'IOVA 0xfff02000 \u2192 physical frame chosen by the OS' : '';
     E.db1.textContent = 'SQ1 tail doorbell (0x1008) = ' + fr.db[0]; E.db2.textContent = 'CQ1 head doorbell (0x100C) = ' + fr.db[1];
     E.ctT.forEach(function(t, k){ t.textContent = fr.ct[k] || ''; });
+    var ps = PIPE[fr.p] || [-1, []]; E.pipe.set(ps[0], ps[1]);
     E.nT.textContent = fr.nand ? 'reading: tens of \u00b5s is typical (not measured)' : '';
     E.ioT.textContent = fr.iommu ? fr.iommu[0] : ''; E.ioT2.textContent = fr.iommu ? fr.iommu[1] : ''; E.ioT3.textContent = fr.iommu ? 'device can reach only mapped pages' : '';
     E.io.setAttribute('class', fr.iommu ? 'on box' : 'box'); E.rc.setAttribute('class', fr.hl.indexOf('hub') >= 0 && !fr.iommu && fr.p !== 'MSI-X' ? 'on box' : 'box');

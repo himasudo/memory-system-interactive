@@ -4,15 +4,10 @@ lede: 'The memory controller turns each 64-byte read into a short sequence of DR
 points: ['DRAM is split into banks, and each bank into rows.', 'Reading from a row that is already open is fast; opening a different row costs extra time.', 'Step the commands (ACT, RD, PRE, REF) and see where the time goes.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, hx = App.hx;
-  var T = {tck: 0.833, CL: 17, RCD: 17, RP: 17, RAS: 39, BL: 4, RRDL: 6, CCDL: 6, RTP: 9};
+  var T = App.DDR4;
   function ns(t){ return (t * T.tck).toFixed(1) + ' ns'; }
   function F(pa){ return {byte: Number(pa & 63n), ch: Number((pa >> 6n) & 1n), col: Number((pa >> 7n) & 127n), bank: Number((pa >> 14n) & 3n), bg: Number((pa >> 16n) & 3n), row: Number((pa >> 18n) & 0xffffn)}; }
-  var REQ = [
-    {id: 'A', what: 'hist[120..127] (C1.ld)', pa: 0x1a3f7ce40n, arr: 0, kind: 'closed', rd: 17},
-    {id: 'D', what: 'data[0..63] (A1)', pa: 0x1c07a2c0n, arr: 0, kind: 'closed', rd: 23},
-    {id: 'B', what: 'hist[136..143]', pa: 0x1a3f7cec0n, arr: 5, kind: 'hit', rd: 29},
-    {id: 'C', what: 'a line 256 KB higher', pa: 0x1a3fbce40n, arr: 10, kind: 'conflict', rd: 73}
-  ];
+  var REQ = App.DRAMREQ.map(function(r){ return Object.assign({}, r); });
   REQ.forEach(function(r){ r.f = F(r.pa); r.data = r.rd + T.CL; });
   var CMD = [{t: 0, c: 'ACT', r: 'A', b: 3, x: 'row 26877'}, {t: 6, c: 'ACT', r: 'D', b: 2, x: 'row 1793'}, {t: 17, c: 'RD', r: 'A', b: 3, x: 'col 28'},
              {t: 23, c: 'RD', r: 'D', b: 2, x: 'col 69'}, {t: 29, c: 'RD', r: 'B', b: 3, x: 'col 29'}, {t: 39, c: 'PRE', r: 'C', b: 3, x: 'close'},
@@ -88,6 +83,7 @@ build: function(root){
   var stp = App.stepper(root, {render: draw});
   function draw(ff){
     var fr = ff.fr;
+    if (PLATE) PLATE.set(fr.p);
     var sel = REQ.filter(function(r){ return r.id === fr.sel; })[0] || REQ[0], f = sel.f;
     E.af.forEach(function(a){ var v = {row: f.row, BG: f.bg, bank: f.bank, column: f.col, ch: f.ch, byte: f.byte}[a.f[0]]; a.t.textContent = String(v); });
     E.aT.textContent = fr.ref ? 'refresh applies to every row of every bank' : sel.id + ': PA ' + hx(sel.pa) + ' \u2192 ch ' + f.ch + ', BG ' + f.bg + ', bank ' + f.bank + ', row ' + f.row + ', column ' + f.col;
@@ -136,5 +132,7 @@ build: function(root){
   h('div', {'class': 'card'}, cards, '<h3>Three prices for the same read</h3><table class="mt"><tr><th>row state</th><th>commands</th><th>device time</th></tr><tr><td>hit</td><td>RD</td><td>21 tCK \u00b7 17.5 ns</td></tr><tr><td>closed</td><td>ACT, RD</td><td>38 tCK \u00b7 31.7 ns</td></tr><tr><td>conflict</td><td>PRE, ACT, RD</td><td>55+ tCK \u00b7 45.8+ ns</td></tr></table><p class="note" style="margin-top:6px">Device time from the command to the last data beat. Load-to-use latency also includes the core, caches, fabric and controller queues.</p>');
   h('div', {'class': 'card'}, cards, '<h3>Why a cache line is 64 bytes, from this side</h3><p>DDR4 transfers in ' + g('burst', 'bursts') + ' of 8 beats on a 64-bit bus: 8 \u00d7 8 B = 64 B. One burst is one line, and the fixed costs (ACT, CL, command slots) are paid once per burst. [[ch:l1d]]\u2019s line size and this burst size were chosen together.</p>');
   h('div', {'class': 'card'}, cards, '<h3>Why DRAM needs rows at all</h3><p>One cell is a transistor and a capacitor holding a few femtocoulombs.</p><p>Sensing it requires a sense amplifier, which is large, so each bank has one row of them shared by all its rows. Opening a row moves thousands of bits into those amplifiers at once; after that, column reads are cheap.</p><p>The same small charge is why cells leak and need ' + g('refresh') + '.</p>');
+  var PLATE = App.Plates.dram(root);
+  stp.render();
   return {key: stp.key};
 }});
