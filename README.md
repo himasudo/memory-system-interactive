@@ -20,7 +20,7 @@ The goal is to make low-level memory behavior **visible, stateful, and interacti
 
 ## Chapters
 
-Chapters are numbered from their order in the build: `00` Start here, `01`–`08` Foundations (the background a software developer needs), `09`–`20` the hardware path. The Atlas and the glossary are unnumbered references.
+Chapters are numbered from their order in the build: `00` Start here, `01`–`08` Foundations, `09`–`20` the hardware path, and `21` the performance lab. Existing chapter numbers and routes are preserved. The Atlas and glossary are unnumbered references.
 
 | # | Chapter | Focus |
 |---|---|---|
@@ -44,11 +44,12 @@ Chapters are numbered from their order in the build: `00` Start here, `01`–`08
 | `17` | **Coherence (MOESI)** | Per-core cache states, probes, invalidations, cache-to-cache transfer, false sharing |
 | `18` | **Prefetchers** | Stream/stride detection, prefetch distance, coverage vs. lateness vs. pollution |
 | `19` | **Devices, DMA, IOMMU** | MMIO doorbells, PCIe TLPs, IOMMU translation, coherent DMA, MSI-X interrupts |
-| `20` | **End to End** | One instruction's full critical path, reassembled across every earlier chapter |
+| `20` | **End to End** | Single-access walkthrough, dependency graph, and finite-resource steady-state experiment |
+| `21` | **Measure & explain** | Evidence, units, Little's law, MLP/queue saturation, observability and native Linux measurements |
 | ref | **Atlas** | Every full-width plate on one page: DRAM chip, L1d arrays, page walk, Zen+ core, end-to-end timeline |
 | `A–Z` | **Glossary** | Every term used across the site, searchable (unnumbered reference) |
 
-Every chapter is one long page. Sections are numbered, always visible, and linkable as `#chapter/section` (for example `#l1d/lookup`); the top bar shows the current section, a section menu and reading progress. Sections of the hardware chapters open with a small overview figure before their interactive part. Five chapters also carry a full-width plate (a large, detailed drawing of the real structure with view tabs), and the DRAM chapter adds a 3D view of the rank, chip, bank and cells that follows its stepper.
+Chapters use long-scroll, linkable sections (`#chapter/section`, for example `#l1d/lookup`). The top bar shows the current section, section menu and reading progress. End to End has three selectable modes, also directly linkable as `#e2e/scenario`, `#e2e/critical` and `#e2e/steady`. Hardware chapters retain their overview figures and detailed SVG plates with view tabs.
 
 ---
 
@@ -61,8 +62,8 @@ Every chapter is one long page. Sections are numbered, always visible, and linka
 - **Clear separation** between measured values, published values, and simplified models.
 - **Explicit uncertainty** where hardware behavior is undocumented.
 - **Responsive visualizations** with light and dark theme support, down to mobile widths.
-- **No framework dependency** — the application is plain HTML, CSS, SVG, and JavaScript. The one exception is the 3D DRAM scene: a pinned three.js bundle (`vendor/dram3d.js`) fetched only when that scene scrolls into view. Without it (no WebGL, or opened from `file://`) the page works and the scene shows a note pointing to the 2D plate.
-- **No manual zoom on 2D diagrams** — views are switched with tabs; only the 3D scene can be orbited and zoomed.
+- **No runtime framework dependency** — plain HTML, CSS, SVG, and JavaScript. Node/Playwright is used only for development checks.
+- **No manual zoom on 2D diagrams** — switch views with focus tabs. This checkout contains the SVG plates, not the optional 3D code referenced by older documentation.
 
 ---
 
@@ -114,15 +115,17 @@ Using a local HTTP server is preferable to opening the page directly through `fi
 ├── build.py
 ├── shell.html
 ├── src/                     chapter, core, glossary and CSS modules
-├── src3d/dram3d.js          3D DRAM scene source (three.js)
-├── vendor/                  dram3d.js bundle + three.js licence
-├── tools/                   build_3d.sh, check_links.py
+├── benchmarks/              native C experiments, Python runner and protocol
+├── tests/                   pure-model, native-harness and rendered-browser checks
+├── docs/IMPLEMENTATION.md   roadmap mapping, dependencies and phase ledger
+├── AUDIT.md                 agreed technical roadmap (unaltered)
+├── tools/                   check_links.py
 └── README.md
 ```
 
 ### `memory_end_to_end.html`
 
-The main application. A single self-contained file (no build step required to run it, apart from the optional 3D scene in `vendor/`) containing:
+The main application. A single self-contained file (no build step required to run it) containing:
 
 - the chapter router
 - shared glossary
@@ -149,13 +152,34 @@ Project overview and usage instructions.
 python3 build.py
 ```
 
-regenerates `memory_end_to_end.html` from the individual chapter files. Editing the shipped HTML directly also works fine for small fixes; the modular source is only useful for larger changes across chapters.
+regenerates `memory_end_to_end.html`. Edit `src/` or `shell.html`, then rebuild; direct changes to the generated file are overwritten.
 
 Shared drawing code and data:
 
 - `src/04_shared_hw.js` (`App.HW`): parts drawn in several chapters (core blocks, set-associative arrays, L3 slices, shadow-tag grids, DRAM ranks, cache-line words, device pipelines, the latency ladder). Each draws inside an existing box; a cell with class `box` lights up with its parent group.
 - `src/04_shared_plates.js` (`App.Plates`): the five full-width plates, plus data the chapters share with them: `App.DDR4`, `App.DRAMREQ`, `App.WALK`, `App.E2E.steps(options)`. Any `.scroller` that sets `_views` gets the standard view tabs.
-- The 3D scene: edit `src3d/dram3d.js`, then run `tools/build_3d.sh` (Node.js; pins three.js 0.186.1 and esbuild 0.28.2) to rebuild `vendor/dram3d.js`.
+- `src/09_performance_model.js` (`LabModel`): pure finite-queue simulation and dependency DAG, shared by the performance lab and End to End. All capacities and policies are teaching assumptions.
+- `src/21_ch11a_performance.js`: learning flow, prediction controls, observability, measurement import and Linux-tool mapping.
+
+### Validate changes
+
+```sh
+npm ci
+npm test
+python3 build.py
+npx playwright install chromium
+npm run test:browser
+```
+
+The browser check serves the generated application locally, visits all chapters,
+exercises original and new controls, checks desktop/mobile layouts and both
+themes, and saves screenshots/report data in ignored `test-results/`. Set
+`BROWSER_BINARY` to use an existing Chromium executable if needed. The CI
+workflow also checks that the generated HTML matches the sources.
+
+For real hardware experiments, start with [the measurement protocol](benchmarks/README.md).
+The browser cannot run native CPU/PMU experiments. Import runner JSON in
+`#perf/measure`; imports remain local and do not silently recalibrate the model.
 
 ---
 
@@ -222,9 +246,16 @@ That lets each chapter build on the same machine state instead of starting over,
 
 ## Status
 
-**Feature-complete for the 21-chapter arc: Start here, eight Foundations chapters, the twelve hardware chapters, and the glossary.** Numeric defaults (cache and DRAM latencies) are published figures for a Zen/Zen+-class CPU, clearly marked as such, and are meant to be overwritten with values measured on whatever machine the reader is using — the settings panel makes this the normal way to use the site rather than an edge case.
+The original hardware path is preserved. [AUDIT.md](AUDIT.md) is the accepted
+roadmap; [the implementation ledger](docs/IMPLEMENTATION.md) maps it to the code
+and records phase boundaries. Phase 1 adds performance foundations and a
+measurement workflow. Phases 2–6 remain planned work.
 
-Open follow-ups: broader validation across CPU vendors/generations, and extending the address-mapping and DRAM-timing examples beyond the single illustrative configuration currently shown.
+Zen+ on the Ryzen 7 3750H remains the concrete reference. Addresses are synthetic;
+latency defaults are representative unloaded inputs from external measurements
+and estimates, not vendor guarantees or this machine's calibration. New models
+label teaching assumptions explicitly. Native harness checks on development
+hardware do not validate any 3750H latency or undocumented microarchitecture.
 
 ---
 

@@ -178,12 +178,16 @@ svg .click:hover .box{stroke:var(--act)}
         <div class="crumb" aria-live="polite">
           <span class="crumb-num" id="crumbNum">00</span>
           <span class="crumb-title" id="crumbTitle">The machine</span>
+          <button class="crumb-sec" id="crumbSec" type="button" aria-expanded="false" aria-controls="secMenu" hidden><span id="crumbSecTitle"></span><i aria-hidden="true">▾</i></button>
         </div>
         <span class="top-spacer"></span>
         <div class="top-actions">
+          <button class="iconbtn" id="themeToggle" type="button" aria-label="Switch to light theme">☀</button>
           <button class="iconbtn mobile-only" data-open-cfg type="button" aria-label="Open latency model" title="Latency model">≋</button>
         </div>
       </div>
+      <div class="sec-menu" id="secMenu" role="menu" hidden></div>
+      <div class="read-progress"><i id="readProg"></i></div>
     </header>
 
     <main class="wrap" id="main"></main>

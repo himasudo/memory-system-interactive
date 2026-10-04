@@ -37,10 +37,11 @@ var App = (function(){
     return pfn === undefined ? null : (pfn << 12n) | (va & 0xfffn);
   };
 
-  /* ---------- latency config (published ballpark defaults; user can overwrite with measurements) ---------- */
+  /* ---------- representative unloaded inputs, not a measured 3750H calibration ---------- */
   var CFG = { ghz: 4.0, l1: 4, l2: 12, l3: 35, dramNs: 90, tscGhz: 2.297 };
   var CFG_DEF = JSON.parse(JSON.stringify(CFG));
-  try { var sv = localStorage.getItem('memE2E.cfg'); if (sv){ var o = JSON.parse(sv); for (var k in o) if (k in CFG) CFG[k] = +o[k]; } } catch(e){}
+  function validCfg(k,v){return Object.prototype.hasOwnProperty.call(CFG_DEF,k) && Number.isFinite(v) && v >= (k==='ghz'||k==='tscGhz'?.1:1) && v <= (k==='ghz'||k==='tscGhz'?10:500);}
+  try { var sv = localStorage.getItem('memE2E.cfg'); if (sv){ var o = JSON.parse(sv); for (var k in o) if (validCfg(k,+o[k])) CFG[k] = +o[k]; } } catch(e){}
   var cfgListeners = [];
   function dramCycles(){ return Math.round(CFG.l3 + CFG.dramNs * CFG.ghz); }
   function onCfg(fn){ cfgListeners.push(fn); }
@@ -149,6 +150,7 @@ var App = (function(){
     if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
   }
   function scrollToSection(sid, smooth){
+    var current = built[cur]; if (current && current.api.selectSection) current.api.selectSection(sid);
     var el = document.getElementById(cur + '--' + sid); if (!el) return;
     el.scrollIntoView({block: 'start', behavior: smooth ? 'smooth' : 'instant'});
     try { history.replaceState(null, '', '#' + cur + '/' + sid); } catch(e){}
@@ -159,7 +161,7 @@ var App = (function(){
     var btn = document.getElementById('crumbSec'), lab = document.getElementById('crumbSecTitle'), menu = document.getElementById('secMenu'), prog = document.getElementById('readProg');
     if (!btn || !menu) return;
     var ticking = false, idx = 0;
-    function list(){ var b = built[cur]; return (b && b.sec._sections) || []; }
+    function list(){ var b = built[cur]; return ((b && b.sec._sections) || []).filter(function(x){return !x.el.hidden;}); }
     function update(){
       ticking = false;
       var L = list(); idx = 0;
@@ -249,10 +251,10 @@ var App = (function(){
     var btn = document.getElementById('navToggle'); if (btn) btn.setAttribute('aria-expanded', 'false');
   }
   function initTheme(){
-    /* V3 has one art direction: dark. Keep the attribute explicit so diagrams, SVGs and
-       browser controls cannot drift with OS theme changes. */
-    document.documentElement.setAttribute('data-theme', 'dark');
-    try { localStorage.removeItem('memE2E.theme'); } catch(e){}
+    var theme='dark'; try { if(localStorage.getItem('memE2E.theme')==='light') theme='light'; } catch(e){}
+    var button=document.getElementById('themeToggle');
+    function apply(){document.documentElement.setAttribute('data-theme',theme);if(button){button.textContent=theme==='dark'?'☀':'☾';button.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' theme');}}
+    apply(); if(button) button.onclick=function(){theme=theme==='dark'?'light':'dark';apply();try{localStorage.setItem('memE2E.theme',theme);}catch(e){}};
   }
 
   /* ---------- canvas enhancement ---------- */
@@ -731,10 +733,12 @@ var App = (function(){
     } else if(sec.id==='ch-e2e'){
       var top=Array.prototype.slice.call(body.children);
       makeGuidedJourney(sec,[
-        {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state, then read the resulting critical path.',nodes:[top[0],top[1]]},
-        {id:'steps',title:'Inspect the critical path',copy:'Each step in order, with its latency.',nodes:[top[2]]},
+        {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state for the serialized teaching walkthrough.',nodes:[top[0],top[1]]},
+        {id:'steps',title:'Inspect the serialized steps',copy:'Each step in order, with its latency and evidence label.',nodes:[top[2]]},
         {id:'timeline',title:'One time axis',copy:'Every stage to scale, then the first cycles magnified.',nodes:[q('.plate-e2e')]},
-        {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]}
+        {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]},
+        {id:'critical',title:'Find the dependency path',copy:'Overlap independent work and follow the prerequisites of retirement.',nodes:[q('.e2e-critical')]},
+        {id:'steady',title:'Run many requests',copy:'Finite queues turn independent work into throughput, until a resource saturates.',nodes:[q('.e2e-steady')]}
       ]);
     } else if(sec.id==='ch-gloss'){
       /* The glossary is intentionally search-first rather than a fake multi-step journey. */
@@ -838,21 +842,21 @@ var App = (function(){
     var dr = document.getElementById('cfg'), inn = document.getElementById('cfgIn');
     var rows = [
       ['ghz', 'Core clock (GHz)', '3750H max boost is 4.0; base 2.3'],
-      ['l1', 'L1d load-to-use (cycles)', 'published Zen+: 4'],
-      ['l2', 'L2 load-to-use (cycles)', 'published Zen+: 12 minimum'],
-      ['l3', 'L3 load-to-use (cycles)', 'published Zen/Zen+ average: ~35'],
+      ['l1', 'L1d load-to-use (cycles)', 'representative unloaded input: 4'],
+      ['l2', 'L2 load-to-use (cycles)', 'representative unloaded input: 12'],
+      ['l3', 'L3 load-to-use (cycles)', 'representative unloaded estimate: ~35'],
       ['dramNs', 'DRAM extra latency beyond L3 (ns)', 'ballpark only; depends on DIMMs'],
       ['tscGhz', 'TSC frequency (GHz)', 'measure your own with RDTSC against CLOCK_MONOTONIC']
     ];
-    var html = '<h2>Latency model</h2><p class="note">Defaults are published Zen/Zen+ figures (<a href="https://www.7-cpu.com/cpu/Zen.html" target="_blank" rel="noopener">7-cpu Zen measurements</a>), <b>not measurements from your machine</b>. Replace them with your own pointer-chase / working-set measurements and every dependent chapter updates.</p>';
+    var html = '<h2>Latency model</h2><p class="note">Representative unloaded inputs, informed by <a href="https://www.7-cpu.com/cpu/Zen.html" target="_blank" rel="noopener">external Zen measurements</a> and teaching estimates. These are <b>not vendor guarantees or measurements of this Ryzen 7 3750H</b>. Cache latencies are total load-to-use costs, not costs to add at each level. DRAM ns here is extra beyond L3. Loaded latency can be much higher. <a href="#perf/measure">Measure and record your conditions</a>.</p>';
     rows.forEach(function(r){ html += '<label><span>' + r[1] + '<small>' + r[2] + '</small></span><input type="number" step="any" min="0" data-k="' + r[0] + '" value="' + CFG[r[0]] + '"></label>'; });
-    html += '<p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset published defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
+    html += '<p class="note">TSC ticks and core cycles are different quantities. Inputs accept 0.1–10 GHz and 1–500 cycles/ns; pipeline times round to whole cycles. These are supported model ranges, not hardware limits.</p><p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset example defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
     inn.innerHTML = html;
     function upd(){ document.getElementById('cfgDram').textContent = 'Current DRAM load-to-use model: ' + dramCycles() + ' cycles = ' + (dramCycles() / CFG.ghz).toFixed(1) + ' ns.'; }
     upd();
     inn.addEventListener('change', function(e){
       var k = e.target.dataset && e.target.dataset.k; if (!k) return;
-      var v = parseFloat(e.target.value); if (!(v > 0)){ e.target.value = CFG[k]; return; }
+      var v = Number(e.target.value); if (!validCfg(k,v)){ e.target.value = CFG[k]; return; }
       CFG[k] = v; try { localStorage.setItem('memE2E.cfg', JSON.stringify(CFG)); } catch(er){}
       upd(); cfgListeners.forEach(function(f){ f(); });
     });
@@ -922,7 +926,8 @@ var App = (function(){
     var w = h('div', {'class': 'seg'}, parent), bs = [];
     items.forEach(function(it){
       var b = h('button', {type:'button'}, w, it[1]); bs.push(b);
-      b.onclick = function(){ bs.forEach(function(x){ x.classList.remove('on'); }); b.classList.add('on'); onPick(it[0]); };
+      b.setAttribute('aria-pressed',String(it[0]===init));
+      b.onclick = function(){ bs.forEach(function(x){ x.classList.remove('on');x.setAttribute('aria-pressed','false'); }); b.classList.add('on');b.setAttribute('aria-pressed','true');onPick(it[0]); };
       if (it[0] === init) b.classList.add('on');
     });
     return w;

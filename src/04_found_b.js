@@ -55,6 +55,12 @@ build: function(root){
       '<p>That gap drives most of the hardware in the later chapters. [[ch:whycache]] explains why caches work, and [[ch:hier]] follows a miss level by level.</p>';
   }
   ladderText(); App.onCfg(ladderText);
+  var perf=P.sec(root,'performance','From one latency to many requests','Predict bandwidth from concurrency, then test the finite machine.');
+  P.row(perf,[
+    'Latency names a start and end event for one operation. Throughput counts completed operations per time; bandwidth counts bytes per time. They are not interchangeable. A dependent chain can expose latency while independent loads overlap.',
+    'Little\u2019s law relates averages over one boundary: outstanding requests = completion rate \u00d7 residence time. At 20 GB/s of 64-byte lines and 80 ns residence, about 25 lines must be outstanding on average.',
+    'Before running, predict what happens as independent chains increase from 1 to 16: will each load become faster, will more finish per second, or both? Use the <a href="#perf/predict">calculator</a>, <a href="#perf/queues">finite-queue experiment</a> and <a href="#perf/measure">native measurements</a> to separate these possibilities.'
+  ]);
 }});
 
 /* ======================= 06 why caches exist ======================= */

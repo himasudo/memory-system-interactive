@@ -25,23 +25,23 @@
     {n: 'PD',   base: 0x13f4a000n, idx: 81,  val: 0x1b6e9067n},
     {n: 'PT',   base: 0x1b6e9000n, idx: 450, val: 0x80000001a3f7c067n}
   ]};
-  /* The end-to-end chapter's critical-path model. o = {tlb: 'hit'|'walk', lvl: 'L1'|'L2'|'L3'|'DRAM', row: 'hit'|'closed'|'conflict'} */
+  /* The end-to-end chapter's serialized teaching model; the dependency DAG lives in LabModel. */
   App.E2E = {steps: function(o){
     var CFG = App.CFG, ghz = CFG.ghz, S = [];
     var add = function(n, c, src, ch, what, sh){ S.push({n: n, c: Math.max(0, Math.round(c)), src: src, ch: ch, what: what, sh: sh || n}); };
     add('front end: fetch, predecode, decode, \u00b5op queue', 5, 'model', 'core', 'L1i hit, op cache or decoders', 'front end');
     add('rename + dispatch', 2, 'model', 'core', 'RAT, free list, ROB, scheduler, LQ/SQ entries', 'rename');
-    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'published', 'core', 'the address depends on this load', 'wait for rax');
+    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'input', 'core', 'the address depends on this load', 'wait for rax');
     add('AGU: rdx + rax\u00d78', 1, 'model', 'core', 'VA 0x7ffd4a3c2e58', 'AGU');
     if (o.tlb === 'walk') add('DTLB + L2 TLB miss, page walk', 2 * CFG.l2 + 2, 'assumed', 'xlate', 'PML4E/PDPTE from the walk cache, PDE and PTE from L2', 'page walk');
     var lat = o.lvl === 'L1' ? CFG.l1 : o.lvl === 'L2' ? CFG.l2 : o.lvl === 'L3' ? CFG.l3 : App.dramCycles();
-    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'published', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns (latency settings)' : 'load-to-use', 'load hist[123]');
-    if (o.lvl === 'DRAM' && o.row !== 'closed') add(o.row === 'hit' ? 'row already open: saves ACT' : 'row conflict: extra PRE', (o.row === 'hit' ? -14.2 : 14.2) * ghz, 'derived', 'dram', 'device-time difference from [[ch:dram]] (\u00b1 14.2 ns)');
-    add('add: tmp + 1', 1, 'published', 'core', '1-cycle ALU op');
+    var adjustment=o.lvl==='DRAM'?(o.row==='hit'?-14.2:o.row==='conflict'?14.2:0)*ghz:0;
+    if(o.lvl==='DRAM') lat=Math.max(CFG.l3,lat+adjustment);
+    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'input', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns, then '+(adjustment/ghz).toFixed(1)+' ns illustrative row adjustment (clamped at L3 cost)' : 'load-to-use', 'load hist[123]');
+    add('add: tmp + 1', 1, 'model', 'core', '1-cycle ALU teaching input');
     add('store address + data into the SQ', 2, 'model', 'core', 'STA / STD');
     add('retire (older instructions already done)', 1, 'model', 'core', 'ROB head');
     add('commit to L1d: line is E after the load, becomes M', 1, 'model', 'stores', 'no RFO needed');
-    S.forEach(function(x){ if (x.n.indexOf('row already open') === 0) x.neg = true; });
     return S;
   }};
 
@@ -238,7 +238,7 @@
   /* ---------- plate 3: one hist[123]++ on one time axis ---------- */
   function e2ePlate(container, o0){
     var P = plate(container, {id: 'e2e', w: 1200, h: 600, cls: 'plate-e2e',
-      caption: 'Every stage of the critical path on one to-scale time axis, then the first cycles magnified. Uses the same model as the step table and the latency settings, so it redraws when they change.',
+      caption: 'Every stage of the serialized teaching path on one time axis, then the first cycles magnified. The step table shares these inputs. Use End to End: Critical path for overlapping dependencies and distinct value/retirement boundaries.',
       views: [{id: 'overview', label: 'Whole path', box: [0, 0, 1200, 600]}, {id: 'early', label: 'First cycles', box: [0, 470, 1200, 130]}]});
     var sv = P.sv, root = s('g', null, sv), o = o0 || {tlb: 'hit', lvl: 'DRAM', row: 'closed'};
     var COL = {core: 'a3b', xlate: 'a4b', l1d: 'a2b', hier: 'a2b', dram: 'a1b', stores: 'a3b'}, SRC = {published: 'var(--a2)', model: 'var(--tx3)', assumed: 'var(--a3)', derived: 'var(--a1)'};
@@ -247,7 +247,7 @@
       var S = App.E2E.steps(o), ghz = App.CFG.ghz, tot = 0, pos = 0, x0 = 430, W = 720;
       S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
       var span = S.reduce(function(m, x){ pos += x.neg ? -x.c : x.c; return Math.max(m, pos); }, 0), sc = W / Math.max(1, span);
-      head(root, 20, 30, 'Critical path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
+      head(root, 20, 30, 'Serialized teaching path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
       T(root, 20, 48, 'one row per stage; bar start = when it begins, width = how long it takes', {size: 10, fill: 'var(--tx3)'});
       var cum = 0;
       S.forEach(function(x, i){

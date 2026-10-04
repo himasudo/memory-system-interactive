@@ -1435,6 +1435,84 @@ a.ch-ref:hover{border-bottom-color:var(--act)}
 .sec-figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),520px));gap:16px;margin:0 0 30px}
 .sec-figs .p-fig{margin:0}
 
+/* Phase 1: use the existing palette, typography and long-scroll chapter rhythm. */
+[hidden]{display:none!important}
+:root .ch.long-scroll .learning-scene[hidden]{display:none!important}
+.evidence-contract,.prediction,.perf-explanation{border-left:3px solid var(--act);padding:14px 20px;background:var(--panel);border-radius:0 8px 8px 0}
+.evidence-label{display:inline-block;font:650 10px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--act);padding:5px 8px;border:1px solid var(--bd2);border-radius:4px;margin-bottom:10px}
+.ch-perf .p-sec>p,.stream-lab>p,.e2e-critical>p{max-width:86ch;color:var(--tx2);line-height:1.7}
+.perf-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.perf-field{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--tx2);min-width:0}
+.perf-field select,.perf-field input{width:100%;min-width:0;min-height:40px;padding:8px;background:var(--sunk);color:var(--tx);border:1px solid var(--bd2);border-radius:6px}
+.perf-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0}
+.perf-actions button[aria-pressed="true"]{background:var(--actbg);border-color:var(--act);color:var(--act)}
+.perf-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px;margin:22px 0}
+.perf-metric{padding:16px;border:1px solid var(--bd2);border-radius:8px;background:var(--panel);display:grid;gap:6px;align-content:start}
+.perf-metric>span{font:600 11px var(--mono);color:var(--tx2)}
+.perf-metric strong{font:650 clamp(19px,2.6vw,27px) var(--mono);color:var(--act);white-space:nowrap}
+.perf-metric small{font-size:11.5px;line-height:1.5;color:var(--tx2)}
+.perf-table-wrap{max-width:100%;overflow:auto;margin:18px 0;border:1px solid var(--bd);border-radius:7px}
+.perf-table-wrap .p-table{margin:0;min-width:560px}
+.perf-table-wrap .p-table td{white-space:normal;font-family:var(--sans);color:var(--tx2);line-height:1.55;min-width:90px}
+.perf-table-wrap .p-table td:first-child{color:var(--tx);font-size:12px;min-width:130px}
+.perf-table-wrap .p-table td:nth-child(2){white-space:normal}
+.perf-table-wrap .p-table th{padding:10px;color:var(--tx2);background:var(--sunk)}
+.perf-chart{margin:22px 0;padding:16px;background:var(--panel);border:1px solid var(--bd2);border-radius:8px;overflow:auto}
+.perf-chart svg{width:100%;height:auto;display:block;min-width:400px}
+.perf-dag svg{min-width:740px}
+.perf-chart figcaption{font-size:12px;color:var(--tx2);line-height:1.6;margin-top:12px;max-width:84ch}
+.perf-grid{stroke:var(--bd);stroke-width:1}.perf-line{stroke:var(--a2);stroke-width:2;fill:none}
+.trace-marker{stroke:var(--act);stroke-dasharray:4 3;stroke-width:2}
+.dag-edge{stroke:var(--wire);fill:none;stroke-width:1;opacity:.65}
+svg .actb{fill:var(--actbg);stroke:var(--act);stroke-width:1.5}
+.perf-details{margin:18px 0;border-top:1px solid var(--bd);padding-top:12px}
+.perf-details>summary{cursor:pointer;color:var(--tx);font-weight:600;padding:5px 0}
+.perf-scrub{display:flex;gap:12px;align-items:center;flex:1;min-width:210px;font-size:12px;color:var(--tx2)}
+.perf-scrub input{min-width:100px;flex:1;accent-color:var(--act)}
+.queue-state{border:1px solid var(--bd);border-radius:8px;padding:16px;background:var(--sunk)}
+.queue-state .perf-table-wrap{margin:8px 0}.queue-state h3{font-size:15px}
+.queue-state .p-table{min-width:360px}.queue-state .p-table td,.queue-state .p-table th{padding:5px 9px;font:11px var(--mono)}
+.stream-lab .p-code,.measurement-results .p-code{max-height:480px;overflow:auto}
+.e2e-modes{position:sticky;top:calc(var(--topbar-h) + 6px);z-index:12;padding:10px;border:1px solid var(--bd2);border-radius:8px;background:var(--panel)}
+.ch-e2e .learning-scene{scroll-margin-top:140px}
+.e2e-modes button{flex:1}
+.prediction>h3{font-size:16px}
+.ch-perf .p-code{font:12px/1.6 var(--mono);white-space:pre;overflow:auto;max-width:100%}
+:root{color-scheme:dark}
+:root[data-theme="light"]{--sidebar-collapsed:72px;--sidebar-expanded:252px}
+:root[data-theme="light"]{color-scheme:light;--bg:#f5f4ef;--panel:#fffefa;--sunk:#edece6;--tx:#19232d;--tx2:#445363;--tx3:#596777;--bd:#d0d5d9;--bd2:#9aa8b3;--wire:#6f8497;--act:#97400b;--actbg:#fce6d3;--a1:#a94324;--a1bg:#f8e2dc;--a2:#116449;--a2bg:#dcf4e9;--a3:#65459e;--a3bg:#eee5fc;--a4:#235f92;--a4bg:#e0effb;--ok:#206333;--okbg:#ddf0e2;--bad:#a4312c;--badbg:#fae2df;--rail:#f1f0e9;--canvas-grid:rgba(45,65,80,.045);--ink-panel:#e9edf0;--ink-panel-2:#f2f3f3;--ink-text:#19232d;--ink-muted:#4a5a69;--panel-elev:#faf9f4;--panel-hover:#e9edf0;--t-basics:#445364;--t-core:#6544a1;--t-xlate:#205f9d;--t-cache:#166b36;--t-memory:#166276;--t-io:#48600d;--t-order:#a02c48;--t-coh:#863692;--t-pref:#79620c}
+/* Earlier visual revisions contain literal dark fills. Restore the existing
+   light palette at those surfaces without changing the default dark design. */
+:root[data-theme="light"] body{background-color:var(--bg);color:var(--tx);background-image:linear-gradient(var(--canvas-grid) 1px,transparent 1px),linear-gradient(90deg,var(--canvas-grid) 1px,transparent 1px)}
+:root[data-theme="light"] .app-stage{background:var(--bg)}
+:root[data-theme="light"] :is(.sidebar-brand,.nav-label,.nav-arrow){color:var(--tx2)}
+:root[data-theme="light"] svg .box{fill:var(--panel);stroke:var(--bd2)}
+:root[data-theme="light"] svg .sunk{fill:var(--sunk);stroke:var(--bd)}
+:root[data-theme="light"] :is(.sidebar,.top,.stepper,.narr,.card,.pp,.drawer .in,.core-controls,.core-events,.scenario-dock,.focus-strip,.sticky-input,.viz-frame,.viz-bar,.scroller,.plate-scene,.map-inspector,.chapter-art,.gl-bar input,.gl-chip,.term-pop-ch,.term-pop-src a,.core-gantt,.stepper-bar){background:var(--panel)!important;color:var(--tx);border-color:var(--bd)!important}
+:root[data-theme="light"] :is(.nav a.cur,.focus-tabs button.on,.inspector-tabs button.on,.seg button.on,.pill.cur){background:var(--actbg)!important;color:var(--act)!important;border-color:var(--act)!important}
+:root[data-theme="light"] :is(.nav a.cur .nav-label,.nav a.cur .nav-num,.nav a.cur .nav-arrow){color:var(--act)!important}
+:root[data-theme="light"] :is(.focus-tabs button,.focus-follow,.nav a,.scene-lead p,.gl-chip,.term-pop-src a b,.term-pop-ch b,.term-pop-val,.art-cap,.plate-caption){color:var(--tx2)}
+:root[data-theme="light"] :is(.focus-tabs button,.focus-follow,.focus-step,.viz-focus){color:var(--tx2)!important}
+:root[data-theme="light"] .viz-focus{background:var(--sunk)!important}
+:root[data-theme="light"] :is(.chh h1,.scene-lead h2,.map-inspector h3,.chapter-art,.gl-card h3){color:var(--tx)}
+:root[data-theme="light"] :is(.concept-disclosure,.concept-disclosure .card,.term-mini,.term-pop-caret){background:var(--panel)!important;border-color:var(--bd)!important}
+:root[data-theme="light"] .gloss-pop{background:var(--panel)!important;border-color:var(--bd2)!important;box-shadow:0 16px 45px #13233330!important}
+:root[data-theme="light"] .gloss-pop :is(.term-pop-head b,.term-pop-def,.term-pop-val){color:var(--tx)!important}
+:root[data-theme="light"] :is(.term-pop-cat,dfn[data-g]){color:var(--term)!important}
+:root[data-theme="light"] dfn[data-g]:hover{background:color-mix(in srgb,var(--term) 16%,transparent)}
+:root[data-theme="light"] .term-mini text{fill:var(--tx)}
+:root[data-theme="light"] .term-mini :is(rect,circle){fill:var(--sunk);stroke:var(--bd2)}
+:root[data-theme="light"] svg .a1b{fill:var(--a1bg);stroke:var(--a1)}
+:root[data-theme="light"] svg .a2b{fill:var(--a2bg);stroke:var(--a2)}
+:root[data-theme="light"] svg .a3b{fill:var(--a3bg);stroke:var(--a3)}
+:root[data-theme="light"] svg .a4b{fill:var(--a4bg);stroke:var(--a4)}
+:root[data-theme="light"] svg .okb{fill:var(--okbg);stroke:var(--ok)}
+:root[data-theme="light"] svg :is(.on.box,.on .box){fill:var(--actbg);stroke:var(--act)}
+:root[data-theme="light"] .gl-chip.on{background:var(--sunk)}
+:root[data-theme="light"] body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav a.cur{background:var(--actbg)!important;box-shadow:inset 0 0 0 1px var(--bd2)}
+@media(max-width:760px){.perf-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.perf-chart{padding:10px}.perf-metrics{gap:8px}.perf-metric{padding:12px}.evidence-contract,.prediction,.perf-explanation{padding:12px}.e2e-modes{gap:5px;padding:6px}.e2e-modes button{font-size:12px;padding:7px}.crumb-sec{max-width:45vw}}
+@media(max-width:420px){.perf-controls{grid-template-columns:1fr 1fr}.perf-field{font-size:11px}.perf-actions button{min-height:38px}.queue-state{padding:10px}.perf-metrics{grid-template-columns:1fr 1fr}.perf-metric strong{font-size:18px}}
+
 </style>
 </head>
 <body>
@@ -1464,12 +1542,16 @@ a.ch-ref:hover{border-bottom-color:var(--act)}
         <div class="crumb" aria-live="polite">
           <span class="crumb-num" id="crumbNum">00</span>
           <span class="crumb-title" id="crumbTitle">The machine</span>
+          <button class="crumb-sec" id="crumbSec" type="button" aria-expanded="false" aria-controls="secMenu" hidden><span id="crumbSecTitle"></span><i aria-hidden="true">▾</i></button>
         </div>
         <span class="top-spacer"></span>
         <div class="top-actions">
+          <button class="iconbtn" id="themeToggle" type="button" aria-label="Switch to light theme">☀</button>
           <button class="iconbtn mobile-only" data-open-cfg type="button" aria-label="Open latency model" title="Latency model">≋</button>
         </div>
       </div>
+      <div class="sec-menu" id="secMenu" role="menu" hidden></div>
+      <div class="read-progress"><i id="readProg"></i></div>
     </header>
 
     <main class="wrap" id="main"></main>
@@ -1518,10 +1600,11 @@ var App = (function(){
     return pfn === undefined ? null : (pfn << 12n) | (va & 0xfffn);
   };
 
-  /* ---------- latency config (published ballpark defaults; user can overwrite with measurements) ---------- */
+  /* ---------- representative unloaded inputs, not a measured 3750H calibration ---------- */
   var CFG = { ghz: 4.0, l1: 4, l2: 12, l3: 35, dramNs: 90, tscGhz: 2.297 };
   var CFG_DEF = JSON.parse(JSON.stringify(CFG));
-  try { var sv = localStorage.getItem('memE2E.cfg'); if (sv){ var o = JSON.parse(sv); for (var k in o) if (k in CFG) CFG[k] = +o[k]; } } catch(e){}
+  function validCfg(k,v){return Object.prototype.hasOwnProperty.call(CFG_DEF,k) && Number.isFinite(v) && v >= (k==='ghz'||k==='tscGhz'?.1:1) && v <= (k==='ghz'||k==='tscGhz'?10:500);}
+  try { var sv = localStorage.getItem('memE2E.cfg'); if (sv){ var o = JSON.parse(sv); for (var k in o) if (validCfg(k,+o[k])) CFG[k] = +o[k]; } } catch(e){}
   var cfgListeners = [];
   function dramCycles(){ return Math.round(CFG.l3 + CFG.dramNs * CFG.ghz); }
   function onCfg(fn){ cfgListeners.push(fn); }
@@ -1630,6 +1713,7 @@ var App = (function(){
     if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
   }
   function scrollToSection(sid, smooth){
+    var current = built[cur]; if (current && current.api.selectSection) current.api.selectSection(sid);
     var el = document.getElementById(cur + '--' + sid); if (!el) return;
     el.scrollIntoView({block: 'start', behavior: smooth ? 'smooth' : 'instant'});
     try { history.replaceState(null, '', '#' + cur + '/' + sid); } catch(e){}
@@ -1640,7 +1724,7 @@ var App = (function(){
     var btn = document.getElementById('crumbSec'), lab = document.getElementById('crumbSecTitle'), menu = document.getElementById('secMenu'), prog = document.getElementById('readProg');
     if (!btn || !menu) return;
     var ticking = false, idx = 0;
-    function list(){ var b = built[cur]; return (b && b.sec._sections) || []; }
+    function list(){ var b = built[cur]; return ((b && b.sec._sections) || []).filter(function(x){return !x.el.hidden;}); }
     function update(){
       ticking = false;
       var L = list(); idx = 0;
@@ -1730,10 +1814,10 @@ var App = (function(){
     var btn = document.getElementById('navToggle'); if (btn) btn.setAttribute('aria-expanded', 'false');
   }
   function initTheme(){
-    /* V3 has one art direction: dark. Keep the attribute explicit so diagrams, SVGs and
-       browser controls cannot drift with OS theme changes. */
-    document.documentElement.setAttribute('data-theme', 'dark');
-    try { localStorage.removeItem('memE2E.theme'); } catch(e){}
+    var theme='dark'; try { if(localStorage.getItem('memE2E.theme')==='light') theme='light'; } catch(e){}
+    var button=document.getElementById('themeToggle');
+    function apply(){document.documentElement.setAttribute('data-theme',theme);if(button){button.textContent=theme==='dark'?'☀':'☾';button.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' theme');}}
+    apply(); if(button) button.onclick=function(){theme=theme==='dark'?'light':'dark';apply();try{localStorage.setItem('memE2E.theme',theme);}catch(e){}};
   }
 
   /* ---------- canvas enhancement ---------- */
@@ -2212,10 +2296,12 @@ var App = (function(){
     } else if(sec.id==='ch-e2e'){
       var top=Array.prototype.slice.call(body.children);
       makeGuidedJourney(sec,[
-        {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state, then read the resulting critical path.',nodes:[top[0],top[1]]},
-        {id:'steps',title:'Inspect the critical path',copy:'Each step in order, with its latency.',nodes:[top[2]]},
+        {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state for the serialized teaching walkthrough.',nodes:[top[0],top[1]]},
+        {id:'steps',title:'Inspect the serialized steps',copy:'Each step in order, with its latency and evidence label.',nodes:[top[2]]},
         {id:'timeline',title:'One time axis',copy:'Every stage to scale, then the first cycles magnified.',nodes:[q('.plate-e2e')]},
-        {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]}
+        {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]},
+        {id:'critical',title:'Find the dependency path',copy:'Overlap independent work and follow the prerequisites of retirement.',nodes:[q('.e2e-critical')]},
+        {id:'steady',title:'Run many requests',copy:'Finite queues turn independent work into throughput, until a resource saturates.',nodes:[q('.e2e-steady')]}
       ]);
     } else if(sec.id==='ch-gloss'){
       /* The glossary is intentionally search-first rather than a fake multi-step journey. */
@@ -2319,21 +2405,21 @@ var App = (function(){
     var dr = document.getElementById('cfg'), inn = document.getElementById('cfgIn');
     var rows = [
       ['ghz', 'Core clock (GHz)', '3750H max boost is 4.0; base 2.3'],
-      ['l1', 'L1d load-to-use (cycles)', 'published Zen+: 4'],
-      ['l2', 'L2 load-to-use (cycles)', 'published Zen+: 12 minimum'],
-      ['l3', 'L3 load-to-use (cycles)', 'published Zen/Zen+ average: ~35'],
+      ['l1', 'L1d load-to-use (cycles)', 'representative unloaded input: 4'],
+      ['l2', 'L2 load-to-use (cycles)', 'representative unloaded input: 12'],
+      ['l3', 'L3 load-to-use (cycles)', 'representative unloaded estimate: ~35'],
       ['dramNs', 'DRAM extra latency beyond L3 (ns)', 'ballpark only; depends on DIMMs'],
       ['tscGhz', 'TSC frequency (GHz)', 'measure your own with RDTSC against CLOCK_MONOTONIC']
     ];
-    var html = '<h2>Latency model</h2><p class="note">Defaults are published Zen/Zen+ figures (<a href="https://www.7-cpu.com/cpu/Zen.html" target="_blank" rel="noopener">7-cpu Zen measurements</a>), <b>not measurements from your machine</b>. Replace them with your own pointer-chase / working-set measurements and every dependent chapter updates.</p>';
+    var html = '<h2>Latency model</h2><p class="note">Representative unloaded inputs, informed by <a href="https://www.7-cpu.com/cpu/Zen.html" target="_blank" rel="noopener">external Zen measurements</a> and teaching estimates. These are <b>not vendor guarantees or measurements of this Ryzen 7 3750H</b>. Cache latencies are total load-to-use costs, not costs to add at each level. DRAM ns here is extra beyond L3. Loaded latency can be much higher. <a href="#perf/measure">Measure and record your conditions</a>.</p>';
     rows.forEach(function(r){ html += '<label><span>' + r[1] + '<small>' + r[2] + '</small></span><input type="number" step="any" min="0" data-k="' + r[0] + '" value="' + CFG[r[0]] + '"></label>'; });
-    html += '<p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset published defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
+    html += '<p class="note">TSC ticks and core cycles are different quantities. Inputs accept 0.1–10 GHz and 1–500 cycles/ns; pipeline times round to whole cycles. These are supported model ranges, not hardware limits.</p><p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset example defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
     inn.innerHTML = html;
     function upd(){ document.getElementById('cfgDram').textContent = 'Current DRAM load-to-use model: ' + dramCycles() + ' cycles = ' + (dramCycles() / CFG.ghz).toFixed(1) + ' ns.'; }
     upd();
     inn.addEventListener('change', function(e){
       var k = e.target.dataset && e.target.dataset.k; if (!k) return;
-      var v = parseFloat(e.target.value); if (!(v > 0)){ e.target.value = CFG[k]; return; }
+      var v = Number(e.target.value); if (!validCfg(k,v)){ e.target.value = CFG[k]; return; }
       CFG[k] = v; try { localStorage.setItem('memE2E.cfg', JSON.stringify(CFG)); } catch(er){}
       upd(); cfgListeners.forEach(function(f){ f(); });
     });
@@ -2403,7 +2489,8 @@ var App = (function(){
     var w = h('div', {'class': 'seg'}, parent), bs = [];
     items.forEach(function(it){
       var b = h('button', {type:'button'}, w, it[1]); bs.push(b);
-      b.onclick = function(){ bs.forEach(function(x){ x.classList.remove('on'); }); b.classList.add('on'); onPick(it[0]); };
+      b.setAttribute('aria-pressed',String(it[0]===init));
+      b.onclick = function(){ bs.forEach(function(x){ x.classList.remove('on');x.setAttribute('aria-pressed','false'); }); b.classList.add('on');b.setAttribute('aria-pressed','true');onPick(it[0]); };
       if (it[0] === init) b.classList.add('on');
     });
     return w;
@@ -2925,13 +3012,13 @@ build: function(root){
     'Diagrams mark the active part in amber. Click a block to see what it is.',
     'Step panels walk through a process one step at a time. The \u2190 and \u2192 keys also work.',
     'Each chapter is one long page. The section name in the top bar opens a list of its sections.',
-    'Timings come from the latency settings: published figures that you can replace with your own measurements.'
+    'Timings come from the latency settings: representative unloaded inputs that you can replace with measurements made under recorded conditions.'
   ])]);
 
-  var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One real processor, and published figures.');
+  var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One reference processor, with explicit evidence and model boundaries.');
   P.row(d, [
-    'Sizes and addresses come from one real processor, an AMD Ryzen 7 3750H: four Zen+ cores with two threads each, a 32 KB L1 data cache and a 512 KB L2 per core, a 4 MB L3 shared by all four cores, and two DDR4 memory channels.',
-    'Other x86-64 processors are built from the same kinds of structures with different sizes. Where AMD does not publish a detail, the page says so and uses a labeled model instead.'
+    'The reference machine is an AMD Ryzen 7 3750H: four Zen+ cores with two threads each, a 32 KB L1 data cache and a 512 KB L2 per core, a 4 MB L3 shared by all four cores, and two DDR4 memory channels. The addresses and page mappings are consistent synthetic teaching examples, not a capture from this machine.',
+    'Other processors use related mechanisms with implementation-specific details. Distinguish vendor documentation, measured or reverse-engineered evidence, inference, teaching approximations and unknowns. The <a href="#perf/evidence">performance lab</a> defines those labels and provides <a href="#perf/measure">runnable measurements</a>.'
   ], {h: 120, cap: 'Capacity per level on the Ryzen 7 3750H. Each level is larger and slower than the one before it.', draw: function(sv){
     var L = [['core', '', 50], ['L1d', '32 KB', 70], ['L2', '512 KB', 80], ['L3', '4 MB', 92], ['DRAM', 'GBs', 102]], x = 10;
     L.forEach(function(l, i){
@@ -3057,7 +3144,7 @@ build: function(root){
 /* ======================= 03 instructions and registers ======================= */
 App.chapter({id: 'instr', group: 'Foundations', short: 'Instructions', title: 'Instructions and registers',
 lede: 'What the CPU actually runs: a list of simple instructions that work on a few registers.',
-points: ['Registers are a small set of named slots inside the core.', 'Loads and stores are the only way data moves between registers and memory.', 'Instructions are stored in memory as bytes, like data.'],
+points: ['Registers are a small set of named slots inside the core.', 'Load and store operations move data; x86 instructions can combine memory access with arithmetic or implicit operands.', 'Instructions are stored in memory as bytes, like data.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
   var a = P.sec(root, 'isa', 'Instructions', 'The operations the hardware promises to perform.');
@@ -3086,9 +3173,9 @@ build: function(root){
     A(sv, 'M288 98 H222'); T(sv, 253, 114, 'load', 's', 'middle');
   }});
 
-  var c = P.sec(root, 'loadstore', 'Loads and stores', 'The only way data moves between memory and registers.');
+  var c = P.sec(root, 'loadstore', 'Loads and stores', 'Memory operations can be explicit or part of a larger x86 instruction.');
   P.row(c, [
-    'A ' + g('load') + ' copies bytes from memory into a register. A ' + g('store') + ' copies a register into memory. They are the only way data moves between the two.',
+    'A ' + g('load') + ' reads memory; a ' + g('store') + ' writes memory. x86 permits memory operands on arithmetic instructions and implicit memory accesses in stack and string instructions. The core can decompose those instructions into load, compute and store operations using internal registers; software need not name a separate load or store instruction.',
     'In the loop, <code>movzbl (%rdi),%eax</code> is a load: it reads the byte at the address in rdi into eax.',
     '<code>addq $0x1,(%rdx,%rax,8)</code> does both: it loads <code>hist[k]</code>, adds 1 inside the core, and stores the result back to the same address.'
   ], {h: 140, cap: 'movzbl loads one byte; addq loads, adds and stores.', draw: function(sv){
@@ -3242,6 +3329,12 @@ build: function(root){
       '<p>That gap drives most of the hardware in the later chapters. [[ch:whycache]] explains why caches work, and [[ch:hier]] follows a miss level by level.</p>';
   }
   ladderText(); App.onCfg(ladderText);
+  var perf=P.sec(root,'performance','From one latency to many requests','Predict bandwidth from concurrency, then test the finite machine.');
+  P.row(perf,[
+    'Latency names a start and end event for one operation. Throughput counts completed operations per time; bandwidth counts bytes per time. They are not interchangeable. A dependent chain can expose latency while independent loads overlap.',
+    'Little\u2019s law relates averages over one boundary: outstanding requests = completion rate \u00d7 residence time. At 20 GB/s of 64-byte lines and 80 ns residence, about 25 lines must be outstanding on average.',
+    'Before running, predict what happens as independent chains increase from 1 to 16: will each load become faster, will more finish per second, or both? Use the <a href="#perf/predict">calculator</a>, <a href="#perf/queues">finite-queue experiment</a> and <a href="#perf/measure">native measurements</a> to separate these possibilities.'
+  ]);
 }});
 
 /* ======================= 06 why caches exist ======================= */
@@ -3639,23 +3732,23 @@ build: function(root){
     {n: 'PD',   base: 0x13f4a000n, idx: 81,  val: 0x1b6e9067n},
     {n: 'PT',   base: 0x1b6e9000n, idx: 450, val: 0x80000001a3f7c067n}
   ]};
-  /* The end-to-end chapter's critical-path model. o = {tlb: 'hit'|'walk', lvl: 'L1'|'L2'|'L3'|'DRAM', row: 'hit'|'closed'|'conflict'} */
+  /* The end-to-end chapter's serialized teaching model; the dependency DAG lives in LabModel. */
   App.E2E = {steps: function(o){
     var CFG = App.CFG, ghz = CFG.ghz, S = [];
     var add = function(n, c, src, ch, what, sh){ S.push({n: n, c: Math.max(0, Math.round(c)), src: src, ch: ch, what: what, sh: sh || n}); };
     add('front end: fetch, predecode, decode, \u00b5op queue', 5, 'model', 'core', 'L1i hit, op cache or decoders', 'front end');
     add('rename + dispatch', 2, 'model', 'core', 'RAT, free list, ROB, scheduler, LQ/SQ entries', 'rename');
-    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'published', 'core', 'the address depends on this load', 'wait for rax');
+    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'input', 'core', 'the address depends on this load', 'wait for rax');
     add('AGU: rdx + rax\u00d78', 1, 'model', 'core', 'VA 0x7ffd4a3c2e58', 'AGU');
     if (o.tlb === 'walk') add('DTLB + L2 TLB miss, page walk', 2 * CFG.l2 + 2, 'assumed', 'xlate', 'PML4E/PDPTE from the walk cache, PDE and PTE from L2', 'page walk');
     var lat = o.lvl === 'L1' ? CFG.l1 : o.lvl === 'L2' ? CFG.l2 : o.lvl === 'L3' ? CFG.l3 : App.dramCycles();
-    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'published', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns (latency settings)' : 'load-to-use', 'load hist[123]');
-    if (o.lvl === 'DRAM' && o.row !== 'closed') add(o.row === 'hit' ? 'row already open: saves ACT' : 'row conflict: extra PRE', (o.row === 'hit' ? -14.2 : 14.2) * ghz, 'derived', 'dram', 'device-time difference from [[ch:dram]] (\u00b1 14.2 ns)');
-    add('add: tmp + 1', 1, 'published', 'core', '1-cycle ALU op');
+    var adjustment=o.lvl==='DRAM'?(o.row==='hit'?-14.2:o.row==='conflict'?14.2:0)*ghz:0;
+    if(o.lvl==='DRAM') lat=Math.max(CFG.l3,lat+adjustment);
+    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'input', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns, then '+(adjustment/ghz).toFixed(1)+' ns illustrative row adjustment (clamped at L3 cost)' : 'load-to-use', 'load hist[123]');
+    add('add: tmp + 1', 1, 'model', 'core', '1-cycle ALU teaching input');
     add('store address + data into the SQ', 2, 'model', 'core', 'STA / STD');
     add('retire (older instructions already done)', 1, 'model', 'core', 'ROB head');
     add('commit to L1d: line is E after the load, becomes M', 1, 'model', 'stores', 'no RFO needed');
-    S.forEach(function(x){ if (x.n.indexOf('row already open') === 0) x.neg = true; });
     return S;
   }};
 
@@ -3852,7 +3945,7 @@ build: function(root){
   /* ---------- plate 3: one hist[123]++ on one time axis ---------- */
   function e2ePlate(container, o0){
     var P = plate(container, {id: 'e2e', w: 1200, h: 600, cls: 'plate-e2e',
-      caption: 'Every stage of the critical path on one to-scale time axis, then the first cycles magnified. Uses the same model as the step table and the latency settings, so it redraws when they change.',
+      caption: 'Every stage of the serialized teaching path on one time axis, then the first cycles magnified. The step table shares these inputs. Use End to End: Critical path for overlapping dependencies and distinct value/retirement boundaries.',
       views: [{id: 'overview', label: 'Whole path', box: [0, 0, 1200, 600]}, {id: 'early', label: 'First cycles', box: [0, 470, 1200, 130]}]});
     var sv = P.sv, root = s('g', null, sv), o = o0 || {tlb: 'hit', lvl: 'DRAM', row: 'closed'};
     var COL = {core: 'a3b', xlate: 'a4b', l1d: 'a2b', hier: 'a2b', dram: 'a1b', stores: 'a3b'}, SRC = {published: 'var(--a2)', model: 'var(--tx3)', assumed: 'var(--a3)', derived: 'var(--a1)'};
@@ -3861,7 +3954,7 @@ build: function(root){
       var S = App.E2E.steps(o), ghz = App.CFG.ghz, tot = 0, pos = 0, x0 = 430, W = 720;
       S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
       var span = S.reduce(function(m, x){ pos += x.neg ? -x.c : x.c; return Math.max(m, pos); }, 0), sc = W / Math.max(1, span);
-      head(root, 20, 30, 'Critical path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
+      head(root, 20, 30, 'Serialized teaching path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
       T(root, 20, 48, 'one row per stage; bar start = when it begins, width = how long it takes', {size: 10, fill: 'var(--tx3)'});
       var cum = 0;
       S.forEach(function(x, i){
@@ -4266,6 +4359,144 @@ build: function(root){
   pick(sel);
 }});
 
+/* Pure Phase 1 models. Capacities/policies are teaching assumptions, not Zen+ internals. */
+var LabModel = (function(){
+  'use strict';
+  var defaults = {requests:192, chains:8, rob:32, lq:24, mshr:12, fabric:6,
+    controller:8, lanes:4, fill:4, issue:2, retire:2, service:320, hop:4, burst:13, trace:true};
+  function quantile(values, p){
+    if (!values.length) return 0;
+    var a = values.slice().sort(function(x,y){return x-y;});
+    return a[Math.max(0, Math.ceil(p * a.length) - 1)];
+  }
+  function mean(a){return a.length ? a.reduce(function(s,x){return s+x;},0)/a.length : 0;}
+  function simulate(input){
+    var p = Object.assign({}, defaults, input || {});
+    Object.keys(defaults).forEach(function(k){
+      if(k==='trace') return;
+      if(!Number.isInteger(p[k]) || p[k]<1 || p[k]>(k==='service'?4000: k==='requests'?1024:256)) throw new Error('Invalid model parameter: '+k);
+    });
+    if(p.chains>p.requests) throw new Error('Chains exceed requests');
+    var all=[], rob=[], fabric=[], controller=[], active=[], fill=[], bus=null;
+    var previous=[], trace=[], retired=0, complete=0, outstanding=0, lq=0, t=0;
+    var areas={rob:0,lq:0,mshr:0,fabric:0,controller:0,service:0,fill:0};
+    var peaks=Object.assign({},areas), stalls={rob:0,lq:0,dependency:0,mshr:0,fabric:0,controller:0,fill:0};
+    var busy=0, full=Object.assign({},areas), stalledFront=0;
+    var caps={rob:p.rob,lq:p.lq,mshr:p.mshr,fabric:p.fabric,controller:p.controller,service:p.lanes,fill:p.fill};
+    /* Events at t change occupancy over [t,t+1). Every request remains in
+       its upstream stage until the destination can actually accept it. */
+    for(t=0; retired<p.requests && t<5000000; t++){
+      var reason={};
+      if(bus && bus.end===t){
+        bus.r.done=t; bus.r.state='done'; complete++; outstanding--; lq--; bus=null;
+      }
+      for(var n=0;n<p.retire && rob.length && rob[0].done!==undefined;n++){
+        var r=rob.shift(); r.retired=t; r.state='retired'; retired++;
+      }
+      /* A full fill buffer holds completed service slots occupied. */
+      for(var i=0;i<active.length;){
+        var a=active[i];
+        if(a.serviceEnd<=t){
+          if(fill.length<p.fill){a.fillAt=t; a.state='fill'; fill.push(a); active.splice(i,1); continue;}
+          reason.fill=true;
+        }
+        i++;
+      }
+      if(!bus && fill.length){
+        var b=fill.shift(); b.busAt=t; b.state='bus'; bus={r:b,end:t+p.burst};
+      }
+      while(active.length<p.lanes && controller.length){
+        var m=controller.shift(); m.serviceAt=t; m.serviceEnd=t+p.service; m.state='service'; active.push(m);
+      }
+      if(fabric.length && fabric[0].issue+p.hop<=t){
+        if(controller.length<p.controller){
+          var f=fabric.shift(); f.mcAt=t; f.state='controller'; controller.push(f);
+        }else reason.controller=true;
+      }
+      var issued=0;
+      for(i=0;i<rob.length && issued<p.issue;i++){
+        var q=rob[i]; if(q.issue!==undefined) continue;
+        if(q.dep!==null && all[q.dep].done===undefined){reason.dependency=true; continue;}
+        if(q.ready===undefined) q.ready=t;
+        if(outstanding>=p.mshr){reason.mshr=true; break;}
+        if(fabric.length>=p.fabric){reason.fabric=true; break;}
+        q.issue=t; q.state='fabric'; outstanding++; fabric.push(q); issued++;
+      }
+      /* One abstract loop body per cycle: one load + three other instructions.
+         ROB control counts bodies, not physical Zen ROB entries or fused µops. */
+      if(all.length<p.requests){
+        if(rob.length>=p.rob) reason.rob=true;
+        else if(lq>=p.lq) reason.lq=true;
+        else {
+          var id=all.length, stream=id%p.chains;
+          var req={id:id,stream:stream,born:t,dep:previous[stream]===undefined?null:previous[stream],state:'waiting'};
+          previous[stream]=id; all.push(req); rob.push(req); lq++;
+        }
+      }
+      if(reason.rob||reason.lq) stalledFront++;
+      Object.keys(reason).forEach(function(k){stalls[k]++;});
+      var occ={rob:rob.length,lq:lq,mshr:outstanding,fabric:fabric.length,controller:controller.length,service:active.length,fill:fill.length};
+      Object.keys(areas).forEach(function(k){areas[k]+=occ[k]; peaks[k]=Math.max(peaks[k],occ[k]); if(occ[k]===caps[k]) full[k]++;});
+      if(bus) busy++;
+      if(p.trace) trace.push(Object.assign({t:t,retired:retired,complete:complete,bus:bus?1:0,stalls:Object.keys(reason)},occ));
+    }
+    if(retired!==p.requests) throw new Error('Model failed to drain');
+    var latency=all.map(function(r){return r.done-r.issue;});
+    var queue=all.map(function(r){return r.done-r.issue-p.hop-p.service-p.burst;});
+    var readyWait=all.map(function(r){return r.issue-Math.max(r.born+1,r.dep===null?0:all[r.dep].done);});
+    var depWait=all.map(function(r){return Math.max(0,(r.dep===null?r.born+1:all[r.dep].done)-r.born-1);});
+    var rates={}; Object.keys(areas).forEach(function(k){rates[k]=areas[k]/t;});
+    var start=Math.floor(t/4), end=Math.floor(3*t/4), middle=all.filter(function(r){return r.done>=start && r.done<end;});
+    return {p:p,requests:all,trace:trace,cycles:t,completed:complete,retired:retired,bytes:complete*64,usefulBytes:complete*8,
+      instructions:retired*4,ipc:retired*4/t,cpi:t/(retired*4),mpki:250,
+      throughput:complete/t,window:{start:start,end:end,completed:middle.length,throughput:middle.length/(end-start)},
+      latency:{mean:mean(latency),p50:quantile(latency,.5),p95:quantile(latency,.95),p99:quantile(latency,.99),max:Math.max.apply(null,latency)},
+      timing:{service:p.service,transport:p.hop+p.burst,queue:mean(queue),dependency:mean(depWait),readyWait:mean(readyWait),retireWait:mean(all.map(function(r){return r.retired-r.done;}))},
+      occupancy:rates,areas:areas,peaks:peaks,full:full,capacities:caps,stalls:stalls,frontStall:stalledFront,busUtil:busy/t};
+  }
+  function dag(nodes, target){
+    var by={}, pending=nodes.map(function(n){return Object.assign({},n);}), result=[];
+    if(new Set(pending.map(function(n){return n.id;})).size!==pending.length) throw new Error('Duplicate DAG node');
+    while(pending.length){
+      var at=pending.findIndex(function(n){return n.deps.every(function(d){return !!by[d];});});
+      if(at<0) throw new Error('Cyclic or missing DAG dependency');
+      var n=pending.splice(at,1)[0];
+      if(!Number.isFinite(n.duration)||n.duration<0) throw new Error('Invalid DAG duration');
+      n.start=n.deps.reduce(function(a,k){return Math.max(a,by[k].end);},0); n.end=n.start+n.duration;
+      by[n.id]=n; result.push(n);
+    }
+    if(!by[target]) throw new Error('Missing DAG target');
+    var critical=[], cur=by[target];
+    while(cur){critical.push(cur.id); cur=cur.deps.length ? by[cur.deps.reduce(function(a,b){return by[a].end>=by[b].end?a:b;})] : null;}
+    return {nodes:result,by:by,critical:critical.reverse(),end:by[target].end};
+  }
+  function criticalPath(cfg, o){
+    var hit=o.level==='L1'?cfg.l1:o.level==='L2'?cfg.l2:o.level==='L3'?cfg.l3:cfg.l3+cfg.dramNs*cfg.ghz;
+    var nodes=[];
+    function add(id,label,duration,deps){nodes.push({id:id,label:label,duration:duration,deps:deps});}
+    add('front','Fetch / decode',5,[]); add('rename','Rename / dispatch',2,['front']);
+    add('data','data[i] L1 load',cfg.l1,['rename']); add('agu','hist address',1,['data']);
+    add('tlb','DTLB lookup',1,['agu']); add('index','VIPT index',1,['agu']);
+    var translation='tlb';
+    if(o.walk){
+      ['PML4E (walk cache)','PDPTE (walk cache)','PDE (L2)','PTE (L2)'].forEach(function(s,i){var id='walk'+i;add(id,s,i<2?1:cfg.l2,[translation]);translation=id;});
+    }
+    add('hist','hist data / tag',Math.max(0,hit-1),[translation,'index']);
+    add('value','Add 1: value ready',1,['hist']);
+    add('store','SQ address + data',2,['value']);
+    add('other','Independent older work',o.work,['rename']);
+    add('retire','In-order retirement',1,['store','other']);
+    add('commit','L1 store visibility',1,['retire']);
+    /* Separate branch: no claim that every instruction causes a writeback. */
+    if(o.background) add('writeback','Unrelated dirty writeback',hit,['rename']);
+    var r=dag(nodes,'retire'); r.valueAt=r.by.value.end; r.commitAt=r.by.commit.end;
+    r.serial=nodes.filter(function(n){return n.id!=='commit'&&n.id!=='writeback';}).reduce(function(s,n){return s+n.duration;},0);
+    return r;
+  }
+  return {defaults:defaults,simulate:simulate,dag:dag,criticalPath:criticalPath,quantile:quantile,mean:mean};
+})();
+if (typeof module !== 'undefined') module.exports = LabModel;
+
 /* ======================= pipeline simulator ======================= */
 var PipeSim = (function(){
 var W = {fetch: 4, rename: 4, retire: 4, alu: 4, agu: 2};
@@ -4274,7 +4505,7 @@ var REAL = {rob: '192 (96 per thread)', uq: '72 µops', alu: '4 × 14', agu: '2 
 
 function simulate(P){
   var EX = P.ex, L = EX.loop, hx = function(v){ return '0x' + v.toString(16); };
-  var level = P.level || 'L1', missLat = P.missLat || 0;
+  var level = P.level || 'L1', missLat = Math.max(1, Math.ceil(P.missLat || 0));
   /* ---------- static code ---------- */
   var ST = {
     A: {pc: L,        len: 3, asm: 'movzbl (%rdi),%eax',     uops: [{k: 'LD', d: 'rax', s: ['rdi'], sz: 1, tag: 'ld'}]},
@@ -4383,7 +4614,8 @@ function simulate(P){
     }
     var m = MAB.filter(function(x){ return x.line === ln; })[0];
     if (!m){
-      m = {line: ln, lineHex: hx(lineOf(u.addr)), fillAt: u.issueAt + missLat, waiters: [], lvl: level};
+      if(MAB.length>=CAP.mab){u.outcome='mabwait';return false;}
+      m = {line: ln, lineHex: hx(lineOf(u.addr)), fillAt: Math.max(c+1,u.issueAt+missLat), waiters: [], lvl: level};
       MAB.push(m);
       ev.push('<b>' + u.lbl + '</b> misses L1d (line ' + m.lineHex + '): MAB entry allocated, request sent to ' + level + ', data expected in cycle ' + m.fillAt);
     } else if (m.waiters.indexOf(u) < 0){
@@ -4394,7 +4626,7 @@ function simulate(P){
     return false;
   }
 
-  var MAXC = 1200;
+  var MAXC = Math.max(1200,missLat+2000);
   for (var c = 0; c < MAXC; c++){
     var ev = [], stall = null, rnNow = [], issued = {};
     /* 1. retire */
@@ -4809,7 +5041,7 @@ build: function(root){
     on('lsu', sn.stages.AG.length || sn.stages.D1.length || sn.stages.D2.length || sn.stages.SD.length || sn.ev.some(function(e){ return /commits/.test(e); }));
     fill(B.l2.c, sn.mab.map(function(m){ return {t: m.lvl, c: 'miss'}; })); on('l2', sn.mab.length);
     /* events */
-    evTitle.innerHTML = 'Cycle ' + cur + (sn.stall ? ' <span class="tag bad">rename stalled: ' + sn.stall + '</span>' : '') + ' <span class="tag pub">retired ' + sn.retired + ' \u00b7 IPC so far ' + (sn.retired / (cur + 1)).toFixed(2) + '</span>';
+    evTitle.innerHTML = 'Cycle ' + cur + (sn.stall ? ' <span class="tag bad">rename stalled: ' + sn.stall + '</span>' : '') + ' <span class="tag pub">retired groups ' + sn.retired + ' \u00b7 groups/cycle ' + (sn.retired / (cur + 1)).toFixed(2) + '</span><span class="note"> cmp + branch is one tracked group here; this is not architectural IPC.</span>';
     evList.innerHTML = sn.ev.length ? sn.ev.map(function(e){ return '<li>' + e + '</li>'; }).join('') : '<li class="note">Nothing changes state this cycle' + (sn.mab.length ? ': every remaining \u00b5op is waiting on the outstanding miss.' : '.') + '</li>';
     /* front end panel */
     pFE.innerHTML = '<dl class="kv"><dt>BTB</dt><dd>jne at \u2026519f \u2192 \u20265190, predicted taken</dd><dt>next fetch</dt><dd>' + (sn.nextPC || 'none (ret fetched)') + '</dd></dl>' +
@@ -5614,7 +5846,7 @@ build: function(root){
       s('rect', {x: 80, y: y, width: w, height: 32, rx: 4, 'class': ['a4b', 'a2b', 'a3b', 'a1b'][i]}, lsv);
       s('text', {x: 88 + w, y: y + 21, 'class': 'm', 'font-size': 12}, lsv, r[1] + ' cycles \u00b7 ' + (r[1] / CFG.ghz).toFixed(1) + ' ns \u00b7 ' + (r[1] / CFG.l1).toFixed(0) + '\u00d7 L1');
     });
-    cap.innerHTML = 'Values come from the latency settings: published Zen/Zen+ figures unless you entered your own. A pointer-chase, working-set-size sweep measures these four plateaus directly on real hardware.';
+    cap.innerHTML = 'Representative unloaded inputs from the latency settings, informed by external measurements and estimates. These are not vendor guarantees or a measured 3750H calibration. A pointer-chase working-set sweep can reveal transitions, but translation, placement and prefetching also affect the result. <a href="#perf/measure">Run and interpret the measurement</a>.';
   }
   ladder();
 
@@ -6166,7 +6398,7 @@ build: function(root){
       seq: 'The histogram reads <code>data[]</code> one byte per iteration, so it enters a new line every ~100 cycles (model). After two +1 steps the detector is confident.</p><p>With distance ' + dist + ', prefetches are issued ' + dist + ' lines (' + dist * 100 + ' cycles) ahead against a ' + st.D + '-cycle latency: ' + (dist * 100 >= st.D ? 'far enough, so accesses after warm-up are covered.' : 'not far enough, so prefetches are late and part of each latency remains.') + '</p><p>This is why simple sequential benchmarks rarely see the full DRAM latency.',
       stride: 'Every third line (for example one field of a 192-byte struct). The deltas repeat (+3), so a stride detector locks on exactly as a stream detector does for +1; the prefetches just skip lines.',
       hist: 'The loads of <code>hist[data[i]]</code> jump around 16 lines with no repeating delta, so the detector never becomes confident. It does not matter: after the first touch of each line everything hits, because the whole table fits in the L1d. Temporal locality, not prefetching, carries this access.',
-      chase: 'Each address is the data returned by the previous load, and the next line is random. The detector sees no repeating delta.</p><p>Even a perfect predictor could not help: the address does not exist until the previous miss returns.</p><p>Every access pays the full latency, one after another. This is why latency benchmarks use a pointer chase.'
+      chase: 'Each next address is read from the previous load, and the next line is random. This simple stride detector sees no repeating delta.</p><p>The dependent chain serializes address discovery. That does not rule out all prediction: specialized predictors or software with other knowledge can behave differently. Randomized pointer chasing is useful for reducing ordinary stream/stride prefetch benefits, not proof that prefetching is universally impossible.</p><p>In this teaching model every access waits for the previous result. Compare independent chains in the <a href="#perf/queues">performance lab</a>.'
     }[pat];
     note.innerHTML = '<h3>' + {seq: 'Sequential', stride: 'Strided', hist: 'Data-dependent indices, small table', chase: 'Pointer chase'}[pat] + '</h3><p>' + txt + '</p><table class="mt" style="margin-top:8px"><tr><th>accesses</th><th>covered</th><th>late</th><th>misses</th><th>hits</th><th>prefetches issued</th><th>never used</th><th>stall cycles</th></tr><tr><td>' + tot + '</td><td>' + st.cov + '</td><td>' + st.late + '</td><td>' + st.miss + '</td><td>' + st.hit + '</td><td>' + st.pf + '</td><td>' + st.useless + '</td><td>' + st.stall + '</td></tr></table>' +
       '<p class="note" style="margin-top:8px">' + g('swpf', 'Software prefetch') + ' (<code>__builtin_prefetch(p, rw, locality)</code> \u2192 <code>prefetcht0/t1/t2/nta</code>, <code>prefetchw</code>) helps when the program knows an address early but the pattern defeats the hardware, for example the next node of a list whose pointer was loaded earlier.</p>';
@@ -6277,7 +6509,7 @@ build: function(root){
 /* ======================= chapter: one access end to end ======================= */
 App.chapter({id: 'e2e', short: 'End to end', title: 'One hist[123]++, end to end',
 lede: 'One instruction, <code>addq $1,(%rdx,%rax,8)</code> on <code>hist[123]</code>, with every stage from the other chapters on one timeline.',
-points: ['Choose where the translation is found, where the line is found, and whether the DRAM row is open.', 'Read off the critical path and its total latency.'],
+points: ['Keep the single-access walkthrough, then explore a dependency graph or many concurrent requests.', 'Distinguish value readiness, retirement, service time, queueing and throughput.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, CFG = App.CFG;
   var o = {tlb: 'hit', lvl: 'DRAM', row: 'closed'};
@@ -6299,7 +6531,7 @@ build: function(root){
     var S = steps(), ghz = CFG.ghz, tot = 0;
     S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
     sv.innerHTML = ''; var x0 = 10, W = 980, acc = 0;
-    s('text', {x: 10, y: 16, 'class': 'h'}, sv, 'Critical path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
+    s('text', {x: 10, y: 16, 'class': 'h'}, sv, 'Serialized teaching path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
     S.forEach(function(x){
       if (x.neg) return;
       var w = (x.c / (tot + (S.filter(function(y){ return y.neg; }).reduce(function(a, y){ return a + y.c; }, 0)))) * W;
@@ -6312,14 +6544,259 @@ build: function(root){
     tbl.innerHTML = '<h3>Step by step</h3><div style="overflow-x:auto"><table class="mt" style="min-width:560px"><tr><th>step</th><th>cycles</th><th>ns</th><th>total</th><th>source</th><th></th></tr>' + S.map(function(x){
       cum += x.neg ? -x.c : x.c;
       return '<tr><td style="font-family:var(--sans)">' + x.n + '<div class="note">' + x.what + '</div></td><td>' + (x.neg ? '\u2212' : '') + x.c + '</td><td>' + (x.c / ghz).toFixed(1) + '</td><td>' + cum + '</td><td><span class="tag ' + (x.src === 'published' ? 'pub' : x.src === 'model' ? '' : 'act') + '">' + x.src + '</span></td><td><button class="lnk" data-ch="' + x.ch + '">chapter \u2192</button></td></tr>';
-    }).join('') + '</table></div><p class="note" style="margin-top:8px"><b>published</b>: Zen/Zen+ figures from the latency settings (replace them with your own measured plateaus). <b>model</b>: the stage counts of the [[ch:core]] model, not measured. <b>assumed</b> / <b>derived</b>: stated in the step.</p>';
+    }).join('') + '</table></div><p class="note" style="margin-top:8px"><b>input</b>: representative unloaded latency settings; external measurements/estimates, not vendor guarantees. <b>model</b>: teaching stage counts, not measured. <b>assumed</b> / <b>derived</b>: stated in the step. Row-hit savings are applied within the load stage so the drawn bar and total use the same time boundary. See [[ch:perf]] for evidence and measurement definitions.</p>';
     tbl.querySelectorAll('button.lnk').forEach(function(b){ b.onclick = function(){ App.go(b.dataset.ch); }; });
-    sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale ([[chs:stores,coh]]).</p><p>Nothing else happens to it until it is evicted, when its 64 bytes are written back to the L2, later enter the L3 as a victim, and eventually reach DRAM through the controller as a write ([[chr:l1d,dram]]).</p><p>That write-back is off the critical path of this instruction; the core keeps running.</p><p>For comparison: at ' + ghz + ' GHz the loop body runs about one iteration per cycle when everything hits ([[ch:core]]). A single miss to DRAM costs the time of hundreds of iterations, which is why the hierarchy, the prefetchers and memory-level parallelism exist.</p>';
+    sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale ([[chs:stores,coh]]).</p><p>A later eviction can write the line back down the hierarchy; another core can instead request ownership or a shared copy ([[chr:l1d,dram]]).</p><p>This later traffic is outside the instruction\u2019s dependency path but can compete for finite resources. Retiring a store is not the same event as making it visible to other cores.</p><p>Loop throughput depends on dependencies, forwarding, instruction mix and resource pressure. It cannot be inferred by inverting this single serialized instruction timeline. Compare the critical-path and steady-state modes.</p>';
   }
   var PLATE = App.Plates.e2e(root, o);
   App.onCfg(draw);
   draw();
+  var critical=h('div',{'class':'e2e-critical'},root);App.Performance.criticalLab(critical);
+  var steady=h('div',{'class':'e2e-steady'},root);App.Performance.streamLab(steady);
+  var modes=h('div',{'class':'perf-actions e2e-modes','role':'group','aria-label':'End-to-end mode'},root), mode='single', buttons={};
+  [['single','Single access'],['critical','Critical path'],['steady','Steady state']].forEach(function(v){var b=h('button',{type:'button','data-mode':v[0]},modes,v[1]);buttons[v[0]]=b;b.onclick=function(){location.hash='e2e/'+(v[0]==='single'?'scenario':v[0]);};});
+  function choose(sid){
+    mode=sid==='critical'||sid==='steady'?sid:'single';
+    var sec=root.closest('.ch');if(!sec._sections)return;
+    root.insertBefore(modes,root.firstChild);
+    sec._sections.forEach(function(x){x.el.hidden=(x.id==='critical'||x.id==='steady'?x.id:'single')!==mode;});
+    Object.keys(buttons).forEach(function(k){buttons[k].classList.toggle('on',mode===k);buttons[k].setAttribute('aria-pressed',String(mode===k));});
+  }
+  return {onShow:function(){choose(location.hash.split('/')[1]);},selectSection:choose};
 }});
+
+/* Performance foundations and the shared experiment embedded in End to End. */
+(function(){
+  'use strict';
+  var h=App.h,s=App.s,g=App.g, uid=0;
+  var SOURCES={
+    stat:['Linux perf stat (upstream documentation)','https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux-stable/+/master/tools/perf/Documentation/perf-stat.txt'],
+    ibs:['Linux AMD IBS documentation','https://android.googlesource.com/kernel/common/+/0e674132ddfa938cd53ba7c3706f0d83b2a91491/tools/perf/Documentation/perf-amd-ibs.txt'],
+    amd:['AMD Family 17h optimization guide, 55723','https://docs.amd.com/v/u/en-US/55723_3.01'],
+    bench:['Runnable Linux benchmarks and protocol','benchmarks/README.md']
+  };
+  function text(tag,parent,str,attrs){var el=h(tag,attrs||null,parent); el.textContent=str; return el;}
+  function link(parent,key){var q=SOURCES[key];return text('a',parent,q[0],{href:q[1],target:'_blank',rel:'noopener'});}
+  function badge(parent,label){return text('span',parent,label,{'class':'evidence-label'});}
+  function code(parent,str){return text('pre',parent,str,{'class':'p-code no-autolink'});}
+  function select(parent,label,values,value,change){
+    var id='perf-control-'+(++uid), lab=h('label',{'class':'perf-field',for:id},parent);
+    text('span',lab,label);var el=h('select',{id:id,'data-field':label},lab);
+    values.forEach(function(v){text('option',el,Array.isArray(v)?v[1]:String(v),{value:Array.isArray(v)?v[0]:v});});
+    el.value=String(value);el.onchange=function(){change(el.value);}; return el;
+  }
+  function metric(parent,label,value,detail){var d=h('div',{'class':'perf-metric'},parent);text('span',d,label);text('strong',d,value);text('small',d,detail);}
+  function table(parent,heads,rows){
+    var wrap=h('div',{'class':'perf-table-wrap'},parent), t=h('table',{'class':'p-table'},wrap);
+    var head=h('tr',null,h('thead',null,t));heads.forEach(function(x){text('th',head,x,{scope:'col'});});
+    var body=h('tbody',null,t);rows.forEach(function(row){var tr=h('tr',null,body);row.forEach(function(x){text('td',tr,String(x));});});return wrap;
+  }
+  function checkpoint(parent,prompt,choices,correct,explanation){
+    var box=h('div',{'class':'prediction'},parent);text('h3',box,'Predict before running');text('p',box,prompt);
+    var result=text('p',box,'Choose a prediction, then compare it with the experiment.',{'class':'note','aria-live':'polite'});
+    var choicesEl=h('div',{'class':'perf-actions'},box);
+    choices.forEach(function(c,i){var b=text('button',choicesEl,c,{type:'button','aria-pressed':'false'});b.onclick=function(){
+      choicesEl.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
+      result.textContent=(i===correct?'That matches this model. ':'Test that prediction. ')+explanation;
+    };});
+  }
+  function evidence(parent){
+    var e=h('div',{'class':'evidence-contract'},parent);badge(e,'Zen+ reference · evidence contract');
+    text('p',e,'The reference machine remains the Ryzen 7 3750H. Addresses and page mappings are synthetic examples. The simulations expose mechanisms; they do not reproduce undocumented scheduling, queue sizes or exact cycle behavior.');
+    table(e,['Label','What it means here'],[
+      ['Documented fact','An architectural or vendor statement, with scope and a source. The Family 17h guide is not a guarantee for every Zen+ implementation.'],
+      ['Measured / reverse-engineered','A result tied to a CPU, code, method and conditions. The existing 7-cpu latency defaults are external measurements/estimates, not our own 3750H measurements.'],
+      ['Inference','A deduction from stated facts or observations; it needs testing.'],
+      ['Teaching approximation','Chosen stages, timings, capacities and policies. All new finite-queue and dependency-graph outputs use this label.'],
+      ['Unknown / implementation-dependent','No precise value is asserted. Real cache mapping, arbitration, queue sharing and event support can differ.']
+    ]);link(e,'amd');
+  }
+  function vocabulary(parent){
+    table(parent,['Quantity','Definition / denominator','Interpretation'],[
+      ['Latency','Time from a named start event to a named end event','Always name both boundaries. A load-to-use interval is not a retirement interval.'],
+      ['Throughput','Completed useful operations / elapsed time','Independent operations can overlap while each stays slow.'],
+      ['Bandwidth','Bytes / elapsed time (GB/s = 10⁹ B/s)','Useful bytes, cache-line bytes and DRAM-bus bytes are different accounting boundaries.'],
+      ['IPC / CPI','Retired architectural instructions / core cycles; inverse','Do not substitute µops, fused groups, TSC ticks, wall time, or another thread’s counters.'],
+      ['Miss rate / MPKI','Misses / accesses; 1000 × misses / retired instructions','Specify cache level and instruction/data, demand/prefetch and measurement scope.'],
+      ['Occupancy / utilization','Average entries in use; fraction of time a service resource is busy','A full queue and a busy execution resource are different observations.'],
+      ['p50 / p95 / p99','Nearest-rank quantiles of the stated population','A p99 of repeated whole-run averages is not a p99 of individual loads.'],
+      ['Service / queue time','Time being served / time waiting for a resource','Observed latency also includes transport, dependency readiness and retirement waiting when those lie inside its boundaries.']
+    ]);
+  }
+  function littleLaw(parent){
+    text('p',parent,'For a stable system and a consistent boundary, average outstanding requests N = completion rate λ × average residence time W. This is Little’s law. It relates averages, not peak queue capacity.');
+    var controls=h('div',{'class':'perf-controls'},parent), bw=20, ns=80, line=64;
+    select(controls,'Target line bandwidth (GB/s)',[5,10,20,40],bw,function(v){bw=+v;draw();});
+    select(controls,'Average load residence (ns)',[40,80,120,200],ns,function(v){ns=+v;draw();});
+    var result=h('div',{'class':'perf-metrics','aria-live':'polite'},parent);
+    function draw(){result.replaceChildren();metric(result,'Required concurrency',(bw*ns/line).toFixed(1)+' lines','N = GB/s × ns / bytes per line');metric(result,'One dependent chain',(line/ns).toFixed(2)+' GB/s','64-byte line traffic; only 8 B may be useful');metric(result,'Useful pointer data',(8/ns).toFixed(2)+' GB/s','One 8-byte pointer per returned line');}draw();
+    text('p',parent,'At 20 GB/s and 80 ns, about 25 lines must be outstanding on average. More MSHRs alone do not provide that concurrency: the program must expose independent addresses, and downstream resources must accept the traffic. Finite-run fill/drain effects also change measured throughput.');
+    checkpoint(parent,'If 16 independent loads each take 80 ns, must their aggregate bandwidth equal one pointer chain’s bandwidth?',[
+      'Yes: latency fixes bandwidth','No: independent loads can overlap','They always run exactly 16× faster'],1,'Overlap can raise bandwidth; queue capacity and shared service limit the gain.');
+  }
+  function streamLab(parent){
+    var root=h('div',{'class':'stream-lab'},parent);badge(root,'Teaching approximation · all demand loads miss');
+    text('p',root,'Each loop body has one 8-byte load to a distinct 64-byte line plus three abstract non-memory instructions. Chains are independent; each next load within one chain waits for the previous value. In-order retirement and finite queues constrain execution. No hit-rate, prefetch, write, bank-address or exact Zen+ controller model is assumed.');
+    var ctl=h('div',{'class':'perf-controls'},root), o={chains:8,mshr:12,controller:8,lanes:4,serviceNs:80,bw:20,rob:32,lq:24,fill:4};
+    var knobs={};
+    function knob(key,label,vs){knobs[key]=select(ctl,label,vs,o[key],function(v){o[key]=+v;run();});}
+    knob('chains','Independent chains',[1,2,4,8,16,32]);knob('mshr','Miss entries (model)',[2,4,8,12,24,48]);
+    knob('controller','Controller queue entries',[1,2,4,8,16]);knob('lanes','Parallel service slots',[1,2,4,8,16]);
+    knob('serviceNs','Service per request (ns)',[20,40,80,160]);knob('bw','Return link limit (GB/s)',[2,5,10,20,40]);
+    var more=h('details',{'class':'perf-details'},root);text('summary',more,'Finite front end and return-buffer controls');
+    var extra=h('div',{'class':'perf-controls'},more);
+    [['rob','ROB loop bodies',[4,8,16,32,64]],['lq','Load queue entries',[4,8,16,24,48]],['fill','Return queue entries',[1,2,4,8]]].forEach(function(a){knobs[a[0]]=select(extra,a[1],a[2],o[a[0]],function(v){o[a[0]]=+v;run();});});
+    var presets=h('div',{'class':'perf-actions'},root);
+    [['One chain',{chains:1}],['Miss-entry pressure',{chains:32,mshr:2,lq:24,rob:32}],['Controller pressure',{chains:32,mshr:48,controller:1,lanes:1,lq:48,rob:64}],['Return-link pressure',{chains:32,mshr:48,controller:16,lanes:16,fill:1,bw:2,serviceNs:20,lq:48,rob:64}]].forEach(function(p){
+      var b=text('button',presets,p[0],{type:'button'});b.onclick=function(){Object.assign(o,{chains:8,mshr:12,controller:8,lanes:4,serviceNs:80,bw:20,rob:32,lq:24,fill:4},p[1]);Object.keys(knobs).forEach(function(k){knobs[k].value=String(o[k]);});run();};
+    });
+    var metrics=h('div',{'class':'perf-metrics','aria-live':'polite'},root), explain=h('div',{'class':'perf-explanation'},root);
+    var controls=h('div',{'class':'perf-actions'},root), play=text('button',controls,'Play trace',{type:'button'}), reset=text('button',controls,'Restart trace',{type:'button'});
+    var scrubLabel=h('label',{'class':'perf-scrub'},controls);text('span',scrubLabel,'Trace cycle');var slider=h('input',{type:'range',min:0,value:0,'aria-label':'Trace cycle'},scrubLabel);
+    var state=h('div',{'class':'queue-state','aria-live':'off'},root), chart=h('figure',{'class':'perf-chart'},root);
+    var svg=s('svg',{viewBox:'0 0 820 245',role:'img','aria-label':'Miss-entry occupancy over simulated cycles'},chart);
+    text('figcaption',chart,'Miss-entry occupancy over time. The vertical marker follows the trace; the table gives the same cycle’s queue state.');
+    var details=h('details',{'class':'perf-details'},root);text('summary',details,'Inspect all counters, timing boundaries and traffic');var stats=h('div',null,details);
+    var sweepWrap=h('div',{'class':'perf-sweep'},root);var sweep=text('button',sweepWrap,'Sweep 1 / 2 / 4 / 8 / 16 / 32 chains',{type:'button'});var sweepResult=h('div',null,sweepWrap);
+    var sim, cursor=0, timer=null;
+    function params(trace){return {chains:o.chains,mshr:o.mshr,controller:o.controller,lanes:o.lanes,service:Math.max(1,Math.round(o.serviceNs*App.CFG.ghz)),burst:Math.max(1,Math.ceil(64*App.CFG.ghz/o.bw)),rob:o.rob,lq:o.lq,fill:o.fill,trace:trace};}
+    function stop(){if(timer)clearInterval(timer);timer=null;play.textContent='Play trace';}
+    function snapshot(){
+      var v=sim.trace[cursor];state.replaceChildren();text('h3',state,'Cycle '+v.t+' · '+v.complete+' returned · '+v.retired+' retired');
+      var rows=Object.keys(sim.capacities).map(function(k){return [k,v[k]+' / '+sim.capacities[k],v[k]===sim.capacities[k]?'FULL':'available'];});
+      table(state,['Resource','Occupancy / capacity','State'],rows);
+      text('p',state,v.stalls.length?'Blocked this cycle: '+v.stalls.join(', ')+'.':'No resource or dependency block this cycle.',{'class':'note'});
+      slider.value=String(cursor);var mark=svg.querySelector('.trace-marker');if(mark){var x=48+744*cursor/(sim.cycles-1);mark.setAttribute('x1',x);mark.setAttribute('x2',x);}
+    }
+    function run(){
+      stop();sim=LabModel.simulate(params(true));root._simulation=sim;cursor=Math.floor(sim.cycles/2);slider.max=String(sim.trace.length-1);metrics.replaceChildren();stats.replaceChildren();explain.replaceChildren();sweepResult.replaceChildren();
+      var ghz=App.CFG.ghz, bw=sim.throughput*64*ghz;
+      metric(metrics,'Line bandwidth',bw.toFixed(2)+' GB/s','Full run, including fill and drain');
+      metric(metrics,'Average load-to-use',(sim.latency.mean/ghz).toFixed(1)+' ns','Issue → returned value; includes queueing');
+      metric(metrics,'Average outstanding',sim.occupancy.mshr.toFixed(2)+' lines','Allocated miss entries, not all waiting loads');
+      metric(metrics,'Modeled IPC',sim.ipc.toFixed(3),'4 abstract instructions / retired loop body');
+      var most=Object.keys(sim.stalls).filter(function(k){return sim.stalls[k]>0;}).sort(function(a,b){return sim.stalls[b]-sim.stalls[a];});
+      text('p',explain,'Most frequent observed block: '+(most[0]||'none')+'. A blocked-cycle counter is a symptom, not proof of the root bottleneck. Trace downstream: a full controller holds requests in the fabric; finite miss entries and the load queue then prevent more work entering the machine.');
+      text('p',explain,'Full-run check: λW = '+(sim.throughput*sim.latency.mean).toFixed(3)+' lines; time-average miss occupancy = '+sim.occupancy.mshr.toFixed(3)+'. These agree because both use issue → return, and the run starts and ends empty.');
+      table(stats,['Metric','Value','Boundary'],[
+        ['Completed / retired',sim.completed+' / '+sim.retired,'No requests dropped; all queues drain'],
+        ['CPI / demand miss MPKI',sim.cpi.toFixed(3)+' / '+sim.mpki,'Synthetic 4-instruction bodies, every load misses'],
+        ['Useful / line bytes',sim.usefulBytes+' / '+sim.bytes,'8-byte payload / 64-byte returned line; no RFO or writebacks'],
+        ['Middle-half line bandwidth',(sim.window.throughput*64*ghz).toFixed(2)+' GB/s','Completions in cycles '+sim.window.start+'–'+sim.window.end+'; not guaranteed asymptotic steady state'],
+        ['p50 / p95 / p99 / max',[sim.latency.p50,sim.latency.p95,sim.latency.p99,sim.latency.max].map(function(x){return (x/ghz).toFixed(1);}).join(' / ')+' ns','Individual simulated requests, issue → return; nearest rank'],
+        ['Service / transport / queue',[sim.timing.service,sim.timing.transport,sim.timing.queue].map(function(x){return (x/ghz).toFixed(1);}).join(' / ')+' ns','These components sum to mean issue → return latency'],
+        ['Dependency / ready-resource wait',[sim.timing.dependency,sim.timing.readyWait].map(function(x){return (x/ghz).toFixed(1);}).join(' / ')+' ns','Before issue; excludes one rename/admission cycle'],
+        ['Return → retirement',(sim.timing.retireWait/ghz).toFixed(1)+' ns','In-order retirement may wait for older work'],
+        ['Return link utilization',(100*sim.busUtil).toFixed(1)+'%','One serialized 64-byte transfer; service slots are parallel'],
+        ['Front-end blocked',(100*sim.frontStall/sim.cycles).toFixed(1)+'%','A body was waiting to enter but ROB or LQ was full']
+      ]);
+      table(stats,['Resource','Average / peak occupancy','Cycles full','Blocked cycles'],Object.keys(sim.capacities).map(function(k){return [k,sim.occupancy[k].toFixed(2)+' / '+sim.peaks[k],sim.full[k],sim.stalls[k]||0];}));
+      text('p',stats,'Blocked counters can overlap and must not be added as disjoint time fractions. A service slot includes time holding a finished request when the return queue is full. Fabric admission is one request per cycle; service slots run FCFS with no address mapping. Time is rounded to whole model core cycles. Return-link rounding can put actual capacity below the requested limit.',{'class':'note'});
+      svg.replaceChildren();s('text',{x:48,y:20,'class':'s'},svg,'Outstanding miss entries');
+      [0,sim.p.mshr/2,sim.p.mshr].forEach(function(v){var y=200-160*v/sim.p.mshr;s('line',{x1:48,x2:792,y1:y,y2:y,'class':'perf-grid'},svg);s('text',{x:40,y:y+4,'text-anchor':'end','class':'s'},svg,v.toFixed(0));});
+      var stride=Math.max(1,Math.floor(sim.cycles/700)), points=[];
+      for(var i=0;i<sim.trace.length;i+=stride)points.push((48+744*i/(sim.cycles-1)).toFixed(2)+','+(200-160*sim.trace[i].mshr/sim.p.mshr).toFixed(2));
+      points.push('792,200');s('polyline',{points:points.join(' '),'class':'perf-line'},svg);
+      s('line',{x1:48,x2:48,y1:30,y2:204,'class':'trace-marker'},svg);s('text',{x:48,y:228,'class':'s'},svg,'0');s('text',{x:792,y:228,'class':'s','text-anchor':'end'},svg,sim.cycles+' cycles');
+      snapshot();
+    }
+    slider.oninput=function(){stop();cursor=+slider.value;snapshot();};reset.onclick=function(){stop();cursor=0;snapshot();};
+    play.onclick=function(){if(timer){stop();return;}if(cursor>=sim.trace.length-1)cursor=0;play.textContent='Pause trace';timer=setInterval(function(){if(!root.closest('.ch.show')||root.closest('[hidden]')){stop();return;}cursor=Math.min(sim.trace.length-1,cursor+Math.max(1,Math.ceil(sim.cycles/180)));snapshot();if(cursor===sim.trace.length-1)stop();},100);};
+    sweep.onclick=function(){sweepResult.replaceChildren();var rows=[1,2,4,8,16,32].map(function(n){var p=params(false);p.chains=n;var r=LabModel.simulate(p);return [n,(r.throughput*64*App.CFG.ghz).toFixed(2),(r.latency.mean/App.CFG.ghz).toFixed(1),r.occupancy.mshr.toFixed(2)];});table(sweepResult,['Chains','Line GB/s','Mean load ns','Average outstanding'],rows);text('p',sweepResult,'Same resources and 192 total requests in every run. Predict the knee, then change the limiting resource and repeat. Saturation can increase latency without increasing bandwidth.');};
+    run();App.onCfg(run);return root;
+  }
+  function criticalLab(parent){
+    badge(parent,'Teaching approximation · dependency timing, no resource contention');
+    text('p',parent,'Edges mean “must finish before this can start.” DTLB lookup and VIPT indexing overlap. A walk is serial within one translation. Independent older work can overlap memory waiting, but retirement waits for both. The next mode adds finite resources.');
+    var o={level:'DRAM',walk:false,work:32,background:true}, ctl=h('div',{'class':'perf-controls'},parent);
+    select(ctl,'Data source',['L1','L2','L3','DRAM'],'DRAM',function(v){o.level=v;draw();});
+    select(ctl,'Translation',[[0,'DTLB hit'],[1,'Page walk']],0,function(v){o.walk=!!+v;draw();});
+    select(ctl,'Independent older work (cycles)',[4,32,128,512],32,function(v){o.work=+v;draw();});
+    var output=h('div',{'class':'perf-metrics','aria-live':'polite'},parent), chart=h('figure',{'class':'perf-chart perf-dag'},parent);
+    var svg=s('svg',{role:'img','aria-label':'Dependency graph on a cycle axis'},chart);var desc=text('figcaption',chart,'');var detail=h('div',null,parent);
+    function draw(){
+      var r=LabModel.criticalPath(App.CFG,o);svg.replaceChildren();output.replaceChildren();detail.replaceChildren();
+      metric(output,'Histogram value ready',r.valueAt.toFixed(0)+' cycles','Dependent consumer can use the result');
+      metric(output,'Retirement',r.end.toFixed(0)+' cycles','Also waits for independent older work');
+      metric(output,'Store reaches L1',r.commitAt.toFixed(0)+' cycles','Assumes exclusive ownership; after retirement');
+      var height=56+r.nodes.length*34;svg.setAttribute('viewBox','0 0 960 '+height);
+      var max=Math.max.apply(null,r.nodes.map(function(n){return n.end;})), scale=635/max, rows={};
+      r.nodes.forEach(function(n,i){rows[n.id]=i;});
+      r.nodes.forEach(function(n,i){n.deps.forEach(function(d){var a=r.by[d],x=260+a.end*scale,y=38+rows[d]*34,xx=260+n.start*scale,yy=38+i*34;s('path',{d:'M'+x+' '+y+' L'+(x+4)+' '+y+' L'+(x+4)+' '+yy+' L'+xx+' '+yy,'class':'dag-edge'},svg);});});
+      r.nodes.forEach(function(n,i){var y=26+i*34, critical=r.critical.indexOf(n.id)>=0;s('text',{x:8,y:y+16,'class':'s'},svg,n.label);s('rect',{x:260+n.start*scale,y:y,width:Math.max(2,n.duration*scale),height:23,rx:3,'class':critical?'actb':'a4b'},svg);s('text',{x:950,y:y+16,'text-anchor':'end','class':'s'},svg,n.start.toFixed(0)+'–'+n.end.toFixed(0));});
+      desc.textContent='Amber: longest dependency path to retirement. Blue: overlapping work. Labels show start–end cycles. The unrelated writeback is not required by this instruction and is not charged to its dependency path; it would compete for resources in a contention model.';
+      table(detail,['Node','Depends on','Start → end cycles'],r.nodes.map(function(n){return [n.label,n.deps.map(function(k){return r.by[k].label;}).join(', ')||'entry',n.start.toFixed(0)+' → '+n.end.toFixed(0)];}));
+      text('p',detail,'Cache latencies are the configured representative unloaded load-to-use inputs, not per-hop delays to sum. One lookup cycle is represented by the overlapping DTLB/index nodes; the remaining selected latency follows them. The walk assumes two walk-cache hits plus two L2 reads. The graph omits port contention, branch recovery, memory ordering and exact Zen+ pipeline stages.');
+    }draw();App.onCfg(draw);
+  }
+  function measurement(parent){
+    badge(parent,'Real experiment · run on Linux, outside the browser');
+    text('p',parent,'Start with a hypothesis: doubling independent chains should raise throughput until a resource saturates. Keep total working-set size fixed, randomize pointer order, and compare 1 / 2 / 4 / 8 / 16 chains. A single chain probes dependency-limited behavior; many chains probe overlap. A sequential read/write sweep measures useful-byte throughput with different prefetch and write-allocation behavior.');
+    code(parent,'python3 benchmarks/run.py --cpu 2 --output results.json\n# Quick harness check, not a cache characterization:\npython3 benchmarks/run.py --quick --output smoke.json');
+    text('p',parent,'Choose an allowed logical CPU. The runner pins before allocation/first touch, warms each working set, compiles native code with optimization, retains a checksum and records every repetition plus context. Inspect generated assembly before drawing microarchitectural conclusions. The working set is total bytes across all chains, not bytes per chain.');link(parent,'bench');
+    table(parent,['Control','Record / hold constant'],[
+      ['CPU placement','Affinity and SMT sibling activity; other cores can compete for shared resources. Pinning alone does not isolate a CPU.'],
+      ['Clock and thermal state','Governor, boost policy, temperature/background load. Invariant TSC ticks are a time base, not dynamic core cycles. Use wall ns for this harness; PMU cycles for IPC.'],
+      ['Memory placement','First touch, NUMA policy, actual page sizes, THP state, alignment, ASLR and random seed. Report warm-up; distinguish first-touch faults from warmed traversal.'],
+      ['Compiler','Version, flags, exact source/binary hash, assembly, checksums. Avoid dead-code removal and unintended vectorization in dependent chains.'],
+      ['Platform','CPU family/model/stepping, microcode, kernel, BIOS, DIMM speed/timings/channel population. Unknown metadata stays unknown.'],
+      ['Statistics','Retain raw repetitions, mean, median, variance, p95/p99 of run averages and sample count. Few repetitions cannot characterize rare per-load tails.']
+    ]);
+    text('h3',parent,'Observe the mechanism with Linux tools');
+    code(parent,'perf list\nperf stat -r 5 -e cycles,instructions,cache-references,cache-misses -- \\\n  taskset -c 2 benchmarks/memlab --mode chase --bytes 67108864 --chains 1 --steps 2000000 --repeats 1 --cpu 2\n# Only when this CPU, kernel and perf expose the required sampling support:\nperf mem record -- taskset -c 2 benchmarks/memlab --mode chase --bytes 67108864 --chains 1 --steps 2000000 --repeats 1 --cpu 2\nperf mem report\nperf c2c record -- ./your-sharing-benchmark\nperf c2c report');
+    text('p',parent,'These perf examples cover the whole process, including allocation, construction and warm-up; their counts do not share the C harness’s timed-kernel boundary. Use them to inspect the workload first, or gate counting around the same region for direct comparison. Check event availability, permission errors, multiplexing/running percentage and scope. Generic cache-misses is not automatically a precise L1/L2/L3 miss count. Do not copy raw event encodings between CPU families.');
+    table(parent,['Simulated observation','Hardware route','Limit'],[
+      ['Modeled IPC / CPI','perf stat cycles + instructions','Use matching scope and interval; architectural instruction counts differ from model loop bodies.'],
+      ['Misses / MPKI','Model-specific cache PMCs, checked against AMD PPR and perf list','Generic aliases need validation; prefetch/demand and cache-level definitions vary.'],
+      ['Load latency / data source','AMD IBS Op via supported perf mem; inspect available fields','Sampling and event weights have specific semantics; an Intel use-latency sample is not interchangeable with AMD miss latency.'],
+      ['Sharing and ownership traffic','perf c2c on a multithreaded sharing workload, if supported','HITM/peer classifications and availability depend on CPU and kernel; the single-thread chase is not a false-sharing experiment.'],
+      ['Queue pressure','Throughput/latency sweeps plus applicable stall/resource PMCs','Exact queue occupancy is often not exposed. Infer a bottleneck cautiously and test a competing explanation.'],
+      ['Line vs useful bandwidth','Memory-controller PMCs where documented; compare useful bytes/time','Do not infer physical DRAM bytes from useful traffic when caches, RFOs or prefetches intervene.']
+    ]);link(parent,'stat');text('span',parent,' · ');link(parent,'ibs');
+    text('h3',parent,'Import measurements');
+    text('p',parent,'Import the runner’s JSON to inspect real repetitions. Results remain local to this page and do not overwrite the teaching model’s latency defaults.');
+    var lab=h('label',{'class':'perf-field'},parent);text('span',lab,'Benchmark result JSON');var input=h('input',{type:'file',accept:'.json,application/json','aria-label':'Benchmark result JSON'},lab);
+    var status=text('p',parent,'No hardware result loaded.',{'role':'status'}), out=h('div',{'class':'measurement-results'},parent);
+    input.onchange=async function(){out.replaceChildren();try{
+      var file=input.files[0];if(!file)return;if(file.size>2*1024*1024)throw new Error('Choose a JSON result smaller than 2 MiB.');
+      var result=JSON.parse(await file.text());validateMeasurement(result);
+      status.textContent='Measured data · '+result.samples.length+' repetitions · '+String(result.context.cpu_model||'CPU not recorded')+(result.complete===false?' · PARTIAL RUN':'');
+      text('p',out,'CLOCK_MONOTONIC_RAW kernel time; warm-up excluded. All percentiles below are across run-average ns/operation, not individual-load tails.');
+      var groups={};result.samples.forEach(function(r){var k=[r.mode,r.bytes,r.chains].join('/');(groups[k]||(groups[k]=[])).push(r);});
+      table(out,['Mode / bytes / chains','n','Mean ns/op','Median','p95 / p99','SD','Useful GB/s'],Object.keys(groups).map(function(k){var a=groups[k],vals=a.map(function(r){return r.elapsed_ns/r.operations;}),mean=LabModel.mean(vals),sd=Math.sqrt(LabModel.mean(vals.map(function(v){return (v-mean)*(v-mean);})));return [k,a.length,mean.toFixed(3),LabModel.quantile(vals,.5).toFixed(3),LabModel.quantile(vals,.95).toFixed(3)+' / '+LabModel.quantile(vals,.99).toFixed(3),sd.toFixed(3),LabModel.mean(a.map(function(r){return r.useful_bytes/r.elapsed_ns;})).toFixed(3)];}));
+      var raw=h('details',{'class':'perf-details'},out);text('summary',raw,'Inspect recorded context and raw repetitions');code(raw,JSON.stringify(result,null,2));
+    }catch(e){status.textContent='Could not import: '+e.message;}};
+  }
+  function validateMeasurement(r){
+    if(!r||r.schema!=='memory-lab-v1'||!r.context||typeof r.context!=='object'||Array.isArray(r.context)||!Array.isArray(r.samples)||!r.samples.length||r.samples.length>5000)throw new Error('Expected memory-lab-v1 with context and 1–5000 samples.');
+    r.samples.forEach(function(x){if(!x||['chase','read','write'].indexOf(x.mode)<0||![x.elapsed_ns,x.operations,x.useful_bytes,x.bytes,x.chains].every(function(v){return Number.isSafeInteger(v)&&v>0;})||[1,2,4,8,16].indexOf(x.chains)<0||x.bytes%64||x.useful_bytes!==x.operations*8||(x.mode!=='chase'&&x.chains!==1))throw new Error('Invalid mode, size, chains, duration, byte or operation count.');});
+    return r;
+  }
+  App.Performance={streamLab:streamLab,criticalLab:criticalLab,validateMeasurement:validateMeasurement,evidence:evidence};
+  [
+    ['bandwidth','bandwidth','Bytes transferred per unit time. State the boundary: useful payload, cache-line traffic and DRAM-bus traffic need not be equal.'],
+    ['throughput','throughput','Completed operations per unit time. Independent work can overlap without reducing the latency of each operation.'],
+    ['cpi','CPI','Core cycles divided by retired architectural instructions, using the same interval and execution scope. The reciprocal of IPC.'],
+    ['mpki','MPKI','Misses per thousand retired instructions. Specify cache level, demand versus prefetch, and instruction/data scope.'],
+    ['occupancy','queue occupancy','Number of entries currently in use. Average occupancy is the time integral of entries divided by elapsed time.'],
+    ['backpressure','backpressure','An occupied downstream resource prevents its upstream producer from advancing. It can propagate back to dispatch or fetch.'],
+    ['little','Little’s law','For a stable system with consistent boundaries: average outstanding work N = average completion rate λ × average residence time W.'],
+    ['p99','p99 latency','A 99th percentile of a stated population. This lab uses nearest rank; repeated run averages are not individual-access latency samples.']
+  ].forEach(function(t){App.gloss(t[0],t[1],t[2]);App.setCategory(t[0],'memory');App.TERM_HOME[t[0]]='perf';});
+  App.chapter({id:'perf',group:'Performance lab',short:'Measure & explain',title:'Predict, measure, explain',
+    lede:'Turn a mechanism into a testable prediction. Separate the latency of one dependent request from the throughput of many independent requests.',
+    points:['Follow finite queues from the front end to the returning cache line.','Compare synthetic observations with native Linux experiments.','Keep evidence, units and timing boundaries visible.'],
+    build:function(root){var P=App.P;
+      evidence(P.sec(root,'evidence','Read the evidence','The machine is concrete; the model’s limits are explicit.'));
+      vocabulary(P.sec(root,'vocabulary','Name the quantity','A number is useful only when its units and boundary are clear.'));
+      littleLaw(P.sec(root,'predict','Predict the concurrency','Latency, throughput and bandwidth describe different aspects of the same execution.'));
+      streamLab(P.sec(root,'queues','Run a finite machine','Change one resource, observe the bottleneck, and explain the result.'));
+      measurement(P.sec(root,'measure','Measure real hardware','Use the same hypothesis on a real machine, then investigate differences.'));
+      var last=P.sec(root,'explain','Explain a surprising result','Make one controlled change before assigning a cause.');
+      text('p',last,'High miss rate can coexist with high throughput when independent misses overlap. Low useful bandwidth can coexist with a busy return link when each line provides only one pointer. More outstanding work can raise queueing latency after bandwidth saturates. When a measurement disagrees, first check boundaries, generated code, residency, placement and frequency; then test the proposed bottleneck by changing one resource or workload property.');
+      h('p',null,last,'Return to the <a href="#e2e/critical">dependency graph</a>, <a href="#hier/parallel">hierarchy walkthrough</a>, or <a href="#core/run">instruction-level core simulator</a>.');
+    }});
+})();
 
 /* ======================= atlas: every plate on one page ======================= */
 App.chapter({id: 'atlas', ref: true, group: 'Reference', short: 'Atlas', title: 'Hardware atlas',
