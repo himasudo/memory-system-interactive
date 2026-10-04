@@ -84,13 +84,13 @@ build: function(root){
     'Diagrams mark the active part in amber. Click a block to see what it is.',
     'Step panels walk through a process one step at a time. The \u2190 and \u2192 keys also work.',
     'Each chapter is one long page. The section name in the top bar opens a list of its sections.',
-    'Timings come from the latency settings: published figures that you can replace with your own measurements.'
+    'Timings come from the latency settings: representative unloaded inputs that you can replace with measurements made under recorded conditions.'
   ])]);
 
-  var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One real processor, and published figures.');
+  var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One reference processor, with explicit evidence and model boundaries.');
   P.row(d, [
-    'Sizes and addresses come from one real processor, an AMD Ryzen 7 3750H: four Zen+ cores with two threads each, a 32 KB L1 data cache and a 512 KB L2 per core, a 4 MB L3 shared by all four cores, and two DDR4 memory channels.',
-    'Other x86-64 processors are built from the same kinds of structures with different sizes. Where AMD does not publish a detail, the page says so and uses a labeled model instead.'
+    'The reference machine is an AMD Ryzen 7 3750H: four Zen+ cores with two threads each, a 32 KB L1 data cache and a 512 KB L2 per core, a 4 MB L3 shared by all four cores, and two DDR4 memory channels. The addresses and page mappings are consistent synthetic teaching examples, not a capture from this machine.',
+    'Other processors use related mechanisms with implementation-specific details. Distinguish vendor documentation, measured or reverse-engineered evidence, inference, teaching approximations and unknowns. The <a href="#perf/evidence">performance lab</a> defines those labels and provides <a href="#perf/measure">runnable measurements</a>.'
   ], {h: 120, cap: 'Capacity per level on the Ryzen 7 3750H. Each level is larger and slower than the one before it.', draw: function(sv){
     var L = [['core', '', 50], ['L1d', '32 KB', 70], ['L2', '512 KB', 80], ['L3', '4 MB', 92], ['DRAM', 'GBs', 102]], x = 10;
     L.forEach(function(l, i){
@@ -216,7 +216,7 @@ build: function(root){
 /* ======================= 03 instructions and registers ======================= */
 App.chapter({id: 'instr', group: 'Foundations', short: 'Instructions', title: 'Instructions and registers',
 lede: 'What the CPU actually runs: a list of simple instructions that work on a few registers.',
-points: ['Registers are a small set of named slots inside the core.', 'Loads and stores are the only way data moves between registers and memory.', 'Instructions are stored in memory as bytes, like data.'],
+points: ['Registers are a small set of named slots inside the core.', 'Load and store operations move data; x86 instructions can combine memory access with arithmetic or implicit operands.', 'Instructions are stored in memory as bytes, like data.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
   var a = P.sec(root, 'isa', 'Instructions', 'The operations the hardware promises to perform.');
@@ -245,9 +245,9 @@ build: function(root){
     A(sv, 'M288 98 H222'); T(sv, 253, 114, 'load', 's', 'middle');
   }});
 
-  var c = P.sec(root, 'loadstore', 'Loads and stores', 'The only way data moves between memory and registers.');
+  var c = P.sec(root, 'loadstore', 'Loads and stores', 'Memory operations can be explicit or part of a larger x86 instruction.');
   P.row(c, [
-    'A ' + g('load') + ' copies bytes from memory into a register. A ' + g('store') + ' copies a register into memory. They are the only way data moves between the two.',
+    'A ' + g('load') + ' reads memory; a ' + g('store') + ' writes memory. x86 permits memory operands on arithmetic instructions and implicit memory accesses in stack and string instructions. The core can decompose those instructions into load, compute and store operations using internal registers; software need not name a separate load or store instruction.',
     'In the loop, <code>movzbl (%rdi),%eax</code> is a load: it reads the byte at the address in rdi into eax.',
     '<code>addq $0x1,(%rdx,%rax,8)</code> does both: it loads <code>hist[k]</code>, adds 1 inside the core, and stores the result back to the same address.'
   ], {h: 140, cap: 'movzbl loads one byte; addq loads, adds and stores.', draw: function(sv){

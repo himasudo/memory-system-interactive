@@ -220,7 +220,7 @@ build: function(root){
     on('lsu', sn.stages.AG.length || sn.stages.D1.length || sn.stages.D2.length || sn.stages.SD.length || sn.ev.some(function(e){ return /commits/.test(e); }));
     fill(B.l2.c, sn.mab.map(function(m){ return {t: m.lvl, c: 'miss'}; })); on('l2', sn.mab.length);
     /* events */
-    evTitle.innerHTML = 'Cycle ' + cur + (sn.stall ? ' <span class="tag bad">rename stalled: ' + sn.stall + '</span>' : '') + ' <span class="tag pub">retired ' + sn.retired + ' \u00b7 IPC so far ' + (sn.retired / (cur + 1)).toFixed(2) + '</span>';
+    evTitle.innerHTML = 'Cycle ' + cur + (sn.stall ? ' <span class="tag bad">rename stalled: ' + sn.stall + '</span>' : '') + ' <span class="tag pub">retired groups ' + sn.retired + ' \u00b7 groups/cycle ' + (sn.retired / (cur + 1)).toFixed(2) + '</span><span class="note"> cmp + branch is one tracked group here; this is not architectural IPC.</span>';
     evList.innerHTML = sn.ev.length ? sn.ev.map(function(e){ return '<li>' + e + '</li>'; }).join('') : '<li class="note">Nothing changes state this cycle' + (sn.mab.length ? ': every remaining \u00b5op is waiting on the outstanding miss.' : '.') + '</li>';
     /* front end panel */
     pFE.innerHTML = '<dl class="kv"><dt>BTB</dt><dd>jne at \u2026519f \u2192 \u20265190, predicted taken</dd><dt>next fetch</dt><dd>' + (sn.nextPC || 'none (ret fetched)') + '</dd></dl>' +

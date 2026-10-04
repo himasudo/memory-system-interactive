@@ -126,7 +126,7 @@ build: function(root){
       s('rect', {x: 80, y: y, width: w, height: 32, rx: 4, 'class': ['a4b', 'a2b', 'a3b', 'a1b'][i]}, lsv);
       s('text', {x: 88 + w, y: y + 21, 'class': 'm', 'font-size': 12}, lsv, r[1] + ' cycles \u00b7 ' + (r[1] / CFG.ghz).toFixed(1) + ' ns \u00b7 ' + (r[1] / CFG.l1).toFixed(0) + '\u00d7 L1');
     });
-    cap.innerHTML = 'Values come from the latency settings: published Zen/Zen+ figures unless you entered your own. A pointer-chase, working-set-size sweep measures these four plateaus directly on real hardware.';
+    cap.innerHTML = 'Representative unloaded inputs from the latency settings, informed by external measurements and estimates. These are not vendor guarantees or a measured 3750H calibration. A pointer-chase working-set sweep can reveal transitions, but translation, placement and prefetching also affect the result. <a href="#perf/measure">Run and interpret the measurement</a>.';
   }
   ladder();
 
