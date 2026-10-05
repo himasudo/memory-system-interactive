@@ -206,6 +206,7 @@
     return r;
   }
   App.Performance={streamLab:streamLab,criticalLab:criticalLab,validateMeasurement:validateMeasurement,evidence:evidence};
+  App.LabUI={text:text,table:table,select:select,metric:metric,badge:badge,code:code,checkpoint:checkpoint};
   [
     ['bandwidth','bandwidth','Bytes transferred per unit time. State the boundary: useful payload, cache-line traffic and DRAM-bus traffic need not be equal.'],
     ['throughput','throughput','Completed operations per unit time. Independent work can overlap without reducing the latency of each operation.'],

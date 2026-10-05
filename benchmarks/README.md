@@ -98,3 +98,72 @@ Primary references:
 Conflict, split-access, forwarding, false-sharing and atomics experiments belong
 to Phase 2; DRAM scheduling to Phase 3; page and NUMA experiments to Phase 4.
 No fabricated result file is shipped as hardware evidence.
+
+## Atomic counters and false sharing (Phase 2)
+
+```sh
+lscpu -e=CPU,CORE,SOCKET,NODE,ONLINE
+cat /sys/devices/system/cpu/cpu0/topology/thread_siblings_list
+python3 benchmarks/sharing.py --cpus 0,2 --output sharing-results.json \
+  --notes 'Record actual topology, background activity, thermals and placement here'
+```
+
+Replace `0,2` with allowed CPUs after inspecting topology. Run a pair of SMT
+siblings, a pair of different physical cores and, optionally, four physical
+cores. `--cpus 0` runs the one-thread cases only; every multi-thread run also
+includes one-thread baselines. A 3750H has four physical cores, so eight logical
+CPUs must not be treated as eight independent cache-owning physical cores.
+
+The C kernel compares one shared counter, separate counters eight bytes apart,
+and separate counters 64 bytes apart. Allocation is 64-byte aligned and the
+assumed coherence line is explicitly 64 bytes. For machines with another line
+size, this is not a valid padded-versus-packed classification. The kernel
+requires lock-free, eight-byte C11 atomic integers and checks that condition at
+runtime. `-latomic` supplies the query where required; non-lock-free results
+are rejected rather than silently benchmarking library locks.
+
+Both `atomic_fetch_add_explicit` and a weak compare-exchange retry loop use
+`memory_order_relaxed`. Each successful operation increments one counter.
+Failure counts are retained for CAS; a weak CAS can fail spuriously. These are
+atomic counter experiments, not publication or lock implementations. Inspect
+assembly (`objdump -drwC benchmarks/sharing`) to identify what the compiler
+actually emitted. C11 semantics: [WG14 N1570, §7.17](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf).
+
+Each worker pins itself, warms the atomic instruction path on a private local
+counter, and reaches a readiness barrier. The timed boundary begins immediately
+before the release barrier and ends after all joins. It excludes allocation,
+thread creation and warm-up, but **includes barrier, scheduler and join costs**.
+Use `--iterations` to make this fixed overhead small and check the result across
+larger counts. Initialization is done by the main thread under its inherited
+NUMA policy; this is recorded, not silently called worker first-touch placement.
+
+Trials are randomized across modes, operations and repetitions. Defaults:
+nine repeats and one million successful updates per thread. `--quick` gives
+10,000 updates and three repeats as a correctness smoke check, not useful
+hardware characterization. Every trial verifies pinned CPU IDs and the final
+sum, and retains time, offsets, addresses, successful updates and CAS retries.
+The output includes compiler command/hashes, CPU information, topology, kernel,
+clock boundary, available IBS PMU and supplied notes. An interrupted run is
+explicitly partial. Import its JSON in **Coherence → Atomic updates, false
+sharing and transient ownership** (`#coh/transactions`).
+
+Compare median **aggregate ns/update** and the distribution of trial averages.
+Those are not single-operation latency distributions. Runtime differences are
+evidence of performance changes, not direct counts of cache-line transfers.
+For supported machines, use `perf c2c record -e list` to inspect the available
+sampling events and consult the installed tool's help. A long single native
+case is a better profiling target than many short Python-spawned cases:
+
+```sh
+# Example workload only; choose CPU IDs for the intended placement.
+benchmarks/sharing --cpus 0,2 --threads 2 --mode packed --op add --iterations 100000000
+```
+
+Use that executable under the supported `perf c2c record` invocation, then
+`perf c2c report --stdio` to examine hot lines and offsets. The
+[upstream perf c2c documentation](https://kernel.googlesource.com/pub/scm/linux/kernel/git/frowand/linux/+/b72b5fecc1b8a2e595bd03d7d257c88ea3f9fd45/tools/perf/Documentation/perf-c2c.txt)
+and [AMD IBS documentation](https://android.googlesource.com/kernel/common/+/0e674132ddfa938cd53ba7c3706f0d83b2a91491/tools/perf/Documentation/perf-amd-ibs.txt)
+explain architecture-dependent sampling. AMD uses IBS Op on supported hardware;
+permissions, kernel support, sampling bias and data-source fields matter. Do
+not substitute Intel HITM raw events or equate sampled records with all ownership
+handoffs. The harness collects no PMU traffic counters by itself.

@@ -8,6 +8,29 @@ import unittest
 
 
 class NativeBenchmark(unittest.TestCase):
+    def test_sharing(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "sharing.json"
+            subprocess.run(["python3", "benchmarks/sharing.py", "--quick", "--output", str(out)], cwd=root, check=True, capture_output=True)
+            data = json.loads(out.read_text())
+            self.assertEqual(data["schema"], "memory-lab-sharing-v1")
+            self.assertTrue(data["complete"])
+            self.assertEqual({r["mode"] for r in data["samples"]}, {"same", "packed", "padded"})
+            self.assertEqual({r["op"] for r in data["samples"]}, {"add", "cas"})
+            for row in data["samples"]:
+                self.assertEqual(row["checksum"], row["threads"] * row["iterations"])
+                self.assertEqual(row["operations"], row["checksum"])
+                self.assertGreater(row["elapsed_ns"], 0)
+                self.assertEqual(row["observed_cpus"], data["context"]["cpus"][:row["threads"]])
+                self.assertEqual(row["stride_bytes"], {"same": 0, "packed": 8, "padded": 64}[row["mode"]])
+                if row["op"] == "add":
+                    self.assertEqual(row["cas_failures"], 0)
+            cpu = str(min(os.sched_getaffinity(0)))
+            for args in [["--mode", "bad"], ["--iterations", "0"], ["--threads", "5"], ["--op", "bad"], ["--cpus", "999999"]]:
+                r = subprocess.run([str(root / "benchmarks/sharing"), "--threads", "1", "--cpus", cpu, *args], capture_output=True)
+                self.assertEqual(r.returncode, 2)
+
     def test_runner_and_rejections(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as folder:
