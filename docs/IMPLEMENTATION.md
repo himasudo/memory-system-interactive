@@ -70,7 +70,9 @@ the current lookup, pipeline, store, coherence, prefetch or I/O simulations.
 
 ## Status
 
-Phases 1–5 are implemented. Phase 6 is pending. Validation is recorded by stage below.
+Phases 1–6 are implemented in separately reviewable stages. Validation and the
+scope of the advanced models are recorded by stage below. Target-machine and
+cross-machine measurements still require actual supplied hardware results.
 
 | Phase 1 item | Delivered |
 | --- | --- |
@@ -265,3 +267,73 @@ themes, including evidence filters, ordering witnesses, language semantics,
 inclusion/granule controls and real native-run comparison imports. No uncaught
 errors. Desktop/mobile screenshots were inspected. The new litmus section uses
 `#stores/litmus`, preserving the original `#stores/ordering` route.
+
+## Phase 6 delivery
+
+This stage is stacked on Phase 5 (`8850506`). No previous phase is re-audited or
+rewritten. `12_advanced_models.js` contains pure mechanism models;
+`29_advanced_lab.js` appends sections through the existing extension hooks.
+Original chapter IDs/numbers, steppers, source content, glossary definitions,
+latency configuration and the standalone build are retained.
+
+| Roadmap item | Delivered route / behavior |
+| --- | --- |
+| Instruction-side hierarchy | `#code/fetch`: resident executable block traces, dense/sparse branch targets, finite LRU iTLB/L1I/decoded-block caches, line/page splits, four dependent walk reads, aggregate hierarchy-serviced fills, decode bypass and serial delivery wait. |
+| Prefetch resource modeling | `#pref/resources`: bounded prediction queue, shared miss/request/service/return resources, demand-first/FIFO launch, finite cache eviction, multistream pressure and matched-demand prefetch-off comparisons. |
+| Prefetch metrics and measurement | Accuracy includes unique late use; coverage joins baseline miss IDs; timeliness, newly introduced misses, demand evictions and useful/line traffic remain separate. Distance sweep and native `prefetch.c` / `prefetch.py` with verified local result import. |
+| IOTLB / pinned / SG lifetime | `#dev/iotlb`: pin/map, translation miss, DMA quiescence, table removal, stale IOTLB state, invalidation acknowledgement, unpin/reuse and remapping. Linux DMA API scatter-gather and synchronization rules remain distinct. |
+| I/O queue / IRQ / polling | `#dev/queues`: bounded outstanding window/CQ, chosen service initiation parallelism, IOTLB reuse/churn, DMA serialization, completion moderation, CPU work, periodic polling and remote data placement. |
+| NVMe / io_uring path | `#dev/uring`: user SQE → kernel submission → buffered-hit/miss or direct path → block/NVMe SQ → DMA → hardware CQ → user CQE. Registered buffers, SQPOLL, IOPOLL and CQ polling are distinguished. Unsupported buffered/IOPOLL selection is rejected. |
+| Multisocket NUMA | `#hier/multisocket`: two explicit server nodes, serial/parallel first touch or interleave, migration without page movement, finite node initiation intervals and directional remote return links. |
+| ECC | `#dram/ecc`: exact extended Hamming(8,4), payload/parity positions, syndrome/overall checks, every bit injectable, single correction, double detection and larger-error aliasing/miscorrection. Platform/system/on-die protection boundaries remain qualified. |
+| Refresh tails | `#dram/refresh-tails`: identical offered request traces with refresh off/on through the tested Phase 3 engine; individual p50/p95/p99/max and per-request curves, without inventing a second controller. |
+| Rowhammer architecture | `#dram/disturbance`: column hits versus ACT/PRE sequences and conceptual neighbor restoration. No vulnerability threshold, proprietary physical map, predicted flip or hardware hammering code. |
+| Modern CPU/chiplet contrasts | `#map/chiplets`: AMD EPYC CCD/IOD/cache-versus-NUMA domains, Intel mesh/CHA/DDIO placement, NVIDIA Grace CPU Superchip nodes/link and the unchanged Zen+ laptop anchor. Primary vendor sources are attached to their scope. |
+
+### Model boundaries and measurement
+
+The instruction experiment serializes valid resident blocks; it is not an OoO
+front end or a proprietary branch/op-cache model. The prefetch detector uses
+chosen equal-delta rules, not an adaptive Zen+ policy. Shared-request accounting
+includes trailing speculative fills, while useful completion ends at the last
+demand. Coverage reports gross matched miss elimination and separately reports
+new misses, because inter-stream order can change.
+
+The I/O abstraction sets a service initiation interval, not a NAND-channel or
+NVMe hardware-engine layout. IOTLB lookup occurs at request admission without a
+finite IOMMU walker. Empty polling yields to runnable submission work on the
+chosen single CPU; this prevents polling from starving initial submission.
+Model application slots, controller readiness, CQ publication and observed
+completion have explicitly different boundaries. Registered user buffers do
+not promise zero-copy buffered reads or eliminate driver DMA mapping.
+
+The native software-prefetch runner preserves matched work, pinning/first touch,
+plain warm-up, randomized case order, compiler/kernel/topology, source/binary
+hashes and checksums. Odd strides traverse every line of a power-of-two ring;
+hints always stay inside the allocation. Import independently checks load/byte
+counts, CPU placement and the closed-form expected checksum. Trial-average
+percentiles are not individual-load tails or detector accuracy. Hardware
+prefetchers remain enabled; emitted assembly and loop overhead are confounds.
+
+`benchmarks/advanced/README.md` supplies instruction, IOMMU, multisocket and
+read-only regular-file io_uring/fio protocols. No NVMe/fio or reference-machine
+dataset is present, so no such hardware result is asserted. Reliability
+observations use existing reporting, not hardware fault injection. Modern
+comparison tables contain documented distinctions and experiments, never
+fabricated performance rankings.
+
+### Validation
+
+72 model/regression tests and five native harness checks pass. New invariants
+cover request/byte conservation, shared queue bounds, launch/return spacing,
+completed demand identity, prefetch pollution, DMA lifetime, CQ backpressure,
+CPU-work accounting, directional NUMA link serialization, page placement after
+migration and all single/double ECC errors across every payload. Larger ECC
+errors have explicit counterexamples. Refresh comparisons retain identical
+offered requests. Rendered validation: 253 checks pass in Chromium 138 (182 existing regressions
+plus 71 advanced checks), covering 1440/768/390px in both themes, all new
+controls, replay, native import/rejection, deep links and viewport bounds. No
+uncaught browser errors. Desktop/mobile screenshots were inspected. Initial
+boolean selector values and the test pointer’s sidebar hover were corrected;
+the final full regression run is green. The generated standalone HTML matches
+the source build.

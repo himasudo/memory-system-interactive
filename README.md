@@ -1,6 +1,6 @@
 # Memory System — Interactive Visualizations
 
-> A hardware-level interactive visualizer for tracing a memory access through the CPU and memory hierarchy.
+> An interactive architecture atlas, finite-resource simulator and native performance lab, anchored on a real Zen+ reference machine.
 
 ---
 
@@ -34,16 +34,16 @@ Chapters are numbered from their order in the build: `00` Start here, `01`–`08
 | `07` | **Virtual memory** | Processes, pages, 4-level page tables, the TLB and page faults |
 | `08` | **Cores, sharing and devices** | Private caches, coherence, store visibility, MMIO, DMA and interrupts |
 | `09` | **The Machine** | Whole-system map: cores, caches, fabric, memory controllers, DRAM, I/O, devices |
-| `10` | **C → Instructions → µops** | Source, assembly, instruction bytes, decode fields |
+| `10` | **C → Instructions → µops** | Source, assembly, decode fields, instruction-fetch footprint and starvation |
 | `11` | **Inside the Core** | OoO execution, register renaming, scheduling, ROB, LSU, forwarding, misprediction |
 | `12` | **Virtual → Physical** | TLBs, page walks, page faults, large pages, PCIDs |
 | `13` | **L1d Lookup** | Sets, ways, tags, data arrays, comparators, pLRU, dirty writeback, conflict misses |
 | `14` | **Down the Hierarchy** | L2, L3, fabric, peer-core lookup, memory controller, DRAM path, MLP |
-| `15` | **DRAM** | Address-to-bank/row/column mapping, row buffer, ACT/RD/PRE/REF, timing parameters, refresh |
+| `15` | **DRAM** | Banks, commands, controller scheduling, refresh tails, ECC and architectural disturbance |
 | `16` | **Stores & Memory Types** | Store queue, senior stores, ownership requests, RFO vs. non-temporal stores, memory types |
 | `17` | **Coherence (MOESI)** | Per-core cache states, probes, invalidations, cache-to-cache transfer, false sharing |
-| `18` | **Prefetchers** | Stream/stride detection, prefetch distance, coverage vs. lateness vs. pollution |
-| `19` | **Devices, DMA, IOMMU** | MMIO doorbells, PCIe TLPs, IOMMU translation, coherent DMA, MSI-X interrupts |
+| `18` | **Prefetchers** | Stream/stride detection, finite shared resources, accuracy/coverage/timeliness and native software hints |
+| `19` | **Devices, DMA, IOMMU** | MMIO, PCIe, IOTLB/mapping lifetime, DMA, completion queues, interrupts/polling and io_uring layers |
 | `20` | **End to End** | Single-access walkthrough, dependency graph, and finite-resource steady-state experiment |
 | `21` | **Measure & explain** | Evidence, units, Little's law, MLP/queue saturation, observability and native Linux measurements |
 | ref | **Atlas** | Every full-width plate on one page: DRAM chip, L1d arrays, page walk, Zen+ core, end-to-end timeline |
@@ -160,6 +160,7 @@ Shared drawing code and data:
 - `src/04_shared_plates.js` (`App.Plates`): the five full-width plates, plus data the chapters share with them: `App.DDR4`, `App.DRAMREQ`, `App.WALK`, `App.E2E.steps(options)`. Any `.scroller` that sets `_views` gets the standard view tabs.
 - `src/09_performance_model.js` (`LabModel`): pure finite-queue simulation and dependency DAG, shared by the performance lab and End to End. All capacities and policies are teaching assumptions.
 - `src/21_ch11a_performance.js`: learning flow, prediction controls, observability, measurement import and Linux-tool mapping.
+- `src/12_advanced_models.js` / `29_advanced_lab.js`: instruction delivery, shared prefetch resources, DMA translation lifetime, I/O completion queues, remote links and exact teaching ECC arithmetic. Refresh-tail comparisons reuse `ControllerLab`.
 
 ### Validate changes
 
@@ -255,7 +256,18 @@ and native loaded-latency trials. Phase 4 adds mapping/COW/page-cache state,
 page-size outcomes, walk contention, shootdowns, a NUMA extension and native
 fault/mapping observations. Phase 5 adds an evidence-scoped Zen+ profile,
 ordering witnesses, cache-inclusion and translation-granule contrasts, and
-controlled native-run comparison. Phase 6 remains planned work.
+controlled native-run comparison. Phase 6 adds instruction-side starvation,
+finite prefetch competition and a native software-hint sweep, IOTLB lifetimes,
+I/O queue/completion experiments and an io_uring path, two-socket resource
+contention, paired refresh tails, SECDED arithmetic, a qualitative Rowhammer
+mechanism and scoped modern topology contrasts. See
+[the advanced reproduction protocols](benchmarks/advanced/README.md).
+
+All six roadmap phases have reviewable implementations. Advanced models retain
+explicit scope: serial block delivery is not a complete CPU front end, queue
+clocks do not reproduce an NVMe device, Hamming(8,4) is not a DIMM code layout,
+and the server extension is not the reference laptop's topology. Native I/O and
+cross-machine datasets must still be supplied from appropriate hardware.
 
 Zen+ on the Ryzen 7 3750H remains the concrete reference. Addresses are synthetic;
 latency defaults are representative unloaded inputs from external measurements

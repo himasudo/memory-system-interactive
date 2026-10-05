@@ -3,6 +3,7 @@ benchmarks/memlab
 benchmarks/sharing
 benchmarks/loaded
 benchmarks/vm
+benchmarks/prefetch
 benchmarks/*-results.json
 benchmarks/results*.json
 test-results/
