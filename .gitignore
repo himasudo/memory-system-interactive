@@ -1,6 +1,7 @@
 node_modules/
 benchmarks/memlab
 benchmarks/sharing
+benchmarks/loaded
 benchmarks/*-results.json
 benchmarks/results*.json
 test-results/

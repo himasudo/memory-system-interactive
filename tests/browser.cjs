@@ -131,6 +131,25 @@ async function main(){
     await route('l1d/taxonomy');await page.locator('#crumbSec').click();await page.locator('#secMenu button').filter({hasText:'Split accesses and finite hit throughput'}).click();await page.waitForURL('**#l1d/split');
     await page.evaluate(()=>App.go('core'));await page.waitForFunction(()=>document.querySelector('.ch.show').id==='ch-core');await page.evaluate(()=>App.go('l1d'));await page.waitForFunction(()=>document.querySelector('.ch.show').id==='ch-l1d');assert.equal(await page.locator('#l1d--taxonomy').count(),1);
   });
+  await check('controller scheduling, write draining, refresh and input validation',async()=>{
+    await route('dram/controller');const lab=page.locator('#dram--controller');
+    assert.equal(await lab.evaluate(el=>el._controllerResult.requests.length),48);
+    await lab.getByRole('button',{name:'Compare both schedulers on this trace',exact:true}).click();assert.equal(await lab.locator('.controller-comparison tbody tr').count(),2);
+    await lab.getByRole('button',{name:'Sweep offered load',exact:true}).click();assert.equal(await lab.locator('.controller-comparison tbody tr').count(),7);
+    await lab.locator('[data-field="Refresh interval (0 = off)"]').selectOption('64');assert.ok(await lab.evaluate(el=>el._controllerResult.stats.refreshes>0));
+    await lab.locator('[data-field="Independent channels"]').selectOption('2');assert.equal(await lab.evaluate(el=>el._controllerResult.p.channels),2);
+    await lab.getByLabel('Controller clock',{exact:true}).fill('40');assert.match(await lab.locator('.queue-state h3').textContent(),/Clock 40/);
+    await page.screenshot({path:path.join(output,'controller-dark-desktop.png')});
+    await lab.getByText('Edit exact request arrivals and coordinates',{exact:true}).click();await lab.getByRole('button',{name:'Five-request audit example',exact:true}).click();assert.equal(await lab.evaluate(el=>el._controllerResult.requests.length),5);
+    const event=page.waitForEvent('download');await lab.getByRole('button',{name:'Export model result JSON',exact:true}).click();const file=await event;await file.saveAs(path.join(output,'controller-model.json'));assert.equal(JSON.parse(fs.readFileSync(path.join(output,'controller-model.json'))).schema,'memory-lab-controller-model-v1');
+    await lab.getByLabel('Controller request table',{exact:true}).fill('A 0 9 0 0 1 R');await lab.getByRole('button',{name:'Apply edited requests',exact:true}).click();assert.match(await lab.locator('[role=status]').first().textContent(),/Could not run/);assert.equal(await lab.getByRole('button',{name:'Export model result JSON',exact:true}).isDisabled(),true);
+  });
+  await check('loaded-latency native import and accounting rejection',async()=>{
+    const fixture=path.join(output,'loaded-smoke.json');execFileSync('python3',['benchmarks/loaded.py','--quick','--output',fixture],{cwd:root,stdio:'pipe'});
+    await route('dram/controller');const input=page.getByLabel('Loaded latency result JSON',{exact:true});await input.setInputFiles(fixture);
+    await page.waitForFunction(()=>document.querySelector('.loaded-status').textContent.startsWith('Measured data'));assert.ok(await page.locator('.loaded-results tbody tr').count()>=1);
+    const bad=JSON.parse(fs.readFileSync(fixture));bad.samples[0].elapsed_ns=-1;await input.setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await page.waitForFunction(()=>document.querySelector('.loaded-status').textContent.startsWith('Could not import'));
+  });
   await check('original L1 custom stores, reload and invalid inputs',async()=>{
     await route('l1d/lookup');const chapter=page.locator('#ch-l1d');
     await chapter.getByLabel('virtual address',{exact:true}).fill('0x7ffd4a3c5e59');await chapter.locator('.l1go').click();assert.ok(await chapter.locator('.l1err').isVisible());
@@ -166,9 +185,10 @@ async function main(){
     await page.setViewportSize({width,height:844});
     for(const theme of ['light','dark']){
       if(await page.locator('html').getAttribute('data-theme')!==theme)await page.locator('#themeToggle').click();
-      for(const id of ['start','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e/critical','e2e/steady','perf/queues','l1d/taxonomy','l1d/split','core/smt','stores/forwarding','coh/transactions','gloss'])await check(width+'px '+theme+' '+id,async()=>{
+      for(const id of ['start','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e/critical','e2e/steady','perf/queues','l1d/taxonomy','l1d/split','core/smt','stores/forwarding','coh/transactions','dram/controller','gloss'])await check(width+'px '+theme+' '+id,async()=>{
         await route(id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'document overflows viewport');
         assert.equal(await page.locator('#themeToggle').isVisible(),true);
+        if(id==='dram/controller'){await page.locator('#dram--controller .queue-state').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(output,'controller-'+theme+'-'+width+'.png')});}
         if(id==='coh/transactions')await page.screenshot({path:path.join(output,'coherence-'+theme+'-'+width+'.png')});
         if(id==='perf/queues')await page.screenshot({path:path.join(output,'queues-'+theme+'-'+width+'.png')});
       });

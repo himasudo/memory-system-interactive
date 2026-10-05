@@ -8,3 +8,7 @@
 .learning-scene .perf-actions button:disabled{opacity:.4;cursor:default}
 .sharing-results pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto}
 @media(max-width:500px){.cache-state,.coherence-state{padding:10px}.coherence-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.loaded-results pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto}
+.controller-timeline svg{min-width:900px}
+#l1d--split .perf-chart svg{min-width:840px}
+#core--smt .perf-chart svg{min-width:820px}

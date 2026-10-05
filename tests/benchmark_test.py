@@ -8,6 +8,30 @@ import unittest
 
 
 class NativeBenchmark(unittest.TestCase):
+    def test_loaded_latency(self):
+        root = Path(__file__).resolve().parents[1]
+        cpus = sorted(os.sched_getaffinity(0))[:3]
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "loaded.json"
+            subprocess.run(["python3", "benchmarks/loaded.py", "--quick", "--cpus", ",".join(map(str, cpus)), "--output", str(out)], cwd=root, check=True, capture_output=True)
+            data = json.loads(out.read_text())
+            self.assertEqual(data["schema"], "memory-lab-loaded-v1")
+            self.assertTrue(data["complete"])
+            self.assertEqual(len(data["samples"]), (1 + 2 * (len(cpus) - 1)) * 3)
+            self.assertEqual({r["background_threads"] for r in data["samples"]}, set(range(len(cpus))))
+            for row in data["samples"]:
+                self.assertGreater(row["elapsed_ns"], 0)
+                self.assertEqual(row["chase_cpu"], cpus[0])
+                self.assertEqual(len(row["generators"]), row["background_threads"])
+                self.assertGreater(int(row["checksum"]), 0)
+                for i, g in enumerate(row["generators"]):
+                    self.assertEqual(g["cpu"], cpus[i+1])
+                    self.assertGreaterEqual(g["chunks_before"], row["bytes_per_worker"] // 65536)
+                    self.assertEqual(g["useful_bytes"], (g["chunks_after"] - g["chunks_before"]) * 65536)
+            for args in [["--bytes", "65537"], ["--steps", "0"], ["--mode", "bad"], ["--cpus", f"{cpus[0]},{cpus[0]}"]]:
+                r = subprocess.run([str(root / "benchmarks/loaded"), "--cpus", str(cpus[0]), *args], capture_output=True)
+                self.assertEqual(r.returncode, 2)
+
     def test_sharing(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as folder:
