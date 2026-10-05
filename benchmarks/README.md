@@ -167,3 +167,52 @@ explain architecture-dependent sampling. AMD uses IBS Op on supported hardware;
 permissions, kernel support, sampling bias and data-source fields matter. Do
 not substitute Intel HITM raw events or equate sampled records with all ownership
 handoffs. The harness collects no PMU traffic counters by itself.
+
+## Loaded latency (Phase 3)
+
+```sh
+lscpu -e=CPU,CORE,SOCKET,NODE,ONLINE
+python3 benchmarks/loaded.py --cpus 0,2,4,6 --output loaded-results.json \
+  --notes 'Record topology, memory population, frequency/thermal state and load'
+```
+
+Choose **actual** physical-core IDs; the sample numbers do not prescribe the
+3750H's logical CPU enumeration. The first CPU runs a randomized dependent ring;
+subsequent CPUs run independent streaming read or temporal-write generators.
+The runner includes a zero-generator baseline and sweeps up to the supplied
+number of generators, with randomized case order and repeated trials. Use SMT
+siblings only for an explicitly separate interference comparison.
+
+Every worker pins before allocating and first-touching its data. The pointer
+ring uses 64-byte nodes, validates exactly-once coverage and closure, and checks
+the final pointer against the expected position. It is warmed before timing.
+Each generator fills and repeatedly accesses its own array; the chase starts
+only after every generator has completed a full pass. Default working set is
+64 MiB **per worker**; adjust `--bytes` after a working-set sweep. Small sizes
+measure cache effects. There is no claim that a fixed size is always DRAM-bound.
+
+The clock covers the dependent kernel only. Background progress is published
+once per 64 KiB chunk, on separate aligned worker records, and sampled around
+the chase. Useful background bytes divided by chase time give an **approximate
+concurrent rate**, with chunk-boundary and snapshot-time error. These are neither
+DRAM bus bytes nor exact per-cycle bandwidth samples. The progress publications
+and stop polling are part of the generator implementation; inspect assembly
+and increase trial duration to check their effect. Temporal writes may generate
+ownership reads and dirty evictions beyond the useful bytes counted here.
+
+`--steps`, `--repeats`, `--bytes` and `--seed` control the run. The defaults are
+2,000,000 dependent loads, nine repetitions and a deterministic randomized ring.
+`--quick` uses 64 KiB and 50,000 loads for executable/JSON validation only. Size
+must be a multiple of 64 KiB, 64 KiB–256 MiB, with at most eight distinct CPUs;
+account for the total per-worker allocation. The JSON retains topology,
+compiler command/hashes, CPU/kernel, frequency controls, THP policy and notes.
+Actual mapping page size and microarchitecture attribution remain unknown.
+
+Import `memory-lab-loaded-v1` results in `#dram/controller`. Report the median
+chase ns/load alongside generator useful GB/s and raw trial distributions. A
+p95 across trials is a percentile of run averages, not an individual-load tail.
+Repeat long enough to expose drift and record thermals/background activity.
+Shared caches, fabric, execution resources (for SMT), page walks and the memory
+controller can all contribute to a slowdown. Controller queue occupancy, row
+hits and refresh attribution need applicable PMU/sampling evidence; timing
+alone cannot establish them.

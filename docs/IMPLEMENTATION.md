@@ -70,7 +70,7 @@ the current lookup, pipeline, store, coherence, prefetch or I/O simulations.
 
 ## Status
 
-Phases 1 and 2 are implemented and locally validated. Phases 3–6 are pending.
+Phases 1–3 are implemented. Phases 4–6 are pending. Phase 3 validation is recorded below.
 
 | Phase 1 item | Delivered |
 | --- | --- |
@@ -143,3 +143,44 @@ with recorded topology/conditions and PMU support. No local smoke timing is
 claimed as Zen+ evidence. Cache inclusion/vendor topology comparisons belong to
 Phase 5; read/write bus scheduling belongs to Phase 3. All added exact queue,
 bank, forwarding-policy and coherence-timing choices are labeled teaching rules.
+
+## Phase 3 delivery
+
+`12_controller_model.js` schedules actual commands from request arrivals;
+`26_controller_lab.js` appends `#dram/controller` to the original DDR4 chapter.
+The original device plate/stepper and its speed-bin example are preserved.
+The new model uses deliberately small model-clock timings, supplied bank/rank/
+channel coordinates, and no claimed Zen+ address mapping or scheduler.
+
+| Roadmap item | Delivered behavior |
+| --- | --- |
+| Controller queues | Separate bounded read/write admission with explicit upstream waiting; editable request table and generated workloads. |
+| FCFS / FR-FCFS-style | Oldest-request head-of-line blocking versus ready-command/row-hit preference; identical-trace comparison, per-request bypass counts and optional age override. |
+| Write draining | High/low watermark selection, drain mode, old-read override at mode boundaries; started requests finish before switching modes. |
+| Bus turnaround | Read/write direction gaps, same-rank write-to-read timing and rank-switch gaps; one non-overlapping data bus per channel. |
+| Parallelism | Independent bank activation subject to rank timing, shared rank bus and independent channels; command/data timeline and per-bank state. |
+| Additional timing | RCD, RP, RAS, RC, RRD, CCD, RTP, WR, WTR, four-activate windows and stated simplified turnaround rules. Scope explicitly excludes a complete JEDEC validator. |
+| Refresh / tails | Rank quiescence, precharge, data drain, REF busy interval and staggered simplified deadlines; individual-request mean/quantiles/max. |
+| Loaded latency | Offered-load sweep, admission/queue/command-interval decomposition and request detail; no mislabeled pure service time. |
+| Native observability | `loaded.c` / `loaded.py`: validated dependent ring with concurrent pinned read/write generators, random repeated cases, context/hashes and safe import. Background useful bandwidth is chunk-quantized and not DRAM bus bytes. |
+
+The native timer excludes setup and generator ramp-up. Generators publish
+progress in 64 KiB chunks; the measurement UI names that approximation and
+retains raw trials. No hardware output is bundled or labeled as a 3750H result.
+Reference-machine characterization remains an external hardware gate.
+
+Model validation: 38 total tests, including 14 controller tests independently
+reconstructing timing constraints from the command log, queue bounds, byte
+conservation, non-overlapping transfers, refresh exclusion, multi-channel
+concurrency and scheduler/age counterexamples. Three native harness tests
+compile with warnings as errors, execute every mode and reject invalid inputs.
+Phase 2 remote CI is green at `5b8426a`.
+
+Rendered validation: 130 checks pass in Chromium 138 at 1440/768/390px, both
+themes, with the original chapters and controls retained. No uncaught errors.
+Command timelines, JSON export/import and mobile rendering were inspected.
+A targeted follow-up verified invalid-trace recovery and disabled stale-result
+export; timeline SVGs now retain readable scale inside horizontal scrollers.
+
+Next stage: Phase 4 mappings/PTEs/backing pages, then fault/COW/page-cache
+transitions, page sizes/walk contention, shootdowns and the NUMA extension.
