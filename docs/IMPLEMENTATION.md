@@ -337,3 +337,44 @@ uncaught browser errors. Desktop/mobile screenshots were inspected. Initial
 boolean selector values and the test pointer’s sidebar hover were corrected;
 the final full regression run is green. The generated standalone HTML matches
 the source build.
+
+## Post-audit measurement integration
+
+The six audit phases remain complete. This improvement changes the native
+measurement workflow and dataset integration, without introducing another phase.
+
+`python3 benchmarks/run_all.py` selects Linux-affinity-safe physical/SMT
+placements, runs all five safe native suites, retains original raw outputs and
+writes a normalized provenance-preserving bundle. The existing individual
+runners remain. Compiler metadata for sharing/loaded/VM now identifies the
+selected CPU rather than assuming the first `/proc/cpuinfo` entry is relevant.
+Memory pressure and missing topology/tools have recorded fallbacks; failed
+native runs retain partial evidence and do not prevent the remaining suites.
+
+Optional perf stat uses only documented generic user cycles/instructions and
+software task-clock, in separate bounded workload-lifetime executions. Exact
+scope, stderr, availability and running percentages remain attached. There is
+no kernel-time normalization or IPC/MPKI/cache/queue attribution from these
+counts. IBS PMU detection is recorded independently of permission and validated
+sampling semantics; unvalidated sampling and raw PMCs are skipped explicitly.
+
+`--serve` opens a loopback read-only lab and automatically populates memory,
+sharing, loaded-latency, VM and prefetch sections from the new bundle. Public
+loading uses the optional committed target bundle. Session-local visitor import
+reads one file without network requests/writes, persistence or reference changes.
+Matching comparisons gate source/flags, work, timing and topology relationships;
+missing/differing VM mapping outcomes produce no automatic ratio. Manual imports,
+including the two-run fallback, remain and refuse mismatched timing boundaries.
+
+Validation: 83 JavaScript model/bundle/regression tests, five original native
+harness checks and 14 topology/capability/full-workflow tests pass. Rendered
+validation passes 283 checks in Chromium 138: all 253 existing checks plus 30
+workflow/privacy checks, at 1440/768/390px in both themes. Tests cover public
+reference presence/absence/rejection, visitor isolation and no network writes,
+all five automatically populated chapters, partial bundles, manual fallbacks,
+read-only server endpoints and delayed-load scroll stability. Screenshots were
+inspected. The full default native workflow completed 1,251 real trials on the
+identified Xeon development host with quick mode off; those ignored results are
+not shipped as Ryzen data. Perf/IBS were unavailable on that host; detection,
+denied/unsupported counts and scope handling have deterministic tests. No target
+3750H dataset is invented; curation is documented in `data/reference/README.md`.

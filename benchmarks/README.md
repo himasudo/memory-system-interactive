@@ -1,4 +1,113 @@
-# Native performance experiments — Phase 1
+# Native measurement workflow
+
+The primary workflow on Linux is:
+
+```sh
+python3 benchmarks/run_all.py
+# Run, open the local lab and load every chapter automatically:
+python3 benchmarks/run_all.py --serve
+```
+
+Python 3 and a GCC-compatible C compiler are required. No extra Python packages,
+root permissions or remembered CPU IDs are needed. Run from the repository root.
+The command reads `/proc/cpuinfo`, kernel information, sysfs core/package/die/NUMA
+IDs and reciprocal SMT sibling lists, intersected with the process affinity and
+online CPU sets. It runs memory/MLP, atomic sharing, loaded latency, VM/COW and
+software-prefetch experiments sequentially. Sharing uses a physical-core pair
+and a separate SMT pair when available; loaded latency uses up to four confirmed
+physical cores. CPU numbers are never assumed to be alternating physical cores.
+
+Missing topology or restricted affinity falls back to a single-CPU baseline,
+with reasons for omitted placements. `--cpu N` prefers an anchor; `--cpus 2-5,8`
+restricts candidates. Bundle seeds are restricted to 1–2^53−1 for exact browser
+representation; individual runners retain their uint64 interfaces. Unavailable requested IDs produce an explicit fallback,
+not a guessed placement. Pinning does not isolate SMT siblings or background
+load, and it does not change NUMA policy, governors, boost, ASLR or THP.
+
+```text
+results/
+  raw/
+    memory.json
+    sharing.json
+    sharing-physical_cores-0.json  # original placement output, when two runs exist
+    sharing-smt_siblings-1.json    # original placement output, when available
+    loaded.json
+    vm.json
+    prefetch.json
+    *-attempts.json               # commands, exit status and diagnostics
+  reference-machine.json
+```
+
+The aggregate is a portable `memory-lab-bundle-v1` document. It retains each
+untouched native run and its exact context, alongside selected placements,
+raw-file SHA-256 hashes, source/binary/runner hashes, compiler commands and flags,
+machine/kernel/topology, capability availability, raw repetitions and derived
+statistics. A canonical `sharing.json` combines placement trials without losing
+their `placement_id` or original contexts; original placement files also remain.
+Skipped suites have no invented samples. Native errors retain diagnostics and
+partial trials, the remaining suites still run, and the command returns nonzero
+for failed/partial suites. Completed runs overwrite their generated outputs;
+the aggregate only references the current run's files. Interrupted runs retain
+the last aggregate checkpoint and any per-suite checkpoint.
+
+If a detected cache line differs from the sharing harness's assumed 64-byte
+spacing, that suite is skipped with a reason. Unknown line size remains an
+explicit assumption in raw context and topology, not a measured line-size claim.
+
+The output filename does not assert a particular CPU. The UI uses recorded
+model/vendor/family/model provenance, and never calls a generic host 3750H data.
+Hashes support reproducibility; this is self-reported measurement provenance,
+not remote hardware attestation. See [the bundle contract](../docs/MEASUREMENT_BUNDLES.md).
+
+### Local lab and visitors
+
+`--serve` builds the standalone page, starts a loopback-only read-only server,
+prints/opens the lab URL and supplies the new bundle through a fixed GET endpoint.
+Every relevant chapter loads it automatically. Ctrl+C stops the server. Use
+`--port 0` to choose a free port or `--no-browser` on a headless machine. If port
+8000 is busy, the default server chooses a free port. No upload or write endpoints
+exist. `--results PATH` changes the output folder without requiring a public copy.
+
+On GitHub Pages, a committed `data/reference/ryzen7-3750h.json` is read
+automatically. Producing a bundle never copies or commits it to this public path;
+curation is an intentional maintainer action on actual target-machine data.
+**Results** accepts one visitor bundle for session-local comparison. Importing
+uses `File.text()` locally, makes no network requests, does not persist the bundle
+and cannot write to GitHub, replace the public reference or affect another visitor.
+Every old per-suite file input and the two-memory-run comparison remain available.
+
+### Optional evidence and conservative fallbacks
+
+The workflow detects `perf`, its version and permission policy, and sysfs
+`ibs_op` / `ibs_fetch` PMUs with exposed type/format/capability fields. When perf
+works, it attempts separate bounded representative memory executions for the
+documented generic `cycles:u`, `instructions:u` and software `task-clock` events.
+It keeps exact commands, workload output, raw stderr, counter runtime and running
+percentage. Events returning errors, unsupported/uncounted values, or output it
+cannot parse are skipped with reasons. `--no-perf` explicitly disables collection.
+
+These counts cover the native **process lifetime**, including pinning, allocation,
+validation, warm-up and teardown, in separate executions. They are never divided
+by a kernel-only elapsed time, never combined into cross-execution IPC/MPKI, and
+never presented as cache-level, DRAM-traffic or queue evidence. Generic symbols
+are not invented raw PMCs. Perf's scaling/multiplexing percentage is retained.
+
+Automatic IBS sampling is deliberately skipped even when a PMU is detected:
+permission/filtering and model/kernel-specific fields are not established by
+sysfs presence. No generic `perf mem` latency is substituted for a verified Zen+
+IBS measurement. Cache/ownership/controller PMCs, storage experiments, cache
+dropping, disturbance and privileged configuration protocols remain explicit
+manual investigations with their existing documentation. No policy is loosened
+to make perf work. See the [upstream perf tutorial](https://perfwiki.github.io/main/tutorial/)
+and the primary references below.
+
+`--quick` runs small correctness trials, never hardware characterization. With
+less than 512 MiB remaining host/cgroup memory the workflow records a quick-mode
+fallback; with less than 128 MiB it skips native compilation/execution. Per-suite
+timeouts terminate both the runner and its native process group, retain partial
+evidence and continue. Extra BIOS/DIMM/load notes can be supplied using `--notes`.
+
+## Individual memory runner (preserved)
 
 These Linux experiments accompany **Measure & explain** (`#perf/measure`). They
 are native C workloads, not browser timing benchmarks and not a calibrated Zen+
@@ -51,7 +160,8 @@ benchmarks/memlab --mode chase --bytes 67108864 --chains 4 \
 
 ## Observe and explain
 
-Import `results.json` in the app. Inspect raw ns, operations, checksum, placement,
+Normally the aggregate loads automatically with `--serve`. As a fallback,
+import `results.json` in the memory section. Inspect raw ns, operations, checksum, placement,
 compiler and hashes. Mean, median, population standard deviation and nearest-rank
 p95/p99 refer to **run-average ns/operation**. With nine repeats p95 and p99 both
 select the maximum; they do not estimate per-load tails. Repeat for longer if

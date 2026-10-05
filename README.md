@@ -90,19 +90,42 @@ git clone <repository-url>
 cd <repository-directory>
 ```
 
-Run a simple local server:
+Measure the local Linux machine with one command:
 
 ```bash
-python3 -m http.server 8000
+python3 benchmarks/run_all.py
 ```
 
-Then open:
+To measure, open the local lab and load every suite automatically:
 
-```text
-http://localhost:8000/
+```bash
+python3 benchmarks/run_all.py --serve
 ```
 
-Using a local HTTP server is preferable to opening the page directly through `file://`.
+Requires Python 3 and a GCC-compatible C compiler. The runner selects permitted
+physical cores and SMT siblings from Linux topology, preserves raw suite files in
+`results/raw/`, and writes `results/reference-machine.json`. Optional perf evidence
+is collected only when usable; permissions and unsupported capabilities have
+recorded skip reasons. The local server prints its URL and opens a browser; use
+`--no-browser` for a headless session and Ctrl+C to stop it. `--quick` checks the
+harness rather than characterizing the machine.
+
+For browsing without running experiments, `python3 -m http.server 8000` remains
+available. Opening through HTTP is preferable to `file://`.
+
+### Public reference and private visitor comparison
+
+The site automatically reads `data/reference/ryzen7-3750h.json` if a curated
+bundle is committed there. Only an identified Ryzen 7 3750H bundle is accepted as
+that reference; no result from development hardware is substituted when absent.
+See [reference curation](data/reference/README.md).
+
+**Results** (`#perf/datasets`) also accepts one visitor bundle and pairs matching
+experiments against the shipped reference. File contents are read locally with
+the browser's File API, with no network request, upload, GitHub API, repository
+write or deployed-site change. Visitor data stays in the current page session;
+reload or **Clear your data** removes it. It never changes another visitor's data.
+All existing individual runners and chapter-specific manual imports remain.
 
 ---
 
@@ -116,6 +139,7 @@ Using a local HTTP server is preferable to opening the page directly through `fi
 ├── shell.html
 ├── src/                     chapter, core, glossary and CSS modules
 ├── benchmarks/              native C experiments, Python runner and protocol
+├── data/reference/          optional curated measured Ryzen bundle
 ├── tests/                   pure-model, native-harness and rendered-browser checks
 ├── docs/IMPLEMENTATION.md   roadmap mapping, dependencies and phase ledger
 ├── AUDIT.md                 agreed technical roadmap (unaltered)
@@ -179,8 +203,10 @@ themes, and saves screenshots/report data in ignored `test-results/`. Set
 workflow also checks that the generated HTML matches the sources.
 
 For real hardware experiments, start with [the measurement protocol](benchmarks/README.md).
-The browser cannot run native CPU/PMU experiments. Import runner JSON in
-`#perf/measure`; imports remain local and do not silently recalibrate the model.
+The browser cannot run native CPU/PMU experiments. `run_all.py --serve` loads its
+new bundle automatically into memory, sharing, loaded-latency, VM and prefetch
+sections. Bundle imports and individual JSON fallbacks stay local and never
+silently recalibrate the simulations.
 
 ---
 
@@ -268,6 +294,10 @@ explicit scope: serial block delivery is not a complete CPU front end, queue
 clocks do not reproduce an NVMe device, Hamming(8,4) is not a DIMM code layout,
 and the server extension is not the reference laptop's topology. Native I/O and
 cross-machine datasets must still be supplied from appropriate hardware.
+
+A post-audit usability improvement adds unified native measurement, automatic
+local/public dataset loading and browser-local visitor comparison. It does not
+introduce another audit phase or replace the six-phase simulations.
 
 Zen+ on the Ryzen 7 3750H remains the concrete reference. Addresses are synthetic;
 latency defaults are representative unloaded inputs from external measurements

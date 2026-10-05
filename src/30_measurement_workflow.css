@@ -1,0 +1,13 @@
+.dataset-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
+.dataset-card{min-width:0;padding:16px;border:1px solid var(--bd2);border-radius:12px;background:var(--panel);border-top:3px solid var(--a4)}
+.dataset-card.your-machine{border-top-color:var(--a2)}
+.dataset-card h3{margin:0 0 6px}
+.dataset-card p{overflow-wrap:anywhere}
+.dataset-card input[type=file]{max-width:100%;width:100%}
+.dataset-privacy{color:var(--a2);font-size:13px}
+.dataset-links{display:flex;gap:14px;flex-wrap:wrap}
+.dataset-links a{color:var(--a4)}
+.bundle-comparison .p-table{min-width:680px}
+.measurement-run-title{font-size:14px;overflow-wrap:anywhere;border-left:3px solid var(--a4);padding-left:10px;margin-top:20px}
+.measurement-nav{font-size:12px;text-decoration:none;color:var(--a4);white-space:nowrap}
+@media(max-width:760px){.dataset-cards{grid-template-columns:minmax(0,1fr)}.dataset-card{padding:12px}}
