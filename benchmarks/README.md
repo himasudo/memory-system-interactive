@@ -281,3 +281,26 @@ For the two-node NUMA extension, inspect `lscpu`, `numactl --hardware`,
 page placement. Record memory policy and automatic balancing. The reference
 laptop is not evidence of multisocket behavior; run that experiment on a host
 that actually exposes multiple memory nodes.
+
+## Architecture comparisons (Phase 5)
+
+`#perf/compare` accepts two `memory-lab-v1` files from the original native runner.
+It pairs exact mode/working-set/chains/steps/operation-count/seed cases and shows
+per-operation median times, trial counts and the B/A time ratio. CPU, compiler,
+clock boundary, page/frequency state and source hashes stay visible. Different
+source hashes, missing metadata, quick runs or partial datasets limit what can
+be concluded. A matching source hash is necessary for a controlled program
+comparison, but does not establish identical generated code or system conditions.
+
+For Zen+/Intel/Arm comparisons, compile for each actual target with recorded
+flags and inspect the kernels. Keep useful work and the measurement boundary
+equal; record differences in page size, working-set/cache fit, SMT placement,
+memory population, frequency and compiler transformations. Report dispersion
+and raw trials alongside medians. An ISA name or faster total cannot identify
+the responsible cache policy, queue capacity or memory-controller behavior.
+There is no controlled cross-machine dataset bundled with the project.
+
+The [ordering protocol](litmus/README.md) supplies generated assembly litmus
+tests for herd7 and supported native litmus7 workflows. Browser witness counts
+are exhaustive only for their small stated model; they are neither empirical
+frequency estimates nor a complete AArch64/C11 semantics implementation.

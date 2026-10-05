@@ -175,6 +175,22 @@ async function main(){
     await route('xlate/os');const input=page.getByLabel('VM observation JSON',{exact:true});await input.setInputFiles(fixture);await page.waitForFunction(()=>document.querySelector('.vm-measurement-status').textContent.startsWith('Measured data'));assert.equal(await page.locator('.vm-results tbody tr').count(),60);
     const bad=JSON.parse(fs.readFileSync(fixture));bad.samples[0].stages[0].checksum++;await input.setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await page.waitForFunction(()=>document.querySelector('.vm-measurement-status').textContent.startsWith('Could not import'));
   });
+  await check('reference evidence filters retain product scope and unknowns',async()=>{
+    await route('map/reference');const lab=page.locator('#map--reference');assert.ok(await lab.locator('.evidence-claims .evidence-contract').count()>=8);await lab.locator('[data-field="Evidence category"]').selectOption('Unknown / implementation-dependent');assert.equal(await lab.locator('.evidence-claims .evidence-contract').count(),3);assert.match(await lab.locator('.evidence-claims').textContent(),/44-entry/);
+  });
+  await check('ordering witnesses change under TSO, relaxed rules and full fences',async()=>{
+    await route('stores/litmus');const lab=page.locator('#stores--litmus');assert.equal(await lab.evaluate(el=>el._orderingResult.targetAllowed),true);await lab.locator('[data-field="Full ordering points"]').selectOption('1');assert.equal(await lab.evaluate(el=>el._orderingResult.targetAllowed),false);
+    await lab.locator('[data-field="Full ordering points"]').selectOption('0');await lab.locator('[data-field="Litmus case"]').selectOption('MP');assert.equal(await lab.evaluate(el=>el._orderingResult.targetAllowed),false);await lab.locator('[data-field="Ordering rules"]').selectOption('relaxed');assert.equal(await lab.evaluate(el=>el._orderingResult.targetAllowed),true);await lab.getByLabel('Ordering event',{exact:true}).fill('3');assert.match(await lab.locator('.ordering-state h3').textContent(),/Event 3/);await lab.locator('.ordering-program').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(output,'ordering-dark-desktop.png')});
+    await route('stores/language');const language=page.locator('#stores--language');await language.locator('[data-field="Publication in C11"]').selectOption('plain');assert.match(await language.locator('[role=status]').textContent(),/undefined behavior/);await language.locator('[data-field="Publication in C11"]').selectOption('release');await language.locator('[data-field="Value read from flag"]').selectOption('0');assert.match(await language.locator('[role=status]').textContent(),/does not read the payload/);
+  });
+  await check('cache inclusion and granule lenses expose different constraints',async()=>{
+    await route('hier/inclusion');const lab=page.locator('#hier--inclusion');assert.ok(await lab.evaluate(el=>el._inclusionResult.stats.backInvalidations>0));await lab.locator('[data-field="LLC inclusion policy"]').selectOption('nine');assert.equal(await lab.evaluate(el=>el._inclusionResult.stats.backInvalidations),0);await lab.getByLabel('Inclusion reference',{exact:true}).fill('5');assert.match(await lab.locator('.cache-state h3').textContent(),/private hit/);await lab.getByLabel('Inclusion read trace',{exact:true}).fill('9:A');await lab.getByRole('button',{name:'Apply inclusion trace',exact:true}).click();assert.match(await lab.locator('[role=status]').textContent(),/thread 0 or 1/);
+    await route('xlate/granules');const granule=page.locator('#xlate--granules');await granule.locator('[data-field="Hypothetical VIPT data-cache bytes"]').selectOption('131072');await granule.locator('[data-field="Hypothetical VIPT ways"]').selectOption('4');assert.match(await granule.locator('tbody').textContent(),/Needs alias/);
+  });
+  await check('two-run comparison matches work, retains context and rejects invalid accounting',async()=>{
+    const fixture=path.join(output,'comparison-smoke.json');execFileSync('python3',['benchmarks/run.py','--quick','--output',fixture],{cwd:root,stdio:'pipe'});await route('perf/compare');await page.getByLabel('Architecture run A',{exact:true}).setInputFiles(fixture);await page.getByLabel('Architecture run B',{exact:true}).setInputFiles(fixture);await page.waitForFunction(()=>document.querySelector('.comparison-status').textContent.startsWith('Measured comparison'));assert.ok(await page.locator('#perf--compare').evaluate(el=>el._comparisonRows.length>0&&el._comparisonRows.every(q=>q.ratio===1)));
+    const bad=JSON.parse(fs.readFileSync(fixture));bad.samples[0].steps++;await page.getByLabel('Architecture run B',{exact:true}).setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await page.waitForFunction(()=>document.querySelector('.comparison-status').textContent.startsWith('Could not compare'));
+  });
   await check('original L1 custom stores, reload and invalid inputs',async()=>{
     await route('l1d/lookup');const chapter=page.locator('#ch-l1d');
     await chapter.getByLabel('virtual address',{exact:true}).fill('0x7ffd4a3c5e59');await chapter.locator('.l1go').click();assert.ok(await chapter.locator('.l1err').isVisible());
@@ -210,12 +226,13 @@ async function main(){
     await page.setViewportSize({width,height:844});
     for(const theme of ['light','dark']){
       if(await page.locator('html').getAttribute('data-theme')!==theme)await page.locator('#themeToggle').click();
-      for(const id of ['start','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e/critical','e2e/steady','perf/queues','l1d/taxonomy','l1d/split','core/smt','stores/forwarding','coh/transactions','dram/controller','xlate/os','xlate/pages','xlate/walk-contention','xlate/shootdown','hier/numa','gloss'])await check(width+'px '+theme+' '+id,async()=>{
+      for(const id of ['start','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e/critical','e2e/steady','perf/queues','l1d/taxonomy','l1d/split','core/smt','stores/forwarding','coh/transactions','dram/controller','xlate/os','xlate/pages','xlate/walk-contention','xlate/shootdown','hier/numa','map/reference','stores/litmus','stores/language','hier/inclusion','xlate/granules','perf/compare','gloss'])await check(width+'px '+theme+' '+id,async()=>{
         await route(id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'document overflows viewport');
         assert.equal(await page.locator('#themeToggle').isVisible(),true);
         if(id==='dram/controller'){await page.locator('#dram--controller .queue-state').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(output,'controller-'+theme+'-'+width+'.png')});}
         if(id==='coh/transactions')await page.screenshot({path:path.join(output,'coherence-'+theme+'-'+width+'.png')});
         if(id==='xlate/os'){await page.locator('#xlate--os').getByRole('button',{name:'COW story',exact:true}).click();await page.locator('#xlate--os .cache-state').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(output,'vm-'+theme+'-'+width+'.png')});}
+        if(id==='stores/litmus'){await page.locator('#stores--litmus .ordering-program').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(output,'ordering-'+theme+'-'+width+'.png')});}
         if(id==='perf/queues')await page.screenshot({path:path.join(output,'queues-'+theme+'-'+width+'.png')});
       });
     }

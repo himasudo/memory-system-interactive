@@ -75,7 +75,7 @@ d('victimc','victim cache','A cache filled only with lines evicted from the leve
 d('shadow','shadow tags','Copies of every L2\'s tags kept inside the L3. They let the L3 know which core might hold a line without asking all of them.');
 d('pfilter','probe filter','A structure that records which caches may hold a line, so coherence probes go only where needed instead of to every cache.');
 d('ccx','CCX','Core complex: a group of up to four Zen cores sharing one L3. Your 3750H has one CCX with 4 MB of L3.');
-d('mlp','memory-level parallelism','Having several cache misses outstanding at once so their latencies overlap. Zen/Zen+ allow 50 outstanding L2-to-L3 misses per core and 96 L3-to-memory misses.');
+d('mlp','memory-level parallelism','Having several cache misses outstanding at once so their latencies overlap. Scaling stops at a finite resource. The legacy 50/96 miss-tracking reference values are not verified limits for the 3750H.');
 d('ltu','load-to-use latency','Cycles from a load issuing to the first cycle a dependent instruction can use its value.');
 d('wset','working set','The set of addresses a program actively uses during some interval.');
 d('sloc','spatial locality','The tendency to access addresses near recently accessed ones.');

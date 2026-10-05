@@ -2605,7 +2605,7 @@ d('victimc','victim cache','A cache filled only with lines evicted from the leve
 d('shadow','shadow tags','Copies of every L2\'s tags kept inside the L3. They let the L3 know which core might hold a line without asking all of them.');
 d('pfilter','probe filter','A structure that records which caches may hold a line, so coherence probes go only where needed instead of to every cache.');
 d('ccx','CCX','Core complex: a group of up to four Zen cores sharing one L3. Your 3750H has one CCX with 4 MB of L3.');
-d('mlp','memory-level parallelism','Having several cache misses outstanding at once so their latencies overlap. Zen/Zen+ allow 50 outstanding L2-to-L3 misses per core and 96 L3-to-memory misses.');
+d('mlp','memory-level parallelism','Having several cache misses outstanding at once so their latencies overlap. Scaling stops at a finite resource. The legacy 50/96 miss-tracking reference values are not verified limits for the 3750H.');
 d('ltu','load-to-use latency','Cycles from a load issuing to the first cycle a dependent instruction can use its value.');
 d('wset','working set','The set of addresses a program actively uses during some interval.');
 d('sloc','spatial locality','The tendency to access addresses near recently accessed ones.');
@@ -2688,7 +2688,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
   var W = function(t, label){ return [label || t.replace(/_/g, ' '), 'https://en.wikipedia.org/wiki/' + t, 'Wikipedia']; };
   var S = {
     agner: ['The microarchitecture of Intel, AMD and VIA CPUs', 'https://www.agner.org/optimize/microarchitecture.pdf', 'Agner Fog'],
-    zen: ['AMD Zen+ microarchitecture', 'https://en.wikipedia.org/wiki/Zen%2B', 'Wikipedia'],
+    zen: ['AMD Family 17h optimization guide (scope is not every Zen+ model)', 'https://docs.amd.com/v/u/en-US/55723_3.01', 'AMD; family-scoped reference'],
     zen7: ['AMD Zen: cache and TLB measurements', 'https://www.7-cpu.com/cpu/Zen.html', '7-cpu'],
     takeaway: ['Take A Way: Exploring the Security Implications of AMD\u2019s Cache Way Predictors', 'https://misc0110.net/files/takeaway.pdf', 'Lipp et al., 2020'],
     drepper: ['What Every Programmer Should Know About Memory', 'https://www.akkadia.org/drepper/cpumemory.pdf', 'Ulrich Drepper'],
@@ -2765,6 +2765,30 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
   'pcie tlp rc mmio bar doorbell dma iommu iova msix nvme iocoh'.split(' ').forEach(function(k){ HOME[k] = 'dev'; });
   App.SRC = SRC; App.TERM_HOME = HOME; App.CH_LABEL = CH;
 })();
+
+/* Evidence is scoped to a claim, never inferred from a vendor logo. */
+App.Evidence={sources:{
+  product:['AMD Ryzen 7 3750H specifications','https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen/ryzen-3000-series/amd-ryzen-7-3750h.html'],
+  family:['AMD Family 17h optimization guide 55723, revision 3.01','https://docs.amd.com/v/u/en-US/55723_3.01'],
+  measurements:['7-cpu Zen observations and reference notes','https://www.7-cpu.com/cpu/Zen.html'],
+  tso:['x86-TSO: A Rigorous and Usable Programmer’s Model','https://www.cl.cam.ac.uk/~pes20/weakmemory/cacm.pdf'],
+  intel:['Intel SDM Volume 3A, memory-ordering examples (2024 edition)','https://cdrdv2-public.intel.com/812386/253668-sdm-vol-3a.pdf'],
+  arm:['Arm: using the memory-model tool','https://developer.arm.com/community/arm-community-blogs/b/architectures-and-processors-blog/posts/how-to-use-the-memory-model-tool'],
+  armbarrier:['Arm: barriers, dependencies and acquire/release litmus tests','https://developer.arm.com/community/arm-community-blogs/b/architectures-and-processors-blog/posts/generate-litmus-tests-automatically-diy7-tool'],
+  armmodel:['AArch64 memory-model research and litmus tests','https://www.cl.cam.ac.uk/~sf502/AArch64/'],
+  granule:['Arm memory management guide 101811, translation granules','https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Learn%20the%20Architecture/LearnTheArchitecture-MemoryManagement-101811_0100_00_en.pdf'],
+  cache:['Intel: Xeon cache-hierarchy changes','https://www.intel.com/content/www/us/en/support/articles/000027820/processors/intel-xeon-processors.html'],
+  c11:['C11 committee draft N1570, sections 5.1.2.4 and 7.17','https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf']
+},claims:[
+  {kind:'Documented fact',claim:'Ryzen 7 3750H / Picasso: four cores, eight threads; 384 KB aggregate L1, 2 MB aggregate L2, 4 MB L3.',scope:'This exact product. Aggregate capacity is not a per-thread allocation.',why:'Anchor cache footprints and distinguish an SMT sibling from another core.',source:'product'},
+  {kind:'Documented fact',claim:'Two memory channels, up to 2400 MT/s; base 2.3 GHz and boost up to 4 GHz.',scope:'Product limits; DIMM population, firmware, power and workload determine actual operation.',why:'The 38.4 GB/s two-channel peak is arithmetic, not measured sustained bandwidth. A 4 GHz simulator input does not prove the host runs at 4 GHz.',source:'product'},
+  {kind:'Measured / reverse-engineered',claim:'External Zen-family notes report simple L1 loads around 4 cycles, Ryzen 2xxx L2 around 12 and random L3 around 35.',scope:'Mixed Zen-family systems and tests on 7-cpu, not a calibration of this 3750H. Cache latency depends on access form and conditions.',why:'Explain the origin and limits of representative configuration defaults; validate the target machine with a controlled sweep.',source:'measurements'},
+  {kind:'Inference',claim:'An 8-byte pointer consuming one otherwise unused 64-byte fetched line uses one eighth of those line bytes.',scope:'Only this access/accounting boundary; later reuse can change the useful fraction.',why:'Distinguish useful throughput from transferred cache-line bandwidth.',source:null},
+  {kind:'Teaching approximation',claim:'Small queues, LRU policies, serial stages, synthetic addresses and the new labs’ clock values are selected simulation rules.',scope:'Mechanism experiments, not complete Zen+, Intel or Arm implementations.',why:'Change one resource at a time and test the causal explanation without inventing undocumented values.',source:null},
+  {kind:'Unknown / implementation-dependent',claim:'The legacy core reference displayed a 44-entry load queue; 7-cpu reports 72 for Zen. The exact 3750H load-queue capacity is not established here.',scope:'Conflicting/insufficient attribution. Neither number is installed as a measured 3750H queue limit.',why:'The actual pipeline model keeps its independent 10-entry teaching queue. Do not derive a hardware saturation threshold from the disputed reference.',source:'measurements'},
+  {kind:'Unknown / implementation-dependent',claim:'Legacy 50 L2→L3 / 96 L3→memory limits, exact walker count, SMT quotas, replacement, address hashes and arbitration lack target-specific evidence in this repository.',scope:'Historical family/reference claims are retained with qualifications; no precise 3750H policy is inferred.',why:'Use request/traffic invariants and measured scaling to form hypotheses; occupancy and event definitions need CPU-specific validation.',source:'family'},
+  {kind:'Unknown / implementation-dependent',claim:'The old 20.8-TSC-tick branch-misprediction figure has no supporting raw trace or method in this repository.',scope:'Unverified legacy observation; TSC ticks are not automatically core cycles.',why:'Keep a chosen misprediction penalty in the teaching pipeline; measure branch behavior separately before attributing the number to Zen+.',source:null}
+]};
 
 /* ======================= automatic links: chapter references and glossary terms ======================= */
 (function(){
@@ -4113,7 +4137,7 @@ build: function(root){
 /* ======================= chapter: the machine ======================= */
 App.chapter({id: 'map', short: 'The machine', title: 'The machine, all of it',
 lede: 'Every structure a memory access can touch, from the core\u2019s load/store unit out to the DRAM chips and the SSD.',
-points: ['Click a block to see what it does and its published size.', 'Each block links to the chapter that takes it apart.', 'All sizes come from one real processor, an AMD Ryzen 7 3750H (Zen+). Other x86-64 CPUs use the same kinds of structures with different sizes.'],
+points: ['Click a block to see its role and the scope of its reference values.', 'Each block links to the chapter that takes it apart.', 'The Ryzen 7 3750H is the anchor. Product capacities, reported Zen-family internals and chosen diagram rules have distinct evidence; inspect the reference profile below.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, HW = App.HW;
   var work = h('div', {'class': 'map-workbench'}, root);
@@ -4122,14 +4146,14 @@ build: function(root){
   var info = h('aside', {'class': 'card map-inspector'}, work);
   var parts = {}, selId = null;
   var D = {
-    core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, 44-entry load and store queues.', 'core', '[[ch:core]] runs the histogram loop through it cycle by cycle.'],
+    core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, a legacy 44-entry load-queue assumption (unverified for 3750H) and reported 44-entry store queue.', 'core', '[[ch:core]] runs the histogram loop through it cycle by cycle.'],
     fe: ['Front end', 'Branch predictor + BTB, L1i (64 KB, 4-way) with iTLB, predecode, 4 decoders, 2K-entry op cache, \u00b5op queue.', 'code', '[[ch:code]] shows what it decodes; [[ch:core]] shows it running.'],
     ooo: ['Rename + out-of-order engine', 'RAT and free list, 168-entry PRF, 192-entry ROB, six 14-entry schedulers, 4 ALU and 2 AGU ports.', 'core', ''],
-    lsu: ['Load/store unit + L1d', '44-entry load queue, 44-entry store queue, 64-entry L1 DTLB, 1536-entry L2 TLB, 2 page walkers, 32 KB 8-way L1d. 2 loads + 1 store per cycle, 16 bytes each.', 'l1d', '[[ch:xlate]] covers translation, [[ch:l1d]] the L1d lookup, [[ch:stores]] the store path.'],
+    lsu: ['Load/store unit + L1d', 'Load-queue capacity unresolved (legacy 44; Zen reference notes report 72), reported 44-entry store queue, 64-entry L1 DTLB, 1536-entry L2 TLB, walker count unverified, 32 KB 8-way L1d. 2 loads + 1 store per cycle, 16 bytes each.', 'l1d', '[[ch:xlate]] covers translation, [[ch:l1d]] the L1d lookup, [[ch:stores]] the store path.'],
     tlb: ['TLBs + page walkers', 'L1 DTLB: 64 entries, fully associative, all page sizes. L2 TLB: 1536 entries, no 1 GB pages. Two hardware walkers read page tables through the data caches.', 'xlate', ''],
-    l2: ['L2 cache (per core)', '512 KB, 8-way, write-back, inclusive of the L1s. 32 bytes/cycle to L1. \u226512 cycles load-to-use (published). Up to 50 outstanding misses to L3 per core.', 'hier', ''],
-    l3: ['L3 cache (shared by the CCX)', '4 MB, 16-way on the Ryzen 7 3750H. A victim cache: filled with lines evicted from the L2s, mostly exclusive of them. Holds shadow tags of every L2 so it acts as a probe filter. ~35 cycles average (published Zen/Zen+).', 'hier', '[[ch:hier]] follows a miss through it; [[ch:coh]] uses its shadow tags for coherence.'],
-    df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; up to 96 outstanding misses from L3 to memory (published Zen/Zen+).', 'hier', ''],
+    l2: ['L2 cache (per core)', '512 KB, 8-way, write-back, inclusive of the L1s. 32 bytes/cycle to L1. \u226512 cycles load-to-use (published). The legacy 50-miss L2-to-L3 limit is an unverified family-reference value here.', 'hier', ''],
+    l3: ['L3 cache (shared by the CCX)', '4 MB, 16-way on the Ryzen 7 3750H. A victim cache: filled with lines evicted from the L2s, mostly exclusive of them. Holds shadow tags of every L2 so it acts as a probe filter. ~35 cycles is an external Zen-family observation, not a calibrated 3750H latency.', 'hier', '[[ch:hier]] follows a miss through it; [[ch:coh]] uses its shadow tags for coherence.'],
+    df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; the legacy 96-miss L3-to-memory limit is not target-verified.', 'hier', ''],
     umc: ['Memory controllers (UMC \u00d72)', 'One per channel. Queue requests, map physical addresses to channel/bank/row/column, reorder to hit open rows, issue ACT/RD/WR/PRE/REF, enforce DRAM timings.', 'dram', '[[ch:dram]].'],
     dram: ['DDR4 DRAM, 2 channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst = 8 beats \u00d7 8 bytes = 64 bytes, one cache line. Cells are capacitors that must be refreshed.', 'dram', ''],
     gpu: ['Integrated GPU (Radeon RX Vega 10)', '10 compute units (640 shaders) sharing a GPU L2. Another client of the same fabric and the same DRAM: it competes with the cores for memory bandwidth.', 'hier', ''],
@@ -4158,7 +4182,7 @@ build: function(root){
   blk('core0', 44, 80, 404, 26, 'Core 0 \u00b7 2 SMT threads', []);
   blk('fe', 44, 112, 196, 70, 'Front end', ['BP/BTB \u00b7 L1i 64 KB 4-way', 'op cache \u00b7 decode \u00d74'], 'a3b');
   blk('ooo', 250, 112, 198, 70, 'Out-of-order engine', ['ROB 192 \u00b7 PRF 168', 'sched 6\u00d714 \u00b7 4 ALU + 2 AGU'], 'a3b');
-  blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ 44 \u00b7 SQ 44', 'L1d 32 KB 8-way', '2 loads + 1 store / cycle'], 'a4b');
+  blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ ? \u00b7 SQ 44*', 'L1d 32 KB 8-way', '2 loads + 1 store / cycle'], 'a4b');
   blk('tlb', 302, 188, 146, 82, 'TLBs + walkers', ['L1 DTLB 64', 'L2 TLB 1536', '2 walkers'], 'a4b');
   blk('l2', 44, 300, 404, 50, 'L2 \u00b7 512 KB \u00b7 8-way \u00b7 inclusive of L1', ['private to this core'], 'a2b');
   HW.assoc(parts.l2, 356, 307, 84, 36, {ways: 8, rows: 4});
@@ -4222,7 +4246,7 @@ build: function(root){
   function pick(id){
     selId = id;
     for (var k in parts) parts[k].setAttribute('class', 'click' + (k === id ? ' on' : ''));
-    if (!id){ info.innerHTML = '<div class="inspector-kicker">hardware atlas</div><h3>Select a block</h3><p>Inspect any structure to see what it does, its published size, and the chapter that takes it apart. The diagram itself is the table of contents.</p><p class="note">Wire labels are published peak transfer sizes, not measured throughput.</p>'; return; }
+    if (!id){ info.innerHTML = '<div class="inspector-kicker">hardware atlas</div><h3>Select a block</h3><p>Inspect any structure to see what it does, its reference values, and the chapter that takes it apart. The diagram itself is the table of contents.</p><p class="note">Product totals and reported family details differ in scope. Wire widths are reference peak values, not measured throughput. See the evidence profile below.</p>'; return; }
     var d = D[id];
     info.innerHTML = '<h3>' + d[0] + '</h3><p>' + d[1] + '</p>' + (d[3] ? '<p>' + d[3] + '</p>' : '') + '<button class="pri" data-go="' + d[2] + '">open the chapter \u2192</button>';
     info.querySelector('button').onclick = function(){ App.go(d[2]); };
@@ -4529,7 +4553,7 @@ if (typeof module !== 'undefined') module.exports = LabModel;
 var PipeSim = (function(){
 var W = {fetch: 4, rename: 4, retire: 4, alu: 4, agu: 2};
 var CAP = {rob: 24, uq: 8, alu: 16, agu: 12, lq: 10, sq: 8, prf: 48, mab: 4};
-var REAL = {rob: '192 (96 per thread)', uq: '72 µops', alu: '4 × 14', agu: '2 × 14', lq: '44', sq: '44', prf: '168', mab: 'not published for L1; 50 L2→L3', fetch: '4 x86 instr/cycle', rename: '6 macro-ops/cycle', retire: '8/cycle'};
+var REAL = {rob: '192 (reported family reference)' , uq: '72 µops', alu: '4 × 14', agu: '2 × 14', lq: 'unverified (legacy 44; reported 72)' , sq: '44', prf: '168', mab: 'target capacity unknown; legacy 50 L2→L3' , fetch: '4 x86 instr/cycle', rename: '6 macro-ops/cycle', retire: '8/cycle'};
 
 function simulate(P){
   var EX = P.ex, L = EX.loop, hx = function(v){ return '0x' + v.toString(16); };
@@ -4865,13 +4889,13 @@ build: function(root){
     ' · <b>IS</b> ' + g('issue') + ' · <b>RR</b> register read · <b>EX/AG</b> execute or ' + g('agu', 'address generation') + ' · <b>D1</b> ' + g('dtlb') + ' + L1d tag · <b>D2</b> L1d data / SQ check · <b>WB</b> writeback + ' + g('wakeup') + ' · <b>RT</b> ' + g('retire') + ' · then <b>CM</b> ' + g('commit') + ' for stores.</p>');
   var sizes = h('div', {'class': 'card'}, intro);
   var R = PipeSim.REAL, C = PipeSim.CAP;
-  sizes.innerHTML = '<h3>Model sizes vs. your Zen+ core</h3><p>Structures are scaled down so every entry fits on screen. Widths and ordering rules follow Zen+ closely; exact sizes do not.</p>' +
-    '<table class="mt"><tr><th></th><th>model</th><th>Zen+</th></tr>' +
+  sizes.innerHTML = '<h3>Model sizes and reported Zen-family references</h3><p>Structures are scaled down so every entry fits on screen. The pipeline is an instructional schedule. Reference-column numbers combine family reports and unresolved legacy values, not verified per-thread 3750H limits.</p>' +
+    '<table class="mt"><tr><th></th><th>model</th><th>Family reference / evidence limit</th></tr>' +
     [['rob', 'ROB', C.rob, R.rob], ['prf', 'physical registers', C.prf, R.prf], ['sched', 'ALU schedulers', C.alu, R.alu], ['sched', 'AGU schedulers', C.agu, R.agu],
      ['lq', 'load queue', C.lq, R.lq], ['sq', 'store queue', C.sq, R.sq], ['uq', 'µop queue', C.uq + ' instr', R.uq], ['mab', 'miss buffers', C.mab, R.mab],
      ['decode', 'fetch / decode width', '4', R.fetch], ['rename', 'rename width', '4', R.rename], ['retire', 'retire width', '4', R.retire]]
     .map(function(r){ return '<tr><td>' + g(r[0], r[1]) + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td></tr>'; }).join('') +
-    '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages. A misprediction measured on the Ryzen 7 3750H costs about 20.8 TSC ticks (~9 ns), which reflects the real, longer front end.</p>';
+    '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages. The old 20.8-TSC-tick (~9 ns) misprediction figure has no raw trace or measurement protocol here and remains unverified; TSC ticks are not automatically core cycles. The simulator uses a chosen recovery penalty.</p>';
 
   /* ---------- controls ---------- */
   var ctl = h('div', {'class': 'card pctl core-controls'}, root);
@@ -5122,6 +5146,61 @@ build: function(root){
   App.Plates.core(root);
   return {key: function(k){ if (k === 'ArrowRight'){ go(cur + 1); return true; } if (k === 'ArrowLeft'){ go(cur - 1); return true; } return false; }};
 }});
+
+/* Small executable witnesses; not a full ISA, compiler or coherence model. */
+var ArchitectureLab=(function(){
+  'use strict';
+  function clone(x){return JSON.parse(JSON.stringify(x));}
+  function programs(name,fenced){var W=function(a){return {kind:'W',addr:a,value:1};},R=function(a,r){return {kind:'R',addr:a,reg:r};},p;
+    if(name==='SB')p=[[W('x'),R('y','r0')],[W('y'),R('x','r1')]];
+    else if(name==='MP')p=[[W('x'),W('y')],[R('y','r0'),R('x','r1')]];
+    else if(name==='LB')p=[[R('x','r0'),W('y')],[R('y','r1'),W('x')]];
+    else throw new Error('Choose SB, MP or LB');
+    if(fenced)p.forEach(function(t){t.splice(1,0,{kind:'F'});});return p;
+  }
+  function litmus(options){var p=Object.assign({name:'SB',model:'tso',fenced:false},options);if(['sc','tso','relaxed'].indexOf(p.model)<0)throw new Error('Invalid ordering model');var prog=programs(p.name,p.fenced),seen=new Set(),outcomes={};
+    var initial={memory:{x:0,y:0},issued:prog.map(function(t){return t.map(function(){return false;});}),buffers:[[],[]],registers:{r0:null,r1:null}};
+    function visit(state,path){var key=JSON.stringify(state);if(seen.has(key))return;seen.add(key);
+      if(state.issued.every(function(t){return t.every(Boolean);})&&state.buffers.every(function(b){return !b.length;})){var outcome=state.registers.r0+','+state.registers.r1;if(!outcomes[outcome])outcomes[outcome]={values:[state.registers.r0,state.registers.r1],trace:path};return;}
+      function next(q,label){visit(q,path.concat([{label:label,state:clone(q)}]));}
+      for(var cpu=0;cpu<2;cpu++){
+        if(state.buffers[cpu].length){var q=clone(state),w=q.buffers[cpu].shift();q.memory[w.addr]=w.value;next(q,'T'+cpu+' publishes '+w.addr+' = '+w.value+' from its oldest buffered store');}
+        for(var i=0;i<prog[cpu].length;i++){if(state.issued[cpu][i])continue;var op=prog[cpu][i],blocked=false;
+          for(var j=0;j<i;j++)if(!state.issued[cpu][j]&&(p.model!=='relaxed'||op.kind==='F'||prog[cpu][j].kind==='F'||prog[cpu][j].addr===op.addr))blocked=true;
+          /* The relaxed illustration reorders only independent operations.
+             It retains coherent shared memory and a FIFO publication buffer.
+             It is intentionally narrower than a general AArch64 model. */
+          if(blocked||op.kind==='F'&&state.buffers[cpu].length)continue;
+          var q=clone(state);q.issued[cpu][i]=true;
+          if(op.kind==='W'){if(p.model==='sc'){q.memory[op.addr]=op.value;next(q,'T'+cpu+' stores '+op.addr+' = 1 atomically in the SC order');}else{q.buffers[cpu].push({addr:op.addr,value:op.value});next(q,'T'+cpu+' buffers '+op.addr+' = 1 (not yet globally visible)');}}
+          else if(op.kind==='R'){var own=q.buffers[cpu].slice().reverse().find(function(w){return w.addr===op.addr;}),v=own?own.value:q.memory[op.addr];q.registers[op.reg]=v;next(q,'T'+cpu+' reads '+op.addr+' → '+op.reg+' = '+v+(own?' from its own buffer':' from shared coherent memory'));}
+          else next(q,'T'+cpu+' completes full ordering point after its prior stores publish');
+        }
+      }
+    }
+    visit(initial,[{label:'Initial x = y = 0; no buffered stores',state:clone(initial)}]);var target=p.name==='SB'?'0,0':p.name==='MP'?'1,0':'1,1';return {p:p,programs:prog,outcomes:outcomes,states:seen.size,target:target,targetAllowed:!!outcomes[target]};
+  }
+  function inclusion(accesses,options){var p=Object.assign({policy:'inclusive',privateLines:2,llcLines:4},options);if(['inclusive','exclusive','nine'].indexOf(p.policy)<0)throw new Error('Invalid inclusion policy');['privateLines','llcLines'].forEach(function(k){if(!Number.isInteger(p[k])||p[k]<1||p[k]>16)throw new Error('Invalid cache capacity');});if(!Array.isArray(accesses)||!accesses.length||accesses.length>256)throw new Error('Use 1–256 accesses');var upper=[[],[]],lower=[],trace=[],stats={privateHits:0,peerHits:0,llcHits:0,memoryReads:0,backInvalidations:0,llcEvictions:0};
+    function promote(a,line){var i=a.indexOf(line);if(i>=0)a.splice(i,1);a.unshift(line);}
+    function insertLower(line,events){promote(lower,line);if(lower.length>p.llcLines){var victim=lower.pop();stats.llcEvictions++;events.push('LLC evicts '+victim);if(p.policy==='inclusive')upper.forEach(function(a,cpu){var i=a.indexOf(victim);if(i>=0){a.splice(i,1);stats.backInvalidations++;events.push('Back-invalidate '+victim+' from T'+cpu+' private cache');}});}}
+    accesses.forEach(function(a){if(!a||![0,1].includes(a.cpu)||!Number.isSafeInteger(a.line)||a.line<0||a.line>65535)throw new Error('Invalid core or line');var own=upper[a.cpu],other=upper[1-a.cpu],events=[],where;
+      if(own.includes(a.line)){stats.privateHits++;where='private hit';promote(own,a.line);}
+      else{
+        if(other.includes(a.line)){where='peer hit';stats.peerHits++;}
+        else if(lower.includes(a.line)){where='LLC hit';stats.llcHits++;}
+        else{where='memory read';stats.memoryReads++;}events.push(where+' supplies line '+a.line);
+        if(p.policy==='exclusive'){var at=lower.indexOf(a.line);if(at>=0){lower.splice(at,1);events.push('Move data out of LLC; no duplicate below private caches');}}
+        else insertLower(a.line,events);
+        promote(own,a.line);if(own.length>p.privateLines){var victim=own.pop();events.push('Private cache T'+a.cpu+' evicts '+victim);if(p.policy==='exclusive'&&!other.includes(victim))insertLower(victim,events);}
+      }
+      var all=upper[0].concat(upper[1],lower),unique=new Set(all).size;trace.push({cpu:a.cpu,line:a.line,where:where,events:events,upper:clone(upper),lower:lower.slice(),unique:unique,duplicates:all.length-unique,stats:clone(stats)});
+    });return {p:p,trace:trace,stats:stats,bytes:stats.memoryReads*64};
+  }
+  function granule(options){var p=Object.assign({pageBytes:4096,regions:256,stride:4096,entries:64},options);if(![4096,16384,65536].includes(p.pageBytes)||![4096,65536].includes(p.stride)||!Number.isInteger(p.regions)||p.regions<1||p.regions>4096||!Number.isInteger(p.entries)||p.entries<1||p.entries>1024)throw new Error('Invalid translation experiment');var lru=[],hits=0,pages=new Set();for(var pass=0;pass<2;pass++)for(var i=0;i<p.regions;i++){var pg=Math.floor(i*p.stride/p.pageBytes),at=lru.indexOf(pg);pages.add(pg);if(at>=0){hits++;lru.splice(at,1);}else if(lru.length===p.entries)lru.pop();lru.unshift(pg);}return {p:p,hits:hits,misses:2*p.regions-hits,reach:p.entries*p.pageBytes,mappings:pages.size,mappedBytes:pages.size*p.pageBytes};}
+  function compare(a,b){function grouped(d){var g={};d.samples.forEach(function(r){if(!Number.isSafeInteger(r.steps)||r.steps<=0||!Number.isSafeInteger(r.seed)||r.seed<=0||r.operations!==(r.mode==='chase'?r.steps*r.chains:r.steps*(r.bytes/8)))throw new Error('Comparison requires valid steps, seed and matching operation accounting.');var key=[r.mode,r.bytes,r.chains,r.steps,r.operations,r.seed].join('/');(g[key]||(g[key]=[])).push(r.elapsed_ns/r.operations);});return g;}function median(a){var b=a.slice().sort(function(x,y){return x-y;}),i=Math.floor(b.length/2);return b.length%2?b[i]:(b[i-1]+b[i])/2;}var x=grouped(a),y=grouped(b);return Object.keys(x).filter(function(k){return y[k];}).sort().map(function(k){var left=median(x[k]),right=median(y[k]);return {key:k,a:left,b:right,ratio:right/left,trialsA:x[k].length,trialsB:y[k].length};});}
+  return {programs:programs,litmus:litmus,inclusion:inclusion,granule:granule,compare:compare};
+})();
+if(typeof module!=='undefined')module.exports=ArchitectureLab;
 
 /* Phase 2: independent, deterministic teaching models. No proprietary Zen policies. */
 var CacheLab = (function(){
@@ -5605,7 +5684,7 @@ build: function(root){
   /* walker */
   var gw = G('walker');
   s('rect', {x: 880, y: 140, width: 310, height: 196, rx: 10, 'class': 'box'}, gw);
-  s('text', {x: 892, y: 160, 'class': 'h'}, gw, 'Page walker (\u00d72) + walk cache');
+  s('text', {x: 892, y: 160, 'class': 'h'}, gw, 'Page walker + walk cache (count unspecified)');
   s('text', {x: 892, y: 176, 'class': 's'}, gw, 'reads page-table entries through the data caches');
   E.wl = []; for (k = 0; k < 7; k++) E.wl.push(s('text', {x: 892, y: 200 + k * 18, 'font-size': 12}, gw, ''));
   /* CR3 + tables */
@@ -5809,9 +5888,9 @@ build: function(root){
 
   /* reach + context-switch cards */
   var reach = h('div', {'class': 'card'}, extra);
-  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' on a Zen+ core</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
+  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' · reported Zen-family reference</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
     '<tr><td>L1 DTLB</td><td>64</td><td>256 KB</td><td>128 MB</td></tr><tr><td>L2 TLB</td><td>1536</td><td>6 MB</td><td>3 GB</td></tr></table>' +
-    '<p style="margin-top:8px">Compare with the caches you measured: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
+    '<p style="margin-top:8px">Compare with the reference cache capacities: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
   var ctx = h('div', {'class': 'card'}, extra);
   ctx.innerHTML = '<h3>Context switches and ' + g('pcid', 'PCID') + '</h3><p>Switching processes writes a new value into ' + g('cr3') + '. Without PCIDs every non-global TLB entry would have to be discarded, and the next process starts with page walks. With PCIDs each entry carries a 12-bit process tag, so entries from different processes coexist and a switch only changes which tag matches.</p>' +
     '<p>The kernel removes stale entries itself with <code>invlpg</code> (one page) or a CR3 reload, for example after <code>munmap</code>. On multi-core systems it must also interrupt other cores that may cache the entry (a TLB shootdown).</p>';
@@ -6229,7 +6308,7 @@ build: function(root){
       F('L2 hit', 'L2 lookup: hit', 'The L2 indexes set ' + l2set + ' with PA bits 15:6 and compares 8 tags. Hit.', ['l2', 'a1'], ['L2 tag compare']);
       F('fill', 'The line comes back', 'The L1\u2013L2 path is 32 bytes wide, so the 64-byte line takes 2 transfers. It is filled into the L1d (the L1 victim, if dirty, is written into the L2 copy it already has) and the waiting load wakes up.\n<b>Total \u2248 ' + L2 + ' cycles = ' + ns(L2) + '</b>.', ['l2', 'r1', 'l1'], [L2 + ' cycles', ns(L2), '', 'L2 hit, published', 'minimum: 12 cycles']);
     } else {
-      F('L2 miss', 'L2 lookup: miss', 'Set ' + l2set + ', 8 tags, no match. The L2 has its own miss tracking: up to 50 outstanding L2\u2192L3 misses per core on Zen/Zen+. The request goes to the L3.', ['l2', 'a2'], ['L2 missed', 'request to L3']);
+      F('L2 miss', 'L2 lookup: miss', 'Set ' + l2set + ', 8 tags, no match. The L2 has its own miss tracking. The legacy limit of 50 L2\u2192L3 misses is a family-reference claim not verified for the 3750H. The request goes to the L3.', ['l2', 'a2'], ['L2 missed', 'request to L3']);
       if (mode === 'L3'){
         F('L3 hit', 'L3 lookup: hit', 'The addressed slice checks the line (logical set ' + l3set + ' in this diagram): hit. In parallel the ' + g('shadow') + ' confirm no other L2 holds the line, so no probe is needed. Slice selection here is a simplified model, not the real chip\u2019s mapping.', ['l3', 'sh', 'a2'], ['L3 tag compare']);
         F('move up', 'The line moves up, a victim moves down', 'The line goes to core 0\u2019s L2 and L1d. Because the L3 is mostly exclusive, it normally drops its own copy.\nThe L2 had to evict something from set ' + l2set + ' to make room: that victim goes <b>into</b> the L3. This is the only way the L3 gets filled.\n<b>Total \u2248 ' + L3 + ' cycles = ' + ns(L3) + '</b>.', ['l3', 'r2', 'r1', 'l2', 'l1'], [L3 + ' cycles', ns(L3), '', 'published Zen/Zen+', 'L3 average: ~35']);
@@ -6238,7 +6317,7 @@ build: function(root){
         F('probe', 'Probe core 2', 'The L3 sends a ' + g('probe') + ' only to core 2 (the other L2s are not disturbed). Core 2\u2019s L2 returns the 64 bytes.\nUnder ' + g('moesi') + ' it keeps its dirty copy as <b>Owned</b> and core 0 gets it <b>Shared</b>; DRAM is not written ([[ch:coh]]).\nAMD does not publish this latency; a core-to-core ping-pong benchmark measures it.', ['a3', 'c2l2', 'r3', 'r2', 'r1', 'l2', 'l1'], ['cache-to-cache', 'latency: measure it', '(not published)']);
       } else {
         F('L3 miss', 'L3 miss, shadow tags miss', 'Neither the L3 nor any CPU L2 in this CCX has the line. The request leaves the CCX through the fabric for system memory. The L3-hit load-to-use figure is a comparison baseline, not a measured timestamp for this step.', ['l3', 'sh', 'a4'], ['L3 missed', 'L3-hit baseline:', CFG.l3 + ' cycles load-to-use']);
-        F('fabric', 'Fabric to the memory controller', 'The fabric routes by physical address to the memory controller for the channel that owns this line. On Zen/Zen+ the fabric clock is reported to equal the memory clock, so faster DIMMs also speed up this hop. Up to 96 L3\u2192memory misses can be outstanding.', ['df', 'a5', 'umc'], ['in the fabric']);
+        F('fabric', 'Fabric to the memory controller', 'The fabric routes by physical address to the memory controller for the channel that owns this line. On Zen/Zen+ the fabric clock is reported to equal the memory clock, so faster DIMMs also speed up this hop. The legacy 96-outstanding L3\u2192memory claim is not verified for this target.', ['df', 'a5', 'umc'], ['in the fabric']);
         F('DRAM', 'DRAM access', 'The controller turns the request into DRAM commands: open the row if needed (ACT), read the column (RD), close rows that conflict (PRE). [[ch:dram]] steps through exactly this address.', ['umc', 'a6', 'dram'], ['DRAM access', 'see [[ch:dram]]']);
         F('return', 'The line returns to L2 and L1, not L3', 'Data comes back through the fabric straight to core 0\u2019s L2 and then the L1d. The L3 does <b>not</b> keep a copy: as a victim cache it only receives lines the L2 later evicts.\n<b>Total \u2248 ' + D + ' cycles = ' + ns(D) + '</b> with the current latency settings (L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns).', ['df', 'r4', 'r1', 'l2', 'l1'], [D + ' cycles', ns(D), '', 'L3 + DRAM extra,', 'from latency settings']);
       }
@@ -6292,7 +6371,7 @@ build: function(root){
     s('text', {x: Math.min(X(4 * D) - 180, 800), y: 270, 'class': 'm', 'font-size': 12}, msv, 'done at \u2248 ' + 4 * D + ' cycles');
     s('line', {x1: 150, x2: 970, y1: 285, y2: 285, 'class': 'wire'}, msv);
     s('text', {x: 150, y: 298, 'class': 's'}, msv, '0'); s('text', {x: 970, y: 298, 'class': 's', 'text-anchor': 'end'}, msv, tot + ' cycles');
-    mcap.innerHTML = '<p>Independent addresses are all known up front, so the core issues the four loads within a few cycles and the misses overlap (' + g('mlp') + '). Zen/Zen+ track 50 outstanding L2\u2192L3 misses per core and 96 L3\u2192memory, so the independent case scales far past four.</p><p>A pointer chase cannot overlap: each address is the previous load\u2019s data, so each miss starts only when the last one finishes. This is why latency benchmarks use a pointer chase: it exposes one full miss at a time.</p>';
+    mcap.innerHTML = '<p>Independent addresses are all known up front, so the core issues the four loads within a few cycles and the misses overlap (' + g('mlp') + '). More independent misses can overlap until a real finite resource saturates. The legacy 50/96 tracking counts are not established 3750H limits; use the bounded experiment and measure the target.</p><p>A pointer chase cannot overlap: each address is the previous load\u2019s data, so each miss starts only when the last one finishes. This is why latency benchmarks use a pointer chase: it exposes one full miss at a time.</p>';
   }
   mlpDraw();
 
@@ -7905,6 +7984,70 @@ build: function(root){
   }
   function validate(data){if(!data||data.schema!=='memory-lab-vm-v1'||!data.context||typeof data.context!=='object'||Array.isArray(data.context)||!Array.isArray(data.samples)||!data.samples.length||data.samples.length>500)throw new Error('Expected memory-lab-vm-v1 with context and 1–500 samples.');data.samples.forEach(function(r){if(!r||['anon','file-private','file-shared'].indexOf(r.kind)<0||['base','huge'].indexOf(r.advice)<0||!Number.isSafeInteger(r.bytes)||r.bytes<4096||r.bytes>134217728||!Number.isSafeInteger(r.cpu)||r.cpu<0||!Number.isSafeInteger(r.page_bytes)||r.page_bytes<4096||r.bytes%r.page_bytes||!Number.isSafeInteger(r.repeat)||r.repeat<0||!Array.isArray(r.stages)||r.stages.length!==5)throw new Error('Invalid mapping observation.');var names=['first-read','first-write','repeat-write','child-write','parent-check'];r.stages.forEach(function(t,i){if(!t||t.name!==names[i])throw new Error('Invalid observation stage.');['elapsed_ns','minor','major','checksum'].forEach(function(k){if(!Number.isSafeInteger(t[k])||t[k]<0||k==='elapsed_ns'&&t[k]===0)throw new Error('Invalid stage '+k);});});var n=r.bytes/r.page_bytes,shared=r.kind==='file-shared',expected=[r.kind==='anon'?0:10,7,7,42,shared?42:7];r.stages.forEach(function(t,i){if(t.checksum!==n*expected[i]||t.cpu_before!==r.cpu||t.cpu_after!==r.cpu)throw new Error('Content or affinity accounting mismatch.');});if(!r.verification||r.verification.passed!==true)throw new Error('Native content verification did not pass.');});return data;}
   App.extendChapter('xlate',function(root){lifecycle(root);pages(root);walks(root);shootdowns(root);});App.extendChapter('hier',numa);App.VMUI={validate:validate};
+})();
+
+(function(){
+  'use strict';
+  var U=App.LabUI,h=App.h,s=App.s,M=ArchitectureLab,E=App.Evidence;
+  function source(root,key){var q=E.sources[key];return U.text('a',root,q[0],{href:q[1],target:'_blank',rel:'noopener'});}
+  function sources(root,keys){var p=U.text('p',root,'Sources: ');keys.forEach(function(k,i){if(i)U.text('span',p,' · ');source(p,k);});}
+  function section(root,id,title,copy){return App.labSection(root,id,title,copy);}
+  function reference(root){var sec=section(root,'reference','Zen+ as an experimental specimen','Keep product facts, measured evidence and simulation choices separate.');
+    U.badge(sec,'Primary reference · Ryzen 7 3750H');U.text('p',sec,'This is the concrete four-core Zen+ laptop-class machine used to organize the original hardware path. A desktop Ryzen 2xxx, a server EPYC and another Family 17h model are useful references, but they are not interchangeable with this APU. Sources below state their scope. The repository contains no new target-machine measurements yet.');
+    var ctl=h('div',{'class':'perf-controls'},sec),filter='all';U.select(ctl,'Evidence category',[['all','All evidence'],...Array.from(new Set(E.claims.map(function(q){return q.kind;})))],filter,function(v){filter=v;draw();});var out=h('div',{'class':'evidence-claims'},sec);
+    function draw(){out.replaceChildren();E.claims.filter(function(q){return filter==='all'||q.kind===filter;}).forEach(function(q){var card=h('div',{'class':'evidence-contract'},out);U.badge(card,q.kind);U.text('h3',card,q.claim);U.text('p',card,q.scope);U.text('p',card,'Why it matters: '+q.why);if(q.source)source(card,q.source);});}draw();
+    U.text('h3',sec,'Choose comparisons by their consequence');U.table(sec,['Mechanism','Zen+ reference','Specific comparison','Experiment'],[['Visibility and ordering','Ordinary x86 write-back memory: TSO-style store buffering','Intel x86 has the same relevant guarantee here; AArch64 ordinary accesses permit more reordering','Stores → ordering lab'],['Private / last-level copies','Legacy victim-oriented Zen-family hierarchy, with target-specific policy limits stated','Intel E5 v4 inclusive LLC versus Skylake-SP non-inclusive LLC','Hierarchy → inclusion experiment'],['Translation granule','4 KiB base pages in the concrete x86 walk','AArch64 supports implementation-dependent choices among 4/16/64 KiB granules','Translation → granule and VIPT geometry'],['Topology / concurrency','Four cores and eight threads; shared resources matter','A different core count, LLC domain or memory-node placement changes contention','SMT, loaded latency and NUMA labs; measure actual topology']]);
+    U.text('p',sec,'A shared ISA does not imply equal queue sizes, cache policies or performance. “Arm” is an ISA family, not one cache layout; “Intel” spans different client/server generations. A comparison earns space here when it changes a prediction, an experiment or the interpretation of a measurement.');
+    U.code(sec,'lscpu -e=CPU,CORE,SOCKET,NODE,ONLINE\ngetconf PAGESIZE\n# Inspect /sys/devices/system/cpu/cpu*/cache/index*/ and record sharing masks.\n# Record CPUID/CPU ID, microcode, DIMMs, frequency, page policy and compiler.');
+    U.text('a',sec,'Compare native runs with retained context',{href:'#perf/compare'});sources(sec,['product','family','measurements']);
+  }
+  function ordering(root){var sec=section(root,'litmus','Ordering: guarantees, outcomes and witnesses','Coherence orders one location; a memory model constrains relationships across locations.');
+    U.table(sec,['Layer','Question it answers','What it does not establish'],[['Language','Are accesses atomic, race-free and connected by happens-before?','A C/C++ data race cannot be repaired by a claim about x86 hardware.'],['Compiler','Which instructions and dependencies implement the language program?','volatile or a compiler barrier alone is not inter-thread synchronization.'],['ISA memory model','Which architectural observations are allowed for these instructions and memory attributes?','It does not specify cache latency, queue partitioning or a cycle schedule.'],['Microarchitecture','How do speculation, replay, buffers and coherence implement the contract?','An internally early load need not become an architecturally forbidden observation.'],['Cache coherence','How are copies and writes to a location kept consistent?','Per-location coherence alone does not provide the ordering of independent x and y.']]);
+    App.CacheUI.teaching(sec,'The x86-TSO illustration has an in-order instruction stream per hardware thread, FIFO store publication and forwarding from its own youngest matching store. SC publishes each store immediately. The relaxed illustration can issue independent operations in either order; it explains these selected Arm-style contrasts but is not a complete AArch64 axiomatic model. All accesses are aligned ordinary coherent memory. Device/WC/NT accesses, atomics, mixed sizes, dependencies, exceptions and speculative implementation timing are outside this engine.');
+    U.checkpoint(sec,'Two threads each store 1, then load the other location. Can both loads return 0 on ordinary x86 write-back memory?',['Yes: each store can still be buffered','No: coherent caches force sequential consistency'],0,'Step the 0,0 witness. The stores eventually become visible; coherence is preserved throughout.');
+    var o={name:'SB',model:'tso',fenced:false},ctl=h('div',{'class':'perf-controls'},sec);
+    U.select(ctl,'Litmus case',[['SB','Store Buffering'],['MP','Message Passing'],['LB','Load Buffering']],o.name,function(v){o.name=v;run();});
+    U.select(ctl,'Ordering rules',[['tso','x86-TSO illustration (Zen+ / Intel WB)'],['relaxed','Relaxed illustration (selected Arm contrasts)'],['sc','Sequential consistency']],o.model,function(v){o.model=v;run();});
+    U.select(ctl,'Full ordering points',[[0,'None'],[1,'Between the two operations on both threads']],0,function(v){o.fenced=!!+v;run();});
+    var program=h('div',{'class':'ordering-program'},sec),metrics=h('div',{'class':'perf-metrics'},sec),summary=U.text('p',sec,''),choices=h('div',{'class':'perf-controls'},sec),state=h('div',{'class':'cache-state ordering-state'},sec),trace,r;
+    var step=App.CacheUI.replayControls(sec,'Ordering event',function(i){if(!trace)return;var e=trace[i],q=e.state;state.replaceChildren();U.text('h3',state,'Event '+i+' · '+e.label);U.table(state,['Hardware thread','Issued operations (program positions)','Pending store publication'],q.issued.map(function(a,cpu){return ['T'+cpu,a.map(function(v,k){return (k+1)+': '+(v?'issued':'waiting');}).join(' / '),q.buffers[cpu].map(function(w){return w.addr+'='+w.value;}).join(' → ')||'empty'];}));U.table(state,['Shared memory x / y','Read registers r0 / r1'],[[q.memory.x+' / '+q.memory.y,[q.registers.r0,q.registers.r1].map(function(x){return x===null?'not read':x;}).join(' / ')]]);});
+    function opText(op){return op.kind==='F'?'full ordering point':op.kind==='W'?'store '+op.addr+' = 1':'load '+op.addr+' → '+op.reg;}
+    function run(){r=M.litmus(o);sec._orderingResult=r;program.replaceChildren();metrics.replaceChildren();choices.replaceChildren();U.table(program,['Program position','Thread 0','Thread 1'],r.programs[0].map(function(op,i){return [i+1,opText(op),opText(r.programs[1][i])];}));U.metric(metrics,'Target outcome',r.target,'r0, r1; initially x = y = 0');U.metric(metrics,'Target reachable',r.targetAllowed?'Yes':'No','Under exactly the selected reduced rules');U.metric(metrics,'Distinct outcomes / states',Object.keys(r.outcomes).length+' / '+r.states,'Enumeration counts are not outcome probabilities');
+      var key=r.targetAllowed?r.target:Object.keys(r.outcomes)[0];U.select(choices,'Witness outcome',Object.keys(r.outcomes).sort(),key,function(v){trace=r.outcomes[v].trace;step.set(trace.length);});trace=r.outcomes[key].trace;step.set(trace.length);
+      summary.textContent=o.fenced?'A full point on both threads removes the highlighted weak outcome in these tests. x86 MFENCE and Arm DMB SY are relevant counterparts for the selected ordinary-memory cases; the model does not simulate their execution costs.':o.name==='SB'?'TSO allows 0,0 because local publication can lag a later independent read. Intel and Zen+ do not need different correctness predictions here.':o.name==='MP'?'For x86 WB, observing y=1 after the writer’s x=1 then y=1 forces the later reader load of x to see 1 in this two-thread test. Plain AArch64 message passing permits y=1,x=0; order publication and consumption explicitly.':'The stores here write constant 1, independent of the earlier reads. The relaxed witness issues them early; the 1,1 result is forbidden by TSO but permitted in the selected AArch64 LB contrast. Adding data/control dependencies changes the test and needs the actual ISA model.';
+    }run();
+    var language=section(root,'language','Translate the guarantee into a language program','A hardware witness is not permission to write a data-racing C program.');
+    var kind='release',seen=1,controls=h('div',{'class':'perf-controls'},language);U.select(controls,'Publication in C11',[['release','Release flag / acquire flag'],['relaxed','All data and flag accesses atomic, relaxed'],['plain','Non-atomic data and non-atomic flag'],['seqcst','All data and flag accesses atomic, seq_cst']],kind,function(v){kind=v;explain();});U.select(controls,'Value read from flag',[0,1],1,function(v){seen=+v;explain();});var code=h('div',null,language),verdict=U.text('p',language,'',{role:'status'});
+    function explain(){code.replaceChildren();var order=kind==='seqcst'?'memory_order_seq_cst':kind==='release'?'memory_order_release':'memory_order_relaxed',readOrder=kind==='release'?'memory_order_acquire':order;
+      U.code(code,kind==='plain'?'// Intentionally invalid synchronization: do not use.\n// Initially data = 0, flag = 0.\n// Producer                 // Consumer\ndata = 42;                  if (flag == 1)\nflag = 1;                       use(data);':'// Objects initialized before starting threads; one publication only.\n// Producer\n'+(kind==='release'?'data = 42; // non-atomic payload':'atomic_store_explicit(&data, 42, '+order+');')+'\natomic_store_explicit(&flag, 1, '+order+');\n\n// Consumer\nif (atomic_load_explicit(&flag, '+readOrder+') == 1)\n    use('+(kind==='release'?'data':'atomic_load_explicit(&data, '+order+')')+');');
+      verdict.textContent=kind==='plain'?'The concurrent non-atomic flag accesses create a C11 data race. This program has undefined behavior; there is no valid C outcome histogram to compare with the hardware model.':seen===0?'The condition is false: the consumer does not read the payload. An acquire that reads the initial 0 does not synchronize with the producer’s release of 1.':kind==='relaxed'?'Every object is atomic, so the accesses shown avoid a data race, but relaxed operations do not publish an ordering between the two objects. The language permits flag=1 with old data. A particular compiler/ISA can implement a stronger subset.':'The reader sees the producer’s published 1. In this one-publication example, the ordering guarantees require data=42. For release/acquire, that reads-from relationship creates synchronization and makes the non-atomic payload access race-free. Reusing the flag/payload requires a separate lifetime/ownership protocol.';
+    }explain();sources(language,['c11','armbarrier']);
+    U.text('h3',sec,'Check a formal model, then observe real hardware');U.text('p',sec,'Use herd7 with the exact architecture model and litmus source, retaining tool/model versions. litmus7 can run the case on supported native hardware; record trials, compiler output, CPU placement and forbidden/allowed outcomes. Failure to observe an allowed result does not make it forbidden. QEMU user-mode or a browser timing loop is not a memory-ordering measurement of an Arm CPU.');U.text('a',sec,'Reproducible litmus sources and protocol',{href:'benchmarks/litmus/README.md'});sources(sec,['tso','intel','arm','armmodel']);
+  }
+  function inclusion(root){var sec=section(root,'inclusion','Inclusion is a constraint on copies','One core can lose a hot private line because another core pressures a shared inclusive cache.');
+    App.CacheUI.teaching(sec,'Two private read-only caches and one shared LLC use fully associative LRU. Inclusive duplicates each fill and back-invalidates upper copies on LLC eviction. Exclusive moves data between the LLC and the private-cache union (private cores may share a line). The chosen NINE policy fills both levels, allows duplicates, and permits an LLC eviction to leave private copies intact. NINE means neither inclusive nor exclusive; it does not prescribe this particular allocation policy. No dirty traffic or finite directory is modeled.');
+    U.checkpoint(sec,'Thread 0 repeatedly uses A in its private cache. Thread 1 evicts A’s shared LLC entry. Must thread 0 lose A?',['Only if the chosen inclusion contract requires it','Always: coherence requires every cache to hold A'],0,'Compare the same reference trace. An LLC data miss does not prove no private cache has the line.');
+    var o={policy:'inclusive',privateLines:2,llcLines:4},ctl=h('div',{'class':'perf-controls'},sec);U.select(ctl,'LLC inclusion policy',[['inclusive','Inclusive'],['exclusive','Exclusive data / victim-style'],['nine','Neither inclusive nor exclusive']],o.policy,function(v){o.policy=v;run();});U.select(ctl,'Private cache lines',[1,2,4],2,function(v){o.privateLines=+v;run();});U.select(ctl,'Shared LLC lines',[2,4,8],4,function(v){o.llcLines=+v;run();});var lab=h('label',{'class':'perf-field'},sec);U.text('span',lab,'Read trace (thread:line; A=0, B=1…)');var input=h('textarea',{rows:2,'class':'cache-trace-input','aria-label':'Inclusion read trace'},lab);input.value='0:A 1:B 1:C 1:D 1:E 0:A 1:F 0:A';var actions=h('div',{'class':'perf-actions'},sec);U.text('button',actions,'Apply inclusion trace',{type:'button'}).onclick=run;
+    var status=U.text('p',sec,'',{role:'status'}),metrics=h('div',{'class':'perf-metrics'},sec),state=h('div',{'class':'cache-state'},sec),r,step=App.CacheUI.replayControls(sec,'Inclusion reference',function(i){if(!r)return;var e=r.trace[i];state.replaceChildren();U.text('h3',state,'T'+e.cpu+' reads line '+e.line+' · '+e.where);U.text('p',state,e.events.join(' → ')||'Private hit changes its own LRU order; it does not refresh the LLC.');U.table(state,['Location','Data lines (MRU → LRU)'],[['T0 private',e.upper[0].join(' → ')||'empty'],['T1 private',e.upper[1].join(' → ')||'empty'],['LLC',e.lower.join(' → ')||'empty']]);U.text('p',state,e.unique+' distinct data lines; '+e.duplicates+' duplicate data slots. Directory/tag metadata is not counted as data capacity.');});
+    function run(){try{var access=input.value.trim().split(/[\s,]+/).map(function(t){var m=/^([01]):([A-Z]|\d+)$/i.exec(t);if(!m)throw new Error('Use thread 0 or 1, a colon, and A–Z or a line number.');return {cpu:+m[1],line:/^[a-z]$/i.test(m[2])?m[2].toUpperCase().charCodeAt(0)-65:+m[2]};});r=M.inclusion(access,o);sec._inclusionResult=r;status.textContent='';metrics.replaceChildren();U.metric(metrics,'Private / peer / LLC hits',r.stats.privateHits+' / '+r.stats.peerHits+' / '+r.stats.llcHits,'Same demand trace for each policy');U.metric(metrics,'Memory reads',r.stats.memoryReads+' lines',r.bytes+' B, not a cycle prediction');U.metric(metrics,'Back-invalidations',String(r.stats.backInvalidations),'Private lines removed by LLC inclusion');step.set(r.trace.length);}catch(e){r=null;sec._inclusionResult=null;state.replaceChildren();metrics.replaceChildren();status.textContent=e.message;}}run();
+    U.table(sec,['Concrete scope','Evidence and consequence'],[['Zen+ anchor','The original path uses the reported Zen-family victim-oriented L3 description, not the strict exclusive rule of this toy model. Exact target admission/duplication/replacement choices are not established here.'],['Intel E5 v4 versus Skylake-SP','Intel documents inclusive LLC for the older E5 v4 hierarchy and a shift to non-inclusive LLC in Xeon Scalable. That changes the requirement to duplicate private-cache data; it does not eliminate coherence tracking.'],['Any architecture','An absent LLC data line can still have a directory entry or private owner. Directory inclusion and data inclusion are separate design choices. This lab assumes perfect knowledge of private holders.']]);U.text('p',sec,'Measurement: pin a hot reader and an independent cache-pressure workload to known cores, hold the reader’s footprint fixed, and compare latency/misses. LLC size, replacement, set mapping, prefetching and topology also affect the result. Timing alone cannot prove inclusion or an undocumented directory organization.');sources(sec,['cache','family']);
+  }
+  function granules(root){var sec=section(root,'granules','An Arm lens on translation granules','Page geometry changes reach and simple VIPT indexing constraints.');U.badge(sec,'Documented ISA choice + teaching geometry');U.text('p',sec,'The concrete Zen+ example uses 4 KiB base pages and its x86 page-table format. AArch64 provides choices among 4, 16 and 64 KiB translation granules; supported choices are implementation-dependent and the OS chooses a supported configuration. This is an ISA/OS distinction, not a claim that every Arm CPU supports every size or has the same TLB. Larger block mappings are separate from the base granule.');
+    var o={regions:256,stride:4096,entries:64},cache=32768,ways=8,ctl=h('div',{'class':'perf-controls'},sec);U.select(ctl,'Granule access stride',[[4096,'One word every 4 KiB'],[65536,'One word every 64 KiB']],4096,function(v){o.stride=+v;draw();});U.select(ctl,'Equal model TLB entries',[16,64,128],64,function(v){o.entries=+v;draw();});U.select(ctl,'Hypothetical VIPT data-cache bytes',[32768,65536,131072],cache,function(v){cache=+v;draw();});U.select(ctl,'Hypothetical VIPT ways',[4,8,16],ways,function(v){ways=+v;draw();});var out=h('div',null,sec);
+    function draw(){out.replaceChildren();var rows=[4096,16384,65536].map(function(size){var q=M.granule(Object.assign({},o,{pageBytes:size}));return [size+' B',q.reach+' B',q.misses+' / 512',q.mappedBytes+' B',cache/ways<=size?'Fits unchanged page-offset bits':'Needs alias/index handling beyond this simple rule'];});sec._granuleRows=rows;U.table(out,['Base granule','Model TLB reach','Misses / accesses','Whole-mapping footprint','Simple VIPT set+offset geometry'],rows);U.text('p',out,'For a conventional power-of-two VIPT index using only unchanged page-offset bits, capacity ÷ ways ≤ page bytes. Here capacity ÷ ways = '+cache/ways+' B. This is a geometry constraint, not a ban on larger real caches: physical indexing, alias handling, prediction or other implementations can change the design.');}draw();
+    U.text('p',sec,'The TLB model deliberately keeps entries and LRU replacement equal to isolate page geometry. Two dense passes can need fewer translations with a larger granule; sparse accesses may pay a larger mapped footprint with less benefit. Query the actual OS page size, mapping state and CPU support before moving results between machines. The 32 KiB / 8-way / 4 KiB combination matches the simple geometry used in the Zen+ L1 data walkthrough.');sources(sec,['granule']);
+  }
+  function compare(root){var sec=section(root,'compare','Compare measurements without inventing a machine','Import two native runs and keep the experimental conditions attached.');U.badge(sec,'Measured data only when supplied');U.text('p',sec,'No Intel/Arm/Zen+ leaderboard is preloaded: there is no controlled cross-machine dataset in this repository. Supply two memory-lab-v1 runs from the native harness. Cases join only when mode, total bytes, chain count, steps, operation count and seed match. A time ratio describes those runs; it does not isolate the ISA or prove a specific queue size.');var data=[null,null],ctl=h('div',{'class':'perf-controls'},sec),status=U.text('p',sec,'Load both runs to compare measured values.',{role:'status','class':'comparison-status'}),out=h('div',{'class':'architecture-comparison'},sec);
+    [0,1].forEach(function(i){var label=h('label',{'class':'perf-field'},ctl);U.text('span',label,'Native run '+(i?'B':'A'));var input=h('input',{type:'file',accept:'.json,application/json','aria-label':'Architecture run '+(i?'B':'A')},label);input.onchange=async function(){try{var file=input.files[0];if(!file)return;if(file.size>2*1024*1024)throw new Error('Maximum file size is 2 MiB.');data[i]=App.Performance.validateMeasurement(JSON.parse(await file.text()));draw();}catch(e){data[i]=null;out.replaceChildren();status.textContent='Could not compare: '+e.message;}};});
+    function draw(){out.replaceChildren();if(!data[0]||!data[1]){status.textContent='One run loaded; supply the other run.';return;}var rows=M.compare(data[0],data[1]);sec._comparisonRows=rows;status.textContent=rows.length?'Measured comparison · '+rows.length+' matching cases; inspect controls before attribution.':'No matching cases. Keep work and timing boundaries identical.';
+      U.table(out,['Context','Run A','Run B'],['cpu_model','architecture','kernel','cpu','smt_siblings','clock','timing_boundary','source_sha256','compiler','compile_command','page_size','actual_mapping_page_size','thp','governor','boost','notes','quick'].map(function(k){return [k,...data.map(function(d){return d.context[k]===undefined?'not recorded':typeof d.context[k]==='object'?JSON.stringify(d.context[k]):String(d.context[k]);})];}));
+      U.table(out,['Mode / bytes / chains / steps / operations / seed','Trials A / B','Median A ns/op','Median B ns/op','B / A time ratio'],rows.map(function(q){return [q.key,q.trialsA+' / '+q.trialsB,q.a.toFixed(3),q.b.toFixed(3),q.ratio.toFixed(3)];}));
+      var same=data[0].context.source_sha256&&data[0].context.source_sha256===data[1].context.source_sha256;U.text('p',out,same?'Source hashes match. Compiler output, frequency, page state, topology and memory configuration still require comparison.':'Source hashes differ or are missing. Treat this as a descriptive comparison of different/unknown programs, not an architecture-controlled result.');U.text('p',out,'Completion flags: A '+(data[0].complete===true?'complete':'partial/unknown')+', B '+(data[1].complete===true?'complete':'partial/unknown')+'. Quick harness runs are validation only. Report dispersion and raw samples, not just the ratio. Working-set plateaus and supported PMU evidence help explain a difference; clocks, DIMMs and placement can dominate it.');
+    }
+    U.text('a',sec,'Native measurement controls and run protocol',{href:'benchmarks/README.md'});
+  }
+  App.extendChapter('map',reference);App.extendChapter('stores',ordering);App.extendChapter('hier',inclusion);App.extendChapter('xlate',granules);App.extendChapter('perf',compare);
+  ['map','code','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e'].forEach(function(id){App.extendChapter(id,function(root){var lead=root.querySelector('.learning-scene .scene-lead');if(!lead)return;var box=h('details',{'class':'evidence-scope'},lead);U.text('summary',box,'Evidence and implementation scope');U.text('p',box,'Zen+ is the reference. Product cache totals/topology, externally reported family details and chosen simulation rules have different evidence. Slot layouts, clocks, hashes, replacement and transaction sequencing are not a complete verified 3750H implementation.');U.text('a',box,'Inspect the claim-by-claim reference profile',{href:'#map/reference'});});});
 })();
 
 App.start();

@@ -70,7 +70,7 @@ the current lookup, pipeline, store, coherence, prefetch or I/O simulations.
 
 ## Status
 
-Phases 1–4 are implemented. Phases 5–6 are pending. Validation is recorded by stage below.
+Phases 1–5 are implemented. Phase 6 is pending. Validation is recorded by stage below.
 
 | Phase 1 item | Delivered |
 | --- | --- |
@@ -223,3 +223,45 @@ errors. Desktop/mobile screenshots were inspected; a follow-up corrects an
 ambiguous parent-to-frame wire and checks import accounting. Reference-host
 measurement on the actual 3750H remains an external gate; development smoke
 results are not bundled as reference-machine evidence.
+
+## Phase 5 delivery
+
+`03_architecture_evidence.js` provides the claim/source registry;
+`12_architecture_model.js` contains pure ordering, inclusion and granule
+experiments; `28_architecture_lab.js` appends scoped comparisons to their existing
+chapters. There is no separate duplicated Intel or Arm chapter sequence.
+
+| Roadmap item | Delivered route / behavior |
+| --- | --- |
+| Formal Zen+ anchor | `#map/reference`: exact-product facts, externally reported family observations, inference, teaching choices and unknowns, with scope and experimental relevance. |
+| Fidelity labels | Filterable claim registry, original-chapter scope notes, primary source links and point-of-claim corrections for unverified legacy values. |
+| Intel / Arm contrasts | Ordinary x86 WB ordering versus selected AArch64 cases; E5 v4 inclusive versus Skylake-SP non-inclusive LLC; AArch64 translation-granule choices. No universal vendor queue or cache layout. |
+| Ordering layers | `#stores/litmus` separates language, compiler, ISA, microarchitecture and coherence. SB/MP/LB state enumeration produces actual witnesses; full ordering points change outcomes. |
+| Language semantics | `#stores/language`: invalid non-atomic flag synchronization, all-relaxed atomic access, one-publication release/acquire, and seq_cst; synchronization depends on reading the published value. |
+| Cache/topology | `#hier/inclusion`: read-only inclusive/exclusive/NINE policies, data duplication, victim movement, private back-invalidations and ideal directory assumptions. Existing SMT/NUMA labs supply topology experiments. |
+| Translation contrast | `#xlate/granules`: equal-entry TLB geometry and page-offset VIPT constraint with 4/16/64 KiB granules; actual implementation/OS support remains required. |
+| Benchmark comparison | `#perf/compare`: two real native imports, exact work/seed pairing, context/source-hash differences and descriptive median ratios. No fabricated cross-machine results. |
+| Reproduction | `benchmarks/litmus/generate.py` emits x86/AArch64 SB/MP/LB variants with optional full barriers; the protocol separates formal enumeration from native observations. |
+
+The reduced relaxed ordering engine is explicitly **not** a complete Arm model.
+SC/TSO modes cover ordinary reads, writes and full fences in three two-thread
+tests; no atomics, mixed sizes, device attributes or speculative timing. Formal
+ISA verification uses the linked primary models and the supplied herd7 workflow.
+herd7 was not installed locally; no formal-tool or native litmus result is claimed.
+
+The existing model queue sizes and execution behavior remain intact. The legacy
+44-entry load-queue reference conflicts with the external Zen notes' 72; it is
+now unresolved for the 3750H rather than silently treated as a product fact.
+Other unverified limits and the unsupported 20.8-TSC-tick misprediction statement
+retain their historical numbers with explicit qualification, not false measured
+attribution. Product capacities remain concrete. No audit replacement was made.
+
+Validation: 58 model/regression tests, including eight architecture tests for
+ordering outcomes, FIFO publication, fence completion, inclusion/exclusion at
+each access, peer copies, page geometry and exact-work measurement joins. Four
+native harness checks pass. Phase 4 remote CI is green at `6ba79d5`.
+Rendered validation: 182 checks pass in Chromium 138 at 1440/768/390px in both
+themes, including evidence filters, ordering witnesses, language semantics,
+inclusion/granule controls and real native-run comparison imports. No uncaught
+errors. Desktop/mobile screenshots were inspected. The new litmus section uses
+`#stores/litmus`, preserving the original `#stores/ordering` route.

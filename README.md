@@ -253,7 +253,9 @@ measurement workflow. Phase 2 adds cache/forwarding/SMT/coherence experiments an
 a native false-sharing benchmark. Phase 3 adds a timing-constrained controller
 and native loaded-latency trials. Phase 4 adds mapping/COW/page-cache state,
 page-size outcomes, walk contention, shootdowns, a NUMA extension and native
-fault/mapping observations. Phases 5–6 remain planned work.
+fault/mapping observations. Phase 5 adds an evidence-scoped Zen+ profile,
+ordering witnesses, cache-inclusion and translation-granule contrasts, and
+controlled native-run comparison. Phase 6 remains planned work.
 
 Zen+ on the Ryzen 7 3750H remains the concrete reference. Addresses are synthetic;
 latency defaults are representative unloaded inputs from external measurements
