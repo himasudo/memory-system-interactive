@@ -16,13 +16,13 @@ build: function(root){
     ' · <b>IS</b> ' + g('issue') + ' · <b>RR</b> register read · <b>EX/AG</b> execute or ' + g('agu', 'address generation') + ' · <b>D1</b> ' + g('dtlb') + ' + L1d tag · <b>D2</b> L1d data / SQ check · <b>WB</b> writeback + ' + g('wakeup') + ' · <b>RT</b> ' + g('retire') + ' · then <b>CM</b> ' + g('commit') + ' for stores.</p>');
   var sizes = h('div', {'class': 'card'}, intro);
   var R = PipeSim.REAL, C = PipeSim.CAP;
-  sizes.innerHTML = '<h3>Model sizes vs. your Zen+ core</h3><p>Structures are scaled down so every entry fits on screen. Widths and ordering rules follow Zen+ closely; exact sizes do not.</p>' +
-    '<table class="mt"><tr><th></th><th>model</th><th>Zen+</th></tr>' +
+  sizes.innerHTML = '<h3>Model sizes and reported Zen-family references</h3><p>Structures are scaled down so every entry fits on screen. The pipeline is an instructional schedule. Reference-column numbers combine family reports and unresolved legacy values, not verified per-thread 3750H limits.</p>' +
+    '<table class="mt"><tr><th></th><th>model</th><th>Family reference / evidence limit</th></tr>' +
     [['rob', 'ROB', C.rob, R.rob], ['prf', 'physical registers', C.prf, R.prf], ['sched', 'ALU schedulers', C.alu, R.alu], ['sched', 'AGU schedulers', C.agu, R.agu],
      ['lq', 'load queue', C.lq, R.lq], ['sq', 'store queue', C.sq, R.sq], ['uq', 'µop queue', C.uq + ' instr', R.uq], ['mab', 'miss buffers', C.mab, R.mab],
      ['decode', 'fetch / decode width', '4', R.fetch], ['rename', 'rename width', '4', R.rename], ['retire', 'retire width', '4', R.retire]]
     .map(function(r){ return '<tr><td>' + g(r[0], r[1]) + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td></tr>'; }).join('') +
-    '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages. A misprediction measured on the Ryzen 7 3750H costs about 20.8 TSC ticks (~9 ns), which reflects the real, longer front end.</p>';
+    '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages. The old 20.8-TSC-tick (~9 ns) misprediction figure has no raw trace or measurement protocol here and remains unverified; TSC ticks are not automatically core cycles. The simulator uses a chosen recovery penalty.</p>';
 
   /* ---------- controls ---------- */
   var ctl = h('div', {'class': 'card pctl core-controls'}, root);

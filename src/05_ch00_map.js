@@ -1,7 +1,7 @@
 /* ======================= chapter: the machine ======================= */
 App.chapter({id: 'map', short: 'The machine', title: 'The machine, all of it',
 lede: 'Every structure a memory access can touch, from the core\u2019s load/store unit out to the DRAM chips and the SSD.',
-points: ['Click a block to see what it does and its published size.', 'Each block links to the chapter that takes it apart.', 'All sizes come from one real processor, an AMD Ryzen 7 3750H (Zen+). Other x86-64 CPUs use the same kinds of structures with different sizes.'],
+points: ['Click a block to see its role and the scope of its reference values.', 'Each block links to the chapter that takes it apart.', 'The Ryzen 7 3750H is the anchor. Product capacities, reported Zen-family internals and chosen diagram rules have distinct evidence; inspect the reference profile below.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, HW = App.HW;
   var work = h('div', {'class': 'map-workbench'}, root);
@@ -10,14 +10,14 @@ build: function(root){
   var info = h('aside', {'class': 'card map-inspector'}, work);
   var parts = {}, selId = null;
   var D = {
-    core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, 44-entry load and store queues.', 'core', '[[ch:core]] runs the histogram loop through it cycle by cycle.'],
+    core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, a legacy 44-entry load-queue assumption (unverified for 3750H) and reported 44-entry store queue.', 'core', '[[ch:core]] runs the histogram loop through it cycle by cycle.'],
     fe: ['Front end', 'Branch predictor + BTB, L1i (64 KB, 4-way) with iTLB, predecode, 4 decoders, 2K-entry op cache, \u00b5op queue.', 'code', '[[ch:code]] shows what it decodes; [[ch:core]] shows it running.'],
     ooo: ['Rename + out-of-order engine', 'RAT and free list, 168-entry PRF, 192-entry ROB, six 14-entry schedulers, 4 ALU and 2 AGU ports.', 'core', ''],
-    lsu: ['Load/store unit + L1d', '44-entry load queue, 44-entry store queue, 64-entry L1 DTLB, 1536-entry L2 TLB, 2 page walkers, 32 KB 8-way L1d. 2 loads + 1 store per cycle, 16 bytes each.', 'l1d', '[[ch:xlate]] covers translation, [[ch:l1d]] the L1d lookup, [[ch:stores]] the store path.'],
+    lsu: ['Load/store unit + L1d', 'Load-queue capacity unresolved (legacy 44; Zen reference notes report 72), reported 44-entry store queue, 64-entry L1 DTLB, 1536-entry L2 TLB, walker count unverified, 32 KB 8-way L1d. 2 loads + 1 store per cycle, 16 bytes each.', 'l1d', '[[ch:xlate]] covers translation, [[ch:l1d]] the L1d lookup, [[ch:stores]] the store path.'],
     tlb: ['TLBs + page walkers', 'L1 DTLB: 64 entries, fully associative, all page sizes. L2 TLB: 1536 entries, no 1 GB pages. Two hardware walkers read page tables through the data caches.', 'xlate', ''],
-    l2: ['L2 cache (per core)', '512 KB, 8-way, write-back, inclusive of the L1s. 32 bytes/cycle to L1. \u226512 cycles load-to-use (published). Up to 50 outstanding misses to L3 per core.', 'hier', ''],
-    l3: ['L3 cache (shared by the CCX)', '4 MB, 16-way on the Ryzen 7 3750H. A victim cache: filled with lines evicted from the L2s, mostly exclusive of them. Holds shadow tags of every L2 so it acts as a probe filter. ~35 cycles average (published Zen/Zen+).', 'hier', '[[ch:hier]] follows a miss through it; [[ch:coh]] uses its shadow tags for coherence.'],
-    df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; up to 96 outstanding misses from L3 to memory (published Zen/Zen+).', 'hier', ''],
+    l2: ['L2 cache (per core)', '512 KB, 8-way, write-back, inclusive of the L1s. 32 bytes/cycle to L1. \u226512 cycles load-to-use (published). The legacy 50-miss L2-to-L3 limit is an unverified family-reference value here.', 'hier', ''],
+    l3: ['L3 cache (shared by the CCX)', '4 MB, 16-way on the Ryzen 7 3750H. A victim cache: filled with lines evicted from the L2s, mostly exclusive of them. Holds shadow tags of every L2 so it acts as a probe filter. ~35 cycles is an external Zen-family observation, not a calibrated 3750H latency.', 'hier', '[[ch:hier]] follows a miss through it; [[ch:coh]] uses its shadow tags for coherence.'],
+    df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; the legacy 96-miss L3-to-memory limit is not target-verified.', 'hier', ''],
     umc: ['Memory controllers (UMC \u00d72)', 'One per channel. Queue requests, map physical addresses to channel/bank/row/column, reorder to hit open rows, issue ACT/RD/WR/PRE/REF, enforce DRAM timings.', 'dram', '[[ch:dram]].'],
     dram: ['DDR4 DRAM, 2 channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst = 8 beats \u00d7 8 bytes = 64 bytes, one cache line. Cells are capacitors that must be refreshed.', 'dram', ''],
     gpu: ['Integrated GPU (Radeon RX Vega 10)', '10 compute units (640 shaders) sharing a GPU L2. Another client of the same fabric and the same DRAM: it competes with the cores for memory bandwidth.', 'hier', ''],
@@ -46,7 +46,7 @@ build: function(root){
   blk('core0', 44, 80, 404, 26, 'Core 0 \u00b7 2 SMT threads', []);
   blk('fe', 44, 112, 196, 70, 'Front end', ['BP/BTB \u00b7 L1i 64 KB 4-way', 'op cache \u00b7 decode \u00d74'], 'a3b');
   blk('ooo', 250, 112, 198, 70, 'Out-of-order engine', ['ROB 192 \u00b7 PRF 168', 'sched 6\u00d714 \u00b7 4 ALU + 2 AGU'], 'a3b');
-  blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ 44 \u00b7 SQ 44', 'L1d 32 KB 8-way', '2 loads + 1 store / cycle'], 'a4b');
+  blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ ? \u00b7 SQ 44*', 'L1d 32 KB 8-way', '2 loads + 1 store / cycle'], 'a4b');
   blk('tlb', 302, 188, 146, 82, 'TLBs + walkers', ['L1 DTLB 64', 'L2 TLB 1536', '2 walkers'], 'a4b');
   blk('l2', 44, 300, 404, 50, 'L2 \u00b7 512 KB \u00b7 8-way \u00b7 inclusive of L1', ['private to this core'], 'a2b');
   HW.assoc(parts.l2, 356, 307, 84, 36, {ways: 8, rows: 4});
@@ -110,7 +110,7 @@ build: function(root){
   function pick(id){
     selId = id;
     for (var k in parts) parts[k].setAttribute('class', 'click' + (k === id ? ' on' : ''));
-    if (!id){ info.innerHTML = '<div class="inspector-kicker">hardware atlas</div><h3>Select a block</h3><p>Inspect any structure to see what it does, its published size, and the chapter that takes it apart. The diagram itself is the table of contents.</p><p class="note">Wire labels are published peak transfer sizes, not measured throughput.</p>'; return; }
+    if (!id){ info.innerHTML = '<div class="inspector-kicker">hardware atlas</div><h3>Select a block</h3><p>Inspect any structure to see what it does, its reference values, and the chapter that takes it apart. The diagram itself is the table of contents.</p><p class="note">Product totals and reported family details differ in scope. Wire widths are reference peak values, not measured throughput. See the evidence profile below.</p>'; return; }
     var d = D[id];
     info.innerHTML = '<h3>' + d[0] + '</h3><p>' + d[1] + '</p>' + (d[3] ? '<p>' + d[3] + '</p>' : '') + '<button class="pri" data-go="' + d[2] + '">open the chapter \u2192</button>';
     info.querySelector('button').onclick = function(){ App.go(d[2]); };

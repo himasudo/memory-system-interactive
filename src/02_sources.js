@@ -3,7 +3,7 @@
   var W = function(t, label){ return [label || t.replace(/_/g, ' '), 'https://en.wikipedia.org/wiki/' + t, 'Wikipedia']; };
   var S = {
     agner: ['The microarchitecture of Intel, AMD and VIA CPUs', 'https://www.agner.org/optimize/microarchitecture.pdf', 'Agner Fog'],
-    zen: ['AMD Zen+ microarchitecture', 'https://en.wikipedia.org/wiki/Zen%2B', 'Wikipedia'],
+    zen: ['AMD Family 17h optimization guide (scope is not every Zen+ model)', 'https://docs.amd.com/v/u/en-US/55723_3.01', 'AMD; family-scoped reference'],
     zen7: ['AMD Zen: cache and TLB measurements', 'https://www.7-cpu.com/cpu/Zen.html', '7-cpu'],
     takeaway: ['Take A Way: Exploring the Security Implications of AMD\u2019s Cache Way Predictors', 'https://misc0110.net/files/takeaway.pdf', 'Lipp et al., 2020'],
     drepper: ['What Every Programmer Should Know About Memory', 'https://www.akkadia.org/drepper/cpumemory.pdf', 'Ulrich Drepper'],

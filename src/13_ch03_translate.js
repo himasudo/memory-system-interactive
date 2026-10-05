@@ -81,7 +81,7 @@ build: function(root){
   /* walker */
   var gw = G('walker');
   s('rect', {x: 880, y: 140, width: 310, height: 196, rx: 10, 'class': 'box'}, gw);
-  s('text', {x: 892, y: 160, 'class': 'h'}, gw, 'Page walker (\u00d72) + walk cache');
+  s('text', {x: 892, y: 160, 'class': 'h'}, gw, 'Page walker + walk cache (count unspecified)');
   s('text', {x: 892, y: 176, 'class': 's'}, gw, 'reads page-table entries through the data caches');
   E.wl = []; for (k = 0; k < 7; k++) E.wl.push(s('text', {x: 892, y: 200 + k * 18, 'font-size': 12}, gw, ''));
   /* CR3 + tables */
@@ -285,9 +285,9 @@ build: function(root){
 
   /* reach + context-switch cards */
   var reach = h('div', {'class': 'card'}, extra);
-  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' on a Zen+ core</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
+  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' · reported Zen-family reference</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
     '<tr><td>L1 DTLB</td><td>64</td><td>256 KB</td><td>128 MB</td></tr><tr><td>L2 TLB</td><td>1536</td><td>6 MB</td><td>3 GB</td></tr></table>' +
-    '<p style="margin-top:8px">Compare with the caches you measured: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
+    '<p style="margin-top:8px">Compare with the reference cache capacities: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
   var ctx = h('div', {'class': 'card'}, extra);
   ctx.innerHTML = '<h3>Context switches and ' + g('pcid', 'PCID') + '</h3><p>Switching processes writes a new value into ' + g('cr3') + '. Without PCIDs every non-global TLB entry would have to be discarded, and the next process starts with page walks. With PCIDs each entry carries a 12-bit process tag, so entries from different processes coexist and a switch only changes which tag matches.</p>' +
     '<p>The kernel removes stale entries itself with <code>invlpg</code> (one page) or a CR3 reload, for example after <code>munmap</code>. On multi-core systems it must also interrupt other cores that may cache the entry (a TLB shootdown).</p>';
