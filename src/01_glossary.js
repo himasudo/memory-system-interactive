@@ -40,7 +40,7 @@ d('lq','load queue','Holds every in-flight load in program order until it retire
 d('sq','store queue / store buffer','Holds every in-flight store (address + data) in program order. Before retirement it enables forwarding; after retirement its entries are committed to the L1d one at a time. 44 entries on Zen+.');
 d('sta','store-address µop','The half of a store that computes the address (on an AGU) and writes it into the store-queue entry.');
 d('std','store-data µop','The half of a store that delivers the value to be stored into the store-queue entry.');
-d('stlf','store-to-load forwarding','A load whose address matches an older, not-yet-committed store takes its value from the store queue instead of the cache.');
+d('stlf','store-to-load forwarding','A load may obtain bytes from an older buffered store before that store reaches the cache. Byte coverage, available data, size/alignment support and address disambiguation determine whether forwarding is possible; an address match alone is not sufficient.');
 d('disamb','memory disambiguation','Deciding whether a load may run before older stores whose addresses are still unknown. Hardware predicts \'no overlap\' and replays the load if that turns out wrong.');
 d('retire','retire','The in-order step where a finished instruction\'s results become architectural state: its old physical registers are freed and its store becomes eligible to commit.');
 d('commit','store commit','Writing a retired store from the store queue into the L1d. Only here does the store become visible to other cores.');
@@ -142,7 +142,7 @@ d('st_e','E (Exclusive)','Only this cache has the line and it is clean. A write 
 d('st_s','S (Shared)','Several caches may hold this clean (or owner-backed) copy. A write first needs the others invalidated.');
 d('st_i','I (Invalid)','The line is not usable in this cache.');
 d('probe','probe / snoop','A coherence message asking another cache to return, downgrade, or invalidate its copy of a line.');
-d('fshare','false sharing','Two cores writing different variables that share one 64-byte line. Each write invalidates the other core\'s copy, so the line bounces between them.');
+d('fshare','false sharing','Two cores writing different variables that share one 64-byte line. Alternating writers need writable ownership of the same line, so ownership can bounce even though the variables are independent. Repeated writes by a retained owner do not require a new transfer each time.');
 /* --- prefetch --- */
 d('pref','hardware prefetcher','Logic that watches the stream of miss/access addresses and fetches lines it predicts will be needed, before the program asks.');
 d('stream','stream prefetcher','Detects accesses to consecutive lines in one direction and runs ahead along them.');

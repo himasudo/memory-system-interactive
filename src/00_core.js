@@ -52,8 +52,18 @@ var App = (function(){
   function g(key, label){ return '<dfn data-g="' + key + '">' + (label || (G[key] ? G[key].t : key)) + '</dfn>'; }
 
   /* ---------- chapters + router ---------- */
-  var chapters = [], built = {}, cur = null;
+  var chapters = [], built = {}, cur = null, extensions = {};
   function chapter(def){ chapters.push(def); }
+  function extendChapter(id, fn){(extensions[id]||(extensions[id]=[])).push(fn);}
+  function labSection(root,id,title,copy){
+    var sec=root.closest('.ch'),chId=sec.id.slice(3);
+    if(document.getElementById(chId+'--'+id))throw new Error('Duplicate chapter section: '+id);
+    var el=h('section',{'class':'learning-scene scene-active',id:chId+'--'+id,'data-scene':id},root);
+    var lead=h('div',{'class':'scene-lead'},el),list=sec._sections||(sec._sections=[]);
+    h('span',{'class':'scene-kicker'},lead,String(list.length+1).padStart(2,'0'));
+    h('div',null,lead,'<h2>'+title+'</h2>'+(copy?'<p>'+copy+'</p>':''));
+    list.push({id:id,title:title,el:el});sec.classList.add('long-scroll');return el;
+  }
 
   var GROUPS = {start: 'Start here', map: 'The machine', code: 'The machine', core: 'The machine', xlate: 'Memory system', l1d: 'Memory system', hier: 'Memory system',
     dram: 'Memory system', stores: 'Memory system', coh: 'Memory system', pref: 'Memory system', dev: 'System path', e2e: 'System path', gloss: 'Reference'};
@@ -128,6 +138,7 @@ var App = (function(){
       var body = h('div', {'class': 'stack chapter-body'}, sec);
       built[ch.id] = {sec: sec, api: ch.build(body) || {}};
       enhanceChapter(sec);
+      (extensions[ch.id]||[]).forEach(function(fn){fn(body);});
       makeChapterFooter(sec, ch);
     }
     for (var k in built) built[k].sec.classList.toggle('show', k === ch.id);
@@ -934,5 +945,5 @@ var App = (function(){
   }
 
   return {paras: paras, chNum: chNum, chapters: chapters, setCategory: setCategory, termCategory: termCategory, TERM_COLORS: TERM_COLORS, TERM_LABEL: TERM_LABEL, s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
-          gloss: gloss, g: g, G: G, chapter: chapter, start: start, go: go, stepper: stepper, seg: seg};
+          gloss: gloss, g: g, G: G, chapter: chapter, extendChapter:extendChapter, labSection:labSection, start: start, go: go, stepper: stepper, seg: seg};
 })();

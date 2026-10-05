@@ -249,7 +249,8 @@ That lets each chapter build on the same machine state instead of starting over,
 The original hardware path is preserved. [AUDIT.md](AUDIT.md) is the accepted
 roadmap; [the implementation ledger](docs/IMPLEMENTATION.md) maps it to the code
 and records phase boundaries. Phase 1 adds performance foundations and a
-measurement workflow. Phases 2–6 remain planned work.
+measurement workflow. Phase 2 adds cache/forwarding/SMT/coherence experiments and
+a native false-sharing benchmark. Phases 3–6 remain planned work.
 
 Zen+ on the Ryzen 7 3750H remains the concrete reference. Addresses are synthetic;
 latency defaults are representative unloaded inputs from external measurements

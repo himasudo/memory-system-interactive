@@ -44,8 +44,8 @@ build are stale: those files do not exist in this checkout.
 
 ## Stage contract
 
-Phase 1 is the first reviewable change set. No phase is reordered. Later phases
-remain pending; adding foundation hooks does not complete their roadmap items.
+Phase 1 is the first reviewable change set. No phase is reordered. Later phases are tracked separately below; adding foundation hooks does not
+complete their roadmap items.
 The Phase 1 memory service is deliberately a generic finite-service model, not
 a Zen+ memory-controller scheduler. Actual DDR command scheduling belongs to
 Phase 3. Model capacities must never be presented as measured Zen+ capacities.
@@ -70,7 +70,7 @@ the current lookup, pipeline, store, coherence, prefetch or I/O simulations.
 
 ## Status
 
-Phase 1 is implemented and locally validated. Phases 2–6 are pending.
+Phases 1 and 2 are implemented and locally validated. Phases 3–6 are pending.
 
 | Phase 1 item | Delivered |
 | --- | --- |
@@ -103,7 +103,43 @@ the reference CPU. PMU event availability and meaningful steady-state benchmark
 results must be established on that machine. Middle-half simulation rates are
 explicitly finite-window estimates, not proof of asymptotic steady state.
 
-Next stage: Phase 2 cache miss taxonomy/reuse distance, then cache access/traffic
-accounting; use that state for splits, forwarding/aliasing, resource sharing and
-coherence transactions. This order avoids bolting atomics or false-sharing
-statistics onto a cache/coherence model that cannot yet account for their traffic.
+Phase 2 built cache miss taxonomy/reuse distance and traffic accounting before
+splits, forwarding/aliasing, resource sharing and ownership transactions.
+Next stage: Phase 3 controller queues, scheduling and read/write contention.
+
+## Phase 2 delivery
+
+The implementation order follows the ledger: cache state and traffic first,
+then dependencies and resource sharing, then ownership and native experiments.
+`12_cache_lab_models.js` contains deterministic, independently tested models.
+`24_cache_lab.js` and `25_coherence_lab.js` extend existing chapters after their
+original workbenches are built. This avoids disturbing the legacy child-index
+layout transformations. No original chapter is renumbered or replaced.
+
+| Roadmap item | Delivered route / behavior |
+| --- | --- |
+| 3C and reuse distance | `#l1d/taxonomy`: editable trace, capacity/associativity/line-size controls, true-LRU shadow classification, dirty eviction and RFO accounting. |
+| Throughput, ports and banks | `#l1d/split`: independent hit fragments share explicitly hypothetical ports/banks; includes whole-line fill writes. |
+| Splits / SIMD width | Exact byte coverage for 1–64-byte accesses across 64-byte lines and 4 KiB pages; page crossing is distinguished from faulting. Wider operands are generic, not Zen+ ISA claims. |
+| Forwarding / 4 KiB aliasing | `#stores/forwarding`: coverage matrix, known/unknown address/data, partial-address false aliases and validate/replay choices; no invented fast-path penalties. |
+| MSHR saturation | `#core/miss-entries`: same-line merging, bounded miss table and in-order ROB drain. |
+| SMT interference | `#core/smt`: dependent thread versus compute/memory sibling, bounded shared resources and hypothetical dynamic/fixed allocation. |
+| Fill / eviction pressure | `#hier/write-pressure`: dirty victims fill a bounded writeback queue, hold returned fills and block upstream requests. |
+| RFO / useful store bytes | `#stores/write-traffic`: working-set/reuse sweep with final-drain accounting and a clearly limited ideal full-line non-temporal comparison. |
+| Atomics / false sharing | `#coh/transactions`: one thread, SMT siblings, two/four physical cores; shared/packed/padded counters; add/CAS/retry/store/read traces. |
+| Transient coherence | Generic IS/IM/SM/OM, in-flight data and explicit invalidation acknowledgements; store retirement versus visibility. Race handling is explained, not falsely presented as a concurrent network simulator. |
+| Dirty peers / HITM | Dirty owner supplies current data while memory is stale; peer/home/ack counters and architecture-dependent perf c2c guidance. |
+| Locks | `#stores/locks`: CAS versus read polling with multiple waiters; ticket/mutex/futex mechanisms and language-level ordering distinctions. |
+| Native experiment | `benchmarks/sharing.c` and `sharing.py`: pinned C11 atomic counters, topology/context, random repeated cases, checksum validation and safe JSON import. |
+
+Validation: 24 model/regression tests, two native harness tests and 124 rendered
+browser checks (Chromium 138.0.7204.0), including original routes/controls,
+new section navigation, model controls, native imports, both themes and
+390/768/1440px layouts. No uncaught browser errors. Desktop and mobile rendered
+screenshots were inspected. Phase 1 remote CI is green at `fad6a7a`.
+
+Remaining hardware gate: run representative trials on the actual Ryzen 7 3750H,
+with recorded topology/conditions and PMU support. No local smoke timing is
+claimed as Zen+ evidence. Cache inclusion/vendor topology comparisons belong to
+Phase 5; read/write bus scheduling belongs to Phase 3. All added exact queue,
+bank, forwarding-policy and coherence-timing choices are labeled teaching rules.

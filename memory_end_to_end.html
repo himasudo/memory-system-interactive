@@ -1513,6 +1513,17 @@ svg .actb{fill:var(--actbg);stroke:var(--act);stroke-width:1.5}
 @media(max-width:760px){.perf-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.perf-chart{padding:10px}.perf-metrics{gap:8px}.perf-metric{padding:12px}.evidence-contract,.prediction,.perf-explanation{padding:12px}.e2e-modes{gap:5px;padding:6px}.e2e-modes button{font-size:12px;padding:7px}.crumb-sec{max-width:45vw}}
 @media(max-width:420px){.perf-controls{grid-template-columns:1fr 1fr}.perf-field{font-size:11px}.perf-actions button{min-height:38px}.queue-state{padding:10px}.perf-metrics{grid-template-columns:1fr 1fr}.perf-metric strong{font-size:18px}}
 
+/* Additional labs share the original palette, typography and SVG language. */
+.cache-trace-input{width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--bd);border-radius:8px;background:var(--panel);color:var(--tx);font:inherit;resize:vertical;min-height:70px}
+.cache-state,.coherence-state{border:1px solid var(--bd);border-radius:12px;padding:16px;margin:16px 0;min-width:0}
+.coherence-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:16px 0}
+.coherence-cards .perf-metric p{font:600 13px/1.6 var(--mono);margin:6px 0}
+.coherence-cards .perf-metric strong{font-size:15px;white-space:normal}
+.learning-scene>.perf-metrics strong{white-space:normal;overflow-wrap:anywhere}
+.learning-scene .perf-actions button:disabled{opacity:.4;cursor:default}
+.sharing-results pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto}
+@media(max-width:500px){.cache-state,.coherence-state{padding:10px}.coherence-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -1615,8 +1626,18 @@ var App = (function(){
   function g(key, label){ return '<dfn data-g="' + key + '">' + (label || (G[key] ? G[key].t : key)) + '</dfn>'; }
 
   /* ---------- chapters + router ---------- */
-  var chapters = [], built = {}, cur = null;
+  var chapters = [], built = {}, cur = null, extensions = {};
   function chapter(def){ chapters.push(def); }
+  function extendChapter(id, fn){(extensions[id]||(extensions[id]=[])).push(fn);}
+  function labSection(root,id,title,copy){
+    var sec=root.closest('.ch'),chId=sec.id.slice(3);
+    if(document.getElementById(chId+'--'+id))throw new Error('Duplicate chapter section: '+id);
+    var el=h('section',{'class':'learning-scene scene-active',id:chId+'--'+id,'data-scene':id},root);
+    var lead=h('div',{'class':'scene-lead'},el),list=sec._sections||(sec._sections=[]);
+    h('span',{'class':'scene-kicker'},lead,String(list.length+1).padStart(2,'0'));
+    h('div',null,lead,'<h2>'+title+'</h2>'+(copy?'<p>'+copy+'</p>':''));
+    list.push({id:id,title:title,el:el});sec.classList.add('long-scroll');return el;
+  }
 
   var GROUPS = {start: 'Start here', map: 'The machine', code: 'The machine', core: 'The machine', xlate: 'Memory system', l1d: 'Memory system', hier: 'Memory system',
     dram: 'Memory system', stores: 'Memory system', coh: 'Memory system', pref: 'Memory system', dev: 'System path', e2e: 'System path', gloss: 'Reference'};
@@ -1691,6 +1712,7 @@ var App = (function(){
       var body = h('div', {'class': 'stack chapter-body'}, sec);
       built[ch.id] = {sec: sec, api: ch.build(body) || {}};
       enhanceChapter(sec);
+      (extensions[ch.id]||[]).forEach(function(fn){fn(body);});
       makeChapterFooter(sec, ch);
     }
     for (var k in built) built[k].sec.classList.toggle('show', k === ch.id);
@@ -2497,7 +2519,7 @@ var App = (function(){
   }
 
   return {paras: paras, chNum: chNum, chapters: chapters, setCategory: setCategory, termCategory: termCategory, TERM_COLORS: TERM_COLORS, TERM_LABEL: TERM_LABEL, s: s, h: h, hx: hx, hb: hb, EX: EX, CFG: CFG, dramCycles: dramCycles, onCfg: onCfg,
-          gloss: gloss, g: g, G: G, chapter: chapter, start: start, go: go, stepper: stepper, seg: seg};
+          gloss: gloss, g: g, G: G, chapter: chapter, extendChapter:extendChapter, labSection:labSection, start: start, go: go, stepper: stepper, seg: seg};
 })();
 
 /* ======================= glossary ======================= */
@@ -2542,7 +2564,7 @@ d('lq','load queue','Holds every in-flight load in program order until it retire
 d('sq','store queue / store buffer','Holds every in-flight store (address + data) in program order. Before retirement it enables forwarding; after retirement its entries are committed to the L1d one at a time. 44 entries on Zen+.');
 d('sta','store-address µop','The half of a store that computes the address (on an AGU) and writes it into the store-queue entry.');
 d('std','store-data µop','The half of a store that delivers the value to be stored into the store-queue entry.');
-d('stlf','store-to-load forwarding','A load whose address matches an older, not-yet-committed store takes its value from the store queue instead of the cache.');
+d('stlf','store-to-load forwarding','A load may obtain bytes from an older buffered store before that store reaches the cache. Byte coverage, available data, size/alignment support and address disambiguation determine whether forwarding is possible; an address match alone is not sufficient.');
 d('disamb','memory disambiguation','Deciding whether a load may run before older stores whose addresses are still unknown. Hardware predicts \'no overlap\' and replays the load if that turns out wrong.');
 d('retire','retire','The in-order step where a finished instruction\'s results become architectural state: its old physical registers are freed and its store becomes eligible to commit.');
 d('commit','store commit','Writing a retired store from the store queue into the L1d. Only here does the store become visible to other cores.');
@@ -2644,7 +2666,7 @@ d('st_e','E (Exclusive)','Only this cache has the line and it is clean. A write 
 d('st_s','S (Shared)','Several caches may hold this clean (or owner-backed) copy. A write first needs the others invalidated.');
 d('st_i','I (Invalid)','The line is not usable in this cache.');
 d('probe','probe / snoop','A coherence message asking another cache to return, downgrade, or invalidate its copy of a line.');
-d('fshare','false sharing','Two cores writing different variables that share one 64-byte line. Each write invalidates the other core\'s copy, so the line bounces between them.');
+d('fshare','false sharing','Two cores writing different variables that share one 64-byte line. Alternating writers need writable ownership of the same line, so ownership can bounce even though the variables are independent. Repeated writes by a retained owner do not require a new transfer each time.');
 /* --- prefetch --- */
 d('pref','hardware prefetcher','Logic that watches the stream of miss/access addresses and fetches lines it predicts will be needed, before the program asks.');
 d('stream','stream prefetcher','Detects accesses to consecutive lines in one direction and runs ahead along them.');
@@ -5095,6 +5117,180 @@ build: function(root){
   return {key: function(k){ if (k === 'ArrowRight'){ go(cur + 1); return true; } if (k === 'ArrowLeft'){ go(cur - 1); return true; } return false; }};
 }});
 
+/* Phase 2: independent, deterministic teaching models. No proprietary Zen policies. */
+var CacheLab = (function(){
+  'use strict';
+  function integer(v,min,max,name){if(!Number.isSafeInteger(v)||v<min||v>max)throw new Error('Invalid '+name);return v;}
+  function split(addr,size,line){
+    integer(addr,0,Math.pow(2,48)-129,'address');integer(size,1,128,'access size');integer(line,16,256,'line size');
+    if((line&(line-1))!==0)throw new Error('Line size must be a power of two');
+    var fragments=[],end=addr+size;
+    for(var a=addr;a<end;){var n=Math.min(end-a,line-a%line);fragments.push({addr:a,bytes:n,line:Math.floor(a/line),offset:a%line,page:Math.floor(a/4096)});a+=n;}
+    return {fragments:fragments,lines:fragments.length,pages:Math.floor((end-1)/4096)-Math.floor(addr/4096)+1,aligned:addr%size===0};
+  }
+  function replay(accesses,options){
+    var p=Object.assign({sets:4,ways:2,line:64,drain:false},options);
+    integer(p.sets,1,64,'sets');integer(p.ways,1,16,'ways');integer(p.line,16,256,'line size');
+    if(!Array.isArray(accesses)||!accesses.length||accesses.length>2048)throw new Error('Trace needs 1–2048 accesses');
+    var sets=Array.from({length:p.sets},function(){return [];}),stack=[],seen=new Set(),events=[];
+    var counts={accesses:accesses.length,lineAccesses:0,hits:0,compulsory:0,capacity:0,conflict:0,fills:0,evictions:0,dirtyEvictions:0,readFillBytes:0,rfoBytes:0,writebackBytes:0,usefulReadBytes:0,usefulWriteBytes:0,splitLines:0,splitPages:0};
+    accesses.forEach(function(op,index){
+      if(op.op!=='read'&&op.op!=='write')throw new Error('Trace operation must be read or write');
+      var parts=split(op.addr,op.size,p.line);counts[op.op==='read'?'usefulReadBytes':'usefulWriteBytes']+=op.size;
+      if(parts.lines>1)counts.splitLines++;if(parts.pages>1)counts.splitPages++;
+      parts.fragments.forEach(function(f){
+        counts.lineAccesses++;
+        var set=f.line%p.sets,ways=sets[set],position=ways.findIndex(function(x){return x.line===f.line;}),distance=stack.indexOf(f.line),first=!seen.has(f.line),classification='hit',victim=null;
+        if(position>=0){counts.hits++;var hit=ways.splice(position,1)[0];hit.dirty=hit.dirty||op.op==='write';ways.unshift(hit);}
+        else{
+          classification=first?'compulsory':distance>=0&&distance<p.sets*p.ways?'conflict':'capacity';counts[classification]++;counts.fills++;
+          if(ways.length===p.ways){victim=ways.pop();counts.evictions++;if(victim.dirty){counts.dirtyEvictions++;counts.writebackBytes+=p.line;}}
+          counts[op.op==='write'?'rfoBytes':'readFillBytes']+=p.line;ways.unshift({line:f.line,dirty:op.op==='write'});
+        }
+        seen.add(f.line);if(distance>=0)stack.splice(distance,1);stack.unshift(f.line);
+        events.push({index:index,addr:f.addr,bytes:f.bytes,op:op.op,line:f.line,set:set,distance:distance<0?null:distance,classification:classification,shadowHit:distance>=0&&distance<p.sets*p.ways,victim:victim,sets:sets.map(function(s){return s.map(function(x){return Object.assign({},x);});}),counts:Object.assign({},counts)});
+      });
+    });
+    var dirtyResident=sets.reduce(function(n,s){return n+s.filter(function(x){return x.dirty;}).length;},0);
+    if(p.drain)counts.writebackBytes+=dirtyResident*p.line;
+    counts.totalLineBytes=counts.readFillBytes+counts.rfoBytes+counts.writebackBytes;
+    return {p:p,events:events,counts:counts,sets:sets,dirtyResident:dirtyResident,drainedLines:p.drain?dirtyResident:0};
+  }
+  function hitSchedule(accesses,options){
+    var p=Object.assign({ports:2,banks:4,width:8,latency:4},options);
+    ['ports','banks','width','latency'].forEach(function(k){integer(p[k],1,64,k);});
+    if(!Array.isArray(accesses)||!accesses.length||accesses.length>2048)throw new Error('Trace needs 1–2048 operations');
+    var busy={},events=[],operations=[],bytes=0,bankStalls=0,portStalls=0;
+    accesses.forEach(function(op,index){
+      var fragments=split(op.addr,op.size,64).fragments,complete=0,first=Infinity;
+      fragments.forEach(function(f){
+        for(var used=0;used<f.bytes;){
+          var addr=f.addr+used,size=Math.min(f.bytes-used,p.width-addr%p.width),bank=Math.floor(addr/p.width)%p.banks,t=0;
+          while(true){var slot=busy[t]||(busy[t]={ports:0,banks:[]});if(slot.ports<p.ports&&slot.banks.indexOf(bank)<0)break;if(slot.ports>=p.ports)portStalls++;else bankStalls++;t++;}
+          busy[t].ports++;busy[t].banks.push(bank);first=Math.min(first,t);complete=Math.max(complete,t+p.latency);
+          events.push({op:index,addr:addr,bytes:size,bank:bank,issue:t,done:t+p.latency,kind:op.op});used+=size;bytes+=size;
+        }
+      });
+      operations.push({issue:first,done:complete});
+    });
+    var cycles=Math.max.apply(null,operations.map(function(x){return x.done;}));
+    return {p:p,events:events,operations:operations,cycles:cycles,bytes:bytes,throughput:operations.length/cycles,bytesPerCycle:bytes/cycles,portStalls:portStalls,bankStalls:bankStalls};
+  }
+  function forwarding(o){
+    var p=Object.assign({storeAddr:4096,storeSize:8,loadAddr:4096,loadSize:8,addressKnown:true,dataKnown:true,speculate:false},o);
+    var st=split(p.storeAddr,p.storeSize,64),ld=split(p.loadAddr,p.loadSize,64);
+    var overlap=Math.max(0,Math.min(p.storeAddr+p.storeSize,p.loadAddr+p.loadSize)-Math.max(p.storeAddr,p.loadAddr));
+    var exact=p.storeAddr===p.loadAddr&&p.storeSize===p.loadSize,contains=overlap===p.loadSize,lowMatch=p.storeAddr%4096===p.loadAddr%4096;
+    var mechanism,outcome,certainty;
+    if(!p.addressKnown){mechanism=lowMatch?'Lower 12 address bits match; full-address comparison is pending.':'Older store address is unresolved.';outcome=p.speculate?(overlap?'execute, then replay when the overlap is discovered':'execute; later validation succeeds'):'wait for address resolution';certainty='Teaching disambiguation policy; the 12-bit filter is illustrative, not a claim about the exact Zen+ predictor.';}
+    else if(!overlap){mechanism=lowMatch?'Same page offset, different addresses: a false partial-address alias.':'No byte overlap with the older store.';outcome='read through the cache hierarchy';certainty='No true data dependency after full-address resolution.';}
+    else if(!p.dataKnown){mechanism='A matching older store exists but its data is not ready.';outcome='wait for store data';certainty='A correct dependent value cannot be forwarded before it exists.';}
+    else if(contains&&st.lines===1&&ld.lines===1){mechanism=exact?'Exact address and size match.':'Every loaded byte is contained in one older store.';outcome='forward candidate';certainty='Byte coverage permits forwarding; alignment/size support and timing are implementation-dependent, especially for contained or mixed-width cases.';}
+    else{mechanism=contains?'Byte coverage crosses a cache-line boundary.':'Partial overlap: a single store does not provide all loaded bytes.';outcome='wait or replay / implementation-specific merge';certainty='Do not invent a Zen+ forwarding rule or penalty. The visual shows the required bytes, not a guaranteed hardware fast path.';}
+    return {p:p,store:st,load:ld,overlap:overlap,exact:exact,contains:contains,lowMatch:lowMatch,mechanism:mechanism,outcome:outcome,certainty:certainty};
+  }
+  function misses(lines,options){
+    var p=Object.assign({entries:2,latency:20,rob:8},options);integer(p.entries,1,32,'miss entries');integer(p.latency,1,1000,'miss latency');integer(p.rob,1,128,'ROB entries');
+    if(!Array.isArray(lines)||!lines.length||lines.length>2048)throw new Error('Trace needs 1–2048 lines');lines.forEach(function(n){integer(n,0,Math.pow(2,40),'line');});
+    var pending=[],resident=new Set(),loads=[],rob=[],trace=[],issued=0,retired=0,merged=0,hits=0,blocked=0,t=0;
+    while(retired<lines.length&&t<100000){
+      pending=pending.filter(function(m){if(m.done>t)return true;resident.add(m.line);m.waiters.forEach(function(r){r.done=t;});return false;});
+      while(rob.length&&rob[0].done!==undefined&&rob[0].done<=t){rob.shift().retired=t;retired++;}
+      var stall='';
+      if(issued<lines.length&&rob.length<p.rob){
+        var line=lines[issued],same=pending.find(function(m){return m.line===line;});
+        if(resident.has(line)||same||pending.length<p.entries){
+          var r={id:issued++,line:line,issue:t};loads.push(r);rob.push(r);
+          if(resident.has(line)){r.done=t+1;hits++;}
+          else if(same){same.waiters.push(r);merged++;}
+          else pending.push({line:line,done:t+p.latency,waiters:[r]});
+        }else{blocked++;stall='miss entries full';}
+      }else if(issued<lines.length)stall='ROB full';
+      trace.push({t:t,entries:pending.length,rob:rob.length,retired:retired,issued:issued,stall:stall,lines:pending.map(function(m){return {line:m.line,waiters:m.waiters.length,done:m.done};})});t++;
+    }
+    if(retired!==lines.length)throw new Error('Miss model failed to drain');
+    return {p:p,loads:loads,trace:trace,cycles:t,retired:retired,merged:merged,hits:hits,requests:loads.length-merged-hits,blocked:blocked};
+  }
+  function siblings(options){
+    var p=Object.assign({capacity:8,policy:'shared',sibling:'memory',requests:64},options);integer(p.capacity,2,64,'shared load slots');
+    integer(p.requests,1,2048,'requests');if(['shared','partitioned'].indexOf(p.policy)<0||['memory','compute','off'].indexOf(p.sibling)<0)throw new Error('Invalid SMT scenario');
+    var threads=[{issued:0,done:0,waiting:0,latency:4,max:1,end:0},{issued:0,done:0,waiting:0,latency:p.sibling==='memory'?80:4,max:16,end:0}];
+    if(p.sibling==='off')threads[1].done=p.requests;
+    var active=[],trace=[],t=0,turn=0,blocked=[0,0];
+    for(t=0;t<100000&&threads.some(function(x){return x.done<p.requests;});t++){
+      active=active.filter(function(r){if(r.done>t)return true;var th=threads[r.thread];th.done++;th.waiting--;th.end=t;return false;});
+      /* Shared front-end/load issue: one admitted operation per model cycle.
+         Compute sibling instead consumes alternate issue slots, not LQ slots. */
+      var picked=false;
+      for(var k=0;k<2;k++){
+        var n=(turn+k)%2,th=threads[n];if(th.done>=p.requests||th.issued>=p.requests||th.waiting>=th.max)continue;
+        if(n===1&&p.sibling==='compute'){th.issued++;th.done++;th.end=t;turn=0;picked=true;break;}
+        var quota=p.policy==='partitioned'?Math.floor(p.capacity/2):p.capacity;
+        if(active.length>=p.capacity||th.waiting>=quota){blocked[n]++;continue;}
+        th.issued++;th.waiting++;active.push({thread:n,done:t+th.latency});turn=1-n;picked=true;break;
+      }
+      trace.push({t:t,a:threads[0].waiting,b:threads[1].waiting,doneA:threads[0].done,doneB:p.sibling==='off'?0:threads[1].done,issued:picked});
+    }
+    return {p:p,threads:threads,trace:trace,cycles:t,blocked:blocked,aCycles:threads[0].end+1};
+  }
+  function coherence(operations,options){
+    var p=Object.assign({cores:2,ack:4,data:8,flush:false},options);integer(p.cores,1,4,'cores');integer(p.ack,1,64,'ack delay');integer(p.data,1,64,'data delay');
+    if(!Array.isArray(operations)||!operations.length||operations.length>2048)throw new Error('Trace needs 1–2048 operations');
+    var lines={},events=[],clock=0,stats={gets:0,getm:0,upgrades:0,invalidations:0,acks:0,peerBytes:0,homeBytes:0,writebackBytes:0,atomics:0,failedCAS:0,ownershipMoves:0},results=[];
+    function lineAt(word){var key=Math.floor(word/8);if(!lines[key])lines[key]={states:Array(p.cores).fill('I'),values:Array(8).fill(0),memory:Array(8).fill(0)};return {line:lines[key],key:key,offset:word%8};}
+    function event(label,op,key,pending){events.push({t:clock,label:label,op:op,key:key,pending:pending||[],lines:JSON.parse(JSON.stringify(lines)),stats:Object.assign({},stats)});}
+    operations.forEach(function(op,index){
+      integer(op.core,0,p.cores-1,'core');integer(op.word,0,1024,'word');if(['read','store','add','cas'].indexOf(op.kind)<0)throw new Error('Invalid coherence operation');
+      if(op.kind==='store'||op.kind==='cas')integer(op.value,0,1000000000,'written value');if(op.kind==='cas')integer(op.expected,0,1000000000,'expected value');
+      var found=lineAt(op.word),line=found.line,core=op.core,key=found.key,offset=found.offset,state=line.states[core];
+      var peers=line.states.map(function(s,i){return i!==core&&s!=='I'?i:-1;}).filter(function(i){return i>=0;}),dirty=peers.find(function(i){return line.states[i]==='M'||line.states[i]==='O';});
+      var write=op.kind!=='read',old=line.values[offset];
+      if(op.kind==='store')event('Store retires into a buffer; visibility still pending',index,key);
+      if(!write&&state==='I'){
+        stats.gets++;line.states[core]='IS';event('GetS: waiting for data',index,key);clock+=p.data;
+        if(dirty!==undefined){stats.peerBytes+=64;line.states[dirty]='O';}
+        else{stats.homeBytes+=64;peers.forEach(function(i){if(line.states[i]==='E')line.states[i]='S';});}
+        line.states[core]=peers.length?'S':'E';event(dirty!==undefined?'Dirty peer supplies data; memory remains stale':'Home supplies clean data',index,key);
+      }else if(write&&state!=='M'&&state!=='E'){
+        stats.getm++;if(state==='S'||state==='O')stats.upgrades++;
+        line.states[core]=state==='I'?'IM':state==='O'?'OM':'SM';
+        stats.invalidations+=peers.length;event(state==='I'?'GetM / ownership request':'Upgrade / invalidations sent',index,key,peers);
+        if(state==='I'){clock+=p.data;if(dirty!==undefined)stats.peerBytes+=64;else stats.homeBytes+=64;event(peers.length?'Data ready; ownership still waits for acknowledgements':'Data ready; no peer acknowledgements required',index,key,peers);}
+        if(peers.length){clock+=p.ack;peers.forEach(function(i){line.states[i]='I';stats.acks++;});stats.ownershipMoves++;event('All invalidation acknowledgements received',index,key);}
+        line.states[core]='M';event('Exclusive writable ownership obtained',index,key);
+      }
+      clock++;
+      if(write){line.states[core]='M';if(op.kind==='cas'){stats.atomics++;if(old!==op.expected)stats.failedCAS++;else line.values[offset]=op.value;}
+        else if(op.kind==='add'){stats.atomics++;line.values[offset]=old+1;}
+        else line.values[offset]=op.value;
+        event(op.kind==='cas'?(old===op.expected?'CAS succeeds':'CAS fails; observed value returned'):op.kind==='add'?'Atomic read-modify-write completes':'Buffered store becomes visible through coherent caches',index,key);
+      }else event('Read completes with value '+old,index,key);
+      results.push({old:old,value:line.values[offset],core:core,kind:op.kind,word:op.word});
+    });
+    if(p.flush)Object.keys(lines).forEach(function(key){var line=lines[key],owner=line.states.findIndex(function(s){return s==='M'||s==='O';});if(owner>=0){clock+=p.data;line.memory=line.values.slice();line.states[owner]='I';stats.writebackBytes+=64;event('Dirty owner evicts; modeled backing memory updated',operations.length,+key);}});
+    return {p:p,events:events,lines:lines,stats:stats,results:results,ticks:clock};
+  }
+  function writePressure(options){
+    var p=Object.assign({count:32,cache:4,fill:4,writeback:2,latency:8,drain:12},options);
+    Object.keys(p).forEach(function(k){integer(p[k],1,k==='count'?256:64,k);});
+    var pending=[],wb=[],resident=[],trace=[],issued=0,installed=0,written=0,fillBlocked=0,frontBlocked=0,t=0;
+    while((installed<p.count||wb.length)&&t<100000){
+      if(wb.length&&wb[0].done<=t){wb.shift();written++;}
+      var blocked=false;
+      if(pending.length&&pending[0].ready<=t){
+        if(resident.length===p.cache&&wb.length===p.writeback){blocked=true;fillBlocked++;}
+        else{if(resident.length===p.cache){var victim=resident.shift();wb.push({line:victim,done:Math.max(t,wb.length?wb[wb.length-1].done:t)+p.drain});}resident.push(pending.shift().line);installed++;}
+      }
+      if(issued<p.count){if(pending.length<p.fill){pending.push({line:issued++,ready:t+p.latency});}else frontBlocked++;}
+      trace.push({t:t,fill:pending.length,wb:wb.length,installed:installed,written:written,blocked:blocked,resident:resident.slice(),pending:pending.map(function(x){return Object.assign({},x);})});t++;
+    }
+    if(installed!==p.count||wb.length)throw new Error('Writeback model failed to drain');
+    return {p:p,trace:trace,cycles:t,installed:installed,writebacks:written,dirtyResident:resident.length,fillBlocked:fillBlocked,frontBlocked:frontBlocked,rfoBytes:p.count*64,writebackBytes:written*64};
+  }
+  return {split:split,replay:replay,hitSchedule:hitSchedule,forwarding:forwarding,misses:misses,siblings:siblings,coherence:coherence,writePressure:writePressure};
+})();
+if(typeof module!=='undefined')module.exports=CacheLab;
+
 /* ======================= chapter: translation ======================= */
 App.chapter({id: 'xlate', short: 'VA \u2192 PA', title: 'Virtual to physical: TLBs and the page walk',
 lede: 'Programs use virtual addresses, but the L1d needs the physical address before it can confirm a hit.',
@@ -6773,6 +6969,7 @@ build: function(root){
     return r;
   }
   App.Performance={streamLab:streamLab,criticalLab:criticalLab,validateMeasurement:validateMeasurement,evidence:evidence};
+  App.LabUI={text:text,table:table,select:select,metric:metric,badge:badge,code:code,checkpoint:checkpoint};
   [
     ['bandwidth','bandwidth','Bytes transferred per unit time. State the boundary: useful payload, cache-line traffic and DRAM-bus traffic need not be equal.'],
     ['throughput','throughput','Completed operations per unit time. Independent work can overlap without reducing the latency of each operation.'],
@@ -7075,6 +7272,214 @@ build: function(root){
     A(sv, 'M350 64 V96').setAttribute('stroke-dasharray', '5 4');
     T(sv, 340, 86, 'written back only on eviction', 's', 'end');
   }});
+})();
+
+(function(){
+  'use strict';
+  var U=App.LabUI,h=App.h,s=App.s,M=CacheLab;
+  App.gloss('reuse_distance','reuse / stack distance','Number of distinct other cache lines referenced since the previous access to a line. Under fully associative LRU, a cache of C lines hits when this distance is below C. First touch has no finite reuse distance.');
+  App.gloss('compulsory','compulsory miss','First reference to a cache line in the defined demand trace. The 3C experiment starts empty and excludes prefetch/coherence effects.');
+  App.gloss('capacity_miss','capacity miss','A repeated-reference miss that also misses in the same-capacity fully associative LRU shadow used by this experiment. This is a classification relative to a stated replacement model, not perfect replacement.');
+  App.gloss('hitm','HITM / dirty peer evidence','A modified peer cache can supply the current line while backing memory is stale. Hardware sampling events and report labels differ across CPU families; perf c2c support must be checked on the target machine.');
+  App.gloss('transient_coh','transient coherence state','Tracks outstanding data, permission requests or acknowledgements between stable states. IS/IM/SM/OM in the lab are generic teaching labels, not AMD protocol state names.');
+  App.gloss('atomic_rmw','atomic read-modify-write','Indivisibly reads and updates one atomic object. Its language-level memory order constrains other accesses separately. Relaxed still guarantees atomicity; it does not publish unrelated payload data.');
+  function section(root,id,title,copy){return App.labSection(root,id,title,copy);}
+  function teaching(root,copy){U.badge(root,'Teaching model · not a Zen+ timing or policy claim');U.text('p',root,copy);}
+  function replayControls(root,label,render){
+    var controls=h('div',{'class':'perf-actions'},root),back=U.text('button',controls,'← back',{type:'button'}),next=U.text('button',controls,'next →',{type:'button'}),reset=U.text('button',controls,'restart',{type:'button'}),lab=h('label',{'class':'perf-scrub'},controls);
+    U.text('span',lab,label);var range=h('input',{type:'range',min:0,max:0,value:0,'aria-label':label},lab),i=0,length=1;
+    function draw(){range.value=i;back.disabled=i===0;next.disabled=i===length-1;render(i);}
+    range.oninput=function(){i=+range.value;draw();};back.onclick=function(){i=Math.max(0,i-1);draw();};next.onclick=function(){i=Math.min(length-1,i+1);draw();};reset.onclick=function(){i=0;draw();};
+    return {set:function(n){length=n;range.max=n-1;i=0;draw();},go:function(n){i=Math.min(length-1,Math.max(0,n));draw();}};
+  }
+  function cache(root){
+    var sec=section(root,'taxonomy','Classify a miss; measure reuse','Change one cache parameter while preserving the access trace.');
+    teaching(sec,'This experiment uses true LRU in a small set-associative cache and a same-capacity fully associative LRU shadow. It complements the existing Zen+ layout/pLRU walkthrough above. The 3C classification applies to this demand trace; coherence invalidations, prefetching and other replacement policies need additional explanations.');
+    U.checkpoint(sec,'Three lines map to one 2-way set but fit in the whole cache. After the first touches, why do repeated accesses miss?',['Compulsory','Capacity','Conflict'],2,'The fully associative shadow still holds the lines; only the set restriction forces eviction.');
+    var o={sets:4,ways:2,line:64,op:'read',drain:false},ctl=h('div',{'class':'perf-controls'},sec);
+    U.select(ctl,'Model cache sets',[1,2,4,8,16],4,function(v){o.sets=+v;draw();});
+    U.select(ctl,'Model cache ways',[1,2,4,8],2,function(v){o.ways=+v;draw();});
+    U.select(ctl,'Model line bytes (Zen+ uses 64)',[16,32,64,128],64,function(v){o.line=+v;draw();});
+    U.select(ctl,'Trace operation',[['read','8-byte reads'],['write','8-byte temporal stores']],'read',function(v){o.op=v;draw();});
+    U.select(ctl,'Dirty lines at end',[[0,'Keep resident'],[1,'Drain to lower level']],0,function(v){o.drain=!!+v;draw();});
+    var lab=h('label',{'class':'perf-field'},sec);U.text('span',lab,'Access trace: byte offsets, or A=0, B=64, C=128…');
+    var input=h('textarea',{rows:2,'aria-label':'Cache access trace','class':'cache-trace-input'},lab);input.value='A B C A D A B E A B C D E';
+    var actions=h('div',{'class':'perf-actions'},sec);
+    [['Apply trace',null],['Same-set conflicts',function(){return Array(4).fill([0,o.sets*o.line,2*o.sets*o.line].join(' ')).join(' ');}],['Capacity cycle',function(){return Array(3).fill(Array.from({length:o.sets*o.ways+1},function(_,i){return i*o.line;}).join(' ')).join(' ');}],['Spatial reuse',function(){return '0 8 16 24 32 40 48 56 64 72 0 8';}]].forEach(function(v){var b=U.text('button',actions,v[0],{type:'button'});b.onclick=function(){if(v[1])input.value=v[1]();draw();};});
+    var err=U.text('p',sec,'',{role:'status'}),metrics=h('div',{'class':'perf-metrics'},sec),state=h('div',{'class':'cache-state'},sec),summary=h('div',null,sec),sim;
+    var transport=replayControls(sec,'Cache trace fragment',function(i){if(!sim)return;var e=sim.events[i];state.replaceChildren();
+      U.text('h3',state,'Fragment '+(i+1)+' / '+sim.events.length+' · '+e.classification.toUpperCase());
+      U.text('p',state,'Byte '+e.addr+' → line '+e.line+', set '+e.set+'. Reuse distance: '+(e.distance===null?'first touch (∞)':e.distance+' distinct lines')+'. Same-capacity fully associative LRU: '+(e.shadowHit?'hit':'miss')+'.'+(e.victim?' Evicts line '+e.victim.line+(e.victim.dirty?' and writes back '+o.line+' dirty bytes.':'.'):''));
+      U.table(state,['Set','MRU → LRU (D = dirty)'],e.sets.map(function(ways,k){return [k,ways.length?ways.map(function(w){return 'line '+w.line+(w.dirty?' D':'');}).join(' → '):'empty'];}));
+    });
+    function draw(){try{
+      var tokens=input.value.trim().split(/[\s,]+/);if(tokens.length>512)throw new Error('Use at most 512 accesses.');
+      var trace=tokens.map(function(v){var addr=/^[A-Z]$/i.test(v)?(v.toUpperCase().charCodeAt(0)-65)*64:/^(0x[0-9a-f]+|\d+)$/i.test(v)?Number(v):NaN;if(!Number.isSafeInteger(addr)||addr<0||addr>1048576)throw new Error('Use A–Z or byte offsets 0–1048576.');return {addr:addr,size:8,op:o.op};});
+      sim=M.replay(trace,o);sec._cacheResult=sim;err.textContent='';metrics.replaceChildren();summary.replaceChildren();var c=sim.counts;
+      U.metric(metrics,'Cache capacity',o.sets*o.ways*o.line+' B',o.sets*o.ways+' lines');U.metric(metrics,'Hits / line accesses',c.hits+' / '+c.lineAccesses,'Split accesses may touch two lines');U.metric(metrics,'Compulsory / capacity / conflict',c.compulsory+' / '+c.capacity+' / '+c.conflict,'All miss causes partition this trace');U.metric(metrics,'Lower-level traffic',c.totalLineBytes+' B','Demand fills + RFO + dirty writebacks');
+      U.table(summary,['Accounting boundary','Bytes / events'],[['Useful read / write bytes',c.usefulReadBytes+' / '+c.usefulWriteBytes],['Read fills / RFO bytes',c.readFillBytes+' / '+c.rfoBytes],['Dirty evictions / writeback bytes',c.dirtyEvictions+' / '+c.writebackBytes],['Dirty lines still resident',sim.dirtyResident+(o.drain?' (charged by explicit final drain)':' (not yet charged as writebacks)')]]);
+      U.table(summary,['Access fragment','Line / set','Reuse distance','FA shadow','Actual outcome'],sim.events.map(function(e){return [e.index+1,e.line+' / '+e.set,e.distance===null?'∞':e.distance,e.shadowHit?'hit':'miss',e.classification];}));
+      transport.set(sim.events.length);
+    }catch(e){err.textContent=e.message;}}
+    draw();
+    U.text('p',sec,'For LRU, reuse distance is the number of distinct other lines since the previous reference. A fully associative cache of C lines hits when that distance is below C. First touch is compulsory; an actual miss that the shadow avoids is conflict; the remaining repeated-reference misses are capacity. This definition does not explain every miss on a real processor.');
+    U.text('p',sec,'Measurement: hold the byte footprint fixed and compare strides that repeatedly map to one modeled set with strides that spread accesses. Real higher-level cache indexing can be hashed or undocumented. A timing change alone does not prove a particular physical index function. Use the native working-set/MLP harness, then add controlled stride traces.');
+  }
+  function splitAndPorts(root){
+    var sec=section(root,'split','Split accesses and finite hit throughput','An L1 hit is a latency, not an unlimited supply rate.');
+    teaching(sec,'The byte boundaries are exact for 64-byte lines and 4 KiB pages. The bank function, port width/count and scheduling below are deliberately chosen teaching rules, not a Zen+ bank map or execution-port specification. Zen+ remains the reference for 64-byte lines; 64-byte operand examples are generic comparisons, not a claim of Zen+ AVX-512 support.');
+    var o={addr:60,size:8,ports:2,banks:4,width:8,pattern:'spread'},controls=h('div',{'class':'perf-controls'},sec);
+    U.select(controls,'Starting byte offset',[0,8,32,56,60,63,4088,4092,4095],60,function(v){o.addr=+v;draw();});
+    U.select(controls,'Access bytes',[1,2,4,8,16,32,64],8,function(v){o.size=+v;draw();});
+    U.select(controls,'Shared load/store ports (model)',[1,2,4],2,function(v){o.ports=+v;draw();});
+    U.select(controls,'Banks (model)',[1,2,4,8],4,function(v){o.banks=+v;draw();});
+    U.select(controls,'Bytes per port/cycle (model)',[8,16,32],8,function(v){o.width=+v;draw();});
+    U.select(controls,'Independent hit pattern',[['spread','Adjacent words'],['same','Same modeled bank'],['mixed','Reads, stores and fills share ports']],'spread',function(v){o.pattern=v;draw();});
+    var metrics=h('div',{'class':'perf-metrics'},sec),figure=h('figure',{'class':'perf-chart'},sec),sv=s('svg',{viewBox:'0 0 840 156',role:'img','aria-label':'Exact byte coverage across cache-line and page boundaries'},figure),result=h('div',null,sec);
+    function draw(){var q=M.split(o.addr,o.size,64),base=Math.floor(o.addr/64)*64;metrics.replaceChildren();result.replaceChildren();sv.replaceChildren();
+      U.metric(metrics,'Cache lines',String(q.lines),o.size+' bytes from offset '+o.addr);U.metric(metrics,'4 KiB pages',String(q.pages),'Each page can have a different translation or fault state');
+      for(var row=0;row<3;row++){var lo=base+row*64;if(lo>o.addr+o.size&&row>1)break;s('text',{x:8,y:row*44+16,'class':'s'},sv,'line '+Math.floor(lo/64));
+        for(var i=0;i<64;i++){var address=lo+i;s('rect',{x:100+i*11,y:row*44+2,width:10,height:24,'class':address>=o.addr&&address<o.addr+o.size?'actb':'box'},sv);}
+        s('text',{x:100,y:row*44+39,'class':'s'},sv,'bytes '+lo+'–'+(lo+63)+' · page '+Math.floor(lo/4096));}
+      var trace=Array.from({length:16},function(_,i){var fill=o.pattern==='mixed'&&i%4===0;return {addr:fill?i*64:o.pattern==='same'?i*o.banks*o.width:i*8,size:fill?64:o.size,op:o.pattern==='mixed'?(fill?'fill':i%2?'store':'load'):'load'};});
+      var r=M.hitSchedule(trace,{ports:o.ports,banks:o.banks,width:o.width,latency:Math.ceil(App.CFG.l1)});sec._hitResult=r;
+      U.metric(metrics,'16 independent hit operations',r.cycles+' cycles',r.throughput.toFixed(3)+' ops/cycle including pipeline fill/drain');
+      U.metric(metrics,'L1 data-path traffic',r.bytesPerCycle.toFixed(2)+' B/cycle','Hit bytes + optional 64-byte fill writes; not DRAM bandwidth');
+      U.table(result,['Operation / kind','Byte fragment','Bank','Issue → done'],r.events.map(function(e){return [e.op+1+' / '+e.kind,e.addr+' + '+e.bytes+' B',e.bank,e.issue+' → '+e.done];}));
+      U.text('p',result,'Bank = floor(byte address / port width) modulo bank count. Each bank accepts one fragment per model cycle; all request kinds share the selected ports. A wider or split operation consumes additional fragments. Misalignment inside one line does not itself mean two line fills. This model omits cache misses and uses the configured L1 latency after each fragment issues.');
+      if(q.pages>1)U.text('p',result,'This access crosses a page boundary. Either page can hit or miss in its TLB, map to a different physical frame, or be absent/protected. Crossing a boundary is not itself a page fault. The OS/translation extensions add those independent page states.');
+    }draw();App.onCfg(draw);
+    U.checkpoint(sec,'Can 16 independent L1 hits finish in fewer than 16 × the latency of one hit?',['Yes, if issue resources allow overlap','No, every hit must finish before the next starts'],0,'The schedule separates latency from accepted operations per cycle. A shared bank or port can still serialize issue.');
+  }
+  function forwarding(root){
+    var sec=section(root,'forwarding','Forward, wait, or replay?','Inspect the bytes before guessing a forwarding rule.');
+    teaching(sec,'Coverage is a necessary data dependency condition, not a complete forwarding specification. Exact Zen+ alignment, merging, size combinations and penalties require applicable documentation or a controlled measurement. The “lower 12 bits” experiment is an illustrative early-address filter.');
+    var o={storeAddr:4096,storeSize:8,loadAddr:4096,loadSize:8,addressKnown:true,dataKnown:true,speculate:false},ctl=h('div',{'class':'perf-controls'},sec);
+    [['storeAddr','Store address',[4096,4100,4156]],['storeSize','Store size (B)',[1,2,4,8,16,32]],['loadAddr','Load address',[4096,4100,4104,4156,8192,8256]],['loadSize','Load size (B)',[1,2,4,8,16,32]]].forEach(function(a){U.select(ctl,a[1],a[2],o[a[0]],function(v){o[a[0]]=+v;draw();});});
+    U.select(ctl,'Store address known',[[1,'yes'],[0,'no']],1,function(v){o.addressKnown=!!+v;draw();});U.select(ctl,'Store data ready',[[1,'yes'],[0,'no']],1,function(v){o.dataKnown=!!+v;draw();});U.select(ctl,'Unresolved-store policy (model)',[[0,'wait'],[1,'speculate and validate']],0,function(v){o.speculate=!!+v;draw();});
+    var out=h('div',{'class':'perf-explanation'},sec),matrix=h('div',null,sec);
+    function draw(){var r=M.forwarding(o);out.replaceChildren();sec._forwardResult=r;U.text('h3',out,r.outcome);U.text('p',out,r.mechanism);U.text('p',out,r.certainty);
+      U.table(out,['Byte range / comparison','Result'],[['Older store',o.storeAddr+'…'+(o.storeAddr+o.storeSize-1)],['Younger load',o.loadAddr+'…'+(o.loadAddr+o.loadSize-1)],['Overlap',r.overlap+' / '+o.loadSize+' required bytes'],['Same lower 12 bits',r.lowMatch?'yes':'no'],['Store / load cache lines',r.store.lines+' / '+r.load.lines]]);
+    }draw();
+    U.table(matrix,['Case','What must be resolved','Generic mechanism'],[['Exact match, data ready','All bytes available','Forwarding candidate'],['Contained load','All bytes covered; width/alignment support','Forwarding candidate, implementation-specific fast path'],['Partial overlap / multiple stores','Other loaded bytes come from elsewhere','Merge if supported, otherwise wait/replay'],['Cross-line access','More than one cache-line fragment','Extra handling; no fixed penalty asserted'],['Unresolved store address','True overlap vs false alias','Wait, or speculate then validate/replay'],['Same offset, different full addresses','Partial match was not a dependency','Any early false dependency can be released']]);
+    U.text('p',sec,'Measure exact-match and offset/width variants with identical native loop structure. Inspect assembly; otherwise the compiler can forward a C value itself or remove the memory operations. Compare distributions and documented PMCs where available. A slowdown does not by itself identify a particular predictor or forwarding restriction.');
+  }
+  function misses(root){
+    var sec=section(root,'miss-entries','Mergeable misses versus miss-entry saturation','Several loads can wait on one line; independent lines need independent entries.');
+    teaching(sec,'A finite miss table tracks outstanding lines until their fills return. Matching loads merge into one entry. Distinct lines require new entries; failed admission and ROB pressure delay the next load. Cache residency is unbounded after fill here so this experiment isolates allocation/merging, not replacement.');
+    var o={entries:2,rob:8,pattern:'unique'},ctl=h('div',{'class':'perf-controls'},sec);
+    U.select(ctl,'Miss entries',[1,2,4,8],2,function(v){o.entries=+v;draw();});U.select(ctl,'ROB load slots',[4,8,16],8,function(v){o.rob=+v;draw();});U.select(ctl,'Miss pattern',[['unique','16 different lines'],['pairs','Pairs to the same line'],['one','16 loads of one line']],'unique',function(v){o.pattern=v;draw();});
+    var metrics=h('div',{'class':'perf-metrics'},sec),state=h('div',null,sec),r;var control=replayControls(sec,'Miss-allocation cycle',function(i){if(!r)return;var t=r.trace[i];state.replaceChildren();U.text('h3',state,'Cycle '+t.t+' · '+(t.stall||'admission can advance'));U.table(state,['Miss line','Merged waiters','Fill at cycle'],t.lines.map(function(m){return [m.line,m.waiters,m.done];}));U.text('p',state,'Entries '+t.entries+'/'+r.p.entries+' · ROB '+t.rob+'/'+r.p.rob+' · retired '+t.retired+'/'+r.loads.length);});
+    function draw(){var lines=Array.from({length:16},function(_,i){return o.pattern==='one'?0:o.pattern==='pairs'?Math.floor(i/2):i;});r=M.misses(lines,o);sec._missResult=r;metrics.replaceChildren();U.metric(metrics,'Requests / merged loads',r.requests+' / '+r.merged,'Same-line merging consumes no new miss entry');U.metric(metrics,'Admission blocked',r.blocked+' cycles','Distinct line + all miss entries occupied');U.metric(metrics,'Completion',r.cycles+' model cycles','Includes fill/drain; fixed 20-cycle fill time');control.set(r.trace.length);}draw();
+    h('p',null,sec,'Compare this with <a href="#perf/queues">downstream controller/return backpressure</a>. Hardware queue counts, merging limits and per-thread allocation policies must be measured or sourced for the actual processor.');
+  }
+  function siblings(root){
+    var sec=section(root,'smt','One core, two logical threads','SMT can fill bubbles and can also compete for finite resources.');
+    teaching(sec,'The Ryzen 7 3750H has two logical threads per core. Architectural register state is distinct; substantial execution/cache machinery is shared at the physical-core level. The quotas below are hypothetical alternatives, not a statement of AMD’s exact queue partitioning. This experiment isolates one shared issue slot and a finite load-slot pool. It does not model a whole Zen+ core or cache pollution.');
+    var o={capacity:8,policy:'shared',sibling:'memory'},ctl=h('div',{'class':'perf-controls'},sec);
+    U.select(ctl,'Sibling workload',[['off','No sibling'],['compute','Compute-ready sibling'],['memory','Memory-heavy sibling']],'memory',function(v){o.sibling=v;draw();});U.select(ctl,'Load-slot allocation (model)',[['shared','Dynamic shared pool'],['partitioned','Equal fixed quotas']],'shared',function(v){o.policy=v;draw();});U.select(ctl,'Total shared load slots',[4,8,16],8,function(v){o.capacity=+v;draw();});
+    var metrics=h('div',{'class':'perf-metrics'},sec),fig=h('figure',{'class':'perf-chart'},sec),svg=s('svg',{viewBox:'0 0 820 220',role:'img','aria-label':'Two threads competing for load slots'},fig),out=h('div',null,sec);
+    function draw(){var r=M.siblings(o),alone=M.siblings(Object.assign({},o,{sibling:'off'}));sec._smtResult=r;metrics.replaceChildren();out.replaceChildren();svg.replaceChildren();
+      U.metric(metrics,'Thread A: 64 dependent loads',r.aCycles+' cycles',(r.aCycles/alone.aCycles).toFixed(2)+'× solo time');U.metric(metrics,'A resource blocks',r.blocked[0]+' cycles','A is ready, but no allowed load slot is free');U.metric(metrics,'Thread B work',o.sibling==='off'?'none':String(r.threads[1].done),'64 compute ops or independent long-latency loads');
+      [0,1].forEach(function(thread){var pts=r.trace.map(function(t){return (42+746*t.t/(r.cycles-1)).toFixed(1)+','+(180-140*t[thread?'b':'a']/o.capacity).toFixed(1);});s('polyline',{points:pts.join(' '),fill:'none',stroke:thread?'var(--a3)':'var(--a2)','stroke-width':2},svg);});s('text',{x:42,y:20,'class':'s'},svg,'A: green · B: violet · shared load occupancy');s('text',{x:42,y:207,'class':'s'},svg,'0');s('text',{x:788,y:207,'class':'s','text-anchor':'end'},svg,r.cycles+' model cycles');
+      U.text('p',out,'A holds at most one slot for four cycles; memory-heavy B can hold many slots for 80 cycles. A compute sibling consumes issue opportunities without occupying load slots. Equal quotas protect A but can leave capacity idle. Dynamic sharing can use more capacity but lets B delay A. These are mechanism experiments, not measured slowdown factors.');
+    }draw();
+    U.table(sec,['Real placement','What to compare'],[['One logical thread','Pinned pointer chase baseline; record SMT sibling activity'],['Two siblings on one physical core','Execution/queue/private-cache interference and possible bubble filling'],['Different physical cores','Shared LLC/fabric/controller/bandwidth contention instead of same-core issue sharing']]);
+    h('p',null,sec,'Inspect Linux <code>thread_siblings_list</code> before choosing CPUs. Use <a href="benchmarks/README.md">native measurement guidance</a>; the <a href="#perf/queues">finite-memory experiment</a> explains shared downstream pressure without claiming an exact topology.');
+  }
+  App.extendChapter('l1d',function(root){cache(root);splitAndPorts(root);});
+  App.extendChapter('stores',forwarding);
+  App.extendChapter('core',function(root){misses(root);siblings(root);});
+  App.CacheUI={replayControls:replayControls,teaching:teaching};
+})();
+
+(function(){
+  'use strict';
+  var U=App.LabUI,h=App.h,s=App.s,M=CacheLab,teaching=App.CacheUI.teaching,transport=App.CacheUI.replayControls;
+  function pressure(root){
+    var sec=App.labSection(root,'write-pressure','A dirty victim can block a returning fill','Follow the backpressure from the writeback queue to miss admission.');
+    teaching(sec,'32 cold 8-byte temporal stores visit distinct lines in order. Each allocates a 64-byte line after an assumed eight-cycle fetch. A four-line fully associative cache evicts dirty victims. Fill entries remain occupied until installation succeeds; a full writeback queue blocks that installation. The writeback sink is a separate serial resource here, not a DDR controller.');
+    U.checkpoint(sec,'If a fill has returned but its dirty victim cannot enter the writeback queue, is that fill’s miss entry necessarily free?',['Yes, data has returned','No, allocation can remain blocked'],1,'Data arrival, cache installation and release of finite resources are distinct events.');
+    var o={fill:4,writeback:2,drain:12},ctl=h('div',{'class':'perf-controls'},sec);
+    [['fill','Fill entries',[1,2,4,8]],['writeback','Writeback entries',[1,2,4,8]],['drain','Cycles per 64-byte writeback',[2,4,12,32]]].forEach(function(a){U.select(ctl,a[1],a[2],o[a[0]],function(v){o[a[0]]=+v;draw();});});
+    var metrics=h('div',{'class':'perf-metrics'},sec),state=h('div',null,sec),r,step=transport(sec,'Fill / writeback cycle',function(i){if(!r)return;var t=r.trace[i];state.replaceChildren();U.text('h3',state,'Cycle '+t.t+' · '+(t.blocked?'returned fill blocked by dirty victim':'buffers can progress'));U.table(state,['Resource','Occupancy / state'],[['Fill entries',t.fill+' / '+r.p.fill],['Writeback entries',t.wb+' / '+r.p.writeback],['Resident dirty lines',t.resident.join(', ')||'none'],['Installed / writebacks completed',t.installed+' / '+t.written]]);});
+    function draw(){r=M.writePressure(o);sec._pressureResult=r;metrics.replaceChildren();U.metric(metrics,'Fill installation blocked',r.fillBlocked+' cycles','Writeback capacity unavailable');U.metric(metrics,'New request admission blocked',r.frontBlocked+' cycles','All fill entries remain occupied');U.metric(metrics,'Lower-level traffic',r.rfoBytes+r.writebackBytes+' B',r.rfoBytes+' B RFO + '+r.writebackBytes+' B writeback');U.metric(metrics,'Completion / residency',r.cycles+' cycles',r.dirtyResident+' dirty lines remain resident; their eventual eviction is outside this interval');step.set(r.trace.length);}draw();
+    U.text('p',sec,'This model isolates a causal chain, so it excludes hits, prefetches and a shared read/write bus. Real replacement policies, buffer sizes, write combining and ownership optimizations change the result. Phase 3’s controller experiment adds read/write competition rather than relabeling this sink as DRAM.');
+  }
+  function writeTraffic(root){
+    var sec=App.labSection(root,'write-traffic','Useful stores versus ownership and writeback bytes','The accounting boundary decides what “write bandwidth” means.');
+    teaching(sec,'Compare idealized passes over a fully associative LRU cache with 64-byte lines. Temporal stores allocate on a cold miss and write dirty victims back. A final drain is included. The non-temporal column assumes aligned, complete lines, effective write combining, no prior residency and no reuse benefit. It is an ideal traffic bound, not a promise that every NT instruction avoids a read.');
+    var o={lines:16,cache:8,passes:2,useful:64},ctl=h('div',{'class':'perf-controls'},sec);
+    [['lines','Working-set lines',[4,8,16,32]],['cache','Model cache lines',[4,8,16]],['passes','Full passes',[1,2,4,8]],['useful','Useful store bytes per line',[8,64]]].forEach(function(a){U.select(ctl,a[1],a[2],o[a[0]],function(v){o[a[0]]=+v;draw();});});
+    var out=h('div',null,sec);
+    function draw(){var ops=[];for(var pass=0;pass<o.passes;pass++)for(var line=0;line<o.lines;line++)ops.push({addr:line*64,size:o.useful,op:'write'});var r=M.replay(ops,{sets:1,ways:o.cache,line:64,drain:true});out.replaceChildren();sec._trafficResult=r;U.table(out,['Boundary','Temporal stores','Ideal complete-line non-temporal stream'],[['Useful bytes',o.lines*o.passes*o.useful,o.lines*o.passes*o.useful],['Read-for-ownership bytes',r.counts.rfoBytes,o.useful===64?0:'not modeled for partial lines'],['Write bytes after final drain',r.counts.writebackBytes,o.useful===64?o.lines*o.passes*64:'partial write combining is implementation-dependent'],['Total line traffic',r.counts.totalLineBytes,o.useful===64?o.lines*o.passes*64:'no numerical claim']]);
+      U.text('p',out,o.lines<=o.cache?'The temporal working set fits: later passes reuse dirty lines, and the final drain writes each line once. Bypassing the cache can discard that reuse advantage.':'The cyclic working set exceeds this fully associative LRU cache. Each pass allocates and eventually writes back every line. A one-pass full-line stream can avoid substantial ownership reads when the NT assumptions hold.');
+    }draw();
+    U.checkpoint(sec,'Can you infer the temporal/non-temporal runtime crossover from byte counts alone?',['Yes, bytes determine all costs','No, reuse and resource limits matter'],1,'Measure working-set size, number of passes and alignment. Include required completion/order boundaries consistently; traffic bounds are not timings.');
+  }
+  function ownership(root){
+    var sec=App.labSection(root,'transactions','Atomic updates, false sharing and transient ownership','Change the counter layout without changing the useful work.');
+    teaching(sec,'A generic MOESI teaching protocol with explicit GetS, GetM, data and acknowledgement events extends the stable-state walkthrough above. IS/IM/SM/OM mean a request is pending; they are not AMD’s state names. Operations in this trace run one at a time. Logical event ticks expose ordering and must not be read as parallel runtime or Zen+ atomic latency.');
+    U.checkpoint(sec,'Two cores update different 8-byte counters in the same 64-byte line. Can the counters still cause ownership transfers?',['No, their values are independent','Yes, ownership is tracked per line'],1,'Padding changes the coherence unit that the two writers share, even though the source-level counters were already independent.');
+    var o={placement:'two',layout:'packed',kind:'add',flush:false},ctl=h('div',{'class':'perf-controls'},sec);
+    U.select(ctl,'Thread placement',[['one','One thread'],['smt','Two SMT siblings, one physical core'],['two','Two physical cores'],['four','Four physical cores']],'two',function(v){o.placement=v;draw();});
+    U.select(ctl,'Counter layout',[['same','One shared counter'],['packed','Separate counters in one line'],['padded','Separate 64-byte lines']],'packed',function(v){o.layout=v;draw();});
+    U.select(ctl,'Operation sequence',[['add','Atomic fetch_add'],['cas','CAS with stale expected value and retry'],['store','Ordinary stores to separate counters'],['peer','One writer, then peer readers']],'add',function(v){o.kind=v;draw();});
+    U.select(ctl,'Final dirty eviction',[[0,'Keep cache ownership'],[1,'Write back at the end']],0,function(v){o.flush=!!+v;draw();});
+    var metrics=h('div',{'class':'perf-metrics'},sec),note=h('div',{'class':'perf-explanation'},sec),state=h('div',{'class':'coherence-state'},sec),r,ops;
+    var step=transport(sec,'Coherence event',function(i){if(!r)return;var e=r.events[i];state.replaceChildren();U.text('h3',state,'Event '+(i+1)+' / '+r.events.length+' · '+e.label);U.text('p',state,'Logical tick '+e.t+' · operation '+(e.op+1)+' · line '+e.key+(e.pending.length?' · waiting for acknowledgements from cores '+e.pending.join(', '):''));
+      var cards=h('div',{'class':'coherence-cards'},state);for(var c=0;c<r.p.cores;c++){var card=h('div',{'class':'perf-metric'},cards);U.text('strong',card,'Physical core '+c);Object.keys(e.lines).forEach(function(k){U.text('p',card,'Line '+k+': '+e.lines[k].states[c]);});}
+      U.table(state,['Line','Coherent word values [0…7]','Backing memory [0…7]'],Object.keys(e.lines).map(function(k){return [k,e.lines[k].values.join(' · '),e.lines[k].memory.join(' · ')];}));
+      U.text('p',state,'A dirty cache can hold the authoritative value while backing memory is stale. This value table is a single coherent abstraction; it does not claim that every invalid cache contains those bytes.');
+    });
+    function draw(){var threads=o.placement==='one'?1:o.placement==='four'?4:2,cores=o.placement==='smt'?1:threads,values={},script=[];
+      function word(t){return o.layout==='same'?0:o.layout==='packed'?t:t*8;}
+      if(o.kind==='peer'){script.push({core:0,word:0,kind:'store',value:7});for(var t=1;t<threads;t++)script.push({core:o.placement==='smt'?0:t,word:0,kind:'read'});}
+      else for(var round=0;round<4;round++)for(var thread=0;thread<threads;thread++){
+        var w=word(thread),core=o.placement==='smt'?0:thread,v=values[w]||0;
+        if(o.kind==='cas'){script.push({core:core,word:w,kind:'cas',expected:0,value:1});if(v!==0)script.push({core:core,word:w,kind:'cas',expected:v,value:v+1});values[w]=v+1;}
+        else{script.push({core:core,word:w,kind:o.kind,value:round+1});values[w]=v+1;}
+      }
+      ops=script;r=M.coherence(ops,{cores:cores,flush:o.flush});sec._coherenceResult=r;metrics.replaceChildren();note.replaceChildren();
+      U.metric(metrics,'Atomic operations / failed CAS',r.stats.atomics+' / '+r.stats.failedCAS,'A retry is extra work even when ownership stays local');U.metric(metrics,'Ownership handoffs',String(r.stats.ownershipMoves),'Writable ownership acquired while another core had a copy');U.metric(metrics,'Invalidations / acknowledgements',r.stats.invalidations+' / '+r.stats.acks,'One acknowledgement for each invalidated peer');U.metric(metrics,'Dirty peer / clean home data',r.stats.peerBytes+' / '+r.stats.homeBytes+' B','Home may be a shared cache; these are not DRAM bytes');
+      U.text('p',note,'This model obtains writable ownership even for a failed CAS. That is a chosen implementation policy, not a C11 or universal ISA requirement. C11 atomicity and memory ordering are separate; relaxed atomics still update one atomic object indivisibly. Ordinary stores here illustrate a scripted coherence order, not a valid concurrent C program when threads write the same non-atomic counter.');
+      if(o.placement==='smt')U.text('p',note,'Both logical threads use one physical core’s private cache, so no inter-core ownership handoff is generated here. This does not make contention free: they still compete for shared resources and serialize updates to the same atomic object. Use the SMT lab and pinned native trials to examine that cost.');
+      if(o.kind==='peer')U.text('p',note,'Peer-read mode intentionally reads the writer’s line regardless of the layout selector. The M → O transition preserves a dirty owner while readers get S copies. A peer transfer avoids fetching stale backing memory.');
+      step.set(r.events.length);
+    }draw();
+    U.text('h3',sec,'While ownership is pending');
+    U.table(sec,['Event / race','Why a transient state is needed','Deliberate scope'],[['GetS sent; data absent','The line is neither a usable S copy nor simply an untouched I line','IS tracks an outstanding request'],['Upgrade sent; acknowledgements absent','Writing early could leave another valid old copy','SM/OM waits for invalidations'],['Another writer or probe arrives mid-transition','Data, permissions and messages can be in flight simultaneously','A real protocol must serialize, queue or retry/NACK the conflict; this sequential trace does not simulate that race'],['Store retires before ownership','Architectural retirement can precede coherent visibility','The buffer event precedes the visible store event; neither requires a write to DRAM']]);
+    U.text('h3',sec,'Observe the mechanism on the reference machine');
+    U.text('p',sec,'HITM describes evidence associated with a modified peer copy in some tools; event names and data-source encodings differ by CPU. perf c2c can locate contended cache lines and offsets on supported hardware. Linux uses IBS Op for supported AMD implementations. Check the installed kernel, perf version, PMUs and permissions; do not copy Intel raw events to Zen+. Elapsed runtime alone does not count bounces.');
+    U.text('a',sec,'Upstream Linux perf c2c documentation',{href:'https://kernel.googlesource.com/pub/scm/linux/kernel/git/frowand/linux/+/b72b5fecc1b8a2e595bd03d7d257c88ea3f9fd45/tools/perf/Documentation/perf-c2c.txt',target:'_blank',rel:'noopener'});
+    measurement(sec);
+  }
+  function validate(data){
+    if(!data||data.schema!=='memory-lab-sharing-v1'||!data.context||typeof data.context!=='object'||Array.isArray(data.context)||!Array.isArray(data.samples)||!data.samples.length||data.samples.length>5000)throw new Error('Expected memory-lab-sharing-v1 with context and 1–5000 samples.');
+    data.samples.forEach(function(r){if(!r||['same','packed','padded'].indexOf(r.mode)<0||['add','cas'].indexOf(r.op)<0)throw new Error('Unknown benchmark case.');['threads','iterations','operations','elapsed_ns','checksum'].forEach(function(k){if(!Number.isSafeInteger(r[k])||r[k]<=0)throw new Error('Invalid '+k);});if(r.threads>4||r.operations!==r.threads*r.iterations||r.checksum!==r.operations||!Number.isSafeInteger(r.cas_failures)||r.cas_failures<0||r.stride_bytes!==({same:0,packed:8,padded:64}[r.mode])||r.line_bytes_assumed!==64||!Array.isArray(r.observed_cpus)||r.observed_cpus.length!==r.threads||r.observed_cpus.some(function(v){return !Number.isSafeInteger(v)||v<0;}))throw new Error('Counter, layout or affinity validation failed.');});return data;
+  }
+  function measurement(sec){
+    U.text('h3',sec,'Native packed / padded / shared-counter experiment');
+    U.code(sec,'python3 benchmarks/sharing.py --cpus 0,2 --output sharing-results.json\n# Replace CPU IDs after inspecting lscpu -e and thread_siblings_list.\n# Repeat with SMT siblings and distinct physical cores.');
+    U.text('p',sec,'The harness uses aligned, lock-free C11 uint64 atomics with relaxed ordering, explicit add/CAS kernels, worker affinity, warm-up, randomized repeated cases and checksum validation. It includes a one-thread baseline. Timing covers the release barrier through all joins. Increase iterations until that fixed overhead is negligible. The compiler, CPU topology and raw per-trial results stay attached to the file. No measured results are bundled.');
+    var lab=h('label',{'class':'perf-field'},sec);U.text('span',lab,'Import atomic-counter result JSON');var input=h('input',{type:'file',accept:'.json,application/json','aria-label':'Atomic counter result JSON'},lab),status=U.text('p',sec,'No hardware results loaded.',{role:'status'}),out=h('div',{'class':'sharing-results'},sec);
+    input.onchange=async function(){out.replaceChildren();try{var f=input.files[0];if(!f)return;if(f.size>2*1024*1024)throw new Error('Maximum file size is 2 MiB.');var d=validate(JSON.parse(await f.text())),groups={};d.samples.forEach(function(v){var key=v.threads+' / '+v.mode+' / '+v.op;(groups[key]||(groups[key]=[])).push(v);});
+      status.textContent='Measured data · '+String(d.context.cpu_model||'unknown CPU')+' · '+(d.complete===true?'complete run':'partial / completion not recorded');
+      U.table(out,['Threads / layout / op','Trials','Median ns/update','p95 of trial averages','CAS retries / successful updates'],Object.keys(groups).sort().map(function(k){var a=groups[k],ns=a.map(function(v){return v.elapsed_ns/v.operations;}),ops=a.reduce(function(n,v){return n+v.operations;},0);return [k,a.length,LabModel.quantile(ns,.5).toFixed(2),LabModel.quantile(ns,.95).toFixed(2),(a.reduce(function(n,v){return n+v.cas_failures;},0)/ops).toFixed(3)];}));
+      U.text('p',out,'ns/update is inverse aggregate throughput, not one atomic’s latency. p95 is across whole-trial averages. Ownership transfers and physical DRAM bytes were not measured by this harness.');var details=h('details',null,out);U.text('summary',details,'Original measurement context');U.code(details,JSON.stringify(d.context,null,2));
+    }catch(e){status.textContent='Could not import: '+e.message;}};
+  }
+  function locks(root){
+    var sec=App.labSection(root,'locks','From atomic retries to locks','Distinguish waiting policy from the atomic operation that grants ownership.');
+    teaching(sec,'Core 0 holds a lock while two other cores poll it three times, then releases it. A scripted test-and-set-style CAS loop requests writable ownership on every attempt; test-test-and-set reads first. This model does not schedule threads or predict lock throughput. A single waiter may retain M across failed retries, so “every retry bounces” would be wrong.');
+    var policy='cas',ctl=h('div',{'class':'perf-controls'},sec);U.select(ctl,'Waiting policy',[['cas','Retry CAS on every poll'],['read','Read-only polling, then CAS']],'cas',function(v){policy=v;draw();});var out=h('div',null,sec);
+    function draw(){var ops=[{core:0,word:0,kind:'store',value:1}];for(var i=0;i<3;i++)for(var core=1;core<3;core++)ops.push(policy==='cas'?{core:core,word:0,kind:'cas',expected:0,value:1}:{core:core,word:0,kind:'read'});ops.push({core:0,word:0,kind:'store',value:0},{core:1,word:0,kind:'cas',expected:0,value:1});var r=M.coherence(ops,{cores:3});sec._lockResult=r;out.replaceChildren();U.table(out,['Observable in this trace','Count'],[['Failed CAS operations',r.stats.failedCAS],['Ownership handoffs',r.stats.ownershipMoves],['Invalidations',r.stats.invalidations],['Dirty-peer data bytes',r.stats.peerBytes]]);U.text('p',out,'Read-only polling can retain shared copies until release, but release still invalidates those copies and several waiters can race to acquire. Backoff, fairness, preemption and scheduler costs require separate experiments.');}draw();
+    U.table(sec,['Primitive','Memory-system connection','Additional cost / guarantee'],[['CAS retry loop','Retries an atomic update after observing a changed value','Retries may multiply instructions without a transfer on each retry'],['Spinlock / test-test-and-set','Shared polling, then ownership for acquisition','Busy waits; release/acquire ordering must protect the payload'],['Ticket lock','Atomic ticket allocation plus waiting on a serving counter','FIFO ticket order; central counters can still cause coherence traffic'],['Uncontended mutex','A library may acquire with a user-space atomic fast path','Exact implementation depends on libc and mutex attributes'],['Contended mutex','May spin briefly, then park and wake through the kernel','Scheduling and futex paths add costs beyond cache ownership']]);
+    U.text('p',sec,'The relaxed counter benchmark is not a lock implementation. Protecting non-atomic payload data requires a language-level synchronization relation, typically release on unlock and acquire on successful lock acquisition. A C data race cannot be repaired by a diagram of coherent hardware.');
+    h('p',null,sec,'Continue with <a href="#coh/transactions">the ownership experiment</a> and <a href="#core/smt">SMT resource competition</a>.');
+  }
+  App.extendChapter('hier',pressure);App.extendChapter('stores',function(root){writeTraffic(root);locks(root);});App.extendChapter('coh',ownership);
+  App.SharingLab={validate:validate};
 })();
 
 App.start();

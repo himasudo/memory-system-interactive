@@ -74,6 +74,63 @@ async function main(){
     await input.setInputFiles({name:'untrusted.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(adversarial))});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>window.injected),undefined);
     await input.setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{"schema":"memory-lab-v1","context":{},"samples":[{"mode":"chase","elapsed_ns":0}]}')});await page.waitForTimeout(100);assert.match(await page.locator('#perf--measure [role=status]').textContent(),/Could not import/);
   });
+  await check('3C trace, reuse distance, RFO bytes and safe trace input',async()=>{
+    await route('l1d/taxonomy');const lab=page.locator('#l1d--taxonomy');
+    await lab.getByRole('button',{name:'Same-set conflicts',exact:true}).click();assert.ok(await lab.evaluate(el=>el._cacheResult.counts.conflict>0));
+    await lab.locator('[data-field="Trace operation"]').selectOption('write');assert.ok(await lab.evaluate(el=>el._cacheResult.counts.rfoBytes>0));
+    await lab.locator('[data-field="Dirty lines at end"]').selectOption('1');assert.ok(await lab.evaluate(el=>el._cacheResult.drainedLines>0));
+    await lab.getByRole('button',{name:'Capacity cycle',exact:true}).click();assert.ok(await lab.evaluate(el=>el._cacheResult.counts.capacity>0));
+    await lab.getByLabel('Cache trace fragment',{exact:true}).fill('5');assert.match(await lab.locator('.cache-state h3').textContent(),/Fragment 6/);
+    await lab.getByLabel('Cache access trace',{exact:true}).fill('<img src=x>');await lab.getByRole('button',{name:'Apply trace',exact:true}).click();assert.match(await lab.locator('[role=status]').textContent(),/Use A/);
+    await page.screenshot({path:path.join(output,'cache-dark-desktop.png')});
+  });
+  await check('split page coverage and shared port traffic',async()=>{
+    await route('l1d/split');const lab=page.locator('#l1d--split');
+    await lab.locator('[data-field="Starting byte offset"]').selectOption('4092');assert.match(await lab.textContent(),/crosses a page boundary/);
+    await lab.locator('[data-field="Independent hit pattern"]').selectOption('mixed');assert.ok(await lab.evaluate(el=>el._hitResult.events.some(e=>e.kind==='fill')));
+    assert.equal(await lab.evaluate(el=>el._hitResult.bytes),4*64+12*8);
+  });
+  await check('forwarding false alias, unavailable data and speculation',async()=>{
+    await route('stores/forwarding');const lab=page.locator('#stores--forwarding');
+    await lab.locator('[data-field="Store data ready"]').selectOption('0');assert.match(await lab.locator('.perf-explanation h3').textContent(),/wait/);
+    await lab.locator('[data-field="Load address"]').selectOption('8192');assert.equal(await lab.evaluate(el=>el._forwardResult.lowMatch),true);
+    await lab.locator('[data-field="Store address known"]').selectOption('0');await lab.locator('[data-field="Unresolved-store policy (model)"]').selectOption('1');assert.match(await lab.locator('.perf-explanation h3').textContent(),/succeeds/);
+  });
+  await check('mergeable misses and SMT allocation controls',async()=>{
+    await route('core/miss-entries');const miss=page.locator('#core--miss-entries');
+    assert.ok(await miss.evaluate(el=>el._missResult.blocked>0));await miss.locator('[data-field="Miss pattern"]').selectOption('one');assert.equal(await miss.evaluate(el=>el._missResult.requests),1);
+    await route('core/smt');const smt=page.locator('#core--smt');const shared=await smt.evaluate(el=>el._smtResult.aCycles);
+    await smt.locator('[data-field="Load-slot allocation (model)"]').selectOption('partitioned');assert.ok(await smt.evaluate((el,n)=>el._smtResult.aCycles<n,shared));
+  });
+  await check('fill pressure and useful-versus-line store bytes',async()=>{
+    await route('hier/write-pressure');const lab=page.locator('#hier--write-pressure');const before=await lab.evaluate(el=>el._pressureResult.cycles);
+    await lab.locator('[data-field="Cycles per 64-byte writeback"]').selectOption('2');assert.ok(await lab.evaluate((el,n)=>el._pressureResult.cycles<n,before));
+    await route('stores/write-traffic');const traffic=page.locator('#stores--write-traffic');
+    await traffic.locator('[data-field="Working-set lines"]').selectOption('4');const a=await traffic.evaluate(el=>el._trafficResult.counts.totalLineBytes);
+    await traffic.locator('[data-field="Full passes"]').selectOption('8');assert.equal(await traffic.evaluate(el=>el._trafficResult.counts.totalLineBytes),a);
+    await traffic.locator('[data-field="Useful store bytes per line"]').selectOption('8');assert.match(await traffic.textContent(),/no numerical claim/);
+  });
+  await check('ownership, false sharing, dirty peers and lock waiting policy',async()=>{
+    await route('coh/transactions');const lab=page.locator('#coh--transactions');assert.ok(await lab.evaluate(el=>el._coherenceResult.stats.ownershipMoves>0));
+    await lab.locator('[data-field="Counter layout"]').selectOption('padded');assert.equal(await lab.evaluate(el=>el._coherenceResult.stats.ownershipMoves),0);
+    await lab.locator('[data-field="Thread placement"]').selectOption('smt');assert.equal(await lab.evaluate(el=>el._coherenceResult.p.cores),1);
+    await lab.locator('[data-field="Thread placement"]').selectOption('four');await lab.locator('[data-field="Operation sequence"]').selectOption('peer');
+    assert.ok(await lab.evaluate(el=>el._coherenceResult.stats.peerBytes>0));await lab.getByLabel('Coherence event',{exact:true}).fill('2');assert.match(await lab.locator('.coherence-state h3').textContent(),/Event 3/);
+    await page.screenshot({path:path.join(output,'coherence-dark-desktop.png')});
+    await route('stores/locks');const lock=page.locator('#stores--locks');const moves=await lock.evaluate(el=>el._lockResult.stats.ownershipMoves);await lock.locator('[data-field="Waiting policy"]').selectOption('read');assert.ok(await lock.evaluate((el,n)=>el._lockResult.stats.ownershipMoves<n,moves));
+  });
+  await check('atomic native result import retains context and rejects invalid counts',async()=>{
+    const fixture=path.join(output,'sharing-smoke.json');execFileSync('python3',['benchmarks/sharing.py','--quick','--output',fixture],{cwd:root,stdio:'pipe'});
+    await route('coh/transactions');const input=page.getByLabel('Atomic counter result JSON',{exact:true});await input.setInputFiles(fixture);
+    await page.waitForFunction(()=>document.querySelector('#coh--transactions [role=status]').textContent.startsWith('Measured data'));
+    assert.ok(await page.locator('.sharing-results tbody tr').count()>=6);
+    const bad=JSON.parse(fs.readFileSync(fixture));bad.samples[0].checksum=0;
+    await input.setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await page.waitForFunction(()=>document.querySelector('#coh--transactions [role=status]').textContent.startsWith('Could not import'));
+  });
+  await check('extension section navigation preserves lazy chapter state',async()=>{
+    await route('l1d/taxonomy');await page.locator('#crumbSec').click();await page.locator('#secMenu button').filter({hasText:'Split accesses and finite hit throughput'}).click();await page.waitForURL('**#l1d/split');
+    await page.evaluate(()=>App.go('core'));await page.waitForFunction(()=>document.querySelector('.ch.show').id==='ch-core');await page.evaluate(()=>App.go('l1d'));await page.waitForFunction(()=>document.querySelector('.ch.show').id==='ch-l1d');assert.equal(await page.locator('#l1d--taxonomy').count(),1);
+  });
   await check('original L1 custom stores, reload and invalid inputs',async()=>{
     await route('l1d/lookup');const chapter=page.locator('#ch-l1d');
     await chapter.getByLabel('virtual address',{exact:true}).fill('0x7ffd4a3c5e59');await chapter.locator('.l1go').click();assert.ok(await chapter.locator('.l1err').isVisible());
@@ -109,9 +166,10 @@ async function main(){
     await page.setViewportSize({width,height:844});
     for(const theme of ['light','dark']){
       if(await page.locator('html').getAttribute('data-theme')!==theme)await page.locator('#themeToggle').click();
-      for(const id of ['start','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e/critical','e2e/steady','perf/queues','gloss'])await check(width+'px '+theme+' '+id,async()=>{
+      for(const id of ['start','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e/critical','e2e/steady','perf/queues','l1d/taxonomy','l1d/split','core/smt','stores/forwarding','coh/transactions','gloss'])await check(width+'px '+theme+' '+id,async()=>{
         await route(id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'document overflows viewport');
         assert.equal(await page.locator('#themeToggle').isVisible(),true);
+        if(id==='coh/transactions')await page.screenshot({path:path.join(output,'coherence-'+theme+'-'+width+'.png')});
         if(id==='perf/queues')await page.screenshot({path:path.join(output,'queues-'+theme+'-'+width+'.png')});
       });
     }

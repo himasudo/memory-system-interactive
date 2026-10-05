@@ -1,5 +1,7 @@
 node_modules/
 benchmarks/memlab
+benchmarks/sharing
+benchmarks/*-results.json
 benchmarks/results*.json
 test-results/
 __pycache__/
