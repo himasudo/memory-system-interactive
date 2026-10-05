@@ -70,7 +70,7 @@ the current lookup, pipeline, store, coherence, prefetch or I/O simulations.
 
 ## Status
 
-Phases 1–3 are implemented. Phases 4–6 are pending. Phase 3 validation is recorded below.
+Phases 1–4 are implemented. Phases 5–6 are pending. Validation is recorded by stage below.
 
 | Phase 1 item | Delivered |
 | --- | --- |
@@ -182,5 +182,44 @@ Command timelines, JSON export/import and mobile rendering were inspected.
 A targeted follow-up verified invalid-trace recovery and disabled stale-result
 export; timeline SVGs now retain readable scale inside horizontal scrollers.
 
-Next stage: Phase 4 mappings/PTEs/backing pages, then fault/COW/page-cache
-transitions, page sizes/walk contention, shootdowns and the NUMA extension.
+## Phase 4 delivery
+
+`12_vm_model.js` separates VMA policy, present/swapped leaf entries, conceptual
+TLBs, physical frames, file page cache and swap backing. `27_vm_lab.js` appends
+four scenes to translation and a clearly scoped two-node extension to hierarchy.
+Original translation controls, synthetic page tables and detailed plates remain.
+
+| Roadmap item | Delivered route / behavior |
+| --- | --- |
+| mmap / demand-zero | `#xlate/os`: mapping without residency, shared zero-page reads, private allocation/zeroing on write and independent TLB/walk/fault counters. |
+| COW | Fork protects private mappings before the child runs; parent invalidation, child copying or exclusive-page reuse; actual representative word values remain consistent. |
+| Page cache | Warm/cold model state, private versus shared file mappings, dirty shared data and explicit backing writeback before eviction. Storage durability is not equated with CPU visibility. |
+| Reclaim / swap | Advanced interactive reclaim, dirty file writeback, anonymous swap preservation, swap-cache reuse, COW across swap and a disabled-swap outcome that retains data. |
+| THP / explicit huge pages | `#xlate/pages`: dense/sparse TLB traces, reach/footprint, successful PMD mapping, THP base-page fallback and explicit HugeTLB failure. Multi-size THP and actual-mapping observation are distinguished. |
+| Walk contention | `#xlate/walk-contention`: serial dependent PTE requests, cached upper levels, finite walkers and memory slots shared with ordinary data; request timeline and traffic. |
+| Shootdown scaling | `#xlate/shootdown`: CPU mask, page batching, invalidation choice, remote handler delay, acknowledgements and sum-of-work versus origin critical path. |
+| NUMA | `#hier/numa`: two memory nodes, first-touch/interleave placement, execution migration without automatic data migration and a contended remote response link. Explicitly outside the laptop topology. |
+| Native observability | `vm.c` / `vm.py`: pinned anonymous/private/shared mapping probes, fault deltas and content validation, parent/child checks, advice versus actual smaps evidence, raw context and safe import. |
+
+The OS model is deliberately not a Linux implementation or a predicted fault
+count. It shows one word per full 4 KiB frame, ignores page-table allocation,
+uses immediate invalidation in lifecycle scenes and models storage-backed
+faults without time. The separate shootdown scene exposes completion delays.
+NUMA clocks, topology and bandwidth are chosen. No new proprietary Zen+ walker
+count, TLB replacement policy or hardware page-size capacity is asserted.
+The older walkthrough now qualifies the private allocation path and removes an
+unsupported exact walker count without removing its detailed translation steps.
+
+Validation: 50 model/regression tests, including 12 VM/translation tests for
+ownership, swapped aliases, permissions, value preservation, serial walk
+dependencies, finite resources, shootdown completion and remote-link bounds.
+Four native harness tests compile and exercise their modes with data/affinity
+checks. Fault totals and THP success are not asserted as fixed hardware results.
+Phase 3 remote CI is green at `336596d`.
+
+Rendered validation: 154 checks pass in Chromium 138 at 1440/768/390px, both
+themes, including new VM actions, model outcomes and native imports. No uncaught
+errors. Desktop/mobile screenshots were inspected; a follow-up corrects an
+ambiguous parent-to-frame wire and checks import accounting. Reference-host
+measurement on the actual 3750H remains an external gate; development smoke
+results are not bundled as reference-machine evidence.

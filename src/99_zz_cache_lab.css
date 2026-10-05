@@ -12,3 +12,5 @@
 .controller-timeline svg{min-width:900px}
 #l1d--split .perf-chart svg{min-width:840px}
 #core--smt .perf-chart svg{min-width:820px}
+.vm-diagram svg{min-width:900px}
+.vm-results pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto}
