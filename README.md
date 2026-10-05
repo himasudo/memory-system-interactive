@@ -251,7 +251,9 @@ roadmap; [the implementation ledger](docs/IMPLEMENTATION.md) maps it to the code
 and records phase boundaries. Phase 1 adds performance foundations and a
 measurement workflow. Phase 2 adds cache/forwarding/SMT/coherence experiments and
 a native false-sharing benchmark. Phase 3 adds a timing-constrained controller
-and native loaded-latency trials. Phases 4–6 remain planned work.
+and native loaded-latency trials. Phase 4 adds mapping/COW/page-cache state,
+page-size outcomes, walk contention, shootdowns, a NUMA extension and native
+fault/mapping observations. Phases 5–6 remain planned work.
 
 Zen+ on the Ryzen 7 3750H remains the concrete reference. Addresses are synthetic;
 latency defaults are representative unloaded inputs from external measurements

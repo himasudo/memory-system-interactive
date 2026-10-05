@@ -216,3 +216,68 @@ Shared caches, fabric, execution resources (for SMT), page walks and the memory
 controller can all contribute to a slowdown. Controller queue occupancy, row
 hits and refresh attribution need applicable PMU/sampling evidence; timing
 alone cannot establish them.
+
+## Mapping, first touch and COW observations (Phase 4)
+
+```sh
+python3 benchmarks/vm.py --output vm-results.json \
+  --notes 'Record page policy, placement, kernel, memory pressure and thermals'
+# Optional: --cpu <allowed CPU> --bytes 16777216 --repeats 9
+```
+
+The runner compiles `vm.c` with warnings as errors and randomizes repeated cases:
+private anonymous memory with base/huge advice, a private file mapping, and a
+shared file mapping. It touches one volatile byte per base page. Five separately
+timed stages record `getrusage(RUSAGE_SELF)` minor/major deltas, checksums and
+observed CPU: first read, first write, repeated write, a child write after fork,
+and the parent's final read. Write stages include readback for validation.
+Fork, joins, file creation, `smaps` reads and final `msync` are outside the stage
+timers. The child reports its own counters, not `RUSAGE_CHILDREN` aggregates.
+These are **whole-stage observations**, not isolated fault-service or load
+latency. Incidental process faults remain possible within the counter boundary.
+
+Private mappings must preserve the parent's value (7) after the child writes
+42. Shared file mappings must expose 42 to the parent. File backing must retain
+10 for the private case and contain 42 for the shared case after explicit
+`msync`. The program rejects content or affinity mismatches. Its final file
+check is a read through the OS and is **not** a crash-persistence test.
+
+File fixtures are temporary, unlinked, and written immediately before mapping.
+They start page-cache warm; the temporary filesystem may itself be memory-backed.
+Its mount information is recorded when `findmnt` is available. There is no
+privileged cache dropping, forced storage miss, swap-pressure generation, global
+policy change or claim that a warm page maps with exactly one fault per page.
+Readahead/fault-around and kernel optimizations affect that relationship.
+
+The target VMA sits inside an owned guarded reservation at a 2 MiB boundary.
+`MADV_NOHUGEPAGE` or `MADV_HUGEPAGE` and the advice error code are recorded;
+success does not prove a large mapping. Selected `/proc/self/smaps` fields are
+captured before touch, after first read/write and after the child's write.
+Inspect `AnonHugePages`, residency and flags alongside policy/per-size THP
+settings. `KernelPageSize` alone does not describe every THP case. Linux
+[multi-size THP](https://docs.kernel.org/admin-guide/mm/transhuge.html) can use
+PTE-mapped large pages as well as PMD-size huge mappings. This probe does not
+infer hardware leaf size from advice or convert aggregate huge bytes into a
+per-access translation claim.
+
+Default size is 16 MiB and nine trials per case. `--quick` uses 256 KiB and three
+trials to validate execution/JSON only; it is too small for a full 2 MiB target
+mapping. Sizes must be base-page multiples up to 128 MiB. Explicit HugeTLB pool
+management is not automated; the browser explains reservation/failure separately.
+Reclaim, swap and shootdown timing remain controlled models unless you collect
+appropriate target-host evidence.
+
+Import `memory-lab-vm-v1` JSON at `#xlate/os`. The UI retains raw per-stage
+observations, mapping snapshots, compiler/binary hashes and context. Compare
+counter deltas, content invariants and mapping evidence before interpreting
+timing. `/proc/PID/maps` describes VMAs; `/proc/PID/smaps` adds residency/accounting.
+Use supported `perf` page-fault counters or tracepoints for longer workloads,
+with the scope of child processes and kernel/tool support recorded. Hardware
+TLB misses/walks, kernel page faults, and ordinary cache misses are separate
+quantities.
+
+For the two-node NUMA extension, inspect `lscpu`, `numactl --hardware`,
+`/proc/PID/numa_maps` and `numastat -p` before comparing CPU migration against
+page placement. Record memory policy and automatic balancing. The reference
+laptop is not evidence of multisocket behavior; run that experiment on a host
+that actually exposes multiple memory nodes.

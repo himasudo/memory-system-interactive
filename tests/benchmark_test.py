@@ -8,6 +8,33 @@ import unittest
 
 
 class NativeBenchmark(unittest.TestCase):
+    def test_vm_lifecycle(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "vm.json"
+            subprocess.run(["python3", "benchmarks/vm.py", "--quick", "--output", str(out)], cwd=root, check=True, capture_output=True)
+            data = json.loads(out.read_text())
+            self.assertEqual(data["schema"], "memory-lab-vm-v1")
+            self.assertTrue(data["complete"])
+            self.assertEqual(len(data["samples"]), 12)
+            for row in data["samples"]:
+                self.assertTrue(row["verification"]["passed"])
+                pages = row["bytes"] // row["page_bytes"]
+                shared = row["kind"] == "file-shared"
+                values = [0 if row["kind"] == "anon" else 10, 7, 7, 42, 42 if shared else 7]
+                for stage, value in zip(row["stages"], values):
+                    self.assertEqual(stage["checksum"], pages * value)
+                    self.assertGreater(stage["elapsed_ns"], 0)
+                    self.assertGreaterEqual(stage["minor"], 0)
+                    self.assertGreaterEqual(stage["major"], 0)
+                    self.assertEqual(stage["cpu_before"], row["cpu"])
+                    self.assertEqual(stage["cpu_after"], row["cpu"])
+                self.assertIn("after-write", row["smaps"])
+                self.assertEqual(row["verification"]["file_checksum"], pages * (0 if row["kind"] == "anon" else 42 if shared else 10))
+            for args in [["--bytes", "-1"], ["--bytes", "4097"], ["--cpu", "999999"], ["--kind", "bad"], ["--advice", "bad"], ["--kind", "file-shared", "--advice", "huge"]]:
+                r = subprocess.run([str(root / "benchmarks/vm"), *args], capture_output=True)
+                self.assertEqual(r.returncode, 2)
+
     def test_loaded_latency(self):
         root = Path(__file__).resolve().parents[1]
         cpus = sorted(os.sched_getaffinity(0))[:3]

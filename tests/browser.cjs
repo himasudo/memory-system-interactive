@@ -150,6 +150,31 @@ async function main(){
     await page.waitForFunction(()=>document.querySelector('.loaded-status').textContent.startsWith('Measured data'));assert.ok(await page.locator('.loaded-results tbody tr').count()>=1);
     const bad=JSON.parse(fs.readFileSync(fixture));bad.samples[0].elapsed_ns=-1;await input.setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await page.waitForFunction(()=>document.querySelector('.loaded-status').textContent.startsWith('Could not import'));
   });
+  await check('VM lifecycle preserves COW values and history cannot mutate the present',async()=>{
+    await route('xlate/os');const lab=page.locator('#xlate--os');await lab.getByRole('button',{name:'COW story',exact:true}).click();
+    assert.deepEqual(await lab.evaluate(el=>{const s=el._vmResult;return [s.frames[s.processes.parent.ptes[0].frame].value,s.frames[s.processes.child.ptes[0].frame].value,s.stats.copyBytes];}),[7,42,4096]);
+    await lab.getByLabel('VM event',{exact:true}).fill('0');assert.equal(await lab.getByRole('button',{name:'Write word',exact:true}).isDisabled(),true);
+    const range=lab.getByLabel('VM event',{exact:true});await range.fill(await range.getAttribute('max'));assert.equal(await lab.getByRole('button',{name:'Write word',exact:true}).isDisabled(),false);
+    await lab.locator('[data-field="Acting process"]').selectOption('child');await lab.getByRole('button',{name:'Protect read-only',exact:true}).click();await lab.getByRole('button',{name:'Write word',exact:true}).click();assert.equal(await lab.evaluate(el=>el._vmResult.last.error),'SIGSEGV');
+    await lab.getByRole('button',{name:'Shared file story',exact:true}).click();assert.equal(await lab.evaluate(el=>el._vmResult.file[0]),42);assert.equal(await lab.evaluate(el=>el._vmResult.stats.writebackBytes),4096);
+    await lab.getByRole('button',{name:'COW story',exact:true}).click();await lab.locator('.cache-state').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(output,'vm-cow-dark-desktop.png')});
+  });
+  await check('page-size outcomes and competing page-walk traffic',async()=>{
+    await route('xlate/pages');const pages=page.locator('#xlate--pages');assert.equal(await pages.evaluate(el=>el._pageResult.selected.misses),1);
+    await pages.locator('[data-field="Page access pattern"]').selectOption('sparse');assert.equal(await pages.evaluate(el=>el._pageResult.selected.misses),512);
+    await pages.locator('[data-field="Huge mapping outcome"]').selectOption('fallback');assert.equal(await pages.evaluate(el=>el._pageResult.selected.p.pageBytes),4096);
+    await pages.locator('[data-field="Huge mapping outcome"]').selectOption('unavailable');assert.equal(await pages.evaluate(el=>el._pageResult.selected),null);
+    await route('xlate/walk-contention');const walks=page.locator('#xlate--walk-contention');await walks.locator('[data-field="Background data requests"]').selectOption('0');const idle=await walks.evaluate(el=>el._walkResult.tasks.at(-1).translated);await walks.locator('[data-field="Background data requests"]').selectOption('64');assert.ok(await walks.evaluate((el,t)=>el._walkResult.tasks.at(-1).translated>t,idle));await walks.getByLabel('Walk model clock',{exact:true}).fill('20');assert.match(await walks.locator('.cache-state p').textContent(),/Clock 20/);
+  });
+  await check('shootdown masks, delayed acknowledgements and NUMA migration',async()=>{
+    await route('xlate/shootdown');const lab=page.locator('#xlate--shootdown');const base=await lab.evaluate(el=>el._shootdownResult.cycles);await lab.locator('[data-field="Last remote handler delay"]').selectOption('64');assert.ok(await lab.evaluate((el,t)=>el._shootdownResult.cycles>t,base));await lab.locator('[data-field="Address-space CPU mask"]').selectOption('one');assert.equal(await lab.evaluate(el=>el._shootdownResult.ipis),0);
+    await route('hier/numa');const numa=page.locator('#hier--numa');assert.equal(await numa.evaluate(el=>el._numaResult.remote),0);await numa.locator('[data-field="Executing CPU node"]').selectOption('1');assert.equal(await numa.evaluate(el=>el._numaResult.remote),128);await numa.locator('[data-field="Page placement"]').selectOption('interleave');assert.equal(await numa.evaluate(el=>el._numaResult.remote),64);
+  });
+  await check('native VM observations import with content and counter validation',async()=>{
+    const fixture=path.join(output,'vm-smoke.json');execFileSync('python3',['benchmarks/vm.py','--quick','--output',fixture],{cwd:root,stdio:'pipe'});
+    await route('xlate/os');const input=page.getByLabel('VM observation JSON',{exact:true});await input.setInputFiles(fixture);await page.waitForFunction(()=>document.querySelector('.vm-measurement-status').textContent.startsWith('Measured data'));assert.equal(await page.locator('.vm-results tbody tr').count(),60);
+    const bad=JSON.parse(fs.readFileSync(fixture));bad.samples[0].stages[0].checksum++;await input.setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await page.waitForFunction(()=>document.querySelector('.vm-measurement-status').textContent.startsWith('Could not import'));
+  });
   await check('original L1 custom stores, reload and invalid inputs',async()=>{
     await route('l1d/lookup');const chapter=page.locator('#ch-l1d');
     await chapter.getByLabel('virtual address',{exact:true}).fill('0x7ffd4a3c5e59');await chapter.locator('.l1go').click();assert.ok(await chapter.locator('.l1err').isVisible());
@@ -185,11 +210,12 @@ async function main(){
     await page.setViewportSize({width,height:844});
     for(const theme of ['light','dark']){
       if(await page.locator('html').getAttribute('data-theme')!==theme)await page.locator('#themeToggle').click();
-      for(const id of ['start','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e/critical','e2e/steady','perf/queues','l1d/taxonomy','l1d/split','core/smt','stores/forwarding','coh/transactions','dram/controller','gloss'])await check(width+'px '+theme+' '+id,async()=>{
+      for(const id of ['start','core','xlate','l1d','hier','dram','stores','coh','pref','dev','e2e/critical','e2e/steady','perf/queues','l1d/taxonomy','l1d/split','core/smt','stores/forwarding','coh/transactions','dram/controller','xlate/os','xlate/pages','xlate/walk-contention','xlate/shootdown','hier/numa','gloss'])await check(width+'px '+theme+' '+id,async()=>{
         await route(id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'document overflows viewport');
         assert.equal(await page.locator('#themeToggle').isVisible(),true);
         if(id==='dram/controller'){await page.locator('#dram--controller .queue-state').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(output,'controller-'+theme+'-'+width+'.png')});}
         if(id==='coh/transactions')await page.screenshot({path:path.join(output,'coherence-'+theme+'-'+width+'.png')});
+        if(id==='xlate/os'){await page.locator('#xlate--os').getByRole('button',{name:'COW story',exact:true}).click();await page.locator('#xlate--os .cache-state').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(output,'vm-'+theme+'-'+width+'.png')});}
         if(id==='perf/queues')await page.screenshot({path:path.join(output,'queues-'+theme+'-'+width+'.png')});
       });
     }
