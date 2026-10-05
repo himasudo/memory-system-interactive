@@ -304,3 +304,11 @@ The [ordering protocol](litmus/README.md) supplies generated assembly litmus
 tests for herd7 and supported native litmus7 workflows. Browser witness counts
 are exhaustive only for their small stated model; they are neither empirical
 frequency estimates nor a complete AArch64/C11 semantics implementation.
+
+## Phase 6 extensions
+
+For the runnable software-prefetch sweep and controlled instruction-side,
+io_uring/NVMe, IOMMU, NUMA and reliability observation protocols, see
+[advanced/README.md](advanced/README.md). Import verified software-hint results in
+`#pref/resources`; the queue/controller simulations remain separately labeled
+teaching models.
