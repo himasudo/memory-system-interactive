@@ -165,7 +165,7 @@
   function measurement(parent){
     badge(parent,'Real experiment · run on Linux, outside the browser');
     text('p',parent,'Start with a hypothesis: doubling independent chains should raise throughput until a resource saturates. Keep total working-set size fixed, randomize pointer order, and compare 1 / 2 / 4 / 8 / 16 chains. A single chain probes dependency-limited behavior; many chains probe overlap. A sequential read/write sweep measures useful-byte throughput with different prefetch and write-allocation behavior.');
-    code(parent,'python3 benchmarks/run.py --cpu 2 --output results.json\n# Quick harness check, not a cache characterization:\npython3 benchmarks/run.py --quick --output smoke.json');
+    code(parent,'python3 benchmarks/run_all.py --serve\n# Measurement only: python3 benchmarks/run_all.py\n# Individual fallback: python3 benchmarks/run.py --output results.json');
     text('p',parent,'Choose an allowed logical CPU. The runner pins before allocation/first touch, warms each working set, compiles native code with optimization, retains a checksum and records every repetition plus context. Inspect generated assembly before drawing microarchitectural conclusions. The working set is total bytes across all chains, not bytes per chain.');link(parent,'bench');
     table(parent,['Control','Record / hold constant'],[
       ['CPU placement','Affinity and SMT sibling activity; other cores can compete for shared resources. Pinning alone does not isolate a CPU.'],
@@ -187,18 +187,18 @@
       ['Line vs useful bandwidth','Memory-controller PMCs where documented; compare useful bytes/time','Do not infer physical DRAM bytes from useful traffic when caches, RFOs or prefetches intervene.']
     ]);link(parent,'stat');text('span',parent,' · ');link(parent,'ibs');
     text('h3',parent,'Import measurements');
-    text('p',parent,'Import the runner’s JSON to inspect real repetitions. Results remain local to this page and do not overwrite the teaching model’s latency defaults.');
+    text('p',parent,'The unified workflow loads every suite automatically. Open Results to import one visitor bundle or compare with the shipped reference. This per-suite input remains a fallback; files stay local and do not overwrite the teaching model’s latency defaults.');
     var lab=h('label',{'class':'perf-field'},parent);text('span',lab,'Benchmark result JSON');var input=h('input',{type:'file',accept:'.json,application/json','aria-label':'Benchmark result JSON'},lab);
     var status=text('p',parent,'No hardware result loaded.',{'role':'status'}), out=h('div',{'class':'measurement-results'},parent);
-    input.onchange=async function(){out.replaceChildren();try{
-      var file=input.files[0];if(!file)return;if(file.size>2*1024*1024)throw new Error('Choose a JSON result smaller than 2 MiB.');
-      var result=JSON.parse(await file.text());validateMeasurement(result);
+    function render(result,label){validateMeasurement(result);if(label)text('h3',out,label,{'class':'measurement-run-title'});
       status.textContent='Measured data · '+result.samples.length+' repetitions · '+String(result.context.cpu_model||'CPU not recorded')+(result.complete===false?' · PARTIAL RUN':'');
-      text('p',out,'CLOCK_MONOTONIC_RAW kernel time; warm-up excluded. All percentiles below are across run-average ns/operation, not individual-load tails.');
+      text('p',out,'Recorded clock: '+String(result.context.clock||'not recorded')+'. Timing: '+String(result.context.timing_boundary||'not recorded')+'. Percentiles are across run-average ns/operation, not individual-load tails.');
       var groups={};result.samples.forEach(function(r){var k=[r.mode,r.bytes,r.chains].join('/');(groups[k]||(groups[k]=[])).push(r);});
-      table(out,['Mode / bytes / chains','n','Mean ns/op','Median','p95 / p99','SD','Useful GB/s'],Object.keys(groups).map(function(k){var a=groups[k],vals=a.map(function(r){return r.elapsed_ns/r.operations;}),mean=LabModel.mean(vals),sd=Math.sqrt(LabModel.mean(vals.map(function(v){return (v-mean)*(v-mean);})));return [k,a.length,mean.toFixed(3),LabModel.quantile(vals,.5).toFixed(3),LabModel.quantile(vals,.95).toFixed(3)+' / '+LabModel.quantile(vals,.99).toFixed(3),sd.toFixed(3),LabModel.mean(a.map(function(r){return r.useful_bytes/r.elapsed_ns;})).toFixed(3)];}));
+      table(out,['Mode / bytes / chains','n','Mean ns/op','Median','p95 / p99','SD','Useful GB/s'],Object.keys(groups).map(function(k){var a=groups[k],vals=a.map(function(r){return r.elapsed_ns/r.operations;}),mean=LabModel.mean(vals),sd=Math.sqrt(LabModel.mean(vals.map(function(v){return (v-mean)*(v-mean);})));return [k,a.length,mean.toFixed(3),MeasurementBundle.stats(vals).median.toFixed(3),LabModel.quantile(vals,.95).toFixed(3)+' / '+LabModel.quantile(vals,.99).toFixed(3),sd.toFixed(3),LabModel.mean(a.map(function(r){return r.useful_bytes/r.elapsed_ns;})).toFixed(3)];}));
       var raw=h('details',{'class':'perf-details'},out);text('summary',raw,'Inspect recorded context and raw repetitions');code(raw,JSON.stringify(result,null,2));
-    }catch(e){status.textContent='Could not import: '+e.message;}};
+    }
+    input.onchange=async function(){out.replaceChildren();try{var file=input.files[0];if(!file)return;if(file.size>2*1024*1024)throw new Error('Choose a JSON result smaller than 2 MiB.');render(JSON.parse(await file.text()),'Manual import · locally read, not uploaded');}catch(e){status.textContent='Could not import: '+e.message;}};
+    App.Measurements.bind('memory',status,out,render);
   }
   function validateMeasurement(r){
     if(!r||r.schema!=='memory-lab-v1'||!r.context||typeof r.context!=='object'||Array.isArray(r.context)||!Array.isArray(r.samples)||!r.samples.length||r.samples.length>5000)throw new Error('Expected memory-lab-v1 with context and 1–5000 samples.');

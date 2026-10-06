@@ -7,4 +7,5 @@ benchmarks/prefetch
 benchmarks/*-results.json
 benchmarks/results*.json
 test-results/
+results/
 __pycache__/
