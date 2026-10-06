@@ -59,6 +59,79 @@ model/vendor/family/model provenance, and never calls a generic host 3750H data.
 Hashes support reproducibility; this is self-reported measurement provenance,
 not remote hardware attestation. See [the bundle contract](../docs/MEASUREMENT_BUNDLES.md).
 
+### Environment observations and reference curation
+
+Every unified run (including quick harness checks) captures the environment
+before the run, immediately before/after each suite, and after native suites and
+optional perf. Full characterization keeps the same one-command interface:
+
+```sh
+python3 benchmarks/run_all.py --serve \
+  --notes "Ryzen 7 3750H reference run; Ubuntu 24.04; normal idle system"
+```
+
+Read-only telemetry includes Mains online / AC versus battery evidence, battery
+status/capacity, ACPI and per-device platform profiles, and an optional bounded
+`busctl` D-Bus `Properties.Get` query with daemon activation and interactive
+authorization disabled. Inactive services are skipped instead of started. It
+records each online logical CPU's governor,
+driver, related CPUs, `scaling_cur_freq`, policy min/max and exposed hardware
+current/min/max frequency. Boost and `intel_no_turbo` are recorded separately.
+Thermal zones retain zone/type names; hwmon temperature inputs retain exposed
+driver/label names (including k10temp/coretemp when exposed). Units and the sysfs
+source are explicit. A sensor index is never assumed to be CPU/package temperature.
+Missing, denied, malformed or disappearing readings have an unavailable reason.
+No root permissions or system-policy changes are used.
+
+**Results** exposes snapshots, UTC timestamps, monotonic suite duration and
+potential-confound warnings. Suite elapsed time covers the runner(s), compilation,
+setup, trials and result collection, excluding the before/after telemetry reads.
+Run elapsed time also includes telemetry, checkpoint I/O and optional perf;
+neither duration replaces native kernel timing. A snapshot records its own
+collection duration because its fields are read sequentially.
+
+Warnings compare available observations across a suite and across the whole run.
+A reported current-frequency range must differ by at least 200 MHz **and** 20%
+of its observed minimum; a temperature range must differ by at least 10 °C.
+Observed governor/profile/boost/AC/battery-state/policy-limit changes are flagged.
+The thresholds are descriptive curation aids, not hardware limits. Warnings do
+not exclude trials, change completion, diagnose thermal throttling or assert
+that frequency caused a timing difference. Missing readings and a lack of
+warnings do not prove a stable environment. `scaling_cur_freq` can represent a
+requested policy frequency; snapshots are not active-kernel averages. See the
+primary [CPUFreq](https://docs.kernel.org/admin-guide/pm/cpufreq.html),
+[power supply](https://docs.kernel.org/power/power_supply_class.html),
+[platform profile](https://docs.kernel.org/userspace-api/sysfs-platform_profile.html),
+[thermal](https://docs.kernel.org/driver-api/thermal/sysfs-api.html) and
+[hwmon](https://docs.kernel.org/hwmon/sysfs-interface.html) interfaces.
+
+After inspecting and choosing an existing full run:
+
+```sh
+python3 benchmarks/export_public.py \
+  results/reference-machine.json data/reference/ryzen7-3750h.json
+```
+
+The separate exporter does **not** measure again, commit, upload or modify the
+private bundle/raw directory. It preserves trial values, parameters, CPU/kernel,
+compiler version/flags, hashes, timing boundaries, telemetry/warnings and optional
+evidence availability. Local absolute paths in commands, notes, diagnostics,
+metadata keys and embedded JSON become logical benchmark/result paths or opaque
+`paths/local-N` aliases. Windows drive/UNC paths are covered too. Kernel sysfs,
+proc, device and known D-Bus interface paths remain as scientifically useful
+source labels. VM smaps
+headers retain their mapping/address/page fields; only local filename text is
+sanitized. `raw_sha256` still identifies the original private raw file bytes,
+as the export's provenance explicitly states; it is not a hash of the sanitized
+embedded metadata. No private alias table is exported.
+
+The exporter works on older compatible bundles too, without inferring missing
+telemetry. To retain independent new runs, choose distinct `--results` directories
+and pass the chosen bundle to the exporter. Review free-form notes when curating:
+filesystem-path sanitization does not remove unrelated personal prose. The named
+Ryzen output rejects another CPU's identity. Public loading and browser-local
+visitor import keep their existing validation/privacy behavior.
+
 ### Local lab and visitors
 
 `--serve` builds the standalone page, starts a loopback-only read-only server,

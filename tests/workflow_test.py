@@ -222,6 +222,41 @@ class FullWorkflow(unittest.TestCase):
                 urlopen(self.origin + path, timeout=5)
             self.assertEqual(error.exception.code, 404)
 
+    def test_environment_snapshots_and_suite_durations_are_associated(self):
+        b = self.bundle
+        self.assertEqual(b["environment"]["before_run"]["position"], "before_run")
+        self.assertEqual(b["environment"]["after_run"]["position"], "after_run")
+        self.assertGreater(b["environment"]["elapsed_ns"], 0)
+        for name, suite in b["suites"].items():
+            e = suite["environment"]
+            self.assertEqual(e["suite"], name)
+            self.assertGreater(e["elapsed_ns"], 0)
+            for position, value in [("before_suite", e["before"]), ("after_suite", e["after"])]:
+                self.assertEqual(value["position"], position)
+                self.assertEqual(value["suite"], name)
+                self.assertEqual([r["cpu"] for r in value["cpus"]["entries"]], sorted(b["machine"]["topology"]["online_cpus"]))
+                self.assertTrue(value["captured_utc"])
+                self.assertTrue(value["finished_utc"])
+                self.assertIn("not be the exact", value["frequency_semantics"])
+        self.assertEqual(b["provenance"]["environment_collector_sha256"], sha256(ROOT / "benchmarks/environment.py"))
+
+    def test_public_export_preserves_every_native_suite_and_private_bytes(self):
+        from export_public import export_bundle, local_paths
+        path = self.results / "reference-machine.json"
+        before = path.read_bytes()
+        exported = export_bundle(self.bundle)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(validate_bundle(exported), exported)
+        self.assertFalse(local_paths(exported))
+        for name, suite in self.bundle["suites"].items():
+            for a, z in zip(suite["runs"], exported["suites"][name]["runs"]):
+                self.assertEqual(len(a["result"]["samples"]), len(z["result"]["samples"]))
+                for key in ["source_sha256", "binary_sha256", "clock", "quick"]:
+                    self.assertEqual(a["result"]["context"][key], z["result"]["context"][key])
+                self.assertEqual(a["raw_sha256"], z["raw_sha256"])
+                self.assertEqual(a["runner_sha256"], z["runner_sha256"])
+                self.assertEqual(a["result"]["samples"], z["result"]["samples"]) if name != "vm" else None
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -110,6 +110,29 @@ recorded skip reasons. The local server prints its URL and opens a browser; use
 `--no-browser` for a headless session and Ctrl+C to stop it. `--quick` checks the
 harness rather than characterizing the machine.
 
+Runs also record read-only power/profile, governor/boost, per-CPU frequency and
+named thermal readings before/after the run and every suite. **Results** exposes
+suite durations, unavailable readings and descriptive potential-confound warnings.
+Environment changes do not discard trials or diagnose their cause.
+
+For a canonical reference run, measure and inspect first:
+
+```bash
+python3 benchmarks/run_all.py --serve \
+  --notes "Ryzen 7 3750H reference run; Ubuntu 24.04; normal idle system"
+```
+
+After selecting that existing run, export a separate public copy:
+
+```bash
+python3 benchmarks/export_public.py \
+  results/reference-machine.json data/reference/ryzen7-3750h.json
+```
+
+Export does not rerun benchmarks or modify private results. It replaces local
+absolute paths with logical paths while preserving measurements and hashes.
+Commit the selected sanitized dataset through the normal repository workflow.
+
 For browsing without running experiments, `python3 -m http.server 8000` remains
 available. Opening through HTTP is preferable to `file://`.
 

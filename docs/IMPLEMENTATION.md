@@ -378,3 +378,36 @@ identified Xeon development host with quick mode off; those ignored results are
 not shipped as Ryzen data. Perf/IBS were unavailable on that host; detection,
 denied/unsupported counts and scope handling have deterministic tests. No target
 3750H dataset is invented; curation is documented in `data/reference/README.md`.
+
+### Reference-workflow hardening within PR #7
+
+Read-only environment telemetry now brackets the full native workflow and each
+suite, recording power/profile, governor/boost, per-CPU frequency limits/readings,
+named thermal/hwmon inputs, availability reasons, UTC timestamps and monotonic
+durations. Available state/range changes have descriptive potential-confound
+warnings with observed values/scope. They do not alter trials/completion, infer
+throttling or assert a timing cause; snapshot frequency is not an active-kernel
+average. No system policy or permission is changed.
+
+`benchmarks/export_public.py` derives a separate sanitized artifact from an
+existing bundle without another run. It preserves measurements, source/binary/raw
+hashes, scientific boundaries/parameters, environment and evidence availability,
+while replacing local POSIX/Windows paths with logical paths. Exact trial values
+are checked; only local VM smaps pathname text may change. The private input/raw
+directory is protected, and export provenance clarifies original raw-file hash
+scope. The browser validates new telemetry associations and export provenance;
+older bundles, automatic loading and private visitor/manual imports remain valid.
+
+This hardening remains part of the post-audit workflow improvement. No seventh
+audit phase or canonical hardware dataset is introduced by the code change.
+
+Hardening validation: 83 JavaScript checks and 44 Python/native checks pass
+(five original harness, 16 workflow, 10 environment and 13 public-export checks).
+All 285 rendered checks pass in Chromium 138: the 253 Phase 1–6 regressions
+and 32 workflow/privacy checks, including both themes and 1440/768/390px layouts.
+The final workflow checks exercise the new collector, existing-bundle export,
+automatic local/reference loading and unchanged visitor/manual imports. Missing
+and denied telemetry, modern/legacy profile queries without daemon activation,
+descriptive state changes, misplaced snapshots, POSIX/Windows path sanitization,
+trial/hash preservation and private-file protection have deterministic coverage.
+Generated HTML matches the source build; desktop/mobile screenshots were inspected.

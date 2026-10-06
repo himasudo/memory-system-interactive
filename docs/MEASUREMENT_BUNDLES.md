@@ -19,6 +19,9 @@ claim that the host is a Ryzen. Individual runner formats remain unchanged.
 | `run.placement`, `invocation` | CPUs/core relationship, exact command, timestamps, exit status, stdout/stderr and effective quick mode |
 | `run.raw_file`, `raw_sha256`, `runner_sha256` | Raw file relative to `results/raw`, its hash, and the Python runner's hash |
 | `suites[name].summaries` | Run identity, parameters, metric, contributing raw-trial indices, count, mean, median, population SD, MAD, range and nearest-rank p95 |
+| `environment` (new, optional for legacy bundles) | `memory-lab-environment-v1`, before/after run snapshots, monotonic duration, thresholds and non-causal potential-confound warnings |
+| `suites[name].environment` | Correctly associated before/after suite snapshots, UTC start/finish, monotonic elapsed ns, duration scope and suite warnings |
+| `public_export` (derived artifact only) | Exporter/input-bundle hashes, logical-path policy, exact trial equivalence and original-private-raw-file hash scope |
 
 Native context retains compiler version/command/flags, C source and binary hashes,
 CPU affinity, case order/seed, notes and timer/work/placement boundaries. Checksum
@@ -73,3 +76,47 @@ and model-specific event semantics remain explicitly skipped.
 
 The bundled loader tests use synthetic identity fixtures only inside test
 contexts. No fixture or development-host result is shipped as Ryzen measurements.
+
+## Environment telemetry and safe derived exports
+
+`environment.before_run` / `after_run` use positions of the same name with no
+suite. Each suite interval has `suite: <name>`, snapshots with positions
+`before_suite` / `after_suite` and the matching suite name. Snapshot capture
+timestamps/duration acknowledge sequential reads. UTC is for provenance;
+monotonic ns measures duration independently of wall-clock adjustments. Run
+duration includes telemetry/checkpoints/perf; suite duration excludes snapshot
+reads. These workflow durations are never used to normalize native raw timers.
+
+Snapshot groups are `power`, `platform_profile`, `boost`, `cpus`, `thermal_zones`
+and `hwmon`. Fields have explicit available/unavailable status, value, reason,
+source and units where relevant. Missing attributes have null values and reasons,
+not invented readings. Thermal names/labels are retained without assuming a
+sensor index identifies the CPU. Platform-profile queries are read-only and
+bounded, with daemon activation and interactive authorization disabled. No governor/boost/profile/perf/thermal/CPU-isolation policy is changed.
+
+Warnings retain field, category, scope, suite, observed values/timestamps and a
+non-causal interpretation. Frequency range warnings require at least 200 MHz
+and 20% relative to the observed minimum; temperature range warnings require
+10 °C. Available policy/power state changes are also described. Whole-run ranges
+can capture gradual changes that per-suite endpoint ranges do not flag. The
+thresholds are not throttle criteria. No warning invalidates or removes trials,
+establishes active-kernel average frequency, or asserts a timing cause. Missing
+data/no warning does not prove stability. Older bundles remain valid; their UI
+states that telemetry was not recorded rather than inferring past snapshots.
+
+`python3 benchmarks/export_public.py INPUT OUTPUT` sanitizes a chosen existing
+aggregate without running benchmarks or writing to the input/raw directory.
+Known files use logical names such as `benchmarks/memlab.c`, `benchmarks/memlab`,
+`benchmarks/run.py` and `results/raw/memory.json`. Local POSIX, Windows drive and
+UNC paths are sanitized recursively, including embedded diagnostic/JSON strings
+and metadata keys. Other local paths become opaque logical aliases. Stable
+sysfs/proc/device and known D-Bus interface source labels remain. A private alias mapping is never included.
+
+The exporter validates before/after, checks hashes, exact raw trial values/counts
+and summaries, and refuses surviving local paths or changes to scientific trial
+content. VM smaps's local pathname text is the explicit exception; mapping header
+numbers and all page/fault/timing/checksum observations remain. Input bytes remain
+unchanged. `public_export.input_bundle_sha256` identifies the original aggregate,
+and `raw_hash_scope` makes clear that retained `raw_sha256` values identify original
+private raw-file bytes, not sanitized metadata. Export is a separate artifact,
+not a new measurement, upload, automatic commit or replacement of visitor data.

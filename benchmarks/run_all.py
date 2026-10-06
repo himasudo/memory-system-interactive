@@ -11,12 +11,15 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from urllib.parse import urlsplit
 import webbrowser
 
 from workflow import (SCHEMA, SUITES, capability, collect_perf, cpu_list, detect_capabilities,
                       inspect_machine, inspect_topology, read, select_placements, sha256,
                       summarize, utc, validate_bundle, write_json)
+from environment import (SCHEMA as ENVIRONMENT_SCHEMA, INTERPRETATION, THRESHOLDS,
+                         changes, finish_environment, snapshot)
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNERS = {"memory": "run.py", **{name: name + ".py" for name in SUITES if name != "memory"}}
@@ -93,6 +96,7 @@ def run_suite(name, placements, args, folder, machine, memory):
         attempt = {"id": run_id, "command": argv, "placement": placement,
                    "started_utc": utc(), "effective_quick": quick,
                    "fallback_reason": "Low remaining memory; reduced smoke suite, not characterization." if quick and not args.quick else None}
+        attempt_clock = time.monotonic_ns()
         print(f"[{name}] {placement['kind']} CPUs {placement['cpus']}" + (" (quick)" if quick else ""), flush=True)
         try:
             completed = execute_suite(argv, args.timeout)
@@ -100,6 +104,7 @@ def run_suite(name, placements, args, folder, machine, memory):
         except (OSError, subprocess.TimeoutExpired) as error:
             attempt.update(returncode=None, error=str(error))
         attempt["finished_utc"] = utc()
+        attempt["elapsed_ns"] = time.monotonic_ns() - attempt_clock
         suite["attempts"].append(attempt)
         if raw.exists():
             try:
@@ -210,28 +215,56 @@ def main():
     if placements["smt"]:
         sharing.append(placements["smt"])
     scheduled = {"memory": single, "sharing": sharing, "loaded": [physical] if physical else [], "vm": single, "prefetch": single}
+    environment_clock = time.monotonic_ns()
+    bundle["provenance"]["environment_collector_sha256"] = sha256(ROOT / "benchmarks/environment.py")
+    bundle["environment"] = {"schema": ENVIRONMENT_SCHEMA, "started_utc": utc(),
+        "before_run": snapshot(topology["online_cpus"], "before_run"), "after_run": None,
+        "warnings": [], "thresholds": THRESHOLDS, "interpretation": INTERPRETATION,
+        "collection_policy": "read only; no system policy changes; missing readings never fail native suites",
+        "duration_scope": "native workflow, telemetry, checkpoints and optional perf; excludes initial discovery and lab serving"}
     write_json(output, bundle)
-    for name in SUITES:
-        # Remove canonical stale outputs even when a capability now prevents execution.
-        (folder / (name + ".json")).unlink(missing_ok=True)
-        if capabilities["compiler"]["status"] == "unavailable":
-            bundle["suites"][name]["reason"] = capabilities["compiler"]["reason"]
-        elif name == "sharing" and any(r["line_bytes"] not in (None, 64) for p in scheduled[name] for r in p["topology"]):
-            bundle["suites"][name]["reason"] = "Detected cache-line size differs from the sharing harness's 64-byte spacing; packed/padded classification unsupported."
-        else:
-            bundle["suites"][name] = run_suite(name, scheduled[name], args, folder, machine, memory)
+    try:
+        for name in SUITES:
+            before = snapshot(topology["online_cpus"], "before_suite", name)
+            started_utc, suite_clock = utc(), time.monotonic_ns()
+            try:
+                # Remove canonical stale outputs even when a capability now prevents execution.
+                (folder / (name + ".json")).unlink(missing_ok=True)
+                if capabilities["compiler"]["status"] == "unavailable":
+                    bundle["suites"][name]["reason"] = capabilities["compiler"]["reason"]
+                elif name == "sharing" and any(r["line_bytes"] not in (None, 64) for p in scheduled[name] for r in p["topology"]):
+                    bundle["suites"][name]["reason"] = "Detected cache-line size differs from the sharing harness's 64-byte spacing; packed/padded classification unsupported."
+                else:
+                    bundle["suites"][name] = run_suite(name, scheduled[name], args, folder, machine, memory)
+            except KeyboardInterrupt:
+                bundle["suites"][name]["status"] = "failed"
+                bundle["suites"][name]["reason"] = "Interrupted before aggregate collection; native raw checkpoints remain in results/raw."
+                raise
+            finally:
+                elapsed_ns, finished_utc = time.monotonic_ns() - suite_clock, utc()
+                after = snapshot(topology["online_cpus"], "after_suite", name)
+                bundle["suites"][name]["environment"] = {"suite": name, "before": before, "after": after,
+                    "started_utc": started_utc, "finished_utc": finished_utc, "elapsed_ns": elapsed_ns,
+                    "duration_scope": "suite runner(s), compilation, setup, native trials and result collection; excludes environment snapshots",
+                    "warnings": changes([before, after], name)}
+            bundle["complete"] = all(s["status"] == "measured" for s in bundle["suites"].values())
+            write_json(output, bundle)
+        perf_command = None
+        if bundle["suites"]["memory"]["status"] == "measured":
+            sample = next(r for r in bundle["suites"]["memory"]["runs"][0]["result"]["samples"] if r["mode"] == "chase" and r["chains"] == 1)
+            perf_command = [str(ROOT / "benchmarks/memlab"), "--mode", "chase", "--bytes", str(sample["bytes"]),
+                            "--chains", "1", "--steps", str(sample["steps"]), "--repeats", "1", "--seed", str(sample["seed"]), "--cpu", str(sample["cpu"])]
+        capabilities["perf_stat"] = collect_perf(perf_command, capabilities, args.no_perf)
+    finally:
+        finish_environment(bundle, environment_clock)
         bundle["complete"] = all(s["status"] == "measured" for s in bundle["suites"].values())
         write_json(output, bundle)
-    perf_command = None
-    if bundle["suites"]["memory"]["status"] == "measured":
-        sample = next(r for r in bundle["suites"]["memory"]["runs"][0]["result"]["samples"] if r["mode"] == "chase" and r["chains"] == 1)
-        perf_command = [str(ROOT / "benchmarks/memlab"), "--mode", "chase", "--bytes", str(sample["bytes"]),
-                        "--chains", "1", "--steps", str(sample["steps"]), "--repeats", "1", "--seed", str(sample["seed"]), "--cpu", str(sample["cpu"])]
-    capabilities["perf_stat"] = collect_perf(perf_command, capabilities, args.no_perf)
     bundle["complete"] = all(s["status"] == "measured" for s in bundle["suites"].values())
     validate_bundle(bundle)
     write_json(output, bundle)
     print(f"Bundle: {output}\nHost: {machine['cpu_model']}\n" + ("Selected native suites complete." if bundle["complete"] else "Some suites unavailable/partial; inspect recorded reasons.") + (" Quick checks only; not characterization." if args.quick else ""), flush=True)
+    if bundle["environment"]["warnings"]:
+        print(f"Environment: {len(bundle['environment']['warnings'])} observed changes; inspect potential confounds in Results. No causal diagnosis or measurement exclusion.", flush=True)
     failed = any(s["status"] in ("failed", "partial") for s in bundle["suites"].values())
     if args.serve:
         subprocess.run([sys.executable, str(ROOT / "build.py")], cwd=ROOT, check=True)

@@ -16,6 +16,7 @@ import statistics
 import subprocess
 
 from run import command, read
+from environment import validate_environment
 
 SCHEMA = "memory-lab-bundle-v1"
 SUITES = {"memory": "memory-lab-v1", "sharing": "memory-lab-sharing-v1",
@@ -176,7 +177,7 @@ def inspect_machine(topology, selected_cpu):
                "thp": read("/sys/kernel/mm/transparent_hugepage/enabled"),
                "bios_version": read("/sys/class/dmi/id/bios_version"),
                "bios_date": read("/sys/class/dmi/id/bios_date"),
-               "unmeasured": ["DIMM configuration", "temperature", "dynamic core frequency",
+               "unmeasured": ["DIMM configuration", "temperature during timed kernels", "dynamic core frequency during timed kernels",
                               "background contention", "CPU isolation", "NUMA binding"]}
     machine["is_ryzen_7_3750h"] = target_machine(machine)
     return machine
@@ -370,4 +371,5 @@ def validate_bundle(bundle):
             summarize(name, run)
     if bundle["complete"] != all(s["status"] == "measured" for s in bundle["suites"].values()):
         raise ValueError("Aggregate completion disagrees with suite states.")
+    validate_environment(bundle)
     return bundle
