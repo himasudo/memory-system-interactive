@@ -55,11 +55,11 @@ spacing, that suite is skipped with a reason. Unknown line size remains an
 explicit assumption in raw context and topology, not a measured line-size claim.
 
 The output filename does not assert a particular CPU. The UI uses recorded
-model/vendor/family/model provenance, and never calls a generic host 3750H data.
+model/vendor/family/model provenance, and never calls a generic host data from a differently identified CPU.
 Hashes support reproducibility; this is self-reported measurement provenance,
 not remote hardware attestation. See [the bundle contract](../docs/MEASUREMENT_BUNDLES.md).
 
-### Environment observations and reference curation
+### Environment observations and optional dataset curation
 
 Every unified run (including quick harness checks) captures the environment
 before the run, immediately before/after each suite, and after native suites and
@@ -67,7 +67,7 @@ optional perf. Full characterization keeps the same one-command interface:
 
 ```sh
 python3 benchmarks/run_all.py --serve \
-  --notes "Ryzen 7 3750H reference run; Ubuntu 24.04; normal idle system"
+  --notes "My machine; recorded OS and memory configuration; normal idle system"
 ```
 
 Read-only telemetry includes Mains online / AC versus battery evidence, battery
@@ -109,7 +109,7 @@ After inspecting and choosing an existing full run:
 
 ```sh
 python3 benchmarks/export_public.py \
-  results/reference-machine.json data/reference/ryzen7-3750h.json
+  results/reference-machine.json data/reference/my-machine.json
 ```
 
 The separate exporter does **not** measure again, commit, upload or modify the
@@ -128,8 +128,9 @@ embedded metadata. No private alias table is exported.
 The exporter works on older compatible bundles too, without inferring missing
 telemetry. To retain independent new runs, choose distinct `--results` directories
 and pass the chosen bundle to the exporter. Review free-form notes when curating:
-filesystem-path sanitization does not remove unrelated personal prose. The named
-Ryzen output rejects another CPU's identity. Public loading and browser-local
+filesystem-path sanitization does not remove unrelated personal prose. The legacy named
+`ryzen7-3750h.json` export retains its CPU-identity guard; this filename is optional,
+not automatically required or loaded. Public loading and browser-local
 visitor import keep their existing validation/privacy behavior.
 
 ### Local lab and visitors
@@ -141,12 +142,23 @@ Every relevant chapter loads it automatically. Ctrl+C stops the server. Use
 8000 is busy, the default server chooses a free port. No upload or write endpoints
 exist. `--results PATH` changes the output folder without requiring a public copy.
 
-On GitHub Pages, a committed `data/reference/ryzen7-3750h.json` is read
-automatically. Producing a bundle never copies or commits it to this public path;
-curation is an intentional maintainer action on actual target-machine data.
+On GitHub Pages, `data/reference/index.json` optionally lists up to eight sanitized
+measured bundles with expected recorded CPU identities. The site loads available
+entries and offers a selector; no machine is the architectural reference. A
+missing/empty registry or unavailable bundle leaves measurements absent. Producing
+a native bundle never copies or commits public files. After export, register it:
+
+```sh
+python3 benchmarks/register_dataset.py data/reference/my-machine.json \
+  --id my-machine --label "My measured machine"
+```
+
+Registration reads an existing sanitized bundle and writes only the adjacent
+identity registry; it never reruns measurements, commits or uploads. Review the
+files before committing. See [curation](../data/reference/README.md).
 **Results** accepts one visitor bundle for session-local comparison. Importing
 uses `File.text()` locally, makes no network requests, does not persist the bundle
-and cannot write to GitHub, replace the public reference or affect another visitor.
+and cannot write to GitHub, replace shipped datasets or affect another visitor.
 Every old per-suite file input and the two-memory-run comparison remain available.
 
 ### Optional evidence and conservative fallbacks
@@ -167,8 +179,8 @@ are not invented raw PMCs. Perf's scaling/multiplexing percentage is retained.
 
 Automatic IBS sampling is deliberately skipped even when a PMU is detected:
 permission/filtering and model/kernel-specific fields are not established by
-sysfs presence. No generic `perf mem` latency is substituted for a verified Zen+
-IBS measurement. Cache/ownership/controller PMCs, storage experiments, cache
+sysfs presence. No generic `perf mem` latency is substituted for validated, CPU-specific
+IBS evidence. Cache/ownership/controller PMCs, storage experiments, cache
 dropping, disturbance and privileged configuration protocols remain explicit
 manual investigations with their existing documentation. No policy is loosened
 to make perf work. See the [upstream perf tutorial](https://perfwiki.github.io/main/tutorial/)
@@ -183,8 +195,8 @@ evidence and continue. Extra BIOS/DIMM/load notes can be supplied using `--notes
 ## Individual memory runner (preserved)
 
 These Linux experiments accompany **Measure & explain** (`#perf/measure`). They
-are native C workloads, not browser timing benchmarks and not a calibrated Zen+
-simulator. Record the actual CPU; results from another machine are not 3750H data.
+are native C workloads, not browser timing benchmarks and not a calibrated hardware
+simulator. Record the actual CPU; a run on one machine is not evidence from another.
 
 ```sh
 python3 benchmarks/run.py --cpu 2 --output results.json \
@@ -262,7 +274,7 @@ claiming matching IPC/MPKI. Check unsupported events, access errors, counter
 multiplexing and running percentages. No raw PMU encodings are prescribed.
 
 AMD IBS sampling can provide operation/cache/translation information on supported
-hardware and kernels; not every newer IBS field or filter exists on Zen+. `perf
+hardware and kernels; historical Zen+ hardware does not expose every newer IBS field or filter. `perf
 mem` latency meanings differ across architectures. `perf c2c` may classify sharing
 traffic where supported; never equate every miss with HITM or a DRAM access.
 
@@ -276,7 +288,7 @@ Primary references:
 
 - [Upstream perf stat](https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux-stable/+/master/tools/perf/Documentation/perf-stat.txt)
 - [Linux AMD IBS documentation](https://android.googlesource.com/kernel/common/+/0e674132ddfa938cd53ba7c3706f0d83b2a91491/tools/perf/Documentation/perf-amd-ibs.txt)
-- [AMD Family 17h optimization guide 55723](https://docs.amd.com/v/u/en-US/55723_3.01) — verify model applicability; use the exact processor PPR for PMCs.
+- [Historical AMD Family 17h optimization guide 55723](https://docs.amd.com/v/u/en-US/55723_3.01) — verify model applicability; use the exact processor PPR for PMCs.
 
 Conflict, split-access, forwarding, false-sharing and atomics experiments belong
 to Phase 2; DRAM scheduling to Phase 3; page and NUMA experiments to Phase 4.
@@ -294,7 +306,7 @@ python3 benchmarks/sharing.py --cpus 0,2 --output sharing-results.json \
 Replace `0,2` with allowed CPUs after inspecting topology. Run a pair of SMT
 siblings, a pair of different physical cores and, optionally, four physical
 cores. `--cpus 0` runs the one-thread cases only; every multi-thread run also
-includes one-thread baselines. A 3750H has four physical cores, so eight logical
+includes one-thread baselines. Historical topology example: a Ryzen 7 3750H has four physical cores, so eight logical
 CPUs must not be treated as eight independent cache-owning physical cores.
 
 The C kernel compares one shared counter, separate counters eight bytes apart,
@@ -360,7 +372,7 @@ python3 benchmarks/loaded.py --cpus 0,2,4,6 --output loaded-results.json \
 ```
 
 Choose **actual** physical-core IDs; the sample numbers do not prescribe the
-3750H's logical CPU enumeration. The first CPU runs a randomized dependent ring;
+any fixed logical CPU enumeration. The first CPU runs a randomized dependent ring;
 subsequent CPUs run independent streaming read or temporal-write generators.
 The runner includes a zero-generator baseline and sweeps up to the supplied
 number of generators, with randomized case order and repeated trials. Use SMT
@@ -475,7 +487,7 @@ source hashes, missing metadata, quick runs or partial datasets limit what can
 be concluded. A matching source hash is necessary for a controlled program
 comparison, but does not establish identical generated code or system conditions.
 
-For Zen+/Intel/Arm comparisons, compile for each actual target with recorded
+For implementation comparisons, compile for each actual target with recorded
 flags and inspect the kernels. Keep useful work and the measurement boundary
 equal; record differences in page size, working-set/cache fit, SMT placement,
 memory population, frequency and compiler transformations. Report dispersion

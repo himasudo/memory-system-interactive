@@ -1,6 +1,8 @@
-# Memory System — Interactive Visualizations
+# Memory Systems Lab
 
-> An interactive architecture atlas, finite-resource simulator and native performance lab, anchored on a real Zen+ reference machine.
+> An interactive lab for understanding CPU memory systems through architectural mechanisms, finite-resource simulations, published evidence and reproducible native experiments.
+
+Explore CPU architecture, out-of-order execution, cache coherence, virtual memory, DRAM and performance engineering. Compare consequential implementation choices in modern AMD EPYC 9005, Intel Xeon 6 P-cores and Arm Neoverse V3 case studies, inspect published measurements, or reproduce experiments on your own Linux machine. No vendor or generation is the universal reference.
 
 ---
 
@@ -46,7 +48,7 @@ Chapters are numbered from their order in the build: `00` Start here, `01`–`08
 | `19` | **Devices, DMA, IOMMU** | MMIO, PCIe, IOTLB/mapping lifetime, DMA, completion queues, interrupts/polling and io_uring layers |
 | `20` | **End to End** | Single-access walkthrough, dependency graph, and finite-resource steady-state experiment |
 | `21` | **Measure & explain** | Evidence, units, Little's law, MLP/queue saturation, observability and native Linux measurements |
-| ref | **Atlas** | Every full-width plate on one page: DRAM chip, L1d arrays, page walk, Zen+ core, end-to-end timeline |
+| ref | **Atlas** | Every full-width plate on one page: scoped DDR4 and x86-64 examples, finite-resource core, cache arrays, timeline and modern implementation schematics |
 | `A–Z` | **Glossary** | Every term used across the site, searchable (unnumbered reference) |
 
 Chapters use long-scroll, linkable sections (`#chapter/section`, for example `#l1d/lookup`). The top bar shows the current section, section menu and reading progress. End to End has three selectable modes, also directly linkable as `#e2e/scenario`, `#e2e/critical` and `#e2e/steady`. Hardware chapters retain their overview figures and detailed SVG plates with view tabs.
@@ -115,40 +117,49 @@ named thermal readings before/after the run and every suite. **Results** exposes
 suite durations, unavailable readings and descriptive potential-confound warnings.
 Environment changes do not discard trials or diagnose their cause.
 
-For a canonical reference run, measure and inspect first:
+To characterize your machine, measure and inspect first:
 
 ```bash
 python3 benchmarks/run_all.py --serve \
-  --notes "Ryzen 7 3750H reference run; Ubuntu 24.04; normal idle system"
+  --notes "My machine; recorded OS and memory configuration; normal idle system"
 ```
 
 After selecting that existing run, export a separate public copy:
 
 ```bash
 python3 benchmarks/export_public.py \
-  results/reference-machine.json data/reference/ryzen7-3750h.json
+  results/reference-machine.json data/reference/my-machine.json
 ```
 
 Export does not rerun benchmarks or modify private results. It replaces local
 absolute paths with logical paths while preserving measurements and hashes.
-Commit the selected sanitized dataset through the normal repository workflow.
+Optionally register the selected sanitized dataset, then review/commit the derived files through the normal repository workflow:
+
+```bash
+python3 benchmarks/register_dataset.py data/reference/my-machine.json \
+  --id my-machine --label "My measured machine"
+```
+
+Registration records the bundle’s CPU identity in `data/reference/index.json`; it does not measure, commit or upload anything. No optional dataset is required to use the lab.
 
 For browsing without running experiments, `python3 -m http.server 8000` remains
 available. Opening through HTTP is preferable to `file://`.
 
-### Public reference and private visitor comparison
+### Optional measured machines and private visitor comparison
 
-The site automatically reads `data/reference/ryzen7-3750h.json` if a curated
-bundle is committed there. Only an identified Ryzen 7 3750H bundle is accepted as
-that reference; no result from development hardware is substituted when absent.
-See [reference curation](data/reference/README.md).
+If `data/reference/index.json` lists curated bundles, the site loads them as
+**optional measured machines** and provides a selector. Every entry retains its
+recorded CPU identity; neither a filename nor a display label can override it.
+An absent/empty registry is normal: models, published evidence and native
+experiments remain available without invented hardware results. See
+[dataset curation](data/reference/README.md).
 
-**Results** (`#perf/datasets`) also accepts one visitor bundle and pairs matching
-experiments against the shipped reference. File contents are read locally with
-the browser's File API, with no network request, upload, GitHub API, repository
-write or deployed-site change. Visitor data stays in the current page session;
-reload or **Clear your data** removes it. It never changes another visitor's data.
-All existing individual runners and chapter-specific manual imports remain.
+**Measure your machine** (`#perf/datasets`) accepts a visitor bundle and pairs
+compatible experiments with the selected shipped machine. File contents are read
+locally with the browser’s File API: no network request, upload, GitHub API,
+repository write or deployed-site change. Data stays in the current page session;
+reload or **Clear your data** removes it. Other visitors and shipped datasets are
+unaffected. All individual runners and chapter-specific manual imports remain.
 
 ---
 
@@ -162,7 +173,7 @@ All existing individual runners and chapter-specific manual imports remain.
 ├── shell.html
 ├── src/                     chapter, core, glossary and CSS modules
 ├── benchmarks/              native C experiments, Python runner and protocol
-├── data/reference/          optional curated measured Ryzen bundle
+├── data/reference/          optional sanitized datasets and identity registry
 ├── tests/                   pure-model, native-harness and rendered-browser checks
 ├── docs/IMPLEMENTATION.md   roadmap mapping, dependencies and phase ledger
 ├── AUDIT.md                 agreed technical roadmap (unaltered)
@@ -303,7 +314,8 @@ measurement workflow. Phase 2 adds cache/forwarding/SMT/coherence experiments an
 a native false-sharing benchmark. Phase 3 adds a timing-constrained controller
 and native loaded-latency trials. Phase 4 adds mapping/COW/page-cache state,
 page-size outcomes, walk contention, shootdowns, a NUMA extension and native
-fault/mapping observations. Phase 5 adds an evidence-scoped Zen+ profile,
+fault/mapping observations. Phase 5 originally added a historical Zen+ profile, now superseded by an
+architecture-neutral evidence contract and scoped implementation cases,
 ordering witnesses, cache-inclusion and translation-granule contrasts, and
 controlled native-run comparison. Phase 6 adds instruction-side starvation,
 finite prefetch competition and a native software-hint sweep, IOTLB lifetimes,
@@ -315,18 +327,26 @@ mechanism and scoped modern topology contrasts. See
 All six roadmap phases have reviewable implementations. Advanced models retain
 explicit scope: serial block delivery is not a complete CPU front end, queue
 clocks do not reproduce an NVMe device, Hamming(8,4) is not a DIMM code layout,
-and the server extension is not the reference laptop's topology. Native I/O and
+and the server extension is not an implied host topology. Native I/O and
 cross-machine datasets must still be supplied from appropriate hardware.
 
 A post-audit usability improvement adds unified native measurement, automatic
 local/public dataset loading and browser-local visitor comparison. It does not
 introduce another audit phase or replace the six-phase simulations.
 
-Zen+ on the Ryzen 7 3750H remains the concrete reference. Addresses are synthetic;
-latency defaults are representative unloaded inputs from external measurements
-and estimates, not vendor guarantees or this machine's calibration. New models
-label teaching assumptions explicitly. Native harness checks on development
-hardware do not validate any 3750H latency or undocumented microarchitecture.
+The foundation is architecture-neutral. Chosen queue capacities, latency inputs,
+replacement rules and addresses are teaching-model parameters. Detailed ISA and
+memory-standard walkthroughs identify their scope: the assembly/page tables use
+x86-64, and the DRAM chip example uses DDR4 x8/BL8. Implementation-specific
+schematics cite exact generations and avoid undocumented sizes/policies.
+
+Seven evidence categories remain distinct: **Vendor documented**, **Academic /
+peer-reviewed**, **Reputable independent measurement**, **Locally measured**,
+**Inference**, **Teaching model**, and **Unknown / undocumented**. External
+measurements carry the reported CPU/microarchitecture, test boundary, method and
+limitations. Unknown SKUs and absent measurements remain explicit; measurements
+never silently calibrate the models. See [evidence and case-study decisions](docs/IMPLEMENTATION_EVIDENCE.md)
+and the [dependency inventory](docs/ARCHITECTURE_INVENTORY.md).
 
 ---
 

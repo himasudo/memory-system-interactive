@@ -21,7 +21,7 @@ build: function(root){
      what: 'hist[rax] += 1, directly in memory. Address = rdx + rax\u00d78 (rdx = hist, 8 = sizeof(long)). One instruction, four pieces of work.',
      uops: [['LD', 'AGU + load pipe', 'rdx, rax', 'tmp0', 'Reads hist[k].'], ['ALU', 'ALU', 'tmp0', 'tmp1', 'tmp0 + 1.'], ['STA', 'AGU', 'rdx, rax', 'SQ entry: address', g('sta')], ['STD', 'ALU \u2192 SQ', 'tmp1', 'SQ entry: data', g('std') + '. Memory changes only when this store commits after retirement.']]},
     {off: 0x1c, b: '48 39 f7', asm: 'cmp    %rsi,%rdi', c: 1, f: [['rex', '48'], ['op', '39'], ['modrm', 'f7']],
-     what: 'Flags from rdi \u2212 rsi: has the data pointer reached the end pointer?', uops: [['ALU', 'ALU', 'rdi, rsi', 'flags', g('fusion', 'Macro-fused') + ' with jne on Zen (at dispatch).']]},
+     what: 'Flags from rdi \u2212 rsi: has the data pointer reached the end pointer?', uops: [['ALU', 'ALU', 'rdi, rsi', 'flags', g('fusion', 'Macro-fused') + ' with jne under the chosen model rule.']]},
     {off: 0x1f, b: '75 ef', asm: 'jne    .L3', c: 1, f: [['op', '75'], ['rel', 'ef']],
      what: 'Loop back if not equal. rel8 = 0xef = \u221217: target = 0x21 \u2212 17 = 0x10.', uops: [['BR', 'ALU (branch)', 'flags', 'rip', 'Predicted by the ' + g('btb') + ' long before it executes.']]},
     {off: 0x21, b: 'c3', asm: 'ret', c: 3, lbl: '.L1', f: [['op', 'c3']],
@@ -66,7 +66,7 @@ build: function(root){
 
   /* memory layout of the code */
   var lay = h('div', {'class': 'card'}, root);
-  lay.innerHTML = '<h3>The same bytes in memory</h3><p>The whole function fits in one 64-byte ' + g('line', 'cache line') + ' (' + App.hx(EX.fn) + '\u2013' + App.hx(EX.fn + 63n) + '). Zen+ fetches a 32-byte ' + g('fetchwin', 'window') + ' that may start on any 16-byte boundary.</p><p>Because gcc aligned <code>.L3</code> to 0x\u2026190, one window starting there holds the entire 17-byte loop, so every iteration needs one fetch.</p><p>After the first pass the loop\'s decoded \u00b5ops also sit in the ' + g('opcache') + ', and fetch + decode are skipped.</p>';
+  lay.innerHTML = '<h3>The same bytes in memory</h3><p>The whole function fits in one 64-byte ' + g('line', 'cache line') + ' (' + App.hx(EX.fn) + '\u2013' + App.hx(EX.fn + 63n) + '). This example chooses a 32-byte ' + g('fetchwin', 'window') + ' that may start on any 16-byte boundary.</p><p>Because gcc aligned <code>.L3</code> to 0x\u2026190, one window starting there holds the entire 17-byte loop, so every iteration needs one fetch.</p><p>After the first pass the loop\'s decoded \u00b5ops also sit in the ' + g('opcache') + ', and fetch + decode are skipped.</p>';
   var lsv = s('svg', {viewBox: '0 0 1000 250', 'class': 'lay'}, h('div', {'class': 'scroller', style: 'border:0'}, lay));
   var cellW = 27, x0 = 112, y0 = 34;
   var byteOwner = []; I.forEach(function(ins, i){ ins.b.split(' ').forEach(function(_, k){ byteOwner[ins.off + k] = i; }); });
@@ -133,7 +133,7 @@ build: function(root){
       (ins.f.some(function(f){ return f[0] === 'rex'; }) ? '<p class="note">' + g('rex') + ' \u00b7 ' + g('modrm') + '</p>' : '');
     uo.innerHTML = '<h3>What the core turns it into</h3>' +
       '<table class="mt"><tr><th>\u00b5op</th><th>unit</th><th>reads</th><th>writes</th></tr>' + ins.uops.map(function(u){ return '<tr><td><b>' + u[0] + '</b></td><td style="font-family:var(--sans)">' + u[1] + '</td><td>' + u[2] + '</td><td>' + u[3] + '</td></tr>' + (u[4] ? '<tr><td colspan="4" class="unote">' + u[4] + '</td></tr>' : ''); }).join('') + '</table>' +
-      '<p class="note" style="margin-top:10px">' + (i === 6 ? 'Shown in the generic 4-\u00b5op form Intel documents for a memory-destination add. AMD tracks memory read-modify-write forms as one ' + g('mop') + ' in the retire queue while executing the same four pieces of work. [[ch:core]] runs exactly these four.' : 'Per iteration the loop needs 7 µops: 2 loads, 1 store (address + data), 2 adds and 1 fused compare-and-branch. Those are exactly the 7 rows per iteration in [[ch:core]].') + '</p>';
+      '<p class="note" style="margin-top:10px">' + (i === 6 ? 'Chosen model: LD, ALU, store-address and store-data operations implement the memory-destination add. Real internal grouping, fusion and retirement accounting vary; the ISA specifies the architectural result. [[ch:core]] runs the chosen four-operation form.' : 'Per iteration the loop needs 7 µops: 2 loads, 1 store (address + data), 2 adds and 1 fused compare-and-branch. Those are exactly the 7 rows per iteration in [[ch:core]].') + '</p>';
   }
   pick(sel);
 }});

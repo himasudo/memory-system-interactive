@@ -3,8 +3,10 @@
   var W = function(t, label){ return [label || t.replace(/_/g, ' '), 'https://en.wikipedia.org/wiki/' + t, 'Wikipedia']; };
   var S = {
     agner: ['The microarchitecture of Intel, AMD and VIA CPUs', 'https://www.agner.org/optimize/microarchitecture.pdf', 'Agner Fog'],
-    zen: ['AMD Family 17h optimization guide (scope is not every Zen+ model)', 'https://docs.amd.com/v/u/en-US/55723_3.01', 'AMD; family-scoped reference'],
-    zen7: ['AMD Zen: cache and TLB measurements', 'https://www.7-cpu.com/cpu/Zen.html', '7-cpu'],
+    modern: ['Arm Neoverse V3 optimization guide, issue 3.0', 'https://documentation-service.arm.com/static/6734eb2627eda361ad4da4f4', 'Arm; scoped core example'],
+    amd9005: ['AMD EPYC 9005 architecture white paper, rev. B', 'https://docs.amd.com/v/u/en-US/5th-gen-amd-epyc-processor-architecture-white-paper', 'AMD; scoped package example'],
+    zen: ['Historical: AMD Family 17h optimization guide (2017 family scope)', 'https://docs.amd.com/v/u/en-US/55723_3.01', 'AMD; historical family scope'],
+    zen7: ['Historical: AMD Zen cache and TLB measurements', 'https://www.7-cpu.com/cpu/Zen.html', '7-cpu'],
     takeaway: ['Take A Way: Exploring the Security Implications of AMD\u2019s Cache Way Predictors', 'https://misc0110.net/files/takeaway.pdf', 'Lipp et al., 2020'],
     drepper: ['What Every Programmer Should Know About Memory', 'https://www.akkadia.org/drepper/cpumemory.pdf', 'Ulrich Drepper'],
     sdm: ['Intel 64 and IA-32 Software Developer Manuals', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html', 'Intel'],
@@ -24,16 +26,16 @@
     fc: function(i){ return [i.toUpperCase() + ' instruction reference', 'https://www.felixcloutier.com/x86/' + i, 'x86 reference (from the Intel SDM)']; }
   };
   var SRC = {
-    isa: [W('Instruction_set_architecture'), S.sdm], uop: [W('Micro-operation'), S.agner], mop: [S.zen, S.agner], pc: [W('Program_counter')],
+    isa: [W('Instruction_set_architecture'), S.sdm], uop: [W('Micro-operation'), S.agner], mop: [S.modern, S.agner], pc: [W('Program_counter')],
     bp: [W('Branch_predictor'), S.agner], btb: [W('Branch_target_predictor'), S.agner], ras: [W('Branch_predictor'), S.agner],
-    l1i: [W('CPU_cache'), S.zen], itlb: [W('Translation_lookaside_buffer'), S.zen], fetchwin: [S.agner, S.zen, S.zen7], predecode: [S.agner, S.enc],
-    decode: [W('Instruction_pipelining'), S.agner], opcache: [S.agner, S.zen], uq: [S.agner, S.zen], fusion: [S.agner],
+    l1i: [W('CPU_cache'), S.modern], itlb: [W('Translation_lookaside_buffer'), S.modern], fetchwin: [S.agner, S.modern, S.modern], predecode: [S.agner, S.enc],
+    decode: [W('Instruction_pipelining'), S.agner], opcache: [S.agner, S.modern], uq: [S.agner, S.modern], fusion: [S.agner],
     zx: [W('Sign_extension'), S.sdm], modrm: [S.enc, S.sdm], rex: [S.enc, S.sdm],
     rename: [W('Register_renaming')], rat: [W('Register_renaming')], crat: [W('Register_renaming')], prf: [W('Register_renaming'), W('Register_file')], freelist: [W('Register_renaming')],
-    dispatch: [W('Out-of-order_execution'), S.zen], rob: [W('Re-order_buffer'), S.zen], sched: [W('Reservation_station'), W('Out-of-order_execution')],
+    dispatch: [W('Out-of-order_execution'), S.modern], rob: [W('Re-order_buffer'), S.modern], sched: [W('Reservation_station'), W('Out-of-order_execution')],
     wakeup: [W('Tomasulo\u2019s_algorithm'.replace('\u2019', "%27"), 'Tomasulo\u2019s algorithm'), W('Out-of-order_execution')], issue: [W('Out-of-order_execution'), S.agner],
     port: [W('Execution_unit'), S.agner], alu: [W('Arithmetic_logic_unit')], agu: [W('Address_generation_unit')], bypass: [W('Operand_forwarding')],
-    lsu: [W('Load%E2%80%93store_unit', 'Load\u2013store unit'), S.boom], lq: [W('Memory_disambiguation'), S.zen, S.boom], sq: [W('Memory_disambiguation'), S.zen, S.boom],
+    lsu: [W('Load%E2%80%93store_unit', 'Load\u2013store unit'), S.boom], lq: [W('Memory_disambiguation'), S.modern, S.boom], sq: [W('Memory_disambiguation'), S.modern, S.boom],
     sta: [W('Memory_disambiguation'), S.agner, S.boom], std: [W('Memory_disambiguation'), S.agner, S.boom], stlf: [W('Memory_disambiguation'), S.agner, S.boom], disamb: [W('Memory_disambiguation'), S.boom],
     retire: [W('Re-order_buffer')], commit: [W('Memory_disambiguation'), S.tso], senior: [S.tso, W('Memory_disambiguation')],
     squash: [W('Speculative_execution'), W('Branch_predictor')], mispredict: [W('Branch_predictor'), S.agner], spec: [W('Speculative_execution')],
@@ -42,15 +44,15 @@
     hit: [W('CPU_cache'), S.drepper], miss: [W('CPU_cache'), S.drepper], valid: [W('CPU_cache')], dirty: [W('Dirty_bit'), W('Cache_(computing)')],
     wbk: [W('Cache_(computing)'), S.drepper], wthru: [W('Cache_(computing)')], walloc: [W('Cache_(computing)')], rfo: [W('MESI_protocol'), S.drepper],
     evict: [W('Cache_replacement_policies')], plru: [W('Cache_replacement_policies'), W('Pseudo-LRU')], vipt: [W('CPU_cache'), S.drepper], waypred: [S.takeaway],
-    incl: [W('Cache_inclusion_policy')], victimc: [W('Victim_cache'), S.zen], shadow: [S.zen], pfilter: [W('Cache_coherence'), S.zen], ccx: [S.zen],
-    mlp: [W('Memory-level_parallelism')], ltu: [S.agner, S.zen7], wset: [W('Working_set')], sloc: [W('Locality_of_reference')], tloc: [W('Locality_of_reference')],
+    incl: [W('Cache_inclusion_policy')], victimc: [W('Victim_cache'), S.modern], shadow: [S.modern], pfilter: [W('Cache_coherence'), S.modern], ccx: [S.amd9005],
+    mlp: [W('Memory-level_parallelism')], ltu: [S.agner, S.modern], wset: [W('Working_set')], sloc: [W('Locality_of_reference')], tloc: [W('Locality_of_reference')],
     sram: [W('Static_random-access_memory')], dramcell: [W('Dynamic_random-access_memory')],
     va: [W('Virtual_memory'), S.kpt], pa: [W('Physical_address')], page: [W('Page_(computer_memory)')], vpn: [W('Page_table'), S.kpt], pfn: [W('Page_table'), S.kpt],
-    mmu: [W('Memory_management_unit')], tlb: [W('Translation_lookaside_buffer')], dtlb: [W('Translation_lookaside_buffer'), S.zen], pte: [W('Page_table'), S.kpt],
-    pml4: [S.kpt, W('Page_table')], cr3: [W('Control_register'), S.sdm], walk: [W('Page_table'), S.kpt], pwc: [W('Translation_lookaside_buffer'), S.zen7],
+    mmu: [W('Memory_management_unit')], tlb: [W('Translation_lookaside_buffer')], dtlb: [W('Translation_lookaside_buffer'), S.modern], pte: [W('Page_table'), S.kpt],
+    pml4: [S.kpt, W('Page_table')], cr3: [W('Control_register'), S.sdm], walk: [W('Page_table'), S.kpt], pwc: [W('Translation_lookaside_buffer'), S.modern],
     reach: [W('Translation_lookaside_buffer')], huge: [S.kthp, W('Page_(computer_memory)')], pcid: [W('Translation_lookaside_buffer'), S.sdm],
     pf: [W('Page_fault'), S.kpt], ftouch: [S.knuma, W('Non-uniform_memory_access')],
-    fabric: [S.fabric, S.zen], umc: [W('Memory_controller')], channel: [W('Multi-channel_memory_architecture'), W('DDR4_SDRAM')], dimm: [W('DIMM'), W('Memory_rank')],
+    fabric: [S.amd9005, S.modern], umc: [W('Memory_controller')], channel: [W('Multi-channel_memory_architecture'), W('DDR4_SDRAM')], dimm: [W('DIMM'), W('Memory_rank')],
     bank: [W('Dynamic_random-access_memory'), S.drepper], row: [W('Dynamic_random-access_memory'), S.drepper], rowbuf: [W('Dynamic_random-access_memory'), W('Sense_amplifier')],
     act: [W('Synchronous_dynamic_random-access_memory'), S.drepper], tcl: [W('Memory_timings'), W('CAS_latency')], burst: [W('DDR4_SDRAM'), W('Synchronous_dynamic_random-access_memory')],
     refresh: [W('Memory_refresh')],
@@ -65,7 +67,7 @@
     memwall: [S.wulf, W('Random-access_memory')]
   };
   /* where each term is taught, for the "explore it" link */
-  var CH = {map: ['00', 'The machine'], code: ['01', 'C \u2192 \u00b5ops'], core: ['02', 'Inside the core'], xlate: ['03', 'VA \u2192 PA'], l1d: ['04', 'L1d lookup'], hier: ['05', 'Down the hierarchy'],
+  var CH = {map: ['00', 'Implementations'], code: ['01', 'C \u2192 \u00b5ops'], core: ['02', 'Inside the core'], xlate: ['03', 'VA \u2192 PA'], l1d: ['04', 'L1d lookup'], hier: ['05', 'Down the hierarchy'],
             dram: ['06', 'DRAM'], stores: ['07', 'Stores'], coh: ['08', 'Coherence'], pref: ['09', 'Prefetchers'], dev: ['10', 'Devices & DMA'], e2e: ['11', 'End to end']};
   var HOME = {};
   'isa uop mop pc fetchwin predecode decode opcache fusion zx modrm rex l1i'.split(' ').forEach(function(k){ HOME[k] = 'code'; });

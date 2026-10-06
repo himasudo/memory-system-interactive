@@ -6,6 +6,8 @@ var MeasurementBundle=(function(){
   function require(ok,message){if(!ok)throw new Error(message);}
   function integer(n){return Number.isSafeInteger(n)&&n>=0;}
   function hash(v){return typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);}
+  // Legacy identity guard for compatible bundles and the optional named Ryzen export.
+  // Public selection uses MeasuredRegistry identities, never this particular CPU.
   function target(m){var d=m.cpu_details||{};return /\bAMD Ryzen 7 3750H(?:\s|$)/i.test(m.cpu_model)&&d.vendor_id==='AuthenticAMD'&&String(d['cpu family'])==='23'&&String(d.model)==='24';}
   function core(r){return r.package_id===null||r.core_id===null?null:JSON.stringify([r.package_id,r.die_id,r.core_id]);}
   function validateEnvironment(bundle){

@@ -37,7 +37,7 @@ var App = (function(){
     return pfn === undefined ? null : (pfn << 12n) | (va & 0xfffn);
   };
 
-  /* ---------- representative unloaded inputs, not a measured 3750H calibration ---------- */
+  /* ---------- chosen teaching-model latency inputs; no architecture calibration ---------- */
   var CFG = { ghz: 4.0, l1: 4, l2: 12, l3: 35, dramNs: 90, tscGhz: 2.297 };
   var CFG_DEF = JSON.parse(JSON.stringify(CFG));
   function validCfg(k,v){return Object.prototype.hasOwnProperty.call(CFG_DEF,k) && Number.isFinite(v) && v >= (k==='ghz'||k==='tscGhz'?.1:1) && v <= (k==='ghz'||k==='tscGhz'?10:500);}
@@ -65,7 +65,7 @@ var App = (function(){
     list.push({id:id,title:title,el:el});sec.classList.add('long-scroll');return el;
   }
 
-  var GROUPS = {start: 'Start here', map: 'The machine', code: 'The machine', core: 'The machine', xlate: 'Memory system', l1d: 'Memory system', hier: 'Memory system',
+  var GROUPS = {start: 'Start here', map: 'Architecture', code: 'Architecture', core: 'Architecture', xlate: 'Memory system', l1d: 'Memory system', hier: 'Memory system',
     dram: 'Memory system', stores: 'Memory system', coh: 'Memory system', pref: 'Memory system', dev: 'System path', e2e: 'System path', gloss: 'Reference'};
   function chapterGroup(ch){ return (ch && (ch.group || GROUPS[ch.id])) || 'Chapters'; }
   function chNum(id){ for (var i = 0; i < chapters.length; i++) if (chapters[i].id === id) return chapters[i].num; return '??'; }
@@ -442,7 +442,7 @@ var App = (function(){
   }
 
   function enhanceCoreWorkbench(sec){
-    var intro=sec.querySelector('.core-intro'); makeDisclosure(intro,'How the model works','What the model assumes, and how its sizes compare with Zen+.',false);
+    var intro=sec.querySelector('.core-intro'); makeDisclosure(intro,'How the model works','Chosen capacities, scheduling rules and timing boundaries.',false);
     var sc=sec.querySelector('.core-floorplan');
     var cam=addFocusStrip(sec,sc,[
       {id:'overview',label:'Overview',box:[0,0,1200,445]},
@@ -684,7 +684,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'model',title:'The model',copy:'What the simulated core contains, and what it leaves out.',nodes:[ds[0]]},
         {id:'run',title:'Run the core',copy:'Step the machine. The active structures and signal paths change with the cycle.',nodes:[q('.core-controls'),q('.core-viz'),q('.core-events')]},
-        {id:'real',title:'The real core, at real sizes',copy:'Every Zen+ queue at its published size, with one loop iteration marked.',nodes:[q('.plate-core')]},
+        {id:'real',title:'The model core, entry by entry',copy:'Chosen finite capacities, with one loop iteration marked.',nodes:[q('.plate-core')]},
         {id:'inspect',title:'Inspect state',copy:'Open one structure at a time while keeping the current cycle fixed.',nodes:[q('.inspector-deck'),q('.core-state-grid')]},
         {id:'timeline',title:'Read the timeline',copy:'Every µop against every cycle, in one table.',nodes:[ds[1]]}
       ]);
@@ -700,7 +700,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'layout',title:'Cache layout',copy:'Sets, ways, tags, and the bits stored with every line.',nodes:[ds[0]]},
         {id:'lookup',title:'Run a lookup',copy:'Change the address or operation, then follow the highlighted set, tags, way and miss path.',nodes:[q('.l1-workbench')]},
-        {id:'arrays',title:'The arrays, to scale',copy:'Tag and data SRAM drawn to one bit scale, with the Zen+ way predictor.',nodes:[q('.plate-l1d')]}
+        {id:'arrays',title:'The arrays, to scale',copy:'Chosen cache geometry, parallel tag lookup and the selected data way.',nodes:[q('.plate-l1d')]}
       ]);
     } else if(sec.id==='ch-hier'){
       var cards=kids('.card');
@@ -732,7 +732,7 @@ var App = (function(){
       ]);
     } else if(sec.id==='ch-pref'){
       makeGuidedJourney(sec,[
-        {id:'known',title:'What is known',copy:'What this model assumes, and what AMD publishes about Zen+ prefetchers.',nodes:[directChild(body,'.grid2')]},
+        {id:'known',title:'What is known',copy:'Chosen detector rules and the limits of implementation-specific evidence.',nodes:[directChild(body,'.grid2')]},
         {id:'experiment',title:'Experiment with prediction',copy:'Change pattern and distance, then compare covered, late and useless prefetches.',nodes:[q('.pref-workbench')]}
       ]);
     } else if(sec.id==='ch-dev'){
@@ -852,14 +852,14 @@ var App = (function(){
   function initCfg(){
     var dr = document.getElementById('cfg'), inn = document.getElementById('cfgIn');
     var rows = [
-      ['ghz', 'Core clock (GHz)', '3750H max boost is 4.0; base 2.3'],
-      ['l1', 'L1d load-to-use (cycles)', 'representative unloaded input: 4'],
-      ['l2', 'L2 load-to-use (cycles)', 'representative unloaded input: 12'],
-      ['l3', 'L3 load-to-use (cycles)', 'representative unloaded estimate: ~35'],
+      ['ghz', 'Core clock (GHz)', 'teaching input; not host frequency'],
+      ['l1', 'L1d load-to-use (cycles)', 'chosen model input: 4'],
+      ['l2', 'L2 load-to-use (cycles)', 'chosen model input: 12'],
+      ['l3', 'L3 load-to-use (cycles)', 'chosen model input: 35'],
       ['dramNs', 'DRAM extra latency beyond L3 (ns)', 'ballpark only; depends on DIMMs'],
       ['tscGhz', 'TSC frequency (GHz)', 'measure your own with RDTSC against CLOCK_MONOTONIC']
     ];
-    var html = '<h2>Latency model</h2><p class="note">Representative unloaded inputs, informed by <a href="https://www.7-cpu.com/cpu/Zen.html" target="_blank" rel="noopener">external Zen measurements</a> and teaching estimates. These are <b>not vendor guarantees or measurements of this Ryzen 7 3750H</b>. Cache latencies are total load-to-use costs, not costs to add at each level. DRAM ns here is extra beyond L3. Loaded latency can be much higher. <a href="#perf/measure">Measure and record your conditions</a>.</p>';
+    var html = '<h2>Latency model</h2><p class="note"><b>Teaching-model parameters.</b> These chosen inputs are not calibrated to a CPU. Published hardware evidence and native result bundles keep their own scopes and never silently change these settings. <a href="#map/published">Inspect the hardware evidence</a>. Cache latencies are total load-to-use costs, not costs to add at each level. DRAM ns here is extra beyond L3. Loaded latency can be much higher. <a href="#perf/measure">Measure and record your conditions</a>.</p>';
     rows.forEach(function(r){ html += '<label><span>' + r[1] + '<small>' + r[2] + '</small></span><input type="number" step="any" min="0" data-k="' + r[0] + '" value="' + CFG[r[0]] + '"></label>'; });
     html += '<p class="note">TSC ticks and core cycles are different quantities. Inputs accept 0.1–10 GHz and 1–500 cycles/ns; pipeline times round to whole cycles. These are supported model ranges, not hardware limits.</p><p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset example defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
     inn.innerHTML = html;

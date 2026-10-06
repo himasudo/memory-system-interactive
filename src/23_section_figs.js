@@ -90,7 +90,7 @@
   }});
   add('xlate', 'depth', {h: 132, cap: 'Reach = entries \u00d7 page size: how much memory each TLB maps without a page walk.', draw: function(sv){
     T(sv, 250, 16, '4 KB pages', 's', 'middle'); T(sv, 380, 16, '2 MB pages', 's', 'middle');
-    [['L1 DTLB', '64 entries', '256 KB', '128 MB'], ['L2 TLB', '1536 entries', '6 MB', '3 GB']].forEach(function(r, i){
+    [['L1 DTLB', '64 model entries', '256 KB', '128 MB'], ['L2 TLB', '512 model entries', '2 MB', '1 GB']].forEach(function(r, i){
       var y = 26 + i * 50;
       R(sv, 10, y, 170, 40, 'a4b'); T(sv, 22, y + 17, r[0], 'h'); T(sv, 22, y + 33, r[1], 's');
       R(sv, 190, y, 120, 40, 'box'); T(sv, 250, y + 25, r[2], 'm', 'middle');

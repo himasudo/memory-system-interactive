@@ -1,7 +1,7 @@
 /* ======================= chapter: translation ======================= */
 App.chapter({id: 'xlate', short: 'VA \u2192 PA', title: 'Virtual to physical: TLBs and the page walk',
 lede: 'Programs use virtual addresses, but the L1d needs the physical address before it can confirm a hit.',
-points: ['Follow the virtual address of <code>hist[123]</code> from the address unit to the tag compare.', 'Five situations: DTLB hit, L2 TLB hit, full page walk, page fault, and a 2 MB page.'],
+points: ['Teaching-model parameters: illustrative 64-entry / 512-entry TLBs; the table format is x86-64, four-level, 48-bit VA.', 'Follow the virtual address of <code>hist[123]</code> from the address unit to the tag compare.', 'Five situations: DTLB hit, L2 TLB hit, full page walk, page fault, and a 2 MB page.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, EX = App.EX, hx = App.hx;
   var VA = App.WALK.va;
@@ -55,7 +55,7 @@ build: function(root){
   /* ---------- L1 DTLB CAM ---------- */
   var gcam = G('cam');
   s('rect', {x: 10, y: 140, width: 540, height: 196, rx: 10, 'class': 'box'}, gcam);
-  s('text', {x: 22, y: 160, 'class': 'h'}, gcam, 'L1 DTLB \u2014 64 entries, fully associative');
+  s('text', {x: 22, y: 160, 'class': 'h'}, gcam, 'Model L1 DTLB · 64 entries, fully associative');
   s('text', {x: 22, y: 176, 'class': 's'}, gcam, 'the VPN is compared against every entry in the same cycle (a CAM)');
   var camH = ['V', 'VPN', 'PCID', 'PFN', 'size', 'perm', 'compare'], camX = [24, 48, 180, 236, 322, 372, 440];
   camH.forEach(function(t, k){ s('text', {x: camX[k], y: 196, 'class': 's'}, gcam, t); });
@@ -70,8 +70,8 @@ build: function(root){
   /* L2 TLB */
   var gl2 = G('l2');
   s('rect', {x: 565, y: 140, width: 300, height: 196, rx: 10, 'class': 'box'}, gl2);
-  s('text', {x: 577, y: 160, 'class': 'h'}, gl2, 'L2 TLB \u2014 1536 entries');
-  s('text', {x: 577, y: 176, 'class': 's'}, gl2, 'checked after an L1 DTLB miss; no 1 GB pages');
+  s('text', {x: 577, y: 160, 'class': 'h'}, gl2, 'Model L2 TLB · 512 entries');
+  s('text', {x: 577, y: 176, 'class': 's'}, gl2, 'chosen coverage: 4 KiB / 2 MiB; larger leaves not in this TLB');
   E.l2Rows = [];
   for (k = 0; k < 6; k++){
     var y2 = 190 + k * 19;
@@ -164,7 +164,7 @@ build: function(root){
     if (mode === 'hit'){
       F('PA', 'Physical address in the same cycle', 'PFN 0x1a3f7c from the matching entry, joined with offset 0xe58, gives <b>PA 0x1a3f7ce58</b>. The L1d compares PA tag 0x1a3f7c against the 8 tags it just read ([[ch:l1d]]). Translation added no cycles.', {va: 1, vipt: 1, cam: 'hit', pa: 'ok'});
     } else if (mode === 'l2'){
-      F('L2 TLB', 'L2 TLB hit', 'The L2 TLB (1536 entries) holds the translation. It is slower than the L1 DTLB but far cheaper than a walk. The entry is copied into the L1 DTLB, replacing an older one, and the load replays.', {va: 1, cam: 'miss', l2: 'hit'});
+      F('L2 TLB', 'L2 TLB hit', 'The L2 TLB (512 entries) holds the translation. It is slower than the L1 DTLB but far cheaper than a walk. The entry is copied into the L1 DTLB, replacing an older one, and the load replays.', {va: 1, cam: 'miss', l2: 'hit'});
       F('fill', 'L1 DTLB refilled, load replays', 'Next attempt: the L1 DTLB hits in the new entry and the PA is <b>0x1a3f7ce58</b>.', {va: 1, cam: 'hitnew', l2: 'hit', pa: 'ok'});
     } else {
       F('L2 miss', 'L2 TLB miss: start a page walk', 'Neither TLB has the translation. A hardware ' + g('walk', 'page walkers') + ' takes the request. This walkthrough follows one dependent 8-byte entry per level; cached upper entries can avoid some memory requests.', {va: 1, cam: 'miss', l2: 'miss', walker: 1, huge: huge});
@@ -285,9 +285,9 @@ build: function(root){
 
   /* reach + context-switch cards */
   var reach = h('div', {'class': 'card'}, extra);
-  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' · reported Zen-family reference</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
-    '<tr><td>L1 DTLB</td><td>64</td><td>256 KB</td><td>128 MB</td></tr><tr><td>L2 TLB</td><td>1536</td><td>6 MB</td><td>3 GB</td></tr></table>' +
-    '<p style="margin-top:8px">Compare with the reference cache capacities: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
+  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' · hypothetical geometry; chosen entries</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
+    '<tr><td>L1 DTLB</td><td>64</td><td>256 KB</td><td>128 MB</td></tr><tr><td>L2 TLB</td><td>512</td><td>2 MB</td><td>1 GB</td></tr></table>' +
+    '<p style="margin-top:8px">These illustrative entry counts are not a hardware specification. Compare with the chosen model cache capacities: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
   var ctx = h('div', {'class': 'card'}, extra);
   ctx.innerHTML = '<h3>Context switches and ' + g('pcid', 'PCID') + '</h3><p>Switching processes writes a new value into ' + g('cr3') + '. Without PCIDs every non-global TLB entry would have to be discarded, and the next process starts with page walks. With PCIDs each entry carries a 12-bit process tag, so entries from different processes coexist and a switch only changes which tag matches.</p>' +
     '<p>The kernel removes stale entries itself with <code>invlpg</code> (one page) or a CR3 reload, for example after <code>munmap</code>. On multi-core systems it must also interrupt other cores that may cache the entry (a TLB shootdown).</p>';

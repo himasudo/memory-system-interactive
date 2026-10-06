@@ -3,7 +3,7 @@
   var U=App.LabUI,h=App.h,s=App.s,M=ControllerLab;
   function build(root){
     var sec=App.labSection(root,'controller','Queues, scheduling and the shared DRAM bus','Compare one request table under different scheduling policies.');
-    App.CacheUI.teaching(sec,'This controller enforces a stated subset of DRAM-style timing constraints. All numerical timings are small, chosen model clocks, not DDR4-2400 values or core cycles. Channels have separate command/data buses; ranks on one channel share those buses. Coordinates are supplied explicitly, so no undocumented Zen+ address hash is invented. The detailed DDR4 device walkthrough above remains the concrete device example.');
+    App.CacheUI.teaching(sec,'This controller enforces a stated subset of DRAM-style timing constraints. All numerical timings are small, chosen model clocks, not DDR4-2400 values or core cycles. Channels have separate command/data buses; ranks on one channel share those buses. Coordinates are supplied explicitly, so no undocumented hardware address hash is invented. The detailed DDR4 device walkthrough above remains the concrete device example.');
     U.checkpoint(sec,'Can serving younger row hits improve total throughput while making an older row-conflict request wait longer?',['Yes, locality and fairness can conflict','No, a faster total means every request improves'],0,'Inspect per-request waiting and bypass counts as well as the completion time. An age rule changes the tradeoff; it is not proof of a bounded hardware latency.');
     var o={channels:1,ranks:1,banks:4,groups:2,readQ:8,writeQ:8,high:6,low:2,policy:'frfcfs',arbitration:'drain',age:80,REFI:0,RFC:24},work={pattern:'locality',spacing:2,writes:25,count:48},custom=false,current=[],r,controls=h('div',{'class':'perf-controls'},sec);
     function knob(key,label,values){U.select(controls,label,values,o[key],function(v){o[key]=isNaN(Number(v))?v:+v;if(key==='banks')o.groups=Math.min(2,o.banks);run();});}
@@ -53,7 +53,7 @@
       U.table(tables,['Clock','Command / request','Channel / rank / bank / row'],r.commands.map(function(c){return [c.t,c.name+' '+(c.id||'maintenance'),[c.channel,c.rank,c.bank===null?'—':c.bank,c.row===null?'—':c.row].join(' / ')];}));step.set(r.trace.length);
     }catch(e){r=null;sec._controllerResult=null;compare.disabled=true;sweep.disabled=true;download.disabled=true;[metrics,explain,tables,latency,comparison,state,svg].forEach(function(el){el.replaceChildren();});status.textContent='Could not run: '+e.message;}}
     run();
-    U.text('h3',sec,'Measure loaded latency on Zen+');
+    U.text('h3',sec,'Measure loaded latency on your machine');
     U.text('p',sec,'First establish a pinned dependent pointer-chase baseline with a working set beyond the measured cache plateau. Then place independent bandwidth generators on other physical cores and repeat at increasing load, keeping topology, frequency, page policy and thermals recorded. Separate CPU cache/fabric interference from the DRAM-controller inference: a slower chase alone does not identify the controller policy, row hit rate or bank mapping.');
     U.text('p',sec,'Use the native harness and protocol below. Report both chase ns/load and generator useful GB/s. Hardware latency samples and whole-trial averages are different distributions; generic cache-misses is not a DRAM row-miss counter. No browser time here is a hardware measurement.');
     U.text('a',sec,'Runnable hardware measurement protocol',{href:'benchmarks/README.md'});

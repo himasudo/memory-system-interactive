@@ -48,13 +48,16 @@
 })();
 
 /* ======================= start here ======================= */
-App.chapter({id: 'start', short: 'Start here', title: 'Start here',
-lede: 'How one memory access travels through a real computer, from a line of C down to the DRAM chips and back.',
+App.chapter({id: 'start', short: 'Start here', title: 'Memory Systems Lab',
+lede: 'Interactive experiments in CPU architecture, cache coherence, virtual memory, DRAM and performance engineering.',
 points: ['Every chapter follows the same small C function.',
   'Chapters [[num:bits]]\u2013[[num:share]] build the background. Chapters [[num:map]]\u2013[[num:e2e]] follow one access through the hardware.',
-  'Terms, diagrams and timings work the same way on every page.'],
+  'Explore mechanisms, compare modern AMD / Intel / Arm implementation choices, inspect published evidence, or measure your Linux machine.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
+  App.h('div', {'class':'path-cards'}, root,
+    '<a class="path-card" href="#map/amd"><span class="path-k">Implementation choices</span><strong>Modern AMD, Intel and Arm cases</strong><span>Topology, cache domains and evidence that changes a prediction.</span></a>' +
+    '<a class="path-card" href="#perf/datasets"><span class="path-k">Reproducible experiments</span><strong>Measure your machine</strong><span>One Linux command; retained provenance, environment telemetry and private browser import.</span></a>');
   var a = P.sec(root, 'example', 'The running example', 'One small C function, used on every page.');
   P.row(a, [
     'The site follows one function. It counts how often each byte value appears in an array:',
@@ -84,15 +87,15 @@ build: function(root){
     'Diagrams mark the active part in amber. Click a block to see what it is.',
     'Step panels walk through a process one step at a time. The \u2190 and \u2192 keys also work.',
     'Each chapter is one long page. The section name in the top bar opens a list of its sections.',
-    'Timings come from the latency settings: representative unloaded inputs that you can replace with measurements made under recorded conditions.'
+    'Timings come from explicitly chosen teaching-model parameters. Published evidence and local measurements are shown separately with their original boundaries.'
   ])]);
 
-  var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One reference processor, with explicit evidence and model boundaries.');
+  var d = P.sec(root, 'numbers', 'Where the numbers come from', 'Model parameters, scoped implementation facts and measured evidence.');
   P.row(d, [
-    'The reference machine is an AMD Ryzen 7 3750H: four Zen+ cores with two threads each, a 32 KB L1 data cache and a 512 KB L2 per core, a 4 MB L3 shared by all four cores, and two DDR4 memory channels. The addresses and page mappings are consistent synthetic teaching examples, not a capture from this machine.',
-    'Other processors use related mechanisms with implementation-specific details. Distinguish vendor documentation, measured or reverse-engineered evidence, inference, teaching approximations and unknowns. The <a href="#perf/evidence">performance lab</a> defines those labels and provides <a href="#perf/measure">runnable measurements</a>.'
-  ], {h: 120, cap: 'Capacity per level on the Ryzen 7 3750H. Each level is larger and slower than the one before it.', draw: function(sv){
-    var L = [['core', '', 50], ['L1d', '32 KB', 70], ['L2', '512 KB', 80], ['L3', '4 MB', 92], ['DRAM', 'GBs', 102]], x = 10;
+    'Mechanisms come first: dependencies, finite queues, lookup, ownership, translation and memory scheduling. The diagrams use chosen teaching-model capacities and synthetic addresses. They are not one vendor’s undisclosed implementation.',
+    'The <a href="#map/reference">evidence contract</a> distinguishes seven categories: vendor documented, academic / peer-reviewed, reputable independent measurement, locally measured, inference, teaching model and unknown / undocumented. Compare <a href="#map/amd">EPYC 9005</a>, <a href="#map/intel">Xeon 6 P-cores</a> and <a href="#map/arm">Neoverse V3</a> where an implementation difference changes an experiment. <a href="#perf/datasets">Measure your machine</a> with the native harness.'
+  ], {h: 120, cap: 'Mechanism map: private caches, shared caching and memory. Sizes and policy vary by implementation.', draw: function(sv){
+    var L = [['core', '', 50], ['L1d', 'lookup', 70], ['L2', 'private', 80], ['LLC', 'domain', 92], ['DRAM', 'GBs', 102]], x = 10;
     L.forEach(function(l, i){
       P.box(sv, x, 30, l[2], 50, i === 0 ? 'a3b' : i === 4 ? 'sunk' : 'a2b', l[0], l[1]);
       T(sv, x + l[2] / 2, 100, ['', 'per core', 'per core', 'shared', 'off chip'][i], 's', 'middle');

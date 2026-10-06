@@ -1,0 +1,34 @@
+(function(){
+  'use strict';
+  var I=ImplementationEvidence,U=App.LabUI,h=App.h,s=App.s;
+  function badge(root,kind){return U.text('span',root,kind,{'class':'evidence-label evidence-kind','data-evidence-kind':kind});}
+  function source(root,key){var q=I.sources[key];return U.text('a',root,q[0],{href:q[1],target:'_blank',rel:'noopener'});}
+  function draw(root,c){
+    var figure=h('figure',{'class':'implementation-figure','data-implementation':c.id,'data-implementation-scope':c.generation},root),sc=h('div',{'class':'scroller'},figure);
+    var svg=s('svg',{viewBox:'0 0 740 390',role:'img','aria-label':c.title+'; '+c.scope,style:'min-width:640px'},sc);
+    c.edges.forEach(function(e){s('path',{d:'M '+e[0]+' '+e[1]+' L '+e[2]+' '+e[3],'class':'wire'},svg);});
+    c.nodes.forEach(function(n){var group=s('g',{'class':n.unknown?'implementation-unknown':''},svg);s('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:8,'class':n.unknown?'sunk':'box a2b'},group);n.lines.forEach(function(t,j){s('text',{x:n.x+n.w/2,y:n.y+n.h/2+(j-(n.lines.length-1)/2)*20+4,'text-anchor':'middle','class':j?'s':'h'},group,t);});});
+    var caption=h('figcaption',null,figure);badge(caption,c.kind);U.text('p',caption,'Scroll the schematic horizontally on narrow screens.');U.text('p',caption,c.generation+' · '+c.scope);U.text('p',caption,'Original project schematic, not a die photograph or a latency scale. '+c.limits);source(caption,c.source);return figure;
+  }
+  function caseSection(root,c){var sec=App.labSection(root,c.id,c.title,c.choice);sec.classList.add('implementation-case');badge(sec,c.kind);U.text('p',sec,c.fact);draw(sec,c);badge(sec,'Inference');U.text('p',sec,c.prediction);U.text('p',sec,'Experiment: '+c.experiment);if(c.id==='arm'){source(sec,'v3telemetry');U.text('span',sec,' · ');}U.text('a',sec,'Measure your machine →',{href:'#perf/datasets'});}
+  function published(root){
+    var sec=App.labSection(root,'published','Published hardware evidence','Follow the measured boundary before drawing a performance conclusion.'),q=I.instruction;
+    badge(sec,q.kind);U.text('h3',sec,'Dependent load instruction: the operand boundary');U.text('p',sec,q.instruction+' · '+q.scope);U.text('p',sec,q.method);
+    var figure=h('figure',{'class':'published-evidence-figure','data-source':'uops','data-reported':'true'},sec);
+    q.rows.forEach(function(r){var row=h('div',{'class':'evidence-bar-row'},figure);U.text('span',row,r.microarchitecture);var track=h('div',{'class':'evidence-bar-track'},row);h('div',{'class':'evidence-bar',style:'width:'+(r.latency_cycles/6*100)+'%'},track);U.text('strong',row,r.latency_cycles+' core cycles');});
+    U.text('figcaption',figure,'Original plot of directly reported address-base → destination latency. Both summaries report 4 cycles; this does not rank memory systems.');
+    U.table(sec,['Reported microarchitecture','Exact CPU model','Experiment'],q.rows.map(function(r){return [r.microarchitecture,r.cpu_model||'Not specified · '+r.cpu_model_reason,'Dependency chain; '+r.latency_cycles+' core cycles'];}));
+    U.text('p',sec,q.limits,{'class':'evidence-limits'});source(sec,q.source);U.text('span',sec,' · ');source(sec,q.methodSource);q.rows.forEach(function(r){var p=U.text('p',sec,r.microarchitecture+' raw method: ');source(p,r.source);});
+    var c=I.counterCase;U.text('h3',sec,'Counter populations: a comparison boundary');badge(sec,c.kind);U.table(sec,['Measured CPU / microarchitecture','Reported memory configuration'],c.models.map(function(v,i){return [v,c.conditions[i]];}));U.text('p',sec,c.scope);U.text('p',sec,c.fact);
+    var boundary=h('div',{'class':'counter-boundaries','data-source':'lioncove'},sec);[['Intel retired loads','Retired-load source population'],['AMD demand L1D misses','Demand misses; wrong-path work can enter']].forEach(function(pair){var box=h('div',{'class':'counter-boundary'},boundary);U.text('strong',box,pair[0]);U.text('span',box,'↓');U.text('span',box,pair[1]);});
+    U.text('p',sec,'Original qualitative schematic of the reported measurement populations; no cross-population ratio is drawn.');U.text('p',sec,c.limits,{'class':'evidence-limits'});source(sec,c.source);
+    U.text('h3',sec,'Turn the evidence into an experiment');U.text('p',sec,'A dependency chain exposes serialized access cost; independent chains test overlap. Sweep footprints and chain counts with the native harness. Its monotonic-clock, whole-trial ns/op boundary differs from an instruction-chain core-cycle result. Keep both boundaries rather than converting them into a CPU ranking.');U.text('a',sec,'Memory latency / MLP mechanism →',{href:'#perf/queues'});U.text('span',sec,' · ');U.text('a',sec,'Measure your machine →',{href:'#perf/datasets'});
+  }
+  function history(root){var sec=App.labSection(root,'history','Historical implementation examples','Older designs remain useful when their differences change an experiment.');
+    badge(sec,'Academic / peer-reviewed');U.text('h3',sec,'AMD Zen / Zen+ · historical L1D way prediction');U.text('p',sec,'Take A Way (2020) studied AMD implementations from 2011–2019, including Zen and Zen+. It reports virtual-address-based way prediction and alias behavior. This is evidence about the paper’s tested processors, not every later Zen generation. The mechanism plates use parallel lookup and do not implement the paper’s predictor.');source(sec,'takeaway');
+    badge(sec,'Vendor documented');U.text('h3',sec,'Intel E5 v4 → Skylake-SP · historical LLC inclusion change');U.text('p',sec,'Intel’s documented shift from an inclusive to a non-inclusive LLC changes the copy constraint. It does not establish the allocation or directory policy of Granite Rapids.');var q=App.Evidence.sources.cache;U.text('a',sec,q[0],{href:q[1],target:'_blank',rel:'noopener'});U.text('p',sec,'Try the same trace under different inclusion contracts, then inspect what the experiment can actually distinguish.');U.text('a',sec,'Inclusion experiment →',{href:'#hier/inclusion'});
+  }
+  App.CaseStudies={draw:draw,badge:badge};
+  App.extendChapter('map',function(root){I.cases.forEach(function(c){caseSection(root,c);});published(root);history(root);});
+  ['hier','l1d','perf'].forEach(function(id){App.extendChapter(id,function(root){var sec=App.labSection(root,'hardware-evidence','From mechanism to published evidence','A cache lookup, operand dependency and PMU population are different measurement boundaries.');badge(sec,'Reputable independent measurement');U.text('p',sec,'Inspect uops.info’s reported Zen 5 / Arrow Lake-P dependency-chain measurements and the Core Ultra 9 285K / Ryzen 9 9900X counter-scope example. Exact methods and limitations remain attached to the observations. These results do not set this chapter’s teaching inputs.');U.text('a',sec,'Inspect published hardware evidence →',{href:'#map/published'});U.text('span',sec,' · ');U.text('a',sec,'Measure your machine →',{href:'#perf/datasets'});});});
+})();

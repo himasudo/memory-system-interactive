@@ -1,5 +1,5 @@
 /* Timing-constrained teaching controller. Coordinates/timings are explicit;
-   there is no physical-address decoder or proprietary Zen+ scheduler here. */
+   there is no physical-address decoder or proprietary hardware scheduler here. */
 var ControllerLab=(function(){
   'use strict';
   var DEFAULTS={channels:1,ranks:1,banks:4,groups:2,readQ:8,writeQ:8,high:6,low:2,policy:'frfcfs',arbitration:'drain',age:80,

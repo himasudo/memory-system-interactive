@@ -1,4 +1,4 @@
-/* Pure Phase 1 models. Capacities/policies are teaching assumptions, not Zen+ internals. */
+/* Pure Phase 1 models. Capacities and policies are explicit teaching-model parameters. */
 var LabModel = (function(){
   'use strict';
   var defaults = {requests:192, chains:8, rob:32, lq:24, mshr:12, fabric:6,
@@ -62,7 +62,7 @@ var LabModel = (function(){
         q.issue=t; q.state='fabric'; outstanding++; fabric.push(q); issued++;
       }
       /* One abstract loop body per cycle: one load + three other instructions.
-         ROB control counts bodies, not physical Zen ROB entries or fused µops. */
+         ROB control counts bodies, not a hardware ROB allocation unit or fused µops. */
       if(all.length<p.requests){
         if(rob.length>=p.rob) reason.rob=true;
         else if(lq>=p.lq) reason.lq=true;
