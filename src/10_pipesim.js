@@ -2,7 +2,8 @@
 var PipeSim = (function(){
 var W = {fetch: 4, rename: 4, retire: 4, alu: 4, agu: 2};
 var CAP = {rob: 24, uq: 8, alu: 16, agu: 12, lq: 10, sq: 8, prf: 48, mab: 4};
-var REAL = {rob: '192 (reported family reference)' , uq: '72 µops', alu: '4 × 14', agu: '2 × 14', lq: 'unverified (legacy 44; reported 72)' , sq: '44', prf: '168', mab: 'target capacity unknown; legacy 50 L2→L3' , fetch: '4 x86 instr/cycle', rename: '6 macro-ops/cycle', retire: '8/cycle'};
+/* Compatibility metadata: implementation capacities require separate evidence. */
+var REAL = Object.fromEntries(Object.keys(CAP).concat(['fetch','rename','retire']).map(function(k){return [k,'implementation-dependent; model parameter only'];}));
 
 function simulate(P){
   var EX = P.ex, L = EX.loop, hx = function(v){ return '0x' + v.toString(16); };

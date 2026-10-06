@@ -176,7 +176,7 @@ async function main(){
     const bad=JSON.parse(fs.readFileSync(fixture));bad.samples[0].stages[0].checksum++;await input.setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});await page.waitForFunction(()=>document.querySelector('.vm-measurement-status').textContent.startsWith('Could not import'));
   });
   await check('reference evidence filters retain product scope and unknowns',async()=>{
-    await route('map/reference');const lab=page.locator('#map--reference');assert.ok(await lab.locator('.evidence-claims .evidence-contract').count()>=8);await lab.locator('[data-field="Evidence category"]').selectOption('Unknown / implementation-dependent');assert.equal(await lab.locator('.evidence-claims .evidence-contract').count(),3);assert.match(await lab.locator('.evidence-claims').textContent(),/44-entry/);
+    await route('map/reference');const lab=page.locator('#map--reference');assert.ok(await lab.locator('.evidence-claims .evidence-contract').count()>=8);await lab.locator('[data-field="Evidence category"]').selectOption('Unknown / undocumented');assert.equal(await lab.locator('.evidence-claims .evidence-contract').count(),3);assert.match(await lab.locator('.evidence-claims').textContent(),/queue partitioning/);
   });
   await check('ordering witnesses change under TSO, relaxed rules and full fences',async()=>{
     await route('stores/litmus');const lab=page.locator('#stores--litmus');assert.equal(await lab.evaluate(el=>el._orderingResult.targetAllowed),true);await lab.locator('[data-field="Full ordering points"]').selectOption('1');assert.equal(await lab.evaluate(el=>el._orderingResult.targetAllowed),false);

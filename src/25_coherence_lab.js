@@ -24,7 +24,7 @@
   }
   function ownership(root){
     var sec=App.labSection(root,'transactions','Atomic updates, false sharing and transient ownership','Change the counter layout without changing the useful work.');
-    teaching(sec,'A generic MOESI teaching protocol with explicit GetS, GetM, data and acknowledgement events extends the stable-state walkthrough above. IS/IM/SM/OM mean a request is pending; they are not AMD’s state names. Operations in this trace run one at a time. Logical event ticks expose ordering and must not be read as parallel runtime or Zen+ atomic latency.');
+    teaching(sec,'A generic MOESI teaching protocol with explicit GetS, GetM, data and acknowledgement events extends the stable-state walkthrough above. IS/IM/SM/OM mean a request is pending; they are not AMD’s state names. Operations in this trace run one at a time. Logical event ticks expose ordering and must not be read as parallel runtime or hardware atomic latency.');
     U.checkpoint(sec,'Two cores update different 8-byte counters in the same 64-byte line. Can the counters still cause ownership transfers?',['No, their values are independent','Yes, ownership is tracked per line'],1,'Padding changes the coherence unit that the two writers share, even though the source-level counters were already independent.');
     var o={placement:'two',layout:'packed',kind:'add',flush:false},ctl=h('div',{'class':'perf-controls'},sec);
     U.select(ctl,'Thread placement',[['one','One thread'],['smt','Two SMT siblings, one physical core'],['two','Two physical cores'],['four','Four physical cores']],'two',function(v){o.placement=v;draw();});
@@ -54,8 +54,8 @@
     }draw();
     U.text('h3',sec,'While ownership is pending');
     U.table(sec,['Event / race','Why a transient state is needed','Deliberate scope'],[['GetS sent; data absent','The line is neither a usable S copy nor simply an untouched I line','IS tracks an outstanding request'],['Upgrade sent; acknowledgements absent','Writing early could leave another valid old copy','SM/OM waits for invalidations'],['Another writer or probe arrives mid-transition','Data, permissions and messages can be in flight simultaneously','A real protocol must serialize, queue or retry/NACK the conflict; this sequential trace does not simulate that race'],['Store retires before ownership','Architectural retirement can precede coherent visibility','The buffer event precedes the visible store event; neither requires a write to DRAM']]);
-    U.text('h3',sec,'Observe the mechanism on the reference machine');
-    U.text('p',sec,'HITM describes evidence associated with a modified peer copy in some tools; event names and data-source encodings differ by CPU. perf c2c can locate contended cache lines and offsets on supported hardware. Linux uses IBS Op for supported AMD implementations. Check the installed kernel, perf version, PMUs and permissions; do not copy Intel raw events to Zen+. Elapsed runtime alone does not count bounces.');
+    U.text('h3',sec,'Measure the mechanism on your machine');
+    U.text('p',sec,'HITM describes evidence associated with a modified peer copy in some tools; event names and data-source encodings differ by CPU. perf c2c can locate contended cache lines and offsets on supported hardware. Linux uses IBS Op for supported AMD implementations. Check the installed kernel, perf version, PMUs and permissions; do not transfer raw events between CPU models. Elapsed runtime alone does not count bounces.');
     U.text('a',sec,'Upstream Linux perf c2c documentation',{href:'https://kernel.googlesource.com/pub/scm/linux/kernel/git/frowand/linux/+/b72b5fecc1b8a2e595bd03d7d257c88ea3f9fd45/tools/perf/Documentation/perf-c2c.txt',target:'_blank',rel:'noopener'});
     measurement(sec);
   }

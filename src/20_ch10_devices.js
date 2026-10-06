@@ -1,7 +1,7 @@
 /* ======================= chapter: devices ======================= */
 App.chapter({id: 'dev', short: 'Devices & DMA', title: 'Devices: MMIO, DMA, the IOMMU and interrupts',
 lede: 'One 4 KB read from an NVMe SSD, from the io_uring request to the application reading the data.',
-points: ['The CPU talks to the SSD by writing device registers (MMIO).', 'The SSD reads and writes host memory itself (DMA), through the IOMMU.', 'Those device accesses stay coherent with the CPU caches.'],
+points: ['The CPU talks to the SSD by writing device registers (MMIO).', 'The SSD reads and writes host memory itself (DMA), through the IOMMU.', 'This chosen x86-64 platform path uses coherent DMA; other platforms can require explicit cache maintenance through the OS DMA API.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, HW = App.HW;
   var intro = h('div', {'class': 'grid2'}, root);
@@ -14,7 +14,7 @@ build: function(root){
   function box(id, x, y, w, ht, t, sub, cls){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': cls || 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 20, 'class': 'h'}, gr, t); if (sub) s('text', {x: x + 10, y: y + 37, 'class': 's'}, gr, sub); E[id] = gr; return gr; }
   box('core', 10, 10, 330, 170, 'Core 0 \u2014 driver, io_uring', 'its L1d/L2 lines for the queues and buffer:');
   E.cl = [0, 1, 2].map(function(k){ return {r: s('rect', {x: 22, y: 58 + k * 38, width: 306, height: 30, rx: 5, 'class': 'sunk'}, E.core), t: s('text', {x: 32, y: 78 + k * 38, 'font-size': 12}, E.core, '')}; });
-  box('fab', 10, 200, 740, 38, 'Infinity Fabric \u2014 coherent: device traffic is checked against CPU caches', '', 'a3b');
+  box('fab', 10, 200, 740, 38, 'Coherent interconnect · chosen device path checks CPU caches', '', 'a3b');
   box('dram', 10, 260, 560, 330, 'DRAM (host memory)');
   s('text', {x: 22, y: 302, 'class': 'h'}, E.dram, 'I/O submission queue 1 (64 B entries)');
   E.sq = []; for (var i = 0; i < 8; i++) E.sq.push({r: s('rect', {x: 22 + i * 66, y: 310, width: 60, height: 40, rx: 4, 'class': 'sunk'}, E.dram), t: s('text', {x: 52 + i * 66, y: 335, 'text-anchor': 'middle', 'class': 'm', 'font-size': 11}, E.dram, '')});

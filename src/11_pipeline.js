@@ -15,14 +15,12 @@ build: function(root){
     '<p>Each instruction goes through up to 14 stages: <b>BP</b> ' + g('bp', 'predict') + ' · <b>IF</b> fetch from ' + g('l1i') + ' · <b>PD</b> ' + g('predecode') + ' · <b>DE</b> ' + g('decode') + ' · <b>UQ</b> ' + g('uq') + ' · <b>RN</b> ' + g('rename') + ' · <b>DS</b> ' + g('dispatch') +
     ' · <b>IS</b> ' + g('issue') + ' · <b>RR</b> register read · <b>EX/AG</b> execute or ' + g('agu', 'address generation') + ' · <b>D1</b> ' + g('dtlb') + ' + L1d tag · <b>D2</b> L1d data / SQ check · <b>WB</b> writeback + ' + g('wakeup') + ' · <b>RT</b> ' + g('retire') + ' · then <b>CM</b> ' + g('commit') + ' for stores.</p>');
   var sizes = h('div', {'class': 'card'}, intro);
-  var R = PipeSim.REAL, C = PipeSim.CAP;
-  sizes.innerHTML = '<h3>Model sizes and reported Zen-family references</h3><p>Structures are scaled down so every entry fits on screen. The pipeline is an instructional schedule. Reference-column numbers combine family reports and unresolved legacy values, not verified per-thread 3750H limits.</p>' +
-    '<table class="mt"><tr><th></th><th>model</th><th>Family reference / evidence limit</th></tr>' +
-    [['rob', 'ROB', C.rob, R.rob], ['prf', 'physical registers', C.prf, R.prf], ['sched', 'ALU schedulers', C.alu, R.alu], ['sched', 'AGU schedulers', C.agu, R.agu],
-     ['lq', 'load queue', C.lq, R.lq], ['sq', 'store queue', C.sq, R.sq], ['uq', 'µop queue', C.uq + ' instr', R.uq], ['mab', 'miss buffers', C.mab, R.mab],
-     ['decode', 'fetch / decode width', '4', R.fetch], ['rename', 'rename width', '4', R.rename], ['retire', 'retire width', '4', R.retire]]
-    .map(function(r){ return '<tr><td>' + g(r[0], r[1]) + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td></tr>'; }).join('') +
-    '</table><p class="note">Load-to-use: L1 hit 4 cycles; misses use the values in the latency settings. Front end shortened to 4 stages. The old 20.8-TSC-tick (~9 ns) misprediction figure has no raw trace or measurement protocol here and remains unverified; TSC ticks are not automatically core cycles. The simulator uses a chosen recovery penalty.</p>';
+  var C = PipeSim.CAP;
+  sizes.innerHTML = '<h3>Teaching-model parameters</h3><p>These finite capacities are chosen to expose allocation, dependency stalls and backpressure. The schedule runs an x86 histogram example; it is not a calibrated core.</p>' +
+    '<table class="mt"><tr><th>Resource</th><th>Chosen capacity / width</th><th>Accounting unit</th></tr>' +
+    [['rob','ROB',C.rob,'instruction records'],['prf','physical registers',C.prf,'registers'],['sched','ALU scheduler',C.alu,'µops'],['sched','AGU scheduler',C.agu,'µops'],['lq','load queue',C.lq,'loads'],['sq','store queue',C.sq,'stores'],['uq','decode queue',C.uq,'instruction records'],['mab','miss buffers',C.mab,'cache lines'],['decode','fetch / decode width',PipeSim.W.fetch,'instructions / cycle'],['rename','rename width',PipeSim.W.rename,'instructions / cycle'],['retire','retire width',PipeSim.W.retire,'instructions / cycle']]
+    .map(function(r){return '<tr><td>'+g(r[0],r[1])+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>';}).join('')+
+    '</table><p class="note">Load-to-use and recovery costs are chosen simulation inputs. Four shortened front-end stages expose the mechanism. TSC ticks, core cycles and native nanoseconds retain distinct boundaries in measured evidence.</p>';
 
   /* ---------- controls ---------- */
   var ctl = h('div', {'class': 'card pctl core-controls'}, root);
@@ -73,7 +71,7 @@ build: function(root){
   function wire(d){ return s('path', {d: d, 'class': 'wire', 'marker-end': 'url(#pa)'}, fp); }
   var yA = 30, yB = 140, yC = 250, yD = 350;
   blk('bp', 10, yA, 180, 72, 'Branch pred. · BTB'); B.bp.l = s('text', {x: 18, y: yA + 40, 'class': 'm', 'font-size': 11}, B.bp.g, ''); B.bp.l2 = s('text', {x: 18, y: yA + 58, 'class': 's'}, B.bp.g, '');
-  blk('ic', 205, yA, 160, 72, 'L1i 64K · iTLB'); B.ic.l = s('text', {x: 213, y: yA + 40, 'class': 'm', 'font-size': 11}, B.ic.g, ''); s('text', {x: 213, y: yA + 58, 'class': 's'}, B.ic.g, '32-byte fetch window');
+  blk('ic', 205, yA, 160, 72, 'L1i · iTLB'); B.ic.l = s('text', {x: 213, y: yA + 40, 'class': 'm', 'font-size': 11}, B.ic.g, ''); s('text', {x: 213, y: yA + 58, 'class': 's'}, B.ic.g, '32-byte model fetch window');
   blk('pd', 380, yA, 130, 72, 'Predecode'); B.pd.l = s('text', {x: 388, y: yA + 40, 'class': 'm', 'font-size': 11}, B.pd.g, ''); s('text', {x: 388, y: yA + 58, 'class': 's'}, B.pd.g, 'finds boundaries');
   blk('de', 525, yA, 240, 72, 'Decode ×4 · op cache'); B.de.c = bar(B.de, 4, yA + 30, 32);
   blk('uq', 780, yA, 410, 72, '\u00b5op queue'); B.uq.c = bar(B.uq, C.uq, yA + 30, 32);
@@ -107,10 +105,10 @@ build: function(root){
 
   /* ---------- detail panels ---------- */
   var pg = h('div', {'class': 'pgrid core-state-grid'}, root);
-  function panel(title, term, cap){ var p = h('div', {'class': 'card pp'}, pg); h('h3', null, p, (term ? g(term, title) : title) + (cap ? ' <span class="tag pub">' + cap + '</span>' : '')); return h('div', null, p); }
-  var pFE = panel('Front end', null), pRN = panel('RAT', 'rat', 'rename'), pPRF = panel('Physical registers', 'prf', C.prf + ' of ' + R.prf),
-      pROB = panel('ROB', 'rob', C.rob + ' of ' + R.rob), pSC = panel('Schedulers', 'sched'), pEX = panel('Execution ports', 'port'),
-      pLQ = panel('Load queue', 'lq', C.lq + ' of ' + R.lq), pSQ = panel('Store queue', 'sq', C.sq + ' of ' + R.sq), pMEM = panel('DTLB · L1d · memory', null);
+  function panel(title, term, cap){ var p = h('div', {'class': 'card pp'}, pg); h('h3', null, p, (term ? g(term, title) : title) + (cap ? ' <span class="tag">' + cap + '</span>' : '')); return h('div', null, p); }
+  var pFE = panel('Front end', null), pRN = panel('RAT', 'rat', 'rename'), pPRF = panel('Physical registers', 'prf', C.prf + ' model entries'),
+      pROB = panel('ROB', 'rob', C.rob + ' model entries'), pSC = panel('Schedulers', 'sched'), pEX = panel('Execution ports', 'port'),
+      pLQ = panel('Load queue', 'lq', C.lq + ' model entries'), pSQ = panel('Store queue', 'sq', C.sq + ' model entries'), pMEM = panel('DTLB · L1d · memory', null);
 
   /* ROB ring */
   var ring = s('svg', {viewBox: '0 0 260 260', 'class': 'ring'}, pROB), ringCells = [];
@@ -220,7 +218,7 @@ build: function(root){
     on('lsu', sn.stages.AG.length || sn.stages.D1.length || sn.stages.D2.length || sn.stages.SD.length || sn.ev.some(function(e){ return /commits/.test(e); }));
     fill(B.l2.c, sn.mab.map(function(m){ return {t: m.lvl, c: 'miss'}; })); on('l2', sn.mab.length);
     /* events */
-    evTitle.innerHTML = 'Cycle ' + cur + (sn.stall ? ' <span class="tag bad">rename stalled: ' + sn.stall + '</span>' : '') + ' <span class="tag pub">retired groups ' + sn.retired + ' \u00b7 groups/cycle ' + (sn.retired / (cur + 1)).toFixed(2) + '</span><span class="note"> cmp + branch is one tracked group here; this is not architectural IPC.</span>';
+    evTitle.innerHTML = 'Cycle ' + cur + (sn.stall ? ' <span class="tag bad">rename stalled: ' + sn.stall + '</span>' : '') + ' <span class="tag">retired groups ' + sn.retired + ' \u00b7 groups/cycle ' + (sn.retired / (cur + 1)).toFixed(2) + '</span><span class="note"> cmp + branch is one tracked group here; this is not architectural IPC.</span>';
     evList.innerHTML = sn.ev.length ? sn.ev.map(function(e){ return '<li>' + e + '</li>'; }).join('') : '<li class="note">Nothing changes state this cycle' + (sn.mab.length ? ': every remaining \u00b5op is waiting on the outstanding miss.' : '.') + '</li>';
     /* front end panel */
     pFE.innerHTML = '<dl class="kv"><dt>BTB</dt><dd>jne at \u2026519f \u2192 \u20265190, predicted taken</dd><dt>next fetch</dt><dd>' + (sn.nextPC || 'none (ret fetched)') + '</dd></dl>' +

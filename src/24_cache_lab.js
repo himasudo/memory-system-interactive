@@ -8,7 +8,7 @@
   App.gloss('transient_coh','transient coherence state','Tracks outstanding data, permission requests or acknowledgements between stable states. IS/IM/SM/OM in the lab are generic teaching labels, not AMD protocol state names.');
   App.gloss('atomic_rmw','atomic read-modify-write','Indivisibly reads and updates one atomic object. Its language-level memory order constrains other accesses separately. Relaxed still guarantees atomicity; it does not publish unrelated payload data.');
   function section(root,id,title,copy){return App.labSection(root,id,title,copy);}
-  function teaching(root,copy){U.badge(root,'Teaching model · not a Zen+ timing or policy claim');U.text('p',root,copy);}
+  function teaching(root,copy){U.badge(root,'Teaching model · chosen capacities and policies');U.text('p',root,copy);}
   function replayControls(root,label,render){
     var controls=h('div',{'class':'perf-actions'},root),back=U.text('button',controls,'← back',{type:'button'}),next=U.text('button',controls,'next →',{type:'button'}),reset=U.text('button',controls,'restart',{type:'button'}),lab=h('label',{'class':'perf-scrub'},controls);
     U.text('span',lab,label);var range=h('input',{type:'range',min:0,max:0,value:0,'aria-label':label},lab),i=0,length=1;
@@ -18,12 +18,12 @@
   }
   function cache(root){
     var sec=section(root,'taxonomy','Classify a miss; measure reuse','Change one cache parameter while preserving the access trace.');
-    teaching(sec,'This experiment uses true LRU in a small set-associative cache and a same-capacity fully associative LRU shadow. It complements the existing Zen+ layout/pLRU walkthrough above. The 3C classification applies to this demand trace; coherence invalidations, prefetching and other replacement policies need additional explanations.');
+    teaching(sec,'This experiment uses true LRU in a small set-associative cache and a same-capacity fully associative LRU shadow. It complements the chosen cache layout / pLRU walkthrough above. The 3C classification applies to this demand trace; coherence invalidations, prefetching and other replacement policies need additional explanations.');
     U.checkpoint(sec,'Three lines map to one 2-way set but fit in the whole cache. After the first touches, why do repeated accesses miss?',['Compulsory','Capacity','Conflict'],2,'The fully associative shadow still holds the lines; only the set restriction forces eviction.');
     var o={sets:4,ways:2,line:64,op:'read',drain:false},ctl=h('div',{'class':'perf-controls'},sec);
     U.select(ctl,'Model cache sets',[1,2,4,8,16],4,function(v){o.sets=+v;draw();});
     U.select(ctl,'Model cache ways',[1,2,4,8],2,function(v){o.ways=+v;draw();});
-    U.select(ctl,'Model line bytes (Zen+ uses 64)',[16,32,64,128],64,function(v){o.line=+v;draw();});
+    U.select(ctl,'Model line bytes',[16,32,64,128],64,function(v){o.line=+v;draw();});
     U.select(ctl,'Trace operation',[['read','8-byte reads'],['write','8-byte temporal stores']],'read',function(v){o.op=v;draw();});
     U.select(ctl,'Dirty lines at end',[[0,'Keep resident'],[1,'Drain to lower level']],0,function(v){o.drain=!!+v;draw();});
     var lab=h('label',{'class':'perf-field'},sec);U.text('span',lab,'Access trace: byte offsets, or A=0, B=64, C=128…');
@@ -51,7 +51,7 @@
   }
   function splitAndPorts(root){
     var sec=section(root,'split','Split accesses and finite hit throughput','An L1 hit is a latency, not an unlimited supply rate.');
-    teaching(sec,'The byte boundaries are exact for 64-byte lines and 4 KiB pages. The bank function, port width/count and scheduling below are deliberately chosen teaching rules, not a Zen+ bank map or execution-port specification. Zen+ remains the reference for 64-byte lines; 64-byte operand examples are generic comparisons, not a claim of Zen+ AVX-512 support.');
+    teaching(sec,'The byte boundaries are exact for 64-byte lines and 4 KiB pages. The bank function, port width/count and scheduling below are deliberately chosen teaching rules, not a hardware bank map or execution-port specification. The model chooses 64-byte lines; operand geometry does not establish ISA instruction support.');
     var o={addr:60,size:8,ports:2,banks:4,width:8,pattern:'spread'},controls=h('div',{'class':'perf-controls'},sec);
     U.select(controls,'Starting byte offset',[0,8,32,56,60,63,4088,4092,4095],60,function(v){o.addr=+v;draw();});
     U.select(controls,'Access bytes',[1,2,4,8,16,32,64],8,function(v){o.size=+v;draw();});
@@ -77,7 +77,7 @@
   }
   function forwarding(root){
     var sec=section(root,'forwarding','Forward, wait, or replay?','Inspect the bytes before guessing a forwarding rule.');
-    teaching(sec,'Coverage is a necessary data dependency condition, not a complete forwarding specification. Exact Zen+ alignment, merging, size combinations and penalties require applicable documentation or a controlled measurement. The “lower 12 bits” experiment is an illustrative early-address filter.');
+    teaching(sec,'Coverage is a necessary data dependency condition, not a complete forwarding specification. Hardware-specific alignment, merging, size combinations and penalties require applicable documentation or a controlled measurement. The “lower 12 bits” experiment is an illustrative early-address filter.');
     var o={storeAddr:4096,storeSize:8,loadAddr:4096,loadSize:8,addressKnown:true,dataKnown:true,speculate:false},ctl=h('div',{'class':'perf-controls'},sec);
     [['storeAddr','Store address',[4096,4100,4156]],['storeSize','Store size (B)',[1,2,4,8,16,32]],['loadAddr','Load address',[4096,4100,4104,4156,8192,8256]],['loadSize','Load size (B)',[1,2,4,8,16,32]]].forEach(function(a){U.select(ctl,a[1],a[2],o[a[0]],function(v){o[a[0]]=+v;draw();});});
     U.select(ctl,'Store address known',[[1,'yes'],[0,'no']],1,function(v){o.addressKnown=!!+v;draw();});U.select(ctl,'Store data ready',[[1,'yes'],[0,'no']],1,function(v){o.dataKnown=!!+v;draw();});U.select(ctl,'Unresolved-store policy (model)',[[0,'wait'],[1,'speculate and validate']],0,function(v){o.speculate=!!+v;draw();});
@@ -99,7 +99,7 @@
   }
   function siblings(root){
     var sec=section(root,'smt','One core, two logical threads','SMT can fill bubbles and can also compete for finite resources.');
-    teaching(sec,'The Ryzen 7 3750H has two logical threads per core. Architectural register state is distinct; substantial execution/cache machinery is shared at the physical-core level. The quotas below are hypothetical alternatives, not a statement of AMD’s exact queue partitioning. This experiment isolates one shared issue slot and a finite load-slot pool. It does not model a whole Zen+ core or cache pollution.');
+    teaching(sec,'Where SMT is supported, architectural thread state is distinct while execution and cache machinery can be shared. The quotas below are hypothetical choices, not a proprietary partitioning claim. This experiment isolates one shared issue slot and a finite load-slot pool. It does not model a calibrated hardware core or cache pollution.');
     var o={capacity:8,policy:'shared',sibling:'memory'},ctl=h('div',{'class':'perf-controls'},sec);
     U.select(ctl,'Sibling workload',[['off','No sibling'],['compute','Compute-ready sibling'],['memory','Memory-heavy sibling']],'memory',function(v){o.sibling=v;draw();});U.select(ctl,'Load-slot allocation (model)',[['shared','Dynamic shared pool'],['partitioned','Equal fixed quotas']],'shared',function(v){o.policy=v;draw();});U.select(ctl,'Total shared load slots',[4,8,16],8,function(v){o.capacity=+v;draw();});
     var metrics=h('div',{'class':'perf-metrics'},sec),fig=h('figure',{'class':'perf-chart'},sec),svg=s('svg',{viewBox:'0 0 820 220',role:'img','aria-label':'Two threads competing for load slots'},fig),out=h('div',null,sec);

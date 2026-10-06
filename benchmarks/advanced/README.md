@@ -2,7 +2,7 @@
 
 These protocols connect Phase 6's teaching models to observations. Browser
 clocks never measure the host CPU, NVMe controller, IOMMU or DRAM. The repository
-contains no new measurements of the Ryzen 7 3750H and no cross-vendor leaderboard.
+contains no new hardware measurements and no cross-vendor leaderboard.
 
 ## Software prefetch distance
 

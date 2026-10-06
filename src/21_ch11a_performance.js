@@ -5,7 +5,7 @@
   var SOURCES={
     stat:['Linux perf stat (upstream documentation)','https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux-stable/+/master/tools/perf/Documentation/perf-stat.txt'],
     ibs:['Linux AMD IBS documentation','https://android.googlesource.com/kernel/common/+/0e674132ddfa938cd53ba7c3706f0d83b2a91491/tools/perf/Documentation/perf-amd-ibs.txt'],
-    amd:['AMD Family 17h optimization guide, 55723','https://docs.amd.com/v/u/en-US/55723_3.01'],
+    amd:['Historical AMD Family 17h optimization guide, 55723','https://docs.amd.com/v/u/en-US/55723_3.01'],
     bench:['Runnable Linux benchmarks and protocol','benchmarks/README.md']
   };
   function text(tag,parent,str,attrs){var el=h(tag,attrs||null,parent); el.textContent=str; return el;}
@@ -34,15 +34,10 @@
     };});
   }
   function evidence(parent){
-    var e=h('div',{'class':'evidence-contract'},parent);badge(e,'Zen+ reference · evidence contract');
-    text('p',e,'The reference machine remains the Ryzen 7 3750H. Addresses and page mappings are synthetic examples. The simulations expose mechanisms; they do not reproduce undocumented scheduling, queue sizes or exact cycle behavior.');
-    table(e,['Label','What it means here'],[
-      ['Documented fact','An architectural or vendor statement, with scope and a source. The Family 17h guide is not a guarantee for every Zen+ implementation.'],
-      ['Measured / reverse-engineered','A result tied to a CPU, code, method and conditions. The existing 7-cpu latency defaults are external measurements/estimates, not our own 3750H measurements.'],
-      ['Inference','A deduction from stated facts or observations; it needs testing.'],
-      ['Teaching approximation','Chosen stages, timings, capacities and policies. All new finite-queue and dependency-graph outputs use this label.'],
-      ['Unknown / implementation-dependent','No precise value is asserted. Real cache mapping, arbitration, queue sharing and event support can differ.']
-    ]);link(e,'amd');
+    var e=h('div',{'class':'evidence-contract'},parent);badge(e,'Mechanisms and scoped evidence');
+    text('p',e,'Synthetic addresses and chosen finite-resource models expose mechanisms. Documentation, external observations and your native measurements retain their own scope; none is a universal processor calibration.');
+    table(e,['Evidence category','What it means here'],App.Evidence.claims.slice(0,7).map(function(q){return [q.kind,q.scope];}));
+    text('a',e,'Modern implementations and published measurement methods →',{href:'#map/reference'});
   }
   function vocabulary(parent){
     table(parent,['Quantity','Definition / denominator','Interpretation'],[
@@ -69,7 +64,7 @@
   }
   function streamLab(parent){
     var root=h('div',{'class':'stream-lab'},parent);badge(root,'Teaching approximation · all demand loads miss');
-    text('p',root,'Each loop body has one 8-byte load to a distinct 64-byte line plus three abstract non-memory instructions. Chains are independent; each next load within one chain waits for the previous value. In-order retirement and finite queues constrain execution. No hit-rate, prefetch, write, bank-address or exact Zen+ controller model is assumed.');
+    text('p',root,'Each loop body has one 8-byte load to a distinct 64-byte line plus three abstract non-memory instructions. Chains are independent; each next load within one chain waits for the previous value. In-order retirement and finite queues constrain execution. No hit-rate, prefetch, write, bank-address or proprietary controller policy is assumed.');
     var ctl=h('div',{'class':'perf-controls'},root), o={chains:8,mshr:12,controller:8,lanes:4,serviceNs:80,bw:20,rob:32,lq:24,fill:4};
     var knobs={};
     function knob(key,label,vs){knobs[key]=select(ctl,label,vs,o[key],function(v){o[key]=+v;run();});}
@@ -159,7 +154,7 @@
       r.nodes.forEach(function(n,i){var y=26+i*34, critical=r.critical.indexOf(n.id)>=0;s('text',{x:8,y:y+16,'class':'s'},svg,n.label);s('rect',{x:260+n.start*scale,y:y,width:Math.max(2,n.duration*scale),height:23,rx:3,'class':critical?'actb':'a4b'},svg);s('text',{x:950,y:y+16,'text-anchor':'end','class':'s'},svg,n.start.toFixed(0)+'–'+n.end.toFixed(0));});
       desc.textContent='Amber: longest dependency path to retirement. Blue: overlapping work. Labels show start–end cycles. The unrelated writeback is not required by this instruction and is not charged to its dependency path; it would compete for resources in a contention model.';
       table(detail,['Node','Depends on','Start → end cycles'],r.nodes.map(function(n){return [n.label,n.deps.map(function(k){return r.by[k].label;}).join(', ')||'entry',n.start.toFixed(0)+' → '+n.end.toFixed(0)];}));
-      text('p',detail,'Cache latencies are the configured representative unloaded load-to-use inputs, not per-hop delays to sum. One lookup cycle is represented by the overlapping DTLB/index nodes; the remaining selected latency follows them. The walk assumes two walk-cache hits plus two L2 reads. The graph omits port contention, branch recovery, memory ordering and exact Zen+ pipeline stages.');
+      text('p',detail,'Cache latencies are the configured teaching load-to-use inputs, not per-hop delays to sum. One lookup cycle is represented by the overlapping DTLB/index nodes; the remaining selected latency follows them. The walk assumes two walk-cache hits plus two L2 reads. The graph omits port contention, branch recovery, memory ordering and a calibrated hardware pipeline.');
     }draw();App.onCfg(draw);
   }
   function measurement(parent){
@@ -221,7 +216,7 @@
     lede:'Turn a mechanism into a testable prediction. Separate the latency of one dependent request from the throughput of many independent requests.',
     points:['Follow finite queues from the front end to the returning cache line.','Compare synthetic observations with native Linux experiments.','Keep evidence, units and timing boundaries visible.'],
     build:function(root){var P=App.P;
-      evidence(P.sec(root,'evidence','Read the evidence','The machine is concrete; the model’s limits are explicit.'));
+      evidence(P.sec(root,'evidence','Read the evidence','Model parameters and hardware observations retain separate scopes.'));
       vocabulary(P.sec(root,'vocabulary','Name the quantity','A number is useful only when its units and boundary are clear.'));
       littleLaw(P.sec(root,'predict','Predict the concurrency','Latency, throughput and bandwidth describe different aspects of the same execution.'));
       streamLab(P.sec(root,'queues','Run a finite machine','Change one resource, observe the bottleneck, and explain the result.'));

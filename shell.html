@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>The memory system, end to end</title>
+<title>Memory Systems Lab</title>
+<meta name="description" content="Interactive experiments in CPU architecture, finite resources, cache coherence, virtual memory, DRAM and reproducible native measurements.">
 <style>
 :root{
   box-sizing:border-box;
@@ -154,15 +155,15 @@ svg .click:hover .box{stroke:var(--act)}
 <body>
 <div class="app-shell">
   <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
-    <a class="sidebar-brand" href="#map" aria-label="Memory system home">
+    <a class="sidebar-brand" href="#map" aria-label="Memory Systems Lab home">
       <span class="sidebar-mark">MEM</span>
-      <span><strong>Memory systems lab</strong><small>interactive hardware atlas · Zen+</small></span>
+      <span><strong>Memory Systems Lab</strong><small>mechanisms · evidence · experiments</small></span>
     </a>
     <div class="sidebar-scroll">
       <nav class="nav" id="nav" aria-label="Chapters"></nav>
     </div>
     <div class="sidebar-footer">
-      <div class="machine-meta">Ryzen 7 3750H · 4C / 8T<br>interactive model + measured inputs</div>
+      <div class="machine-meta">CPU architecture &amp; memory systems<br>teaching models + scoped hardware evidence</div>
       <div class="side-actions">
         <button class="ghost side-pin" id="sidebarPin" type="button" aria-pressed="false" title="Keep navigation expanded"><span class="pin-glyph" aria-hidden="true">⌖</span><span class="action-label">pin rail</span></button>
         <button class="ghost" data-open-cfg type="button" title="Latency model"><span class="latency-glyph" aria-hidden="true">≋</span><span class="action-label">latencies</span></button>

@@ -1,4 +1,4 @@
-/* Phase 2: independent, deterministic teaching models. No proprietary Zen policies. */
+/* Phase 2: independent, deterministic teaching models. No proprietary implementation policy. */
 var CacheLab = (function(){
   'use strict';
   function integer(v,min,max,name){if(!Number.isSafeInteger(v)||v<min||v>max)throw new Error('Invalid '+name);return v;}
@@ -63,11 +63,11 @@ var CacheLab = (function(){
     var overlap=Math.max(0,Math.min(p.storeAddr+p.storeSize,p.loadAddr+p.loadSize)-Math.max(p.storeAddr,p.loadAddr));
     var exact=p.storeAddr===p.loadAddr&&p.storeSize===p.loadSize,contains=overlap===p.loadSize,lowMatch=p.storeAddr%4096===p.loadAddr%4096;
     var mechanism,outcome,certainty;
-    if(!p.addressKnown){mechanism=lowMatch?'Lower 12 address bits match; full-address comparison is pending.':'Older store address is unresolved.';outcome=p.speculate?(overlap?'execute, then replay when the overlap is discovered':'execute; later validation succeeds'):'wait for address resolution';certainty='Teaching disambiguation policy; the 12-bit filter is illustrative, not a claim about the exact Zen+ predictor.';}
+    if(!p.addressKnown){mechanism=lowMatch?'Lower 12 address bits match; full-address comparison is pending.':'Older store address is unresolved.';outcome=p.speculate?(overlap?'execute, then replay when the overlap is discovered':'execute; later validation succeeds'):'wait for address resolution';certainty='Teaching disambiguation policy; the 12-bit filter is illustrative, not a claim about a proprietary predictor.';}
     else if(!overlap){mechanism=lowMatch?'Same page offset, different addresses: a false partial-address alias.':'No byte overlap with the older store.';outcome='read through the cache hierarchy';certainty='No true data dependency after full-address resolution.';}
     else if(!p.dataKnown){mechanism='A matching older store exists but its data is not ready.';outcome='wait for store data';certainty='A correct dependent value cannot be forwarded before it exists.';}
     else if(contains&&st.lines===1&&ld.lines===1){mechanism=exact?'Exact address and size match.':'Every loaded byte is contained in one older store.';outcome='forward candidate';certainty='Byte coverage permits forwarding; alignment/size support and timing are implementation-dependent, especially for contained or mixed-width cases.';}
-    else{mechanism=contains?'Byte coverage crosses a cache-line boundary.':'Partial overlap: a single store does not provide all loaded bytes.';outcome='wait or replay / implementation-specific merge';certainty='Do not invent a Zen+ forwarding rule or penalty. The visual shows the required bytes, not a guaranteed hardware fast path.';}
+    else{mechanism=contains?'Byte coverage crosses a cache-line boundary.':'Partial overlap: a single store does not provide all loaded bytes.';outcome='wait or replay / implementation-specific merge';certainty='A hardware forwarding rule or penalty requires scoped evidence. The visual shows the required bytes, not a guaranteed hardware fast path.';}
     return {p:p,store:st,load:ld,overlap:overlap,exact:exact,contains:contains,lowMatch:lowMatch,mechanism:mechanism,outcome:outcome,certainty:certainty};
   }
   function misses(lines,options){

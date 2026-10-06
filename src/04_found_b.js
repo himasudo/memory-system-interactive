@@ -17,7 +17,7 @@ build: function(root){
   P.row(b, [
     g('latency', 'Latency') + ' is how long one operation takes from start to result. ' + g('thruput', 'Throughput') + ' is how many operations finish per cycle when many are in flight.',
     'The two differ because hardware is ' + g('pipeline', 'pipelined') + ': an operation passes through several stages, and a new one can enter the first stage every cycle.',
-    'An integer multiply on Zen+ has a latency of 3 cycles, yet once the pipeline is full, one multiply finishes every cycle.'
+    'Consider an illustrative three-stage multiply pipeline: latency is 3 cycles, yet once full it can finish one multiply every cycle. These are chosen timing parameters.'
   ], {h: 150, cap: 'Three multiplies of 3 cycles each finish in 5 cycles: one per cycle after the first.', draw: function(sv){
     for (var c = 0; c < 5; c++) T(sv, 125 + c * 66, 24, 'cycle ' + (c + 1), 's', 'middle');
     ['mul A', 'mul B', 'mul C'].forEach(function(n, r){
@@ -99,9 +99,9 @@ build: function(root){
 
   var c = P.sec(root, 'lines', 'Cache lines, hits and misses', 'The unit a cache works in.');
   P.row(c, [
-    'A cache never holds single bytes. It holds copies of 64-byte blocks of memory, called ' + g('line', 'cache lines') + ', each starting at an address that is a multiple of 64.',
+    'This teaching example allocates 64-byte blocks rather than individual requested bytes. Those blocks are called ' + g('line', 'cache lines') + ', each starting at an address that is a multiple of 64.',
     'When the core loads an address, the cache checks whether it holds that line. If it does, that is a ' + g('hit') + ' and the data returns in a few cycles. If not, it is a ' + g('miss') + ': the whole line is fetched from the next level while the load waits.',
-    'Because the whole line arrives, the next 63 bytes come with it. Reading <code>data[]</code> in order costs one miss per 64 bytes, not one per byte.'
+    'Because the whole line arrives, the next 63 bytes come with it. In this cold, sequential 64-byte-line example, one fill can supply the next 63 bytes too. Warm cache state and prefetching change observed demand-miss counts.'
   ], {h: 172, live: true, cap: 'A load checks the L1d; a miss brings in the whole 64-byte line.', draw: function(sv){
     P.box(sv, 10, 56, 70, 44, 'a3b', 'core');
     A(sv, 'M82 78 H124'); T(sv, 103, 70, 'load', 's', 'middle');
@@ -115,7 +115,7 @@ build: function(root){
   var d = P.sec(root, 'levels', 'Levels', 'Small and fast near the core, large and slower further out.');
   P.row(d, [
     'One cache cannot be both large and fast: a larger array has longer wires and more entries to search. So processors stack several levels.',
-    'Each Zen+ core has a 32 KB L1 data cache and a 512 KB L2. The four cores share a 4 MB L3. A load checks the L1 first, then the L2, then the L3, and only then DRAM.',
+    'The hierarchy walkthrough chooses 32 KiB L1d, 512 KiB private L2 and a 4 MiB shared victim-oriented L3. The load checks these levels before DRAM. These are teaching-model parameters; actual hierarchies differ.',
     '[[ch:l1d]] opens the L1d; [[ch:hier]] follows a miss through the other levels.'
   ], {h: 120, live: true, cap: 'Size and load-to-use latency of each level, from the latency settings.', draw: function(sv){
     var L = [['L1d', '32 KB', CFG.l1], ['L2', '512 KB', CFG.l2], ['L3', '4 MB', CFG.l3], ['DRAM', 'GBs', App.dramCycles()]], x = 10;
@@ -132,7 +132,7 @@ build: function(root){
 /* ======================= 07 virtual memory ======================= */
 App.chapter({id: 'vm', group: 'Foundations', short: 'Virtual memory', title: 'Virtual memory',
 lede: 'The addresses a program uses are not the addresses the memory chips see.',
-points: ['Each process has its own virtual address space.', 'Memory is mapped in 4 KB pages through page tables.', 'The TLB caches recent translations.'],
+points: ['Each process has its own virtual address space.', 'This example maps memory in 4 KiB pages; supported sizes and formats vary.', 'The TLB caches recent translations.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
   var a = P.sec(root, 'spaces', 'Two kinds of address', 'Virtual addresses for programs, physical addresses for the hardware.');
@@ -206,7 +206,7 @@ build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
   var a = P.sec(root, 'cores', 'Several cores, one memory', 'Private caches, shared data.');
   P.row(a, [
-    'The Ryzen 7 3750H has four cores. Each runs its own instruction stream and has its own L1 and L2 caches, yet all four read and write the same memory.',
+    'The topology illustration has four cores, each with a private L1 and L2, sharing coherent memory. This is a chosen arrangement; Linux cache sharing masks and topology identify the actual host.',
     'Each core can also run two threads at once (' + g('smt', 'simultaneous multithreading') + '), so the operating system sees eight logical CPUs.'
   ], {h: 176, cap: 'Four cores with private caches share one L3 and one memory.', draw: function(sv){
     for (var i = 0; i < 4; i++){
