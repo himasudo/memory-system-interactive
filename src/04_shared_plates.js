@@ -9,7 +9,7 @@
   var h = App.h, s = App.s, HW = App.HW, T = HW.txt, R = HW.rect;
 
   /* ---------- shared data ---------- */
-  /* Chosen DDR4-2400 example timings in memory-clock cycles (tCK in ns), used by the DRAM chapter. */
+  /* DDR4-2400 example timings in memory-clock cycles (tCK in ns), used by the DRAM chapter. */
   App.DDR4 = {tck: 0.833, CL: 17, RCD: 17, RP: 17, RAS: 39, BL: 4, RRDL: 6, CCDL: 6, RTP: 9};
   /* The DRAM chapter's four requests: A is the hist[123] line. */
   App.DRAMREQ = [
@@ -25,20 +25,21 @@
     {n: 'PD',   base: 0x13f4a000n, idx: 81,  val: 0x1b6e9067n},
     {n: 'PT',   base: 0x1b6e9000n, idx: 450, val: 0x80000001a3f7c067n}
   ]};
-  /* The end-to-end chapter's serialized teaching model; the dependency DAG lives in LabModel. */
+  /* The end-to-end chapter's step-by-step model: every step runs after the previous one.
+     The overlap (dependency graph) model lives in LabModel. */
   App.E2E = {steps: function(o){
     var CFG = App.CFG, ghz = CFG.ghz, S = [];
     var add = function(n, c, src, ch, what, sh){ S.push({n: n, c: Math.max(0, Math.round(c)), src: src, ch: ch, what: what, sh: sh || n}); };
     add('front end: fetch, predecode, decode, \u00b5op queue', 5, 'model', 'core', 'L1i hit, op cache or decoders', 'front end');
     add('rename + dispatch', 2, 'model', 'core', 'RAT, free list, ROB, scheduler, LQ/SQ entries', 'rename');
-    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'input', 'core', 'the address depends on this load', 'wait for rax');
+    add('wait for rax from A1 (data[] load, L1d hit)', CFG.l1, 'setting', 'core', 'the address depends on this load', 'wait for rax');
     add('AGU: rdx + rax\u00d78', 1, 'model', 'core', 'VA 0x7ffd4a3c2e58', 'AGU');
     if (o.tlb === 'walk') add('DTLB + L2 TLB miss, page walk', 2 * CFG.l2 + 2, 'assumed', 'xlate', 'PML4E/PDPTE from the walk cache, PDE and PTE from L2', 'page walk');
     var lat = o.lvl === 'L1' ? CFG.l1 : o.lvl === 'L2' ? CFG.l2 : o.lvl === 'L3' ? CFG.l3 : App.dramCycles();
     var adjustment=o.lvl==='DRAM'?(o.row==='hit'?-14.2:o.row==='conflict'?14.2:0)*ghz:0;
     if(o.lvl==='DRAM') lat=Math.max(CFG.l3,lat+adjustment);
-    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'input', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns, then '+(adjustment/ghz).toFixed(1)+' ns illustrative row adjustment (clamped at L3 cost)' : 'load-to-use', 'load hist[123]');
-    add('add: tmp + 1', 1, 'model', 'core', '1-cycle ALU teaching input');
+    add('load hist[123]: ' + {L1: 'L1d hit', L2: 'L1 miss, L2 hit', L3: 'L2 miss, L3 hit', DRAM: 'miss to DRAM'}[o.lvl], lat, 'setting', o.lvl === 'L1' ? 'l1d' : o.lvl === 'DRAM' ? 'dram' : 'hier', o.lvl === 'DRAM' ? 'L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns' + (adjustment ? (adjustment > 0 ? ' + ' : ' \u2212 ') + Math.abs(adjustment / ghz).toFixed(1) + ' ns for the ' + (o.row === 'hit' ? 'open row' : 'row conflict') + ' ([[ch:dram]])' : '') : 'load-to-use', 'load hist[123]');
+    add('add: tmp + 1', 1, 'model', 'core', '1-cycle ALU op');
     add('store address + data into the SQ', 2, 'model', 'core', 'STA / STD');
     add('retire (older instructions already done)', 1, 'model', 'core', 'ROB head');
     add('commit to L1d: line is E after the load, becomes M', 1, 'model', 'stores', 'no RFO needed');
@@ -47,8 +48,8 @@
 
   /* ---------- scaffold ---------- */
   function plate(container, o){
-    var wrap = h('div', {'class': 'plate-scene' + (o.cls ? ' ' + o.cls : ''), 'data-plate-scope': o.scope || 'teaching-model'}, container);
-    if (o.caption) h('p', {'class': 'note plate-caption'}, wrap, (o.scope || 'Teaching-model parameters') + ' · ' + o.caption);
+    var wrap = h('div', {'class': 'plate-scene' + (o.cls ? ' ' + o.cls : '')}, container);
+    if (o.caption) h('p', {'class': 'note plate-caption'}, wrap, o.caption);
     var sc = h('div', {'class': 'scroller plate-canvas'}, wrap);
     var sv = s('svg', {role:'img', 'aria-label':o.caption || o.id, viewBox: '0 0 ' + o.w + ' ' + o.h, style: 'min-width:' + (o.minW || 900) + 'px'}, sc);
     s('defs', null, sv).innerHTML = '<marker id="pl-ar-' + o.id + '" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="context-stroke"/></marker>';
@@ -65,8 +66,8 @@
     var D = App.DDR4, F = HW.dramMap, Q = {};
     App.DRAMREQ.forEach(function(r){ Q[r.id] = {r: r, f: F(r.pa)}; });
     var A = Q.A.f;
-    var P = plate(container, {id: 'dram', scope:'DDR4 x8 / BL8 example; chosen mapping, geometry and timings', w: 1200, h: 792, cls: 'plate-dram',
-      caption: 'Request A (the hist[123] line) from physical address to capacitors, then the same requests on the channel\u2019s command and data bus. The DDR4 x8 / BL8 organisation is scoped; shown subarrays, address map and timing parameters are illustrative.',
+    var P = plate(container, {id: 'dram', w: 1200, h: 792, cls: 'plate-dram',
+      caption: 'Request A (the hist[123] line) from physical address to capacitors, then the same requests on the channel\u2019s command and data bus. Device structure is the standard DDR4 x8 organisation; subarray sizes, address mapping and exact timings vary by vendor and module.',
       views: [{id: 'overview', label: 'Whole plate', box: [0, 0, 1200, 792]}, {id: 'path', label: 'Address \u2192 chip', box: [0, 0, 1200, 176]},
               {id: 'bank', label: 'Subarrays + cells', box: [0, 178, 1200, 366]}, {id: 'timing', label: 'Command timing', box: [0, 548, 1200, 244]}]});
     var sv = P.sv, E = {};
@@ -194,17 +195,17 @@
     return {set: set};
   }
 
-  /* ---------- plate 2: the L1d arrays with chosen geometry ---------- */
+  /* ---------- plate 2: the L1d arrays, to scale ---------- */
   function l1dPlate(container){
     var P = plate(container, {id: 'l1d', w: 1200, h: 712, cls: 'plate-l1d',
-      caption: 'A chosen 32 KiB L1d as two SRAM arrays drawn to one bit scale: each way of data (512 bits) is 13.5\u00d7 wider than its tag entry (36-bit tag + V + D). Set 57 is the hist[123] lookup; way 3 holds the line.',
+      caption: 'The 32 KiB L1d as two SRAM arrays drawn to one bit scale: each way of data (512 bits) is 13.5\u00d7 wider than its tag entry (36-bit tag + V + D). Set 57 is the hist[123] lookup; way 3 holds the line.',
       views: [{id: 'overview', label: 'Whole plate', box: [0, 0, 1200, 712]}, {id: 'predict', label: 'Address + lookup', box: [0, 40, 262, 400]},
               {id: 'arrays', label: 'Tag + data arrays', box: [254, 44, 946, 546]}, {id: 'output', label: 'Way mux + aligner', box: [254, 590, 946, 122]}]});
     var sv = P.sv, W = 0.19, tw = 38 * W, dw = 512 * W, rowH = 6, gapR = 1, y0 = 84, tx0 = 270, dx0 = 352;
     head(sv, 20, 28, 'L1d, 32 KB = 64 sets \u00d7 8 ways \u00d7 64 B');
     R(sv, 20, 46, 230, 78, 'box', 8); T(sv, 30, 66, 'Virtual address', {size: 11, weight: 650, fill: 'var(--tx)'}); T(sv, 30, 84, '0x7ffd4a3c2e58', {size: 11.5, cls: 'm', fill: 'var(--tx2)'}); T(sv, 30, 102, 'index 11:6 = 57 \u00b7 offset 5:0 = 24', {size: 10, fill: 'var(--tx3)'}); T(sv, 30, 116, 'VPN 47:12 \u2192 DTLB', {size: 10, fill: 'var(--tx3)'});
-    R(sv, 20, 136, 230, 124, 'box on', 8); T(sv, 30, 156, 'Parallel lookup model', {size: 11, weight: 650, fill: 'var(--tx)'});
-    ['index selects all eight ways', 'read tags and data in parallel', 'check valid + physical tag', 'way mux selects the hit', 'implementation alternatives:', 'see the scoped case studies'].forEach(function(t, i){ T(sv, 30, 174 + i * 14, t, {size: 10, fill: i < 4 ? 'var(--tx2)' : 'var(--tx3)'}); });
+    R(sv, 20, 136, 230, 124, 'box on', 8); T(sv, 30, 156, 'Parallel lookup', {size: 11, weight: 650, fill: 'var(--tx)'});
+    ['index picks set 57 in all 8 ways', 'read tags and data in parallel', 'compare valid bit + physical tag', 'the matching way\u2019s data is used', 'some cores guess the way first', 'and read only that one way'].forEach(function(t, i){ T(sv, 30, 174 + i * 14, t, {size: 10, fill: i < 4 ? 'var(--tx2)' : 'var(--tx3)'}); });
     R(sv, 20, 272, 230, 72, 'box', 8); T(sv, 30, 292, 'DTLB', {size: 11, weight: 650, fill: 'var(--tx)'}); T(sv, 30, 310, 'VPN 0x7ffd4a3c2 \u2192 PFN 0x1a3f7c', {size: 10, cls: 'm', fill: 'var(--tx2)'}); T(sv, 30, 326, 'physical tag = PA[47:12]', {size: 10, fill: 'var(--tx3)'});
     R(sv, 20, 356, 230, 70, 'box', 8); T(sv, 30, 376, 'Row decoder', {size: 11, weight: 650, fill: 'var(--tx)'}); T(sv, 30, 394, 'raises wordline 57 of 64', {size: 10, fill: 'var(--tx2)'}); T(sv, 30, 410, 'in both arrays at once', {size: 10, fill: 'var(--tx3)'});
     T(sv, tx0, 66, 'tag', {size: 10, fill: 'var(--tx2)'}); T(sv, dx0, 66, 'data: 8 ways \u00d7 64 bytes per set', {size: 10, fill: 'var(--tx2)'});
@@ -223,7 +224,7 @@
     var yb = y0 + 64 * (rowH + gapR) + 10;
     T(sv, tx0, yb + 8, 'tag array: 512 \u00d7 38 bits \u2248 2.4 KB', {size: 9.5, fill: 'var(--tx3)'});
     T(sv, dx0 + 120, yb + 8, 'data array: 512 lines \u00d7 64 B = 32 KB', {size: 9.5, fill: 'var(--tx3)'});
-    R(sv, 760, yb + 16, 10, 8, 'a4b', 1); T(sv, 774, yb + 24, 'model: all 8 ways of set 57 read (8 tags + 512 B)', {size: 9.5, fill: 'var(--tx2)'});
+    R(sv, 760, yb + 16, 10, 8, 'a4b', 1); T(sv, 774, yb + 24, 'all 8 ways of set 57 read (8 tags + 512 B)', {size: 9.5, fill: 'var(--tx2)'});
     R(sv, 760, yb + 30, 10, 8, 'box on', 1); T(sv, 774, yb + 38, 'way 3 is selected after the full tag comparison', {size: 9.5, fill: 'var(--tx2)'});
     var mx = dx0 + 3 * (dw + 2) + dw / 2;
     path(sv, 'M ' + mx + ' ' + (yh + 6) + ' L ' + mx + ' 600', 'wire on', {'marker-end': P.arrow, style: 'stroke-dasharray:5 4'});
@@ -238,16 +239,16 @@
   /* ---------- plate 3: one hist[123]++ on one time axis ---------- */
   function e2ePlate(container, o0){
     var P = plate(container, {id: 'e2e', w: 1200, h: 600, cls: 'plate-e2e',
-      caption: 'Every stage of the serialized teaching path on one time axis, then the first cycles magnified. The step table shares these inputs. Use End to End: Critical path for overlapping dependencies and distinct value/retirement boundaries.',
+      caption: 'Every step of one hist[123]++ on one time axis, one after another, then the first cycles magnified. It uses the latency settings and redraws when they change.',
       views: [{id: 'overview', label: 'Whole path', box: [0, 0, 1200, 600]}, {id: 'early', label: 'First cycles', box: [0, 470, 1200, 130]}]});
     var sv = P.sv, root = s('g', null, sv), o = o0 || {tlb: 'hit', lvl: 'DRAM', row: 'closed'};
-    var COL = {core: 'a3b', xlate: 'a4b', l1d: 'a2b', hier: 'a2b', dram: 'a1b', stores: 'a3b'}, SRC = {published: 'var(--a2)', model: 'var(--tx3)', assumed: 'var(--a3)', derived: 'var(--a1)'};
+    var COL = {core: 'a3b', xlate: 'a4b', l1d: 'a2b', hier: 'a2b', dram: 'a1b', stores: 'a3b'}, SRC = {setting: 'var(--a2)', model: 'var(--tx3)', assumed: 'var(--a3)', derived: 'var(--a1)'};
     function draw(){
       while (root.firstChild) root.removeChild(root.firstChild);
       var S = App.E2E.steps(o), ghz = App.CFG.ghz, tot = 0, pos = 0, x0 = 430, W = 720;
       S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
       var span = S.reduce(function(m, x){ pos += x.neg ? -x.c : x.c; return Math.max(m, pos); }, 0), sc = W / Math.max(1, span);
-      head(root, 20, 30, 'Serialized teaching path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
+      head(root, 20, 30, 'One step after another: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
       T(root, 20, 48, 'one row per stage; bar start = when it begins, width = how long it takes', {size: 10, fill: 'var(--tx3)'});
       var cum = 0;
       S.forEach(function(x, i){
@@ -285,8 +286,8 @@
   /* ---------- plate 4: the page walk, bit by bit ---------- */
   function xlatePlate(container){
     var Wk = App.WALK, va = Wk.va, L = Wk.levels, hex = function(v){ return '0x' + v.toString(16); };
-    var P = plate(container, {id: 'xlate', scope:'x86-64, 48-bit VA, four levels, 4 KiB pages; synthetic mappings', w: 1200, h: 668, cls: 'plate-xlate',
-      caption: 'VA 0x7ffd4a3c2e58 split into its four 9-bit table indices and its page offset, the four table reads with their real entry addresses, and the leaf entry decoded bit by bit.',
+    var P = plate(container, {id: 'xlate', w: 1200, h: 668, cls: 'plate-xlate',
+      caption: 'x86-64, 48-bit virtual addresses, four levels, 4 KiB pages. VA 0x7ffd4a3c2e58 split into its four 9-bit table indices and its page offset, the four table reads with their entry addresses, and the leaf entry decoded bit by bit.',
       views: [{id: 'overview', label: 'Whole walk', box: [0, 0, 1200, 668]}, {id: 'va', label: 'Address bits', box: [0, 0, 1200, 150]},
               {id: 'walk', label: 'Four table reads', box: [0, 150, 1200, 270]}, {id: 'pte', label: 'Leaf entry', box: [0, 420, 1200, 248]}]});
     var sv = P.sv, bx = function(i){ return 50 + (63 - i) * 17; };
@@ -333,11 +334,11 @@
     return {set: function(){}};
   }
 
-  /* ---------- plate 5: the finite-resource core model ---------- */
+  /* ---------- plate 5: the model core, entry by entry ---------- */
   function corePlate(container){
     var C=PipeSim.CAP,W=PipeSim.W;
     var P=plate(container,{id:'core',w:1200,h:650,cls:'plate-core',
-      caption:'Chosen capacities match the pipeline engine: one cell per model entry. The loop has four instruction groups and seven µops. Amber marks illustrative allocations, not a live occupancy snapshot or a measured hardware core.',
+      caption:'Every queue in the model, one cell per entry, at the sizes the pipeline chapter runs. Amber cells are one loop iteration: four instructions, seven µops. Real cores have the same queues with many more entries.',
       views:[{id:'overview',label:'Whole core',box:[0,0,1200,650]},{id:'front',label:'Front end',box:[0,30,330,620]},{id:'ooo',label:'Rename / queues',box:[320,30,510,620]},{id:'lsu',label:'Load/store unit',box:[830,30,370,620]}]});
     var sv=P.sv;
     function grid(key,x,y,cols,n,cw,ch,hot,title,sub){
@@ -346,24 +347,24 @@
       for(var i=0;i<n;i++)R(group,x+(i%cols)*(cw+2),y+Math.floor(i/cols)*(ch+2),cw,ch,i<hot?'box on':'sunk',2);
       return y+Math.ceil(n/cols)*(ch+2);
     }
-    head(sv,20,26,'Finite-resource core · teaching-model parameters');
-    R(sv,20,46,290,80,'a3b',8);T(sv,30,68,'Predict / fetch / decode',{size:12,fill:'var(--tx)'});T(sv,30,90,W.fetch+' instruction groups / model cycle',{size:10,fill:'var(--tx2)'});T(sv,30,110,'Instruction example: x86 histogram loop',{size:10,fill:'var(--tx3)'});
-    grid('uq',20,180,4,C.uq,64,24,4,'Decode queue: '+C.uq,'instruction groups waiting for rename');
-    R(sv,20,280,290,78,'a3b',8);T(sv,30,302,'Rename: RAT + free list',{size:12,fill:'var(--tx)'});T(sv,30,324,W.rename+' instruction groups / cycle',{size:10,fill:'var(--tx2)'});T(sv,30,344,'Allocate destinations and downstream slots',{size:10,fill:'var(--tx3)'});
-    R(sv,20,390,290,146,'sunk',8);T(sv,30,412,'One iteration / selected allocations',{size:11,fill:'var(--tx)'});
-    ['LD data[i]','ALU rdi += 1','LD hist[k]','ALU + 1','STA + STD hist[k]','BR cmp + jne (chosen fusion)'].forEach(function(t,i){T(sv,30,436+i*16,t,{size:10,cls:'m',fill:'var(--tx2)'});});
-    grid('rob',340,72,12,C.rob,35,22,4,'ROB: '+C.rob,'instruction records; retire in order, width '+W.retire);
-    grid('prf',340,190,12,C.prf,35,22,4,'Physical registers: '+C.prf,'ready values / renamed destinations');
-    grid('alu',340,356,8,C.alu,53,22,4,'ALU scheduler: '+C.alu,'µops waiting for operands; issue slots '+W.alu);
-    grid('agu',340,474,6,C.agu,71,22,3,'Address scheduler: '+C.agu,'µops waiting for address/data; issue slots '+W.agu);
-    T(sv,340,576,'Dependencies wake ready work; full queues stall allocation.',{size:10,fill:'var(--tx2)'});
-    grid('lq',860,72,5,C.lq,59,22,2,'Load queue: '+C.lq,'loads, ordering checks and forwarding');
-    grid('sq',860,190,4,C.sq,74,22,1,'Store queue: '+C.sq,'stores; address + data tracked separately');
-    grid('mab',860,308,4,C.mab,74,24,1,'Miss buffers: '+C.mab,'unique missed lines; merge matching waiters');
-    R(sv,860,400,320,64,'a4b',8);T(sv,870,423,'Translation + L1d lookup',{size:12,fill:'var(--tx)'});T(sv,870,446,'Chosen latency; parallel tags in cache plate',{size:10,fill:'var(--tx3)'});
-    R(sv,860,510,320,64,'a2b',8);T(sv,870,533,'Lower hierarchy / response',{size:12,fill:'var(--tx)'});T(sv,870,555,'Return data → wake consumers → release slots',{size:10,fill:'var(--tx3)'});
+    head(sv,20,26,'The model core, one cell per entry');
+    R(sv,20,46,290,80,'a3b',8);T(sv,30,68,'Predict / fetch / decode',{size:12,fill:'var(--tx)'});T(sv,30,90,W.fetch+' instructions per cycle',{size:10,fill:'var(--tx2)'});T(sv,30,110,'running the x86 histogram loop',{size:10,fill:'var(--tx3)'});
+    grid('uq',20,180,4,C.uq,64,24,4,'Decode queue: '+C.uq,'decoded instructions waiting for rename');
+    R(sv,20,280,290,78,'a3b',8);T(sv,30,302,'Rename: RAT + free list',{size:12,fill:'var(--tx)'});T(sv,30,324,W.rename+' instructions per cycle',{size:10,fill:'var(--tx2)'});T(sv,30,344,'gives each result a free register',{size:10,fill:'var(--tx3)'});
+    R(sv,20,390,290,146,'sunk',8);T(sv,30,412,'One loop iteration',{size:11,fill:'var(--tx)'});
+    ['LD data[i]','ALU rdi += 1','LD hist[k]','ALU + 1','STA + STD hist[k]','BR cmp + jne (fused)'].forEach(function(t,i){T(sv,30,436+i*16,t,{size:10,cls:'m',fill:'var(--tx2)'});});
+    grid('rob',340,72,12,C.rob,35,22,4,'ROB: '+C.rob,'in program order; retires '+W.retire+' per cycle');
+    grid('prf',340,190,12,C.prf,35,22,4,'Physical registers: '+C.prf,'one per renamed result');
+    grid('alu',340,356,8,C.alu,53,22,4,'ALU scheduler: '+C.alu,'µops waiting for inputs; '+W.alu+' issue per cycle');
+    grid('agu',340,474,6,C.agu,71,22,3,'Address scheduler: '+C.agu,'loads and stores waiting for an address; '+W.agu+' per cycle');
+    T(sv,340,576,'A finished result wakes the µops waiting for it; a full queue stops rename.',{size:10,fill:'var(--tx2)'});
+    grid('lq',860,72,5,C.lq,59,22,2,'Load queue: '+C.lq,'every load in flight, in order');
+    grid('sq',860,190,4,C.sq,74,22,1,'Store queue: '+C.sq,'every store; address and data arrive separately');
+    grid('mab',860,308,4,C.mab,74,24,1,'Miss buffers: '+C.mab,'one per missing line; later loads to it wait here');
+    R(sv,860,400,320,64,'a4b',8);T(sv,870,423,'Translation + L1d lookup',{size:12,fill:'var(--tx)'});T(sv,870,446,'hit time comes from the latency settings',{size:10,fill:'var(--tx3)'});
+    R(sv,860,510,320,64,'a2b',8);T(sv,870,533,'L2, L3 and DRAM',{size:12,fill:'var(--tx)'});T(sv,870,555,'data returns, wakes the load, frees the entry',{size:10,fill:'var(--tx3)'});
     [[165,126,165,146],[165,236,165,280],[310,318,340,318],[580,410,580,438],[1050,356,1050,400],[1020,464,1020,510]].forEach(function(e){line(sv,e[0],e[1],e[2],e[3],'wire',{'marker-end':P.arrow});});
-    T(sv,20,625,'ISA example and chosen schedule are separate scopes. No undocumented AMD, Intel or Arm queue sizes are installed.',{size:11,fill:'var(--tx3)'});
+    T(sv,20,625,'For scale: AMD Zen 5\u2019s ROB holds 448 instructions; this model\u2019s holds '+C.rob+'. The rules are the same.',{size:11,fill:'var(--tx3)'});
     return {set:function(){}};
   }
 
