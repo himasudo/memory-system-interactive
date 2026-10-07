@@ -18,7 +18,7 @@ build: function(root){
     if (t < 56) return {row: null, st: 'precharging'}; if (t < 73) return {row: 26878, st: 'activating'}; return {row: 26878, st: 'open'};
   }
   var intro = h('div', {'class': 'grid2'}, root);
-  h('div', {'class': 'card'}, intro, '<h3>What sits behind the memory controller</h3><p>Each ' + g('channel') + ' is a 64-bit data bus plus a command/address bus. On it sits a ' + g('dimm', 'rank') + ' of eight x8 chips; each chip drives 8 of the 64 data bits.</p><p>Inside every chip are 16 ' + g('bank', 'banks') + ' in 4 bank groups, and every bank is a matrix of ' + g('row', 'rows \u00d7 columns') + ' of ' + g('dramcell', '1-transistor-1-capacitor cells') + '.</p><p>The controller (' + g('umc') + ') drives all eight chips in lockstep, so "row 26877 of bank 3" means that row in all eight chips at once.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>What sits behind the memory controller</h3><p>Each ' + g('channel') + ' is a 64-bit data bus plus a command/address bus. On it sits a ' + g('dimm', 'rank') + ' of eight x8 chips; each chip drives 8 of the 64 data bits.</p><p>Inside every chip are 16 ' + g('bank', 'banks') + ' in 4 bank groups, and every bank is a matrix of ' + g('row', 'rows \u00d7 columns') + ' of ' + g('dramcell', '1-transistor-1-capacitor cells') + '.</p><p>The ' + g('umc', 'memory controller') + ' drives all eight chips in lockstep, so "row 26877 of bank 3" means that row in all eight chips at once.</p>');
   h('div', {'class': 'card'}, intro, '<h3>The timings used here</h3><table class="mt"><tr><th>name</th><th>meaning</th><th>tCK</th><th>ns</th></tr>' +
     [['CL', 'RD \u2192 first data', T.CL], ['tRCD', 'ACT \u2192 RD', T.RCD], ['tRP', 'PRE \u2192 next ACT', T.RP], ['tRAS', 'ACT \u2192 PRE (minimum)', T.RAS], ['BL8', '8 data beats', T.BL], ['tRRD_L', 'ACT \u2192 ACT, same bank group', T.RRDL], ['tCCD_L', 'RD \u2192 RD, same bank group', T.CCDL], ['tRTP', 'RD \u2192 PRE', T.RTP]]
     .map(function(r){ return '<tr><td>' + r[0] + '</td><td style="font-family:var(--sans)">' + r[1] + '</td><td>' + r[2] + '</td><td>' + (r[2] * T.tck).toFixed(1) + '</td></tr>'; }).join('') +
@@ -28,7 +28,7 @@ build: function(root){
   var sv = s('svg', {viewBox: '0 0 1200 730', style: 'min-width:920px'}, wrap);
   var E = {};
   function box(x, y, w, ht, t){ var gr = s('g', null, sv); s('rect', {x: x, y: y, width: w, height: ht, rx: 9, 'class': 'box'}, gr); if (t) s('text', {x: x + 10, y: y + 20, 'class': 'h'}, gr, t); return gr; }
-  E.q = box(10, 10, 590, 190, 'UMC request queue \u2014 channel 1');
+  E.q = box(10, 10, 590, 190, 'Controller request queue \u2014 channel 1');
   var QX = [22, 42, 196, 300, 334, 376, 436, 470];
   ['', 'line', 'PA', 'BG', 'bank', 'row', 'col', 'row state'].forEach(function(t, k){ s('text', {x: QX[k], y: 46, 'class': 's'}, E.q, t); });
   E.qr = REQ.map(function(r, i){
@@ -45,8 +45,8 @@ build: function(root){
     s('text', {x: x + w / 2, y: 108, 'text-anchor': 'middle', 'class': 's m'}, E.a, f[1] + (f[1] !== f[2] ? ':' + f[2] : ''));
     return {t: s('text', {x: x + w / 2, y: 66, 'text-anchor': 'middle', 'class': 'm', 'font-size': 12}, E.a, ''), f: f};
   });
-  E.aT = s('text', {x: 626, y: 134, 'font-size': 12.5}, E.a, ''); E.aT2 = s('text', {x: 626, y: 150, 'class': 's'}, E.a, 'Real controller address maps can mix higher address bits into bank/channel selection;');
-  s('text', {x: 626, y: 168, 'class': 's'}, E.a, 'this lab uses a chosen inspectable map, not a decoded motherboard mapping.');
+  E.aT = s('text', {x: 626, y: 134, 'font-size': 12.5}, E.a, ''); E.aT2 = s('text', {x: 626, y: 150, 'class': 's'}, E.a, 'Real controllers XOR higher address bits into the bank and channel bits;');
+  s('text', {x: 626, y: 168, 'class': 's'}, E.a, 'firmware sets the mapping. This lab uses a simple one you can read off.');
   E.bk = box(10, 214, 470, 250, 'One x8 chip: 4 bank groups \u00d7 4 banks');
   E.cells = [];
   for (var bg = 0; bg < 4; bg++) for (var b = 0; b < 4; b++){
@@ -74,7 +74,7 @@ build: function(root){
     {p: 'ACT D', t: 6, n: 2, sel: 'D', h: 't = 6: ACT in bank 2, in parallel', d: 'D\u2019s line is in bank 2 of the same bank group. Banks are independent arrays with their own row buffers, so row 1793 opens while bank 3 is still activating.\nThe only spacing rule between the two ACTs is tRRD_L (6 cycles here). This is bank-level parallelism: the controller keeps several banks busy to hide per-bank latency.'},
     {p: 'RD A', t: 17, n: 3, sel: 'A', h: 't = 17: RD column 28 \u2192 64 bytes', d: 'RD selects column 28 of the open row. CL = 17 cycles later the chips drive data: 8 beats (burst length 8) on the 64-bit bus, 8 bytes per beat, <b>64 bytes = one cache line</b>. Each x8 chip supplies 8 bits of every beat.\nA found the row closed, so ACT \u2192 last data = tRCD + CL + 4 = 38 cycles = <b>31.7 ns</b>.\nThis is the device time only; controller queues and the fabric add the rest of the load-to-use latency.'},
     {p: 'RD D', t: 23, n: 4, sel: 'D', h: 't = 23: RD in bank 2', d: 'D\u2019s RD must wait for its own tRCD (6 + 17 = 23) and for tCCD_L after A\u2019s RD (17 + 6 = 23), since both are in bank group 3. Its burst follows A\u2019s on the shared data bus: the bus, not the banks, is the resource the two reads share.'},
-    {p: 'RD B', t: 29, n: 5, sel: 'B', h: 't = 29: B is a row hit', d: 'B needs row 26877 of bank 3 \u2014 already in the row buffer. No ACT: RD \u2192 data is only CL + 4 = 21 cycles = <b>17.5 ns</b>. Controllers prefer requests that hit open rows and may serve them ahead of older ones; the actual priority/arbitration policy requires implementation-specific evidence.'},
+    {p: 'RD B', t: 29, n: 5, sel: 'B', h: 't = 29: B is a row hit', d: 'B needs row 26877 of bank 3 \u2014 already in the row buffer. No ACT: RD \u2192 data is only CL + 4 = 21 cycles = <b>17.5 ns</b>. Controllers prefer requests that hit open rows and may serve them ahead of older ones; vendors don\u2019t publish their exact scheduling policy.'},
     {p: 'PRE', t: 39, n: 6, sel: 'C', h: 't = 39: row conflict, PRE closes row 26877', d: 'C needs row 26878 in the same bank, and a bank holds one open row. The controller must close 26877 with ' + g('act', 'PRE') + ' first, which is allowed only tRAS = 39 cycles after that row\u2019s ACT (and tRTP after the last RD, 29 + 9 = 38). The cells were restored during tRAS; PRE returns the bitlines to their idle voltage.'},
     {p: 'ACT C', t: 56, n: 7, sel: 'C', h: 't = 56: ACT row 26878', d: 'tRP = 17 cycles after PRE, the bank can activate again.'},
     {p: 'RD C', t: 73, n: 8, sel: 'C', h: 't = 73: RD, data at 90\u201394', d: 'tRCD later, RD; CL later, data. The minimum cost of a row conflict is tRP + tRCD + CL + 4 = 55 cycles = <b>45.8 ns</b>; C waited 84 cycles (70 ns) from its arrival because PRE also had to respect tRAS. Row hit 17.5 ns, row closed 31.7 ns, row conflict 45.8 ns or more: the same 64-byte read costs up to 2.6\u00d7 more depending on what the bank was doing.'},
@@ -130,7 +130,7 @@ build: function(root){
   stp.set(FR.map(function(f){ return {p: f.p, t: f.h, d: f.d, fr: f}; }));
   var cards = h('div', {'class': 'grid3'}, root);
   h('div', {'class': 'card'}, cards, '<h3>Three prices for the same read</h3><table class="mt"><tr><th>row state</th><th>commands</th><th>device time</th></tr><tr><td>hit</td><td>RD</td><td>21 tCK \u00b7 17.5 ns</td></tr><tr><td>closed</td><td>ACT, RD</td><td>38 tCK \u00b7 31.7 ns</td></tr><tr><td>conflict</td><td>PRE, ACT, RD</td><td>55+ tCK \u00b7 45.8+ ns</td></tr></table><p class="note" style="margin-top:6px">Device time from the command to the last data beat. Load-to-use latency also includes the core, caches, fabric and controller queues.</p>');
-  h('div', {'class': 'card'}, cards, '<h3>Why a cache line is 64 bytes, from this side</h3><p>DDR4 transfers in ' + g('burst', 'bursts') + ' of 8 beats on a 64-bit bus: 8 \u00d7 8 B = 64 B. One burst is one line, and the fixed costs (ACT, CL, command slots) are paid once per burst. [[ch:l1d]]\u2019s line size and this burst size were chosen together.</p>');
+  h('div', {'class': 'card'}, cards, '<h3>Why a cache line is 64 bytes, from this side</h3><p>DDR4 transfers in ' + g('burst', 'bursts') + ' of 8 beats on a 64-bit bus: 8 \u00d7 8 B = 64 B. One burst is one line, and the fixed costs (ACT, CL, command slots) are paid once per burst. [[ch:l1d]]\u2019s line size and this burst size were chosen together.</p><p>DDR5 keeps the 64 bytes with a different shape: each DIMM has two 32-bit subchannels, and a burst is 16 beats \u00d7 4 B = 64 B.</p>');
   h('div', {'class': 'card'}, cards, '<h3>Why DRAM needs rows at all</h3><p>One cell is a transistor and a capacitor holding a few femtocoulombs.</p><p>Sensing it requires a sense amplifier, which is large, so each bank has one row of them shared by all its rows. Opening a row moves thousands of bits into those amplifiers at once; after that, column reads are cheap.</p><p>The same small charge is why cells leak and need ' + g('refresh') + '.</p>');
   var PLATE = App.Plates.dram(root);
   stp.render();
