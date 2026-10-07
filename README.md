@@ -1,8 +1,8 @@
 # Memory Systems Lab
 
-> An interactive lab for understanding CPU memory systems through architectural mechanisms, finite-resource simulations, published evidence and reproducible native experiments.
+> An interactive lab that follows one memory access through a computer, from a line of C down to the DRAM chips and back.
 
-Explore CPU architecture, out-of-order execution, cache coherence, virtual memory, DRAM and performance engineering. Compare consequential implementation choices in modern AMD EPYC 9005, Intel Xeon 6 P-cores and Arm Neoverse V3 case studies, inspect published measurements, or reproduce experiments on your own Linux machine. No vendor or generation is the universal reference.
+Every simulation runs on one small example machine, so each structure fits on screen. Chapter 09 compares that machine with current AMD EPYC 9005, Intel Xeon 6 and Arm Neoverse V3 designs, and one command runs the same experiments on your own Linux machine (x86-64 or Arm). No single vendor or chip is the reference.
 
 ---
 
@@ -35,7 +35,7 @@ Chapters are numbered from their order in the build: `00` Start here, `01`–`08
 | `06` | **Why caches exist** | DRAM vs SRAM, temporal and spatial locality, cache lines, hits and misses, levels |
 | `07` | **Virtual memory** | Processes, pages, 4-level page tables, the TLB and page faults |
 | `08` | **Cores, sharing and devices** | Private caches, coherence, store visibility, MMIO, DMA and interrupts |
-| `09` | **The Machine** | Whole-system map: cores, caches, fabric, memory controllers, DRAM, I/O, devices |
+| `09` | **The Machine** | Whole-system map of the example machine, then how AMD, Intel and Arm build the same parts |
 | `10` | **C → Instructions → µops** | Source, assembly, decode fields, instruction-fetch footprint and starvation |
 | `11` | **Inside the Core** | OoO execution, register renaming, scheduling, ROB, LSU, forwarding, misprediction |
 | `12` | **Virtual → Physical** | TLBs, page walks, page faults, large pages, PCIDs |
@@ -47,8 +47,8 @@ Chapters are numbered from their order in the build: `00` Start here, `01`–`08
 | `18` | **Prefetchers** | Stream/stride detection, finite shared resources, accuracy/coverage/timeliness and native software hints |
 | `19` | **Devices, DMA, IOMMU** | MMIO, PCIe, IOTLB/mapping lifetime, DMA, completion queues, interrupts/polling and io_uring layers |
 | `20` | **End to End** | Single-access walkthrough, dependency graph, and finite-resource steady-state experiment |
-| `21` | **Measure & explain** | Evidence, units, Little's law, MLP/queue saturation, observability and native Linux measurements |
-| ref | **Atlas** | Every full-width plate on one page: scoped DDR4 and x86-64 examples, finite-resource core, cache arrays, timeline and modern implementation schematics |
+| `21` | **Measure & explain** | Units, Little's law, overlap and queue limits, and running the benchmarks on your machine |
+| ref | **Atlas** | Every full-width plate on one page, plus the AMD, Intel and Arm package diagrams |
 | `A–Z` | **Glossary** | Every term used across the site, searchable (unnumbered reference) |
 
 Chapters use long-scroll, linkable sections (`#chapter/section`, for example `#l1d/lookup`). The top bar shows the current section, section menu and reading progress. End to End has three selectable modes, also directly linkable as `#e2e/scenario`, `#e2e/critical` and `#e2e/steady`. Hardware chapters retain their overview figures and detailed SVG plates with view tabs.
@@ -61,8 +61,8 @@ Chapters use long-scroll, linkable sections (`#chapter/section`, for example `#l
 - **Interactive state transitions** instead of static prose.
 - **One continuous running example** across chapters.
 - **Real structures** such as RATs, ROBs, TLBs, cache arrays, queues, controllers, and coherence state.
-- **Clear separation** between measured values, published values, and simplified models.
-- **Explicit uncertainty** where hardware behavior is undocumented.
+- **Clear labels** on where a statement comes from: simulation, vendor docs, a paper, a published measurement, your machine, inference, or not published.
+- **Say so when vendors don't publish** a size or policy, instead of guessing.
 - **Responsive visualizations** with light and dark theme support, down to mobile widths.
 - **No runtime framework dependency** — plain HTML, CSS, SVG, and JavaScript. Node/Playwright is used only for development checks.
 - **No manual zoom on 2D diagrams** — switch views with focus tabs. This checkout contains the SVG plates, not the optional 3D code referenced by older documentation.
@@ -145,21 +145,16 @@ Registration records the bundle’s CPU identity in `data/reference/index.json`;
 For browsing without running experiments, `python3 -m http.server 8000` remains
 available. Opening through HTTP is preferable to `file://`.
 
-### Optional measured machines and private visitor comparison
+### Shipped results and comparing your machine
 
-If `data/reference/index.json` lists curated bundles, the site loads them as
-**optional measured machines** and provides a selector. Every entry retains its
-recorded CPU identity; neither a filename nor a display label can override it.
-An absent/empty registry is normal: models, published evidence and native
-experiments remain available without invented hardware results. See
-[dataset curation](data/reference/README.md).
+If `data/reference/index.json` lists result bundles, the site loads them as
+**shipped machines** you can pick from. Each keeps the CPU identity it was
+recorded with. No shipped results is a normal state; every simulation works
+without them. See [dataset curation](data/reference/README.md).
 
-**Measure your machine** (`#perf/datasets`) accepts a visitor bundle and pairs
-compatible experiments with the selected shipped machine. File contents are read
-locally with the browser’s File API: no network request, upload, GitHub API,
-repository write or deployed-site change. Data stays in the current page session;
-reload or **Clear your data** removes it. Other visitors and shipped datasets are
-unaffected. All individual runners and chapter-specific manual imports remain.
+**Measure your machine** (`#perf/datasets`) loads your own bundle and pairs the
+cases that ran with the same settings on the shipped machine. The file is read in
+the browser only: nothing is uploaded, and reloading the page clears it.
 
 ---
 
@@ -307,46 +302,15 @@ That lets each chapter build on the same machine state instead of starting over,
 
 ## Status
 
-The original hardware path is preserved. [AUDIT.md](AUDIT.md) is the accepted
-roadmap; [the implementation ledger](docs/IMPLEMENTATION.md) maps it to the code
-and records phase boundaries. Phase 1 adds performance foundations and a
-measurement workflow. Phase 2 adds cache/forwarding/SMT/coherence experiments and
-a native false-sharing benchmark. Phase 3 adds a timing-constrained controller
-and native loaded-latency trials. Phase 4 adds mapping/COW/page-cache state,
-page-size outcomes, walk contention, shootdowns, a NUMA extension and native
-fault/mapping observations. Phase 5 originally added a historical Zen+ profile, now superseded by an
-architecture-neutral evidence contract and scoped implementation cases,
-ordering witnesses, cache-inclusion and translation-granule contrasts, and
-controlled native-run comparison. Phase 6 adds instruction-side starvation,
-finite prefetch competition and a native software-hint sweep, IOTLB lifetimes,
-I/O queue/completion experiments and an io_uring path, two-socket resource
-contention, paired refresh tails, SECDED arithmetic, a qualitative Rowhammer
-mechanism and scoped modern topology contrasts. See
-[the advanced reproduction protocols](benchmarks/advanced/README.md).
+The original hardware walkthrough is unchanged in structure. On top of it:
 
-All six roadmap phases have reviewable implementations. Advanced models retain
-explicit scope: serial block delivery is not a complete CPU front end, queue
-clocks do not reproduce an NVMe device, Hamming(8,4) is not a DIMM code layout,
-and the server extension is not an implied host topology. Native I/O and
-cross-machine datasets must still be supplied from appropriate hardware.
+- Most hardware chapters end with an **Experiments** part: small simulations with a prediction to make first (caches, forwarding, SMT, coherence, the DRAM controller, page tables and TLBs, prefetching, I/O queues, NUMA, ECC, refresh and more).
+- Chapter 09 has a **Real chips** part comparing the example machine with AMD EPYC 9005, Intel Xeon 6 and Arm Neoverse V3, with sources.
+- **Measure your machine** runs native benchmarks with one command and shows the results next to each simulation.
 
-A post-audit usability improvement adds unified native measurement, automatic
-local/public dataset loading and browser-local visitor comparison. It does not
-introduce another audit phase or replace the six-phase simulations.
+Every simulation uses round example numbers (four cores, 32 KiB L1d, 512 KiB L2, 4 MiB L3, two DDR4 channels). The assembly and page tables use x86-64; the DRAM chip example uses DDR4, with notes on DDR5. Measurements never change the simulations' settings.
 
-The foundation is architecture-neutral. Chosen queue capacities, latency inputs,
-replacement rules and addresses are teaching-model parameters. Detailed ISA and
-memory-standard walkthroughs identify their scope: the assembly/page tables use
-x86-64, and the DRAM chip example uses DDR4 x8/BL8. Implementation-specific
-schematics cite exact generations and avoid undocumented sizes/policies.
-
-Seven evidence categories remain distinct: **Vendor documented**, **Academic /
-peer-reviewed**, **Reputable independent measurement**, **Locally measured**,
-**Inference**, **Teaching model**, and **Unknown / undocumented**. External
-measurements carry the reported CPU/microarchitecture, test boundary, method and
-limitations. Unknown SKUs and absent measurements remain explicit; measurements
-never silently calibrate the models. See [evidence and case-study decisions](docs/IMPLEMENTATION_EVIDENCE.md)
-and the [dependency inventory](docs/ARCHITECTURE_INVENTORY.md).
+Seven labels say where a statement comes from: **Simulation**, **Vendor docs**, **Peer-reviewed**, **Published measurement**, **Your machine**, **Inference** and **Not published**. The Start page explains each one. Background: [AUDIT.md](AUDIT.md) (the original roadmap), [the implementation notes](docs/IMPLEMENTATION.md) and [the evidence notes](docs/IMPLEMENTATION_EVIDENCE.md).
 
 ---
 

@@ -1,16 +1,82 @@
 /* Additional labs share the original palette, typography and SVG language. */
-.cache-trace-input{width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--bd);border-radius:8px;background:var(--panel);color:var(--tx);font:inherit;resize:vertical;min-height:70px}
-.cache-state,.coherence-state{border:1px solid var(--bd);border-radius:12px;padding:16px;margin:16px 0;min-width:0}
-.coherence-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:16px 0}
-.coherence-cards .perf-metric p{font:600 13px/1.6 var(--mono);margin:6px 0}
-.coherence-cards .perf-metric strong{font-size:15px;white-space:normal}
-.learning-scene>.perf-metrics strong{white-space:normal;overflow-wrap:anywhere}
-.learning-scene .perf-actions button:disabled{opacity:.4;cursor:default}
-.sharing-results pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto}
-@media(max-width:500px){.cache-state,.coherence-state{padding:10px}.coherence-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.loaded-results pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto}
-.controller-timeline svg{min-width:900px}
-#l1d--split .perf-chart svg{min-width:840px}
-#core--smt .perf-chart svg{min-width:820px}
-.vm-diagram svg{min-width:900px}
-.vm-results pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto}
+.cache-trace-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--tx);
+  font: inherit;
+  resize: vertical;
+  min-height: 70px;
+}
+.cache-state,
+.coherence-state {
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  min-width: 0;
+}
+.coherence-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.coherence-cards .perf-metric p {
+  font: 600 13px/1.6 var(--mono);
+  margin: 6px 0;
+}
+.coherence-cards .perf-metric strong {
+  font-size: 15px;
+  white-space: normal;
+}
+.learning-scene > .perf-metrics strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.learning-scene .perf-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.sharing-results pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 400px;
+  overflow: auto;
+}
+@media (max-width: 500px) {
+  .cache-state,
+  .coherence-state {
+    padding: 10px;
+  }
+  .coherence-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.loaded-results pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 400px;
+  overflow: auto;
+}
+.controller-timeline svg {
+  min-width: 900px;
+}
+#l1d--split .perf-chart svg {
+  min-width: 840px;
+}
+#core--smt .perf-chart svg {
+  min-width: 820px;
+}
+.vm-diagram svg {
+  min-width: 900px;
+}
+.vm-results pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 400px;
+  overflow: auto;
+}

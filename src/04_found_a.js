@@ -49,15 +49,12 @@
 
 /* ======================= start here ======================= */
 App.chapter({id: 'start', short: 'Start here', title: 'Memory Systems Lab',
-lede: 'Interactive experiments in CPU architecture, cache coherence, virtual memory, DRAM and performance engineering.',
+lede: 'How one memory access travels through a computer, from a line of C down to the DRAM chips and back. Change the experiments, compare real AMD, Intel and Arm chips, and measure your own machine.',
 points: ['Every chapter follows the same small C function.',
   'Chapters [[num:bits]]\u2013[[num:share]] build the background. Chapters [[num:map]]\u2013[[num:e2e]] follow one access through the hardware.',
-  'Explore mechanisms, compare modern AMD / Intel / Arm implementation choices, inspect published evidence, or measure your Linux machine.'],
+  'The lab uses one small example machine, and compares it with real AMD, Intel and Arm designs.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
-  App.h('div', {'class':'path-cards'}, root,
-    '<a class="path-card" href="#map/amd"><span class="path-k">Implementation choices</span><strong>Modern AMD, Intel and Arm cases</strong><span>Topology, cache domains and evidence that changes a prediction.</span></a>' +
-    '<a class="path-card" href="#perf/datasets"><span class="path-k">Reproducible experiments</span><strong>Measure your machine</strong><span>One Linux command; retained provenance, environment telemetry and private browser import.</span></a>');
   var a = P.sec(root, 'example', 'The running example', 'One small C function, used on every page.');
   P.row(a, [
     'The site follows one function. It counts how often each byte value appears in an array:',
@@ -74,10 +71,12 @@ build: function(root){
     A(sv, 'M110 58 C110 84 61 86 61 108');
   }});
 
-  var b = P.sec(root, 'paths', 'Two ways in', 'Start from the basics, or go straight to the hardware.');
-  App.h('div', {'class': 'path-cards'}, b,
+  var b = P.sec(root, 'paths', 'Where to start', 'Start from the basics, go straight to the hardware, or jump to real chips and your own machine.');
+  App.h('div', {'class': 'path-cards path-cards-4'}, b,
     '<a class="path-card" href="#bits"><span class="path-k">New to hardware</span><strong>Start with [[ch:bits]]</strong><span>Eight short chapters: bits and hex, addresses, instructions, reading assembly, cycles, caches, virtual memory, and sharing memory.</span></a>' +
-    '<a class="path-card" href="#map"><span class="path-k">Know registers, caches and virtual memory</span><strong>Start at [[ch:map]]</strong><span>A map of the whole machine, then one chapter per stage of a memory access.</span></a>');
+    '<a class="path-card" href="#map"><span class="path-k">Know registers, caches and virtual memory</span><strong>Start at [[ch:map]]</strong><span>A map of the whole machine, then one chapter per stage of a memory access.</span></a>' +
+    '<a class="path-card" href="#map/chips"><span class="path-k">Real chips</span><strong>AMD, Intel and Arm compared</strong><span>How three current server designs build the same parts at different sizes.</span></a>' +
+    '<a class="path-card" href="#perf/datasets"><span class="path-k">Your machine</span><strong>Measure your own computer</strong><span>One command on Linux runs the benchmarks and loads the results into every chapter.</span></a>');
 
   var c = P.sec(root, 'reading', 'How to read the pages', 'Terms, diagrams, step panels and timings.');
   var legend = ['basics', 'core', 'xlate', 'cache', 'memory', 'order', 'coh', 'pref', 'io'].map(function(k){ return '<span class="legend-chip term-' + k + '">' + App.TERM_LABEL[k] + '</span>'; }).join('');
@@ -87,15 +86,21 @@ build: function(root){
     'Diagrams mark the active part in amber. Click a block to see what it is.',
     'Step panels walk through a process one step at a time. The \u2190 and \u2192 keys also work.',
     'Each chapter is one long page. The section name in the top bar opens a list of its sections.',
-    'Timings come from explicitly chosen teaching-model parameters. Published evidence and local measurements are shown separately with their original boundaries.'
+    'Most hardware chapters have two parts: the walkthrough, then an <b>Experiments</b> part with small simulations you can change. Each experiment asks you to predict the result first.',
+    'Timings come from the latency settings (the ≋ button). They are example values for the lab’s model machine. Your own measurements appear separately, labeled “Your machine”.'
   ])]);
+  var labels = App.h('dl', {'class': 'label-legend'}, c);
+  App.h('dt', {'class': 'label-legend-title'}, labels, 'Small labels say where a statement comes from:');
+  App.Evidence.labels.forEach(function(l){
+    App.h('dd', null, labels, '<span class="evidence-label evidence-kind" data-evidence-kind="' + l.kind + '">' + l.kind + '</span><span>' + l.means + '</span>');
+  });
 
-  var d = P.sec(root, 'numbers', 'Where the numbers come from', 'Model parameters, scoped implementation facts and measured evidence.');
+  var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One small example machine, three real ones, and yours.');
   P.row(d, [
-    'Mechanisms come first: dependencies, finite queues, lookup, ownership, translation and memory scheduling. The diagrams use chosen teaching-model capacities and synthetic addresses. They are not one vendor’s undisclosed implementation.',
-    'The <a href="#map/reference">evidence contract</a> distinguishes seven categories: vendor documented, academic / peer-reviewed, reputable independent measurement, locally measured, inference, teaching model and unknown / undocumented. Compare <a href="#map/amd">EPYC 9005</a>, <a href="#map/intel">Xeon 6 P-cores</a> and <a href="#map/arm">Neoverse V3</a> where an implementation difference changes an experiment. <a href="#perf/datasets">Measure your machine</a> with the native harness.'
-  ], {h: 120, cap: 'Mechanism map: private caches, shared caching and memory. Sizes and policy vary by implementation.', draw: function(sv){
-    var L = [['core', '', 50], ['L1d', 'lookup', 70], ['L2', 'private', 80], ['LLC', 'domain', 92], ['DRAM', 'GBs', 102]], x = 10;
+    'Sizes and addresses come from one small example machine: four cores, a 32 KiB L1 data cache and a 512 KiB L2 per core, a 4 MiB L3 shared by all four, and two DDR4 memory channels. It is small on purpose, so every structure fits on screen, and it copies no particular chip.',
+    'Real chips build the same parts at other sizes. [[ch:map]] compares the example with <a href="#map/amd">AMD EPYC 9005</a>, <a href="#map/intel">Intel Xeon 6</a> and <a href="#map/arm">Arm Neoverse V3</a>, and <a href="#perf/datasets">Measure your machine</a> runs the same experiments on your own computer.'
+  ], {h: 120, cap: 'Capacity per level in the example machine. Each level is larger and slower than the one before it.', draw: function(sv){
+    var L = [['core', '', 50], ['L1d', '32 KiB', 70], ['L2', '512 KiB', 80], ['L3', '4 MiB', 92], ['DRAM', 'GBs', 102]], x = 10;
     L.forEach(function(l, i){
       P.box(sv, x, 30, l[2], 50, i === 0 ? 'a3b' : i === 4 ? 'sunk' : 'a2b', l[0], l[1]);
       T(sv, x + l[2] / 2, 100, ['', 'per core', 'per core', 'shared', 'off chip'][i], 's', 'middle');

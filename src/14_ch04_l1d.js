@@ -60,8 +60,8 @@ build: function(root){
 
   /* ---------- intro ---------- */
   var intro = h('div', {'class': 'grid2 l1-intro'}, root);
-  h('div', {'class': 'card'}, intro, '<h3>Geometry</h3><p>32 KB / 64-byte lines = 512 lines, arranged as 64 ' + g('set', 'sets') + ' \u00d7 8 ' + g('way', 'ways') + '. Bits 5:0 are the ' + g('offset') + ', bits 11:6 the ' + g('index') + ', bits 47:12 the ' + g('tag') + '. Index + offset = 12 bits = the page offset, so the set is chosen from the virtual address while the tag comes from the physical address: ' + g('vipt') + ' ([[ch:xlate]]).</p>');
-  h('div', {'class': 'card'}, intro, '<h3>What one way stores</h3><p>' + g('valid', 'V') + ', ' + g('dirty', 'D') + ', a 36-bit physical tag and 64 data bytes. The index is never stored: the row it sits in is the index.</p><p>On a ' + g('wbk', 'write-back') + ' the line\u2019s physical address is rebuilt as tag \u2016 index \u2016 000000.</p><p>Replacement below is tree ' + g('plru') + '; this is a chosen teaching replacement policy, not a hardware claim.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>Geometry</h3><p>32 KB / 64-byte lines = 512 lines, arranged as 64 ' + g('set', 'sets') + ' \u00d7 8 ' + g('way', 'ways') + '. Bits 5:0 are the ' + g('offset') + ', bits 11:6 the ' + g('index') + ', bits 47:12 the ' + g('tag') + '. Index + offset = 12 bits = the page offset, so the set is chosen from the virtual address while the tag comes from the physical address: ' + g('vipt') + ' ([[ch:xlate]]).</p><p>Real L1d caches keep this shape. AMD Zen 5 and Intel Golden Cove use 48 KB, 12-way: still 64 sets, so the index still fits in the page offset. Arm Neoverse V3 uses 64 KB, 4-way, which needs 256 sets and two more index bits; Arm says its L1d behaves as if physically indexed.</p>');
+  h('div', {'class': 'card'}, intro, '<h3>What one way stores</h3><p>' + g('valid', 'V') + ', ' + g('dirty', 'D') + ', a 36-bit physical tag and 64 data bytes. The index is never stored: the row it sits in is the index.</p><p>On a ' + g('wbk', 'write-back') + ' the line\u2019s physical address is rebuilt as tag \u2016 index \u2016 000000.</p><p>Replacement below is tree ' + g('plru') + '; vendors don\u2019t publish their exact L1d policies.</p>');
 
   /* ---------- SVG ---------- */
   var wrap = h('div', {'class': 'scroller l1-canvas'}, root);
@@ -125,8 +125,8 @@ build: function(root){
   s('text', {x: 1025, y: 364, 'text-anchor': 'middle', 'class': 's', transform: 'rotate(-90 1025 364)'}, sv, '8:1 way mux');
   E.selW = s('path', {d: 'M 566 528 L 566 556 L 1025 556 L 1025 522', 'class': 'wire'}, sv);
   s('text', {x: 700, y: 570, 'class': 's'}, sv, 'hit vector selects a hit; replacement selects a refill way');
-  /* Parallel lookup strategy: active during read and compare. */
-  E.wp = box(1060, 104, 130, 74, 'Lookup strategy');
+  /* Way select: active during read and compare. */
+  E.wp = box(1060, 104, 130, 74, 'Way select');
   E.wpT = s('text', {x: 1070, y: 142, 'class': 'm', style: 'font-size:11px'}, E.wp, '');
   E.wpT2 = s('text', {x: 1070, y: 160, 'class': 's'}, E.wp, '');
   E.lb = box(1060, 184, 130, 350, '');
@@ -159,7 +159,7 @@ build: function(root){
   var stp = App.stepper(root, {render: draw, pills: false});
   stp.el.classList.add('l1-stepper');
   var cu = h('div', {'class': 'card l1-custom'}, root);
-  cu.innerHTML = '<h3>Run your own access</h3><div class="stp"><input class="l1va" value="0x7ffd4a3c5e58" style="width:170px" aria-label="virtual address"><select class="l1op" aria-label="access operation"><option value="ld">load</option><option value="st">store</option></select><input class="l1v" value="7" style="width:70px" aria-label="store value"><button class="pri l1go">add after the sequence</button><button class="l1clr">remove mine</button></div><p class="note l1err" role="alert" style="color:var(--bad);display:none"></p><ul class="note note-list"><li>Enter an 8-byte-aligned user address below 0x800000000000.</li><li>Change only bits 12 and up to stay in set 57.</li><li>An unknown page gets a model frame and synthetic line data; this is not a page walk.</li><li>A store value must fit in a signed 64-bit long. A custom store stands for a retired store draining into the L1d.</li><li>Each access runs against the cache state the sequence left behind.</li></ul>';
+  cu.innerHTML = '<h3>Run your own access</h3><div class="stp"><input class="l1va" value="0x7ffd4a3c5e58" style="width:170px" aria-label="virtual address"><select class="l1op" aria-label="access operation"><option value="ld">load</option><option value="st">store</option></select><input class="l1v" value="7" style="width:70px" aria-label="store value"><button class="pri l1go">add after the sequence</button><button class="l1clr">remove mine</button></div><p class="note l1err" role="alert" style="color:var(--bad);display:none"></p><ul class="note note-list"><li>Enter an 8-byte-aligned user address below 0x800000000000.</li><li>Change only bits 12 and up to stay in set 57.</li><li>An address on a page the example doesn\u2019t map gets a made-up frame and line data; no page walk runs.</li><li>A store value must fit in a signed 64-bit long. A custom store stands for a retired store draining into the L1d.</li><li>Each access runs against the cache state the sequence left behind.</li></ul>';
   var err = cu.querySelector('.l1err');
   var opSel = cu.querySelector('.l1op'), valIn = cu.querySelector('.l1v');
   function syncStoreValue(){
@@ -214,8 +214,8 @@ build: function(root){
     var f = {r: r, ph: ph, k: k}, a = r.a, n = k + 1, setTxt = 'set ' + r.si;
     var addr = '<code>' + hx(r.va) + '</code>';
     if (ph === 'split'){ f.t = 'Access 1, step 1: split the address'; f.d = 'C1\u2019s load of hist[123] arrives with VA ' + addr + '.\n<ul><li>Bits 11:6 = 111001 = <b>57</b> go straight to the row decoder.</li><li>Bits 47:12, the VPN 0x7ffd4a3c2, go to the ' + g('dtlb') + ', which returns PFN 0x1a3f7c: the physical tag.</li><li>Bits 5:0 = <b>24</b> wait until the end, where they pick bytes 24\u201331 of the line.</li></ul>'; return f; }
-    if (ph === 'read'){ f.t='Step 2: read the selected set in parallel'; f.d='The chosen parallel-lookup model activates the indexed row in all eight ways. Valid bits, tags and data are available for comparison and selection. This geometry reads eight candidate lines for one selected word. Hardware can choose other strategies; the historical way-prediction case has its own cited scope.';return f; }
-    if (ph === 'compare'){ f.t='Step 3: valid physical-tag comparison'; f.d='Each stored tag is compared with this access’s physical tag and gated by its valid bit. '+(r.hit?'Way '+r.way+' matches.':'No valid tag matches: this is a miss.')+' The model hit vector selects data; a full tag check determines correctness. The parallel lookup is a teaching rule, not a claim about every implementation.';return f; }
+    if (ph === 'read'){ f.t = 'Step 2: read the whole set'; f.d = 'The decoder raises wordline ' + r.si + '. In all 8 ways at once, the set\u2019s V, D and tag bits and its 64 data bytes flow out through the sense amplifiers: 8 tags and 512 data bytes read for one 8-byte load, because the hardware does not yet know which way holds the line.\nSome cores save that power with a ' + g('waypred') + ': they guess the way from virtual-address bits and read only that one. The full tag compare in step 3 still decides.'; return f; }
+    if (ph === 'compare'){ f.t = 'Step 3: eight tag compares in parallel'; f.d = 'Eight comparators check PA tag <code>' + tg(r.tag) + '</code> against the eight stored tags in the same cycle; each result is ANDed with its valid bit. ' + (r.hit ? '<b>Way ' + r.way + ' matches.</b> The OR of the eight hit lines is the hit signal.' : 'No valid tag matches: this is a miss.') + '\nEight ways means eight comparators firing on every access. The 12-way L1d caches of AMD Zen 5 and Intel Golden Cove fire twelve.'; return f; }
     if (ph === 'select'){ f.t = 'Step 4: select the way, align the bytes'; f.d = 'The hit vector drives the 8:1 way mux: way 3\u2019s 64 bytes reach the line buffer, the aligner takes bytes 24\u201331, and <b>41</b> goes to the load\u2019s destination register. The pLRU bits of set 57 now point away from way 3.'; return f; }
     if (ph === 'miss'){
       f.t = 'Access ' + n + ': tag miss in set ' + r.si;
@@ -259,8 +259,8 @@ build: function(root){
     var on = function(el, v){ el.setAttribute('class', v ? 'on' : ''); };
     on(E.va, ph === 'split' || ph === 'all'); on(E.tlb, ph === 'split' || ph === 'all');
     var wpOn = ph === 'read' || ph === 'compare'; on(E.wp, wpOn);
-    E.wpT.textContent=wpOn?'8 candidate ways':'parallel tags';
-    E.wpT2.textContent=wpOn?(r.hit?'select way '+r.way:'no valid match'):'chosen model';
+    E.wpT.textContent = wpOn ? '8 ways compared' : 'all 8 tags';
+    E.wpT2.textContent = wpOn ? (r.hit ? 'select way ' + r.way : 'no valid match') : 'in parallel';
 
     E.wTag.setAttribute('class', 'wire' + (ph !== 'read' ? ' on' : '')); E.wIdx.setAttribute('class', 'wire' + (ph === 'split' || ph === 'read' || ph === 'all' ? ' on' : ''));
     on(E.dec, ph === 'read' || ph === 'split' || ph === 'all');
