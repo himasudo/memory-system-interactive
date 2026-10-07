@@ -18,35 +18,35 @@ function entry(bundle, id = 'example') {
     )
   };
 }
-test('seven evidence categories remain distinct and all appear in the contract', () => {
+test('seven evidence labels stay distinct and the Start page legend explains each one', () => {
   assert.deepEqual(I.categories, [
-    'Vendor documented',
-    'Academic / peer-reviewed',
-    'Reputable independent measurement',
-    'Locally measured',
+    'Vendor docs',
+    'Peer-reviewed',
+    'Published measurement',
+    'Your machine',
     'Inference',
-    'Teaching model',
-    'Unknown / undocumented'
+    'Simulation',
+    'Not published'
   ]);
   const sandbox = { App: {} };
   require('node:vm').runInNewContext(read('src/03_architecture_evidence.js'), sandbox);
-  assert.deepEqual(
-    Array.from(new Set(sandbox.App.Evidence.claims.map((c) => c.kind))).sort(),
-    I.categories.slice().sort()
-  );
-  for (const q of sandbox.App.Evidence.claims) assert.ok(q.scope && q.why);
+  const labels = sandbox.App.Evidence.labels;
+  assert.deepEqual(Array.from(labels, (l) => l.kind).sort(), I.categories.slice().sort());
+  for (const l of labels) assert.ok(l.means && l.means.length > 20, l.kind);
 });
-test('implementation schematics carry exact generations, primary sources and limits', () => {
+test('implementation schematics name the generation, cite vendor sources and state limits', () => {
   assert.deepEqual(
     I.cases.map((c) => c.id),
     ['amd', 'intel', 'arm']
   );
   for (const c of I.cases) {
-    assert.equal(c.kind, 'Vendor documented');
+    assert.equal(c.kind, 'Vendor docs');
     assert.match(
       I.sources[c.source][1],
-      /^https:\/\/(docs\.amd\.com|cdrdv2-public\.intel\.com|documentation-service\.arm\.com)\//
+      /^https:\/\/(docs\.amd\.com|www\.intel\.com|documentation-service\.arm\.com)\//
     );
+    assert.ok(c.sources.includes(c.source));
+    for (const k of c.sources) assert.ok(I.sources[k], k);
     assert.ok(c.generation && c.scope && c.limits && c.prediction && c.experiment);
     assert.ok(c.nodes.length && c.edges.length);
   }
@@ -55,10 +55,10 @@ test('implementation schematics carry exact generations, primary sources and lim
   assert.equal(arm.latency_cycles, undefined);
   assert.equal(arm.llc_bytes, undefined);
 });
-test('published values retain reported operand boundary and unknown SKU, never inferred model calibration', () => {
+test('published measurements keep their boundary and unknown SKU, and never set the latency model', () => {
   assert.equal(I.instruction.reported, true);
-  assert.equal(I.instruction.kind, 'Reputable independent measurement');
-  assert.match(I.instruction.scope, /Address-base.*core cycles.*Not DRAM/);
+  assert.equal(I.instruction.kind, 'Published measurement');
+  assert.match(I.instruction.scope, /address comes from the previous load.*core cycles.*not memory latency/);
   assert.match(I.instruction.method, /dependency chains/);
   for (const r of I.instruction.rows) {
     assert.equal(r.cpu_model, null);
@@ -70,7 +70,8 @@ test('published values retain reported operand boundary and unknown SKU, never i
     'Intel Core Ultra 9 285K · Lion Cove',
     'AMD Ryzen 9 9900X · Zen 5'
   ]);
-  assert.match(I.counterCase.limits, /populations differ/);
+  assert.match(I.counterCase.fact, /different populations/);
+  assert.match(I.counterCase.limits, /can’t be divided into a ratio/);
   assert.equal(I.counterCase.ratio, undefined);
   assert.doesNotMatch(read('src/28_implementation_cases.js'), /App\.CFG\s*\[[^\]]+\]\s*=/);
 });

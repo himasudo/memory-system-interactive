@@ -72,45 +72,32 @@ async function main() {
       assert.ok(await page.locator('#ch-start a[href="#map/amd"]').count());
       assert.ok(await page.locator('#ch-start a[href="#perf/datasets"]').count());
     });
-    await check('all seven evidence filters stay distinguishable', async () => {
-      await route('map/reference');
-      const select = page.locator('#map--reference [data-field="Evidence category"]');
-      for (const kind of await page.evaluate(() => ImplementationEvidence.categories)) {
-        await select.selectOption(kind);
-        const cards = page.locator('#map--reference .evidence-claims .evidence-contract');
-        assert.ok((await cards.count()) > 0);
-        assert.equal(
-          await cards.first().locator('.evidence-kind').getAttribute('data-evidence-kind'),
-          kind
-        );
-      }
-      await select.selectOption('all');
-      assert.doesNotMatch(
-        await page.locator('#map--reference').textContent(),
-        /3750H|Primary reference/
+    await check('Start page legend explains all seven labels', async () => {
+      await route('start');
+      const kinds = await page.locator('#ch-start .label-legend .evidence-label').allTextContents();
+      assert.deepEqual(
+        kinds.slice().sort(),
+        (await page.evaluate(() => ImplementationEvidence.categories)).slice().sort()
       );
     });
     for (const id of ['amd', 'intel', 'arm'])
-      await check('scoped original implementation schematic: ' + id, async () => {
+      await check('implementation schematic with notes and sources: ' + id, async () => {
         await route('map/' + id);
         const sec = page.locator('#map--' + id),
           figure = sec.locator('.implementation-figure');
         assert.equal(await figure.getAttribute('data-implementation'), id);
-        assert.ok(await figure.getAttribute('data-implementation-scope'));
-        assert.ok(await figure.locator('a[href^="https://"]').count());
-        assert.equal(
-          await sec.locator('.evidence-kind').first().textContent(),
-          'Vendor documented'
-        );
-        assert.ok(await sec.locator('.evidence-kind[data-evidence-kind="Inference"]').count());
-        assert.match(await figure.textContent(), /Original project schematic/);
+        assert.match(await figure.getAttribute('data-implementation-scope'), /2024/);
+        assert.equal(await sec.locator('.evidence-kind').first().textContent(), 'Vendor docs');
+        assert.equal(await sec.locator('.impl-note').count(), 2);
+        assert.match(await sec.locator('.impl-notes').textContent(), /What it changes.*Try it/s);
+        assert.ok((await sec.locator('.lab-sources a[href^="https://"]').count()) >= 2);
       });
-    await check('Arm external SoC remains explicitly outside core evidence', async () => {
+    await check('Arm system parts the chip vendor chooses are drawn as unknown', async () => {
       await route('map/arm');
       assert.ok(await page.locator('#map--arm .implementation-unknown').count());
       assert.match(
-        await page.locator('#map--arm .implementation-unknown').textContent(),
-        /outside this core guide/
+        await page.locator('#map--arm .implementation-figure').textContent(),
+        /Real chips choose their own/
       );
     });
     await check(
@@ -118,12 +105,12 @@ async function main() {
       async () => {
         await route('map/published');
         const text = await page.locator('#map--published').textContent();
-        assert.match(text, /Address-base dependency/);
+        assert.match(text, /address comes from the previous load/);
         assert.match(text, /Exact SKU not specified/);
         assert.match(text, /nanoBench/);
         assert.match(text, /Core Ultra 9 285K/);
         assert.match(text, /Ryzen 9 9900X/);
-        assert.match(text, /populations differ/);
+        assert.match(text, /different populations/);
         assert.equal(await page.locator('#map--published .evidence-bar').count(), 2);
         assert.ok((await page.locator('#map--published a[href*="html-lat"]').count()) === 2);
       }
@@ -151,17 +138,14 @@ async function main() {
           await page.locator('#atlas--core').textContent(),
           /Zen\+|192|168|44-entry|published size/
         );
-        assert.match(await page.locator('#atlas--core').textContent(), /Teaching-model parameters/);
+        assert.match(await page.locator('#atlas--core').textContent(), /The model core, one cell per entry/);
       }
     );
     await check(
-      'every primary Atlas plate identifies model, ISA or memory-standard scope',
+      'every Atlas plate has a caption, and the walk and DRAM captions name their standard',
       async () => {
         for (const id of ['core', 'l1d', 'dram', 'xlate', 'e2e']) {
           await route('atlas/' + id);
-          assert.ok(
-            await page.locator('#atlas--' + id + ' .plate-scene').getAttribute('data-plate-scope')
-          );
           assert.ok(await page.locator('#atlas--' + id + ' .plate-caption').textContent());
         }
         await route('atlas/xlate');
@@ -172,20 +156,20 @@ async function main() {
         await route('atlas/dram');
         assert.match(
           await page.locator('#atlas--dram .plate-caption').textContent(),
-          /DDR4 x8.*BL8.*chosen/
+          /DDR4 x8 organisation/
         );
       }
     );
     await check(
-      'L1 mechanism uses parallel lookup and retains historical evidence separately',
+      'L1 plate shows the parallel lookup; the way predictor lives in the history section',
       async () => {
         await route('atlas/l1d');
-        assert.match(await page.locator('#atlas--l1d').textContent(), /Parallel lookup model/);
+        assert.match(await page.locator('#atlas--l1d').textContent(), /Parallel lookup/);
         assert.doesNotMatch(await page.locator('#atlas--l1d').textContent(), /Zen\+|Way predictor/);
         await route('map/history');
         assert.match(
           await page.locator('#map--history').textContent(),
-          /historical L1D way prediction/
+          /AMD, 2011 to 2019: an L1 way predictor/
         );
         assert.ok(await page.locator('#map--history a[href*="takeaway"]').count());
       }
@@ -196,7 +180,7 @@ async function main() {
         await route('perf/datasets');
         await page.waitForFunction(
           () =>
-            App.Measurements.state.referenceStatus === 'No optional measured datasets are shipped.'
+            App.Measurements.state.referenceStatus === 'No shipped results.'
         );
         assert.equal(await page.evaluate(() => App.Measurements.state.reference), null);
         assert.equal(await page.getByLabel('Your benchmark bundle').isVisible(), true);

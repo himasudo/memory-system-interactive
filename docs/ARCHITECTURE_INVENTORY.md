@@ -1,5 +1,7 @@
 # Architecture dependency inventory
 
+> **Historical record.** The readability pass in PR #9 reorganized the site: each hardware chapter now has a walkthrough followed by an *Experiments* part, and `#map/reference` and `#map/chiplets` were folded into chapter 09's *Real chips* part (`#map/chips`, `#map/amd`, `#map/intel`, `#map/arm`). The evidence categories were renamed; see [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md).
+
 Baseline: PR #7 commit `c9dc763b6c7578624534ba5754fc27e954e1b4a2`. Inventory was collected before content edits. This is repositioning, not another audit.
 
 Search covers all tracked repository files, including generated HTML, sources, glossary, Atlas, documentation, native runners and tests. Patterns: `Zen+`, `Zen`, `3750H`, `Family 17h`, `primary reference`, `reference machine`, `Neoverse`, `Skylake`, `Haswell`. Numeric dependencies were additionally inspected in the core/map/array/hierarchy/translation plates and pipeline metadata.

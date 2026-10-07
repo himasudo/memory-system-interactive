@@ -130,7 +130,7 @@ async function main() {
       await page.locator('#crumbSec').click();
       await page
         .locator('#secMenu button')
-        .filter({ hasText: 'Inspect the serialized steps' })
+        .filter({ hasText: 'Inspect the steps' })
         .click();
       assert.match(page.url(), /#e2e\/steps$/);
     });
@@ -171,7 +171,7 @@ async function main() {
       await section
         .getByRole('button', { name: 'No: independent loads can overlap', exact: true })
         .click();
-      assert.match(await section.locator('[aria-live]').last().textContent(), /matches this model/);
+      assert.match(await section.locator('[aria-live]').last().textContent(), /^Right\./);
     });
     await check('native JSON import and safe validation', async () => {
       const fixture = path.join(output, 'native-smoke.json');
@@ -185,7 +185,7 @@ async function main() {
       await page.waitForFunction(() =>
         document
           .querySelector('#perf--measure [role=status]')
-          .textContent.startsWith('Measured data')
+          .textContent.startsWith('Measured')
       );
       assert.equal(await page.locator('.measurement-results tbody tr').count(), 12);
       const adversarial = JSON.parse(fs.readFileSync(fixture));
@@ -245,7 +245,7 @@ async function main() {
       await lab.locator('[data-field="Load address"]').selectOption('8192');
       assert.equal(await lab.evaluate((el) => el._forwardResult.lowMatch), true);
       await lab.locator('[data-field="Store address known"]').selectOption('0');
-      await lab.locator('[data-field="Unresolved-store policy (model)"]').selectOption('1');
+      await lab.locator('[data-field="Unresolved-store policy"]').selectOption('1');
       assert.match(await lab.locator('.perf-explanation h3').textContent(), /succeeds/);
     });
     await check('mergeable misses and SMT allocation controls', async () => {
@@ -257,7 +257,7 @@ async function main() {
       await route('core/smt');
       const smt = page.locator('#core--smt');
       const shared = await smt.evaluate((el) => el._smtResult.aCycles);
-      await smt.locator('[data-field="Load-slot allocation (model)"]').selectOption('partitioned');
+      await smt.locator('[data-field="Load-slot allocation"]').selectOption('partitioned');
       assert.ok(await smt.evaluate((el, n) => el._smtResult.aCycles < n, shared));
     });
     await check('fill pressure and useful-versus-line store bytes', async () => {
@@ -273,7 +273,7 @@ async function main() {
       await traffic.locator('[data-field="Full passes"]').selectOption('8');
       assert.equal(await traffic.evaluate((el) => el._trafficResult.counts.totalLineBytes), a);
       await traffic.locator('[data-field="Useful store bytes per line"]').selectOption('8');
-      assert.match(await traffic.textContent(), /no numerical claim/);
+      assert.match(await traffic.textContent(), /not modeled/);
     });
     await check('ownership, false sharing, dirty peers and lock waiting policy', async () => {
       await route('coh/transactions');
@@ -309,7 +309,7 @@ async function main() {
         await page.waitForFunction(() =>
           document
             .querySelector('#coh--transactions [role=status]')
-            .textContent.startsWith('Measured data')
+            .textContent.startsWith('Measured')
         );
         assert.ok((await page.locator('.sharing-results tbody tr').count()) >= 6);
         const bad = JSON.parse(fs.readFileSync(fixture));
@@ -331,7 +331,7 @@ async function main() {
       await page.locator('#crumbSec').click();
       await page
         .locator('#secMenu button')
-        .filter({ hasText: 'Split accesses and finite hit throughput' })
+        .filter({ hasText: 'Split accesses and hit throughput' })
         .click();
       await page.waitForURL('**#l1d/split');
       await page.evaluate(() => App.go('core'));
@@ -357,8 +357,8 @@ async function main() {
       await lab.getByLabel('Controller clock', { exact: true }).fill('40');
       assert.match(await lab.locator('.queue-state h3').textContent(), /Clock 40/);
       await page.screenshot({ path: path.join(output, 'controller-dark-desktop.png') });
-      await lab.getByText('Edit exact request arrivals and coordinates', { exact: true }).click();
-      await lab.getByRole('button', { name: 'Five-request audit example', exact: true }).click();
+      await lab.getByText('Edit the requests by hand', { exact: true }).click();
+      await lab.getByRole('button', { name: 'Five-request example', exact: true }).click();
       assert.equal(await lab.evaluate((el) => el._controllerResult.requests.length), 5);
       const event = page.waitForEvent('download');
       await lab.getByRole('button', { name: 'Export model result JSON', exact: true }).click();
@@ -388,7 +388,7 @@ async function main() {
       const input = page.getByLabel('Loaded latency result JSON', { exact: true });
       await input.setInputFiles(fixture);
       await page.waitForFunction(() =>
-        document.querySelector('.loaded-status').textContent.startsWith('Measured data')
+        document.querySelector('.loaded-status').textContent.startsWith('Measured')
       );
       assert.ok((await page.locator('.loaded-results tbody tr').count()) >= 1);
       const bad = JSON.parse(fs.readFileSync(fixture));
@@ -487,7 +487,7 @@ async function main() {
       const input = page.getByLabel('VM observation JSON', { exact: true });
       await input.setInputFiles(fixture);
       await page.waitForFunction(() =>
-        document.querySelector('.vm-measurement-status').textContent.startsWith('Measured data')
+        document.querySelector('.vm-measurement-status').textContent.startsWith('Measured')
       );
       assert.equal(await page.locator('.vm-results tbody tr').count(), 60);
       const bad = JSON.parse(fs.readFileSync(fixture));
@@ -501,13 +501,19 @@ async function main() {
         document.querySelector('.vm-measurement-status').textContent.startsWith('Could not import')
       );
     });
-    await check('reference evidence filters retain product scope and unknowns', async () => {
-      await route('map/reference');
-      const lab = page.locator('#map--reference');
-      assert.ok((await lab.locator('.evidence-claims .evidence-contract').count()) >= 8);
-      await lab.locator('[data-field="Evidence category"]').selectOption('Unknown / undocumented');
-      assert.equal(await lab.locator('.evidence-claims .evidence-contract').count(), 3);
-      assert.match(await lab.locator('.evidence-claims').textContent(), /queue partitioning/);
+    await check('real chips part compares the example machine with AMD, Intel and Arm', async () => {
+      await route('map/chips');
+      const part = page.locator('#map--part');
+      assert.match(await part.locator('h2').textContent(), /How AMD, Intel and Arm build it/);
+      assert.equal(await part.locator('.lab-index button').count(), 6);
+      const table = page.locator('#map--chips .chip-compare');
+      assert.equal(await table.locator('tbody tr').count(), 8);
+      assert.match(await table.textContent(), /MOESI.*MESIF.*CHI/s);
+      for (const id of ['amd', 'intel', 'arm'])
+        assert.equal(await page.locator('#map--' + id + ' .implementation-figure svg').count(), 1);
+      await page.locator('#crumbSec').click();
+      assert.match(await page.locator('#secMenu .sec-group').textContent(), /Real chips/);
+      await page.keyboard.press('Escape');
     });
     await check('ordering witnesses change under TSO, relaxed rules and full fences', async () => {
       await route('stores/litmus');
@@ -532,7 +538,7 @@ async function main() {
       await language.locator('[data-field="Value read from flag"]').selectOption('0');
       assert.match(
         await language.locator('[role=status]').textContent(),
-        /does not read the payload/
+        /skips the data/
       );
     });
     await check('cache inclusion and granule lenses expose different constraints', async () => {
@@ -549,9 +555,9 @@ async function main() {
       await route('xlate/granules');
       const granule = page.locator('#xlate--granules');
       await granule
-        .locator('[data-field="Hypothetical VIPT data-cache bytes"]')
+        .locator('[data-field="L1 data cache size (bytes)"]')
         .selectOption('131072');
-      await granule.locator('[data-field="Hypothetical VIPT ways"]').selectOption('4');
+      await granule.locator('[data-field="L1 ways"]').selectOption('4');
       assert.match(await granule.locator('tbody').textContent(), /Needs alias/);
     });
     await check(
@@ -566,7 +572,7 @@ async function main() {
         await page.getByLabel('Architecture run A', { exact: true }).setInputFiles(fixture);
         await page.getByLabel('Architecture run B', { exact: true }).setInputFiles(fixture);
         await page.waitForFunction(() =>
-          document.querySelector('.comparison-status').textContent.startsWith('Measured comparison')
+          /matching cases/.test(document.querySelector('.comparison-status').textContent)
         );
         assert.ok(
           await page
@@ -630,7 +636,7 @@ async function main() {
     await check('original pipeline and prefetch controls', async () => {
       await route('core');
       for (const b of await page.locator('#ch-core .seg button').all()) await b.click();
-      assert.match(await page.locator('#ch-core .core-events').textContent(), /groups\/cycle/);
+      assert.match(await page.locator('#ch-core .core-events').textContent(), /per cycle/);
       await route('pref');
       for (const b of await page.locator('#ch-pref .seg button').all()) await b.click();
       const cb = page.locator('#ch-pref input[type=checkbox]');
@@ -704,7 +710,7 @@ async function main() {
           'xlate/walk-contention',
           'xlate/shootdown',
           'hier/numa',
-          'map/reference',
+          'map/chips',
           'stores/litmus',
           'stores/language',
           'hier/inclusion',

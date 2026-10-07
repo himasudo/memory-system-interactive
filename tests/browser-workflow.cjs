@@ -122,7 +122,7 @@ async function main() {
       assert.equal(await local.getByLabel('Your benchmark bundle').inputValue(), '');
       assert.equal(
         await local.locator('.reference-dataset-status').textContent(),
-        'No optional measured datasets are shipped.'
+        'No shipped results.'
       );
     });
     for (const [id, selector] of panels)
@@ -145,11 +145,11 @@ async function main() {
           buffer: Buffer.from(JSON.stringify(bundle.suites.memory.runs[0].result))
         });
       await local.waitForFunction(() =>
-        document.querySelector('.measurement-results').textContent.includes('Manual import')
+        document.querySelector('.measurement-results').textContent.includes('Loaded from a file')
       );
       assert.match(
         await panel.locator('.measurement-results').textContent(),
-        /locally read, not uploaded/
+        /read in this browser only/
       );
       assert.equal(
         await local.evaluate(() => App.Measurements.state.yours.schema),
@@ -173,7 +173,7 @@ async function main() {
             buffer: Buffer.from(JSON.stringify(data))
           });
       await local.waitForFunction(() =>
-        document.querySelector('.comparison-status').textContent.startsWith('Cannot compare')
+        document.querySelector('.comparison-status').textContent.startsWith('Can’t compare')
       );
       assert.equal(await panel.locator('.architecture-comparison tbody tr').count(), 0);
     });
@@ -290,7 +290,7 @@ async function main() {
       assert.match(await page.locator('.reference-machine').textContent(), /Ryzen 7 3750H/);
       assert.equal(
         await page.locator('.reference-dataset-status').textContent(),
-        'Optional measured dataset shipped with the site.'
+        'Shipped with the site.'
       );
       assert.equal(await page.evaluate(() => App.Measurements.state.yours), null);
       assert.equal(requests.filter((r) => r.url.includes('/__memory_lab__/')).length, 0);
@@ -304,7 +304,7 @@ async function main() {
         );
         assert.match(
           await page.locator('.reference-machine .environment-summary').textContent(),
-          /Potential confounds; no causal diagnosis or discarded trials/
+          /may explain odd results; nothing was discarded/
         );
         for (const name of Object.keys(bundle.suites)) {
           assert.equal(
@@ -326,29 +326,29 @@ async function main() {
       'multiple recorded machines are selectable without architecture calibration or another request',
       async () => {
         assert.equal(
-          await page.getByLabel('Optional measured dataset').locator('option').count(),
+          await page.locator('[data-field="Shipped machine"]').locator('option').count(),
           3
         );
         const count = requests.length,
           cfg = await page.evaluate(() => JSON.stringify(App.CFG));
-        await page.getByLabel('Optional measured dataset').selectOption('generic-fixture');
+        await page.locator('[data-field="Shipped machine"]').selectOption('generic-fixture');
         assert.equal(
           await page.evaluate(() => App.Measurements.state.reference.machine.cpu_model),
           generic.machine.cpu_model
         );
         assert.equal(await page.evaluate(() => JSON.stringify(App.CFG)), cfg);
         assert.equal(requests.length, count);
-        await page.getByLabel('Optional measured dataset').selectOption('historical-fixture');
+        await page.locator('[data-field="Shipped machine"]').selectOption('historical-fixture');
       }
     );
     await check(
       'an absent optional entry has a reason and cannot synthesize measurements',
       async () => {
-        await page.getByLabel('Optional measured dataset').selectOption('missing-fixture');
+        await page.locator('[data-field="Shipped machine"]').selectOption('missing-fixture');
         assert.equal(await page.evaluate(() => App.Measurements.state.reference), null);
         assert.match(await page.locator('.reference-dataset-status').textContent(), /absent/);
         assert.equal(await page.locator('.bundle-comparison tbody tr').count(), 0);
-        await page.getByLabel('Optional measured dataset').selectOption('historical-fixture');
+        await page.locator('[data-field="Shipped machine"]').selectOption('historical-fixture');
       }
     );
     const refBefore = await page.evaluate(() => JSON.stringify(App.Measurements.state.reference)),
@@ -358,7 +358,7 @@ async function main() {
       await page.waitForFunction(
         () =>
           document.querySelector('.bundle-import-status').textContent ===
-          'Imported locally. No upload.'
+          'Loaded. Nothing was uploaded.'
       );
       assert.equal(await page.evaluate(() => App.Measurements.state.source), 'visitor');
       assert.match(await page.locator('.your-machine').textContent(), /Not uploaded/);
@@ -393,8 +393,8 @@ async function main() {
       await check('reference and visitor measurements stay separate: ' + id, async () => {
         const panel = await route(page, id),
           content = await panel.locator(selector).textContent();
-        assert.match(content, /Optional measured machine/);
-        assert.match(content, /local visitor import/);
+        assert.match(content, /Shipped machine/);
+        assert.match(content, /loaded from a file/);
         assert.ok((await panel.locator(selector + ' .measurement-run-title').count()) >= 2);
       });
     await route(page, 'perf/datasets');
@@ -457,7 +457,7 @@ async function main() {
         };
         await importBundle(page, partial);
         await page.waitForFunction(() =>
-          document.querySelector('.bundle-import-status').textContent.startsWith('Imported locally')
+          document.querySelector('.bundle-import-status').textContent.startsWith('Loaded.')
         );
         assert.match(
           await page.locator('.your-machine').textContent(),
@@ -477,7 +477,7 @@ async function main() {
         'whole process (test mismatch)';
       await importBundle(page, mismatch);
       await page.waitForFunction(() =>
-        document.querySelector('.bundle-import-status').textContent.startsWith('Imported locally')
+        document.querySelector('.bundle-import-status').textContent.startsWith('Loaded.')
       );
       assert.equal(await page.locator('.bundle-comparison tbody tr').count(), 0);
       assert.match(
@@ -552,7 +552,7 @@ async function main() {
         await p.waitForFunction(() =>
           document
             .querySelector('.reference-dataset-status')
-            .textContent.startsWith('Optional datasets unavailable:')
+            .textContent.startsWith('Shipped results unavailable:')
         );
         assert.equal(await p.evaluate(() => App.Measurements.state.reference), null);
         assert.equal(await p.getByLabel('Your benchmark bundle').isVisible(), true);
