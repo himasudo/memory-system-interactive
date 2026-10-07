@@ -1,5 +1,7 @@
 # Audit implementation ledger
 
+> **Historical record.** The readability pass in PR #9 reorganized the site: each hardware chapter now has a walkthrough followed by an *Experiments* part, and `#map/reference` and `#map/chiplets` were folded into chapter 09's *Real chips* part (`#map/chips`, `#map/amd`, `#map/intel`, `#map/arm`). The evidence categories were renamed; see [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md).
+
 `AUDIT.md` is the supplied, agreed roadmap, copied without editing. This is an
 implementation map, not a new audit. Baseline: `da35edc`.
 
