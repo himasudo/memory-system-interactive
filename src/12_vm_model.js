@@ -1,4 +1,4 @@
-/* OS/translation teaching state, separate from the existing x86 walk plate. */
+/* OS-side virtual memory state for the translation labs (separate from the x86 walk plate). */
 var VMLab = (function () {
   'use strict';
   function copy(x) {

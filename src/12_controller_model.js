@@ -1,5 +1,5 @@
-/* Timing-constrained teaching controller. Coordinates/timings are explicit;
-   there is no physical-address decoder or proprietary hardware scheduler here. */
+/* A DRAM controller that obeys the timing rules. Requests arrive as bank/row/column
+   coordinates; there is no physical-address decoder and no vendor scheduler. */
 var ControllerLab = (function () {
   'use strict';
   var DEFAULTS = {

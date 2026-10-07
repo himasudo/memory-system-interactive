@@ -1,4 +1,4 @@
-/* Optional shipped machines. Pure validation; identities never calibrate models. */
+/* Results shipped with the site, if any. Pure validation; they never change the simulations. */
 var MeasuredRegistry = (function () {
   'use strict';
   function object(v) {

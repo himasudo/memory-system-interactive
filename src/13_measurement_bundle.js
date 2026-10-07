@@ -1,4 +1,4 @@
-/* Portable native bundle contract. Pure functions; no network or persistence. */
+/* The result bundle written by benchmarks/run_all.py. Pure functions; no network or storage. */
 var MeasurementBundle = (function () {
   'use strict';
   var schemas = {

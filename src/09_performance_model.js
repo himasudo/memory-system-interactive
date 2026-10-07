@@ -1,4 +1,5 @@
-/* Pure Phase 1 models. Capacities and policies are explicit teaching-model parameters. */
+/* Queueing and dependency models behind the performance chapter. Pure functions; every
+   size and latency is a parameter the labs show. */
 var LabModel = (function () {
   'use strict';
   var defaults = {

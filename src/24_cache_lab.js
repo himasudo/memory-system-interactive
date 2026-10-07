@@ -7,47 +7,48 @@
   App.gloss(
     'reuse_distance',
     'reuse / stack distance',
-    'Number of distinct other cache lines referenced since the previous access to a line. Under fully associative LRU, a cache of C lines hits when this distance is below C. First touch has no finite reuse distance.'
+    'How many different lines were touched since this line was last used. A fully associative LRU cache of C lines hits whenever that number is below C. A first touch has no reuse distance.'
   );
   App.gloss(
     'compulsory',
     'compulsory miss',
-    'First reference to a cache line in the defined demand trace. The 3C experiment starts empty and excludes prefetch/coherence effects.'
+    'A miss on the first use of a line. No cache size or layout avoids it; only prefetching can.'
   );
   App.gloss(
     'capacity_miss',
     'capacity miss',
-    'A repeated-reference miss that also misses in the same-capacity fully associative LRU shadow used by this experiment. This is a classification relative to a stated replacement model, not perfect replacement.'
+    'A repeat miss that a fully associative cache of the same size would also take: the data simply does not fit.'
   );
   App.gloss(
     'hitm',
     'HITM / dirty peer evidence',
-    'A modified peer cache can supply the current line while backing memory is stale. Hardware sampling events and report labels differ across CPU families; perf c2c support must be checked on the target machine.'
+    'A load that finds the line modified in another core’s cache, so that core supplies it while memory still holds an old copy. perf c2c reports these on CPUs that support it.'
   );
   App.gloss(
     'transient_coh',
     'transient coherence state',
-    'Tracks outstanding data, permission requests or acknowledgements between stable states. IS/IM/SM/OM in the lab are generic teaching labels, not AMD protocol state names.'
+    'The state a line is in while a request is still in flight, between two stable states such as I and S. IS, IM, SM and OM are the textbook names.'
   );
   App.gloss(
     'atomic_rmw',
     'atomic read-modify-write',
-    'Indivisibly reads and updates one atomic object. Its language-level memory order constrains other accesses separately. Relaxed still guarantees atomicity; it does not publish unrelated payload data.'
+    'Reads and updates one value as a single step no other core can split, such as fetch_add or compare-and-swap. A relaxed atomic is still indivisible; it just does not order other memory accesses.'
   );
   function section(root, id, title, copy) {
     return App.labSection(root, id, title, copy);
   }
   function teaching(root, copy) {
-    U.badge(root, 'Teaching model · chosen capacities and policies');
-    U.text('p', root, copy);
+    U.model(root, copy);
   }
-  function replayControls(root, label, render) {
-    var controls = h('div', { class: 'perf-actions' }, root),
+  /* Back / next / restart plus a slider. Pass `before` to place it right above the view it drives. */
+  function replayControls(root, label, render, before) {
+    var controls = h('div', { class: 'perf-actions lab-stepper' }, root),
       back = U.text('button', controls, '← back', { type: 'button' }),
       next = U.text('button', controls, 'next →', { type: 'button' }),
       reset = U.text('button', controls, 'restart', { type: 'button' }),
       lab = h('label', { class: 'perf-scrub' }, controls);
     U.text('span', lab, label);
+    if (before && before.parentNode === root) root.insertBefore(controls, before);
     var range = h('input', { type: 'range', min: 0, max: 0, value: 0, 'aria-label': label }, lab),
       i = 0,
       length = 1;
@@ -90,19 +91,19 @@
     var sec = section(
       root,
       'taxonomy',
-      'Classify a miss; measure reuse',
-      'Change one cache parameter while preserving the access trace.'
+      'Why did that access miss?',
+      'Run the same trace through caches of different shapes and sort every miss into one of three kinds.'
     );
     teaching(
       sec,
-      'This experiment uses true LRU in a small set-associative cache and a same-capacity fully associative LRU shadow. It complements the chosen cache layout / pLRU walkthrough above. The 3C classification applies to this demand trace; coherence invalidations, prefetching and other replacement policies need additional explanations.'
+      'A small LRU cache, plus a fully associative LRU cache of the same size used only to classify misses. No prefetching, and no other cores invalidating lines.'
     );
     U.checkpoint(
       sec,
-      'Three lines map to one 2-way set but fit in the whole cache. After the first touches, why do repeated accesses miss?',
+      'Three lines map to the same 2-way set, but the whole cache could hold them. After the first touches, why do the repeats still miss?',
       ['Compulsory', 'Capacity', 'Conflict'],
       2,
-      'The fully associative shadow still holds the lines; only the set restriction forces eviction.'
+      'A fully associative cache of the same size keeps all three. Only the 2-way set pushes them out, so these are conflict misses.'
     );
     var o = { sets: 4, ways: 2, line: 64, op: 'read', drain: false },
       ctl = h('div', { class: 'perf-controls' }, sec);
@@ -193,7 +194,10 @@
       state = h('div', { class: 'cache-state' }, sec),
       summary = h('div', null, sec),
       sim;
-    var transport = replayControls(sec, 'Cache trace fragment', function (i) {
+    var transport = replayControls(
+      sec,
+      'Cache trace fragment',
+      function (i) {
       if (!sim) return;
       var e = sim.events[i];
       state.replaceChildren();
@@ -213,7 +217,7 @@
           e.set +
           '. Reuse distance: ' +
           (e.distance === null ? 'first touch (∞)' : e.distance + ' distinct lines') +
-          '. Same-capacity fully associative LRU: ' +
+          '. Fully associative cache of the same size: ' +
           (e.shadowHit ? 'hit' : 'miss') +
           '.' +
           (e.victim
@@ -238,7 +242,9 @@
           ];
         })
       );
-    });
+      },
+      state
+    );
     function draw() {
       try {
         var tokens = input.value.trim().split(/[\s,]+/);
@@ -275,33 +281,33 @@
           metrics,
           'Compulsory / capacity / conflict',
           c.compulsory + ' / ' + c.capacity + ' / ' + c.conflict,
-          'All miss causes partition this trace'
+          'Every miss is exactly one of these'
         );
         U.metric(
           metrics,
-          'Lower-level traffic',
+          'Traffic to the next level',
           c.totalLineBytes + ' B',
-          'Demand fills + RFO + dirty writebacks'
+          'Fills, ownership reads and writebacks'
         );
         U.table(
           summary,
-          ['Accounting boundary', 'Bytes / events'],
+          ['Traffic', 'Bytes / events'],
           [
             ['Useful read / write bytes', c.usefulReadBytes + ' / ' + c.usefulWriteBytes],
-            ['Read fills / RFO bytes', c.readFillBytes + ' / ' + c.rfoBytes],
+            ['Read fills / ownership reads (RFO)', c.readFillBytes + ' / ' + c.rfoBytes],
             ['Dirty evictions / writeback bytes', c.dirtyEvictions + ' / ' + c.writebackBytes],
             [
               'Dirty lines still resident',
               sim.dirtyResident +
                 (o.drain
-                  ? ' (charged by explicit final drain)'
-                  : ' (not yet charged as writebacks)')
+                  ? ' (written back at the end)'
+                  : ' (not written back yet)')
             ]
           ]
         );
         U.table(
           summary,
-          ['Access fragment', 'Line / set', 'Reuse distance', 'FA shadow', 'Actual outcome'],
+          ['Access', 'Line / set', 'Reuse distance', 'Fully assoc. cache', 'Result'],
           sim.events.map(function (e) {
             return [
               e.index + 1,
@@ -321,24 +327,24 @@
     U.text(
       'p',
       sec,
-      'For LRU, reuse distance is the number of distinct other lines since the previous reference. A fully associative cache of C lines hits when that distance is below C. First touch is compulsory; an actual miss that the shadow avoids is conflict; the remaining repeated-reference misses are capacity. This definition does not explain every miss on a real processor.'
+      'How to read it: a first use is compulsory. A miss the fully associative cache would have avoided is a conflict miss. Every other repeat miss is a capacity miss: the data does not fit.'
     );
     U.text(
       'p',
       sec,
-      'Measurement: hold the byte footprint fixed and compare strides that repeatedly map to one modeled set with strides that spread accesses. Real higher-level cache indexing can be hashed or undocumented. A timing change alone does not prove a particular physical index function. Use the native working-set/MLP harness, then add controlled stride traces.'
+      'On real hardware, keep the amount of data fixed and compare strides that land in one set with strides that spread out. L2 and L3 caches often hash the set index, so their sets may not line up the way they do here.'
     );
   }
   function splitAndPorts(root) {
     var sec = section(
       root,
       'split',
-      'Split accesses and finite hit throughput',
-      'An L1 hit is a latency, not an unlimited supply rate.'
+      'Split accesses and hit throughput',
+      'What happens when one load crosses a line or page boundary, and how many hits the L1 can serve per cycle.'
     );
     teaching(
       sec,
-      'The byte boundaries are exact for 64-byte lines and 4 KiB pages. The bank function, port width/count and scheduling below are deliberately chosen teaching rules, not a hardware bank map or execution-port specification. The model chooses 64-byte lines; operand geometry does not establish ISA instruction support.'
+      'Line and page boundaries are exact for 64-byte lines and 4 KiB pages. The banks, ports and widths are made-up values, not any real CPU’s layout.'
     );
     var o = { addr: 60, size: 8, ports: 2, banks: 4, width: 8, pattern: 'spread' },
       controls = h('div', { class: 'perf-controls' }, sec);
@@ -356,15 +362,15 @@
       o.size = +v;
       draw();
     });
-    U.select(controls, 'Shared load/store ports (model)', [1, 2, 4], 2, function (v) {
+    U.select(controls, 'Shared load/store ports', [1, 2, 4], 2, function (v) {
       o.ports = +v;
       draw();
     });
-    U.select(controls, 'Banks (model)', [1, 2, 4, 8], 4, function (v) {
+    U.select(controls, 'Banks', [1, 2, 4, 8], 4, function (v) {
       o.banks = +v;
       draw();
     });
-    U.select(controls, 'Bytes per port/cycle (model)', [8, 16, 32], 8, function (v) {
+    U.select(controls, 'Bytes per port per cycle', [8, 16, 32], 8, function (v) {
       o.width = +v;
       draw();
     });
@@ -455,9 +461,9 @@
       );
       U.metric(
         metrics,
-        'L1 data-path traffic',
+        'L1 traffic',
         r.bytesPerCycle.toFixed(2) + ' B/cycle',
-        'Hit bytes + optional 64-byte fill writes; not DRAM bandwidth'
+        'Bytes read or filled inside the L1 per cycle'
       );
       U.table(
         result,
@@ -474,13 +480,13 @@
       U.text(
         'p',
         result,
-        'Bank = floor(byte address / port width) modulo bank count. Each bank accepts one fragment per model cycle; all request kinds share the selected ports. A wider or split operation consumes additional fragments. Misalignment inside one line does not itself mean two line fills. This model omits cache misses and uses the configured L1 latency after each fragment issues.'
+        'Here bank = (address ÷ port width) mod number of banks, and each bank takes one piece per cycle. Loads, stores and fills share the same ports. A wide or split access needs extra pieces, but being misaligned inside one line never costs a second line fill.'
       );
       if (q.pages > 1)
         U.text(
           'p',
           result,
-          'This access crosses a page boundary. Either page can hit or miss in its TLB, map to a different physical frame, or be absent/protected. Crossing a boundary is not itself a page fault. The OS/translation extensions add those independent page states.'
+          'This access crosses a page boundary. Each page has its own translation, so either half can miss in the TLB, sit in a different physical frame, or fault. Crossing the boundary is not a fault by itself.'
         );
     }
     draw();
@@ -490,7 +496,7 @@
       'Can 16 independent L1 hits finish in fewer than 16 × the latency of one hit?',
       ['Yes, if issue resources allow overlap', 'No, every hit must finish before the next starts'],
       0,
-      'The schedule separates latency from accepted operations per cycle. A shared bank or port can still serialize issue.'
+      'Hits overlap in the pipeline, so throughput is not 1 ÷ latency. A shared bank or port can still force them through one at a time.'
     );
   }
   function forwarding(root) {
@@ -498,11 +504,11 @@
       root,
       'forwarding',
       'Forward, wait, or replay?',
-      'Inspect the bytes before guessing a forwarding rule.'
+      'A younger load wants bytes that an older store has not written to the cache yet. Which bytes overlap decides what happens.'
     );
     teaching(
       sec,
-      'Coverage is a necessary data dependency condition, not a complete forwarding specification. Hardware-specific alignment, merging, size combinations and penalties require applicable documentation or a controlled measurement. The “lower 12 bits” experiment is an illustrative early-address filter.'
+      'This only checks which bytes overlap. Real CPUs add their own size and alignment rules for when forwarding is fast. The “same lower 12 bits” check is a simplified early filter.'
     );
     var o = {
         storeAddr: 4096,
@@ -553,7 +559,7 @@
     );
     U.select(
       ctl,
-      'Unresolved-store policy (model)',
+      'Unresolved-store policy',
       [
         [0, 'wait'],
         [1, 'speculate and validate']
@@ -588,52 +594,48 @@
     draw();
     U.table(
       matrix,
-      ['Case', 'What must be resolved', 'Generic mechanism'],
+      ['Case', 'What has to be known', 'What usually happens'],
       [
-        ['Exact match, data ready', 'All bytes available', 'Forwarding candidate'],
+        ['Exact match, data ready', 'All bytes are in the store', 'Forward'],
         [
-          'Contained load',
-          'All bytes covered; width/alignment support',
-          'Forwarding candidate, implementation-specific fast path'
+          'Load inside the store',
+          'All bytes covered; size and alignment allowed',
+          'Forward, if the CPU supports that shape'
         ],
         [
-          'Partial overlap / multiple stores',
-          'Other loaded bytes come from elsewhere',
-          'Merge if supported, otherwise wait/replay'
+          'Partial overlap, or several stores',
+          'Some bytes come from somewhere else',
+          'Merge if supported; otherwise wait and replay'
+        ],
+        ['Access crosses a line', 'Two cache lines are involved', 'Extra handling; the cost varies'],
+        [
+          'Store address not known yet',
+          'Real overlap or false alarm?',
+          'Wait, or guess and check later'
         ],
         [
-          'Cross-line access',
-          'More than one cache-line fragment',
-          'Extra handling; no fixed penalty asserted'
-        ],
-        [
-          'Unresolved store address',
-          'True overlap vs false alias',
-          'Wait, or speculate then validate/replay'
-        ],
-        [
-          'Same offset, different full addresses',
-          'Partial match was not a dependency',
-          'Any early false dependency can be released'
+          'Same low bits, different address',
+          'Only the low bits matched',
+          'The false dependency is released'
         ]
       ]
     );
     U.text(
       'p',
       sec,
-      'Measure exact-match and offset/width variants with identical native loop structure. Inspect assembly; otherwise the compiler can forward a C value itself or remove the memory operations. Compare distributions and documented PMCs where available. A slowdown does not by itself identify a particular predictor or forwarding restriction.'
+      'On real hardware, time exact-match and offset or width variants in the same loop, and check the assembly: the compiler may forward the value itself or remove the memory operations. A slowdown alone does not tell you which rule caused it.'
     );
   }
   function misses(root) {
     var sec = section(
       root,
       'miss-entries',
-      'Mergeable misses versus miss-entry saturation',
-      'Several loads can wait on one line; independent lines need independent entries.'
+      'Miss entries: sharing and running out',
+      'Loads to the same line share one entry; loads to different lines each need their own.'
     );
     teaching(
       sec,
-      'A finite miss table tracks outstanding lines until their fills return. Matching loads merge into one entry. Distinct lines require new entries; failed admission and ROB pressure delay the next load. Cache residency is unbounded after fill here so this experiment isolates allocation/merging, not replacement.'
+      'A miss table tracks each missing line until it arrives. Fills take a fixed 20 cycles and the cache never evicts, so only the miss table and the ROB limit progress.'
     );
     var o = { entries: 2, rob: 8, pattern: 'unique' },
       ctl = h('div', { class: 'perf-controls' }, sec);
@@ -666,7 +668,7 @@
       if (!r) return;
       var t = r.trace[i];
       state.replaceChildren();
-      U.text('h3', state, 'Cycle ' + t.t + ' · ' + (t.stall || 'admission can advance'));
+      U.text('h3', state, 'Cycle ' + t.t + ' · ' + (t.stall || 'new loads can enter'));
       U.table(
         state,
         ['Miss line', 'Merged waiters', 'Fill at cycle'],
@@ -690,7 +692,7 @@
           '/' +
           r.loads.length
       );
-    });
+    }, state);
     function draw() {
       var lines = Array.from({ length: 16 }, function (_, i) {
         return o.pattern === 'one' ? 0 : o.pattern === 'pairs' ? Math.floor(i / 2) : i;
@@ -702,19 +704,19 @@
         metrics,
         'Requests / merged loads',
         r.requests + ' / ' + r.merged,
-        'Same-line merging consumes no new miss entry'
+        'A merged load needs no new entry'
       );
       U.metric(
         metrics,
-        'Admission blocked',
+        'Blocked',
         r.blocked + ' cycles',
-        'Distinct line + all miss entries occupied'
+        'A new line, but every entry was busy'
       );
       U.metric(
         metrics,
-        'Completion',
-        r.cycles + ' model cycles',
-        'Includes fill/drain; fixed 20-cycle fill time'
+        'Finished after',
+        r.cycles + ' cycles',
+        'Including start-up and drain'
       );
       control.set(r.trace.length);
     }
@@ -723,19 +725,19 @@
       'p',
       null,
       sec,
-      'Compare this with <a href="#perf/queues">downstream controller/return backpressure</a>. Hardware queue counts, merging limits and per-thread allocation policies must be measured or sourced for the actual processor.'
+      'Compare with the <a href="#perf/queues">queues further down the path</a>. Real cores differ in how many misses they track and how they split those entries between threads.'
     );
   }
   function siblings(root) {
     var sec = section(
       root,
       'smt',
-      'One core, two logical threads',
-      'SMT can fill bubbles and can also compete for finite resources.'
+      'One core, two threads',
+      'A second thread can fill idle slots, or take resources the first thread needs.'
     );
     teaching(
       sec,
-      'Where SMT is supported, architectural thread state is distinct while execution and cache machinery can be shared. The quotas below are hypothetical choices, not a proprietary partitioning claim. This experiment isolates one shared issue slot and a finite load-slot pool. It does not model a calibrated hardware core or cache pollution.'
+      'Two threads share one issue slot and a pool of load slots. The sharing rules are examples: real cores split some structures between threads and share others.'
     );
     var o = { capacity: 8, policy: 'shared', sibling: 'memory' },
       ctl = h('div', { class: 'perf-controls' }, sec);
@@ -755,7 +757,7 @@
     );
     U.select(
       ctl,
-      'Load-slot allocation (model)',
+      'Load-slot allocation',
       [
         ['shared', 'Dynamic shared pool'],
         ['partitioned', 'Equal fixed quotas']
@@ -797,15 +799,15 @@
       );
       U.metric(
         metrics,
-        'A resource blocks',
+        'A blocked',
         r.blocked[0] + ' cycles',
-        'A is ready, but no allowed load slot is free'
+        'A was ready but had no free load slot'
       );
       U.metric(
         metrics,
         'Thread B work',
         o.sibling === 'off' ? 'none' : String(r.threads[1].done),
-        '64 compute ops or independent long-latency loads'
+        '64 compute operations, or independent slow loads'
       );
       [0, 1].forEach(function (thread) {
         var pts = r.trace.map(function (t) {
@@ -826,7 +828,7 @@
           svg
         );
       });
-      s('text', { x: 42, y: 20, class: 's' }, svg, 'A: green · B: violet · shared load occupancy');
+      s('text', { x: 42, y: 20, class: 's' }, svg, 'Load slots in use · A green · B violet');
       s('text', { x: 42, y: 207, class: 's' }, svg, '0');
       s(
         'text',
@@ -837,30 +839,27 @@
       U.text(
         'p',
         out,
-        'A holds at most one slot for four cycles; memory-heavy B can hold many slots for 80 cycles. A compute sibling consumes issue opportunities without occupying load slots. Equal quotas protect A but can leave capacity idle. Dynamic sharing can use more capacity but lets B delay A. These are mechanism experiments, not measured slowdown factors.'
+        'A needs one slot for 4 cycles at a time; a memory-heavy B can hold many slots for 80 cycles each. A compute-only B takes issue slots but no load slots. Equal quotas protect A but can leave slots idle; a shared pool uses every slot but lets B delay A.'
       );
     }
     draw();
     U.table(
       sec,
-      ['Real placement', 'What to compare'],
+      ['Run it on', 'What you see'],
       [
-        ['One logical thread', 'Pinned pointer chase baseline; record SMT sibling activity'],
+        ['One thread', 'The baseline: a pinned pointer chase with its sibling idle'],
         [
-          'Two siblings on one physical core',
-          'Execution/queue/private-cache interference and possible bubble filling'
+          'Two threads on one core',
+          'They compete for the core’s queues and private caches, and may fill each other’s idle slots'
         ],
-        [
-          'Different physical cores',
-          'Shared LLC/fabric/controller/bandwidth contention instead of same-core issue sharing'
-        ]
+        ['Two separate cores', 'They compete only for the shared L3, interconnect and memory']
       ]
     );
     h(
       'p',
       null,
       sec,
-      'Inspect Linux <code>thread_siblings_list</code> before choosing CPUs. Use <a href="benchmarks/README.md">native measurement guidance</a>; the <a href="#perf/queues">finite-memory experiment</a> explains shared downstream pressure without claiming an exact topology.'
+      'On Linux, <code>/sys/devices/system/cpu/cpu0/topology/thread_siblings_list</code> shows which logical CPUs share a core. The <a href="#perf/queues">finite-queue experiment</a> shows the shared pressure further down.'
     );
   }
   App.extendChapter('l1d', function (root) {

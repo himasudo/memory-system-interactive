@@ -1,4 +1,4 @@
-/* Optional measured machines and browser-local visitor import. GETs only. */
+/* Measure your machine: shipped results, your own run, and files loaded in the browser. GETs only. */
 (function () {
   'use strict';
   var U = App.LabUI,
@@ -11,8 +11,8 @@
       selected: null,
       yours: null,
       source: null,
-      referenceStatus: 'Checking for optional measured machines…',
-      yourStatus: 'No local result bundle loaded.'
+      referenceStatus: 'Checking for shipped results…',
+      yourStatus: 'No results loaded.'
     };
   var validators = {
     memory: App.Performance.validateMeasurement,
@@ -52,14 +52,14 @@
   function label(which, bundle) {
     return (
       (which === 'reference'
-        ? 'Optional measured machine'
+        ? 'Shipped machine'
         : state.source === 'local'
           ? 'Your machine · automatic local run'
-          : 'Your machine · local visitor import') +
+          : 'Your machine · loaded from a file') +
       ' · ' +
       bundle.machine.cpu_model +
-      (quick(bundle) ? ' · QUICK CHECKS' : '') +
-      (bundle.complete ? '' : ' · PARTIAL BUNDLE')
+      (quick(bundle) ? ' · quick check only' : '') +
+      (bundle.complete ? '' : ' · partial')
     );
   }
   function entries(name) {
@@ -95,17 +95,17 @@
           U.text(
             'p',
             out,
-            'Suite elapsed ' +
-              (row.environment.elapsed_ns / 1e9).toFixed(3) +
-              ' s (runner/compilation/collection, separate from kernel timing). ' +
+            'This suite took ' +
+              (row.environment.elapsed_ns / 1e9).toFixed(1) +
+              ' s including setup. ' +
               row.environment.warnings.length +
-              ' observed environment changes · potential confounds only. Inspect Results for the readings.',
+              ' environment changes during the run; see Measure your machine for the readings.',
             { class: 'measurement-environment-note' }
           );
       });
       if (rows.length)
         status.textContent =
-          'Measured data · ' +
+          'Measured · ' +
           rows
             .map(function (r) {
               return r.label;
@@ -126,8 +126,7 @@
     if (file.size > 32 * 1024 * 1024) throw new Error('Maximum bundle size is 32 MiB.');
     var bundle = JSON.parse(await file.text());
     accept('yours', bundle, 'visitor');
-    state.yourStatus =
-      'Locally imported result bundle · Not uploaded · kept in this page session only.';
+    state.yourStatus = 'Loaded from a file · Not uploaded · gone when you reload.';
     emit();
   }
   async function readBundle(url, limit) {
@@ -146,8 +145,7 @@
   }
   async function automatic() {
     if (location.protocol === 'file:') {
-      state.referenceStatus =
-        'Open through a local server to load measured datasets automatically.';
+      state.referenceStatus = 'Open the lab through a local web server to load shipped results.';
       emit();
       return;
     }
@@ -155,7 +153,7 @@
       try {
         var registry = await readBundle(new URL('data/reference/index.json', location.href), 32768);
         if (!registry) {
-          state.referenceStatus = 'No optional measured datasets are shipped.';
+          state.referenceStatus = 'No shipped results.';
           emit();
           return;
         }
@@ -180,15 +178,15 @@
         if (available) selectDataset(available.entry.id);
         else
           state.referenceStatus = state.datasets.length
-            ? 'Optional datasets unavailable: ' +
+            ? 'Shipped results unavailable: ' +
               state.datasets
                 .map(function (d) {
                   return d.entry.label + ': ' + d.reason;
                 })
                 .join(' | ')
-            : 'No optional measured datasets are shipped.';
+            : 'No shipped results.';
       } catch (e) {
-        state.referenceStatus = 'Measured-machine registry unavailable: ' + e.message;
+        state.referenceStatus = 'Could not read the list of shipped results: ' + e.message;
       }
       emit();
     };
@@ -204,13 +202,12 @@
         if (bundle) {
           if (state.source !== 'visitor') {
             accept('yours', bundle, 'local');
-            state.yourStatus = 'New native run loaded automatically · Not uploaded.';
+            state.yourStatus = 'Your latest run, loaded automatically · Not uploaded.';
           }
         } else
-          state.yourStatus =
-            'Local bundle endpoint is unavailable; visitor and per-suite imports remain available.';
+          state.yourStatus = 'No automatic results found. You can still load a file.';
       } catch (e) {
-        state.yourStatus = 'Local bundle unavailable: ' + e.message;
+        state.yourStatus = 'Could not load your latest run: ' + e.message;
       }
       emit();
     };
@@ -224,9 +221,9 @@
     state.reference = (dataset && dataset.bundle) || null;
     state.referenceStatus = dataset
       ? dataset.bundle
-        ? 'Optional measured dataset shipped with the site.'
-        : 'Selected dataset unavailable: ' + dataset.reason
-      : 'No optional measured dataset selected.';
+        ? 'Shipped with the site.'
+        : 'Unavailable: ' + dataset.reason
+      : 'Nothing selected.';
     emit();
   }
   App.Measurements = {
@@ -242,40 +239,40 @@
       root,
       'datasets',
       'Measure your machine',
-      'Reproduce selected experiments on Linux; compare compatible optional measured datasets privately.'
+      'One command runs the lab’s benchmarks on any Linux machine, x86-64 or Arm, and loads the results into every chapter.'
     );
-    U.badge(sec, 'Measured data · separate from simulations and documented architecture facts');
+    U.badge(sec, 'Your machine');
     U.code(
       sec,
-      'python3 benchmarks/run_all.py\n# Run and open the lab with all results loaded:\npython3 benchmarks/run_all.py --serve'
+      '# Run the benchmarks, then open the lab with your results loaded:\npython3 benchmarks/run_all.py --serve\n\n# Or only run them and save the results:\npython3 benchmarks/run_all.py'
     );
     U.text(
       'p',
       sec,
-      'One command selects permitted physical cores and SMT siblings, runs the safe native suites and retains raw JSON plus one aggregate bundle (the compatibility filename is results/reference-machine.json). Optional evidence keeps its exact scope. Quick runs check the harness; they do not characterize the machine.'
+      'It picks which CPUs to use (SMT siblings too, where allowed), runs five benchmark suites, and saves every raw result plus one combined bundle in results/reference-machine.json. Add --quick to check that everything works; quick runs are too short to measure anything. Nothing leaves your computer.'
     );
     var cards = h('div', { class: 'dataset-cards' }, sec),
       reference = h('article', { class: 'dataset-card reference-machine' }, cards),
       yours = h('article', { class: 'dataset-card your-machine' }, cards);
-    U.text('h3', reference, 'Optional measured machine');
+    U.text('h3', reference, 'Shipped machine');
     U.text(
       'p',
       reference,
-      'A recorded hardware experiment shipped with the site; not a universal architecture reference.'
+      'Results from one specific computer, if the site ships any, for comparison with yours.'
     );
     var datasetControl = h('div', { class: 'perf-controls' }, reference),
-      datasetSelect = U.select(datasetControl, 'Optional measured dataset', [], '', selectDataset);
-    var refModel = U.text('p', reference, 'No dataset selected'),
+      datasetSelect = U.select(datasetControl, 'Shipped machine', [], '', selectDataset);
+    var refModel = U.text('p', reference, 'Nothing selected'),
       refStatus = U.text('p', reference, '', { role: 'status', class: 'reference-dataset-status' }),
       refDetail = h('div', null, reference);
     U.text('h3', yours, 'Your machine');
-    var yourModel = U.text('p', yours, 'Locally imported result bundle'),
+    var yourModel = U.text('p', yours, 'No results loaded'),
       yourStatus = U.text('p', yours, '', { role: 'status', class: 'your-dataset-status' }),
       yourDetail = h('div', null, yours);
     U.text(
       'p',
       yours,
-      'Not uploaded. Files are read in your browser and kept in this page session. Importing does not change shipped datasets, the repository, deployed site or anyone else’s view.',
+      'Not uploaded. Your file is read in this browser tab only and is gone when you reload.',
       { class: 'dataset-privacy' }
     );
     var inputLabel = h('label', { class: 'perf-field' }, yours);
@@ -290,7 +287,7 @@
     input.onchange = async function () {
       try {
         await importFile(input.files[0]);
-        importStatus.textContent = 'Imported locally. No upload.';
+        importStatus.textContent = 'Loaded. Nothing was uploaded.';
       } catch (e) {
         importStatus.textContent = 'Could not import: ' + e.message;
       }
@@ -298,17 +295,17 @@
     remove.onclick = function () {
       state.yours = null;
       state.source = null;
-      state.yourStatus = 'No local result bundle loaded.';
+      state.yourStatus = 'No results loaded.';
       input.value = '';
-      importStatus.textContent = 'Your data cleared from this page.';
+      importStatus.textContent = 'Your results were cleared from this page.';
       emit();
     };
     yours.appendChild(yourDetail);
-    U.text('h3', sec, 'Compare matching experiments');
+    U.text('h3', sec, 'Compare with the shipped machine');
     U.text(
       'p',
       sec,
-      'Only cases with matching source, flags, work, seed, timing boundaries, quick/full mode and placement relationships are paired. CPU numbers may differ between machines. Ratios describe these trials; clocks, compiler versions, page policy and background activity can still differ. PMU counts from a different interval are never divided by kernel time.'
+      'Only cases that ran the same code with the same settings are paired; the CPU numbers can differ. A ratio above 1 means your machine took longer. Clock speed, compiler and background load can still differ between the two runs.'
     );
     var controls = h('div', { class: 'perf-controls' }, sec),
       name = 'memory';
@@ -336,7 +333,7 @@
     U.text(
       'p',
       sec,
-      'Every chapter’s existing per-suite file input remains available as a local fallback. Aggregate datasets populate the native measurement sections automatically; teaching models keep their configured inputs.'
+      'Each chapter also shows its own results next to its simulation:'
     );
     var links = h('div', { class: 'dataset-links' }, sec);
     [
@@ -365,32 +362,32 @@
       U.text(
         'p',
         box,
-        (bundle.complete ? 'Selected suites complete' : 'Partial bundle; inspect availability') +
-          (quick(bundle) ? ' · Quick checks only; not characterization.' : '')
+        (bundle.complete ? 'All suites complete' : 'Some suites are missing (see below)') +
+          (quick(bundle) ? ' · Quick check only, too short to measure.' : '')
       );
       var e = bundle.environment;
       U.text(
         'p',
         box,
         e
-          ? 'Environment telemetry · ' +
+          ? 'Environment: ' +
               e.warnings.length +
-              ' observed changes. Potential confounds; no causal diagnosis or discarded trials.'
-          : 'Environment telemetry was not recorded by this bundle version.',
+              ' changes seen during the run (clock speed, temperature, power). They may explain odd results; nothing was discarded.'
+          : 'This bundle has no environment readings.',
         { class: 'environment-summary' }
       );
       if (e) {
         var env = h('details', { class: 'environment-details' }, box);
-        U.text('summary', env, 'Environment changes, snapshots and suite durations');
+        U.text('summary', env, 'Show environment readings and suite times');
         U.text(
           'p',
           env,
-          'Reported frequency snapshots can differ from actual running frequency and are not averages during the timed work. Named temperatures do not establish thermal throttling. Missing readings do not establish stable conditions.'
+          'Clock-speed readings are snapshots, not averages over the run, and a temperature reading alone doesn’t prove throttling.'
         );
         if (e.warnings.length)
           U.table(
             env,
-            ['Scope / observed field', 'Observed change'],
+            ['Where / reading', 'Change seen'],
             e.warnings.map(function (w) {
               return [w.scope + ' · ' + w.field, w.message];
             })
@@ -410,7 +407,7 @@
         U.text(
           'p',
           env,
-          'Suite duration includes runner compilation/setup/collection and excludes environment snapshots. Raw trial timers retain their own boundaries. Run duration also includes telemetry and optional perf.'
+          'Suite time includes compiling and setup, so it is longer than the benchmark timers.'
         );
         U.code(
           env,
@@ -429,7 +426,7 @@
         );
       }
       var raw = h('details', null, box);
-      U.text('summary', raw, 'Suite availability, machine and optional evidence');
+      U.text('summary', raw, 'Show suites, machine details and perf availability');
       U.table(raw, ['Suite', 'Status', 'Trials', 'Availability'], rows);
       U.code(
         raw,
@@ -450,24 +447,23 @@
       comparison.replaceChildren();
       if (!state.reference || !state.yours) {
         comparisonStatus.textContent =
-          'Select an optional measured machine and load your result bundle to compare. Unavailable measurements are not filled in.';
+          'Pick a shipped machine and load your bundle to compare.';
         return;
       }
       var rows = M.comparisons(state.reference, state.yours, name);
       comparisonStatus.textContent = rows.length
-        ? rows.length +
-          ' matched cases · whole-trial statistics · Your / selected above 1 means more ns for the same work.'
-        : 'No matching cases for this suite. Check source, flags, work, timing and placement; no ratio is inferred.';
+        ? rows.length + ' matching cases. Your / shipped above 1 means your machine took longer.'
+        : 'No matching cases for this suite.';
       if (rows.length)
         U.table(
           comparison,
           [
             'Placement / case',
             'Unit',
-            'Selected median (n / MAD)',
+            'Shipped median (n / MAD)',
             'Your median (n / MAD)',
-            'Your / selected',
-            'Context'
+            'Your / shipped',
+            'Note'
           ],
           rows.map(function (r) {
             return [
@@ -482,10 +478,7 @@
               r.a.median.toFixed(3) + ' (' + r.a.n + ' / ' + r.a.mad.toFixed(3) + ')',
               r.b.median.toFixed(3) + ' (' + r.b.n + ' / ' + r.b.mad.toFixed(3) + ')',
               r.ratio.toFixed(3),
-              (r.partial ? 'Partial trials; ' : '') +
-                (r.compilerDiff
-                  ? 'Compiler metadata differs; inspect retained version'
-                  : 'Inspect retained context')
+              (r.partial ? 'Partial; ' : '') + (r.compilerDiff ? 'different compiler' : '—')
             ];
           })
         );
@@ -503,10 +496,10 @@
       yourStatus.textContent = state.yourStatus;
       refModel.textContent = state.reference
         ? state.reference.machine.cpu_model + ' · ' + state.reference.machine.architecture
-        : 'No measured dataset selected';
+        : 'Nothing selected';
       yourModel.textContent = state.yours
         ? state.yours.machine.cpu_model + ' · ' + state.yours.machine.architecture
-        : 'Locally imported result bundle';
+        : 'No results loaded';
       detail(refDetail, state.reference);
       if (
         state.datasets.some(function (d) {
@@ -514,7 +507,7 @@
         })
       ) {
         var reasons = h('details', null, refDetail);
-        U.text('summary', reasons, 'Unavailable optional datasets');
+        U.text('summary', reasons, 'Show unavailable shipped results');
         state.datasets
           .filter(function (d) {
             return !d.bundle;

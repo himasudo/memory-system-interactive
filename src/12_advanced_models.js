@@ -1,5 +1,5 @@
-/* Phase 6 mechanisms. Capacities, policies and clocks are explicit teaching
-   choices; none of these engines identifies a proprietary CPU/device design. */
+/* Models for the later labs (NUMA, refresh, ECC, row disturbance, locks and more). Every size,
+   policy and clock is a parameter; none of them copies a specific chip. */
 var AdvancedLab = (function () {
   'use strict';
   function integer(v, lo, hi, name) {

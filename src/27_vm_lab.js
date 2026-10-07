@@ -26,43 +26,40 @@
   App.gloss(
     'vma',
     'virtual memory area (VMA)',
-    'Linux mapping metadata describes an address range, permissions and backing policy. A valid VMA does not imply that every address already has a present page-table entry or private physical memory.'
+    'Linux’s record of one mapped address range: its permissions and what backs it. A VMA can exist before any page in it has a page-table entry or physical memory.'
   );
   App.gloss(
     'cow',
     'copy-on-write (COW)',
-    'Share protected contents until a permitted write requires private writable data. A write-protection fault can trigger a copy, but an exclusively owned anonymous page may be reused. A forbidden write is not automatically COW.'
+    'Two processes share a page read-only until one of them writes. The write faults, and the kernel gives the writer its own copy (or reuses the page if nobody else still maps it).'
   );
   App.gloss(
     'minor_fault',
     'minor page fault',
-    'A kernel-resolved page fault that does not require loading the page from storage. This is not a TLB miss: a hardware walk can resolve a TLB miss without a page fault.'
+    'A page fault the kernel fixes without reading storage. Not the same as a TLB miss: most TLB misses are handled by a hardware page walk with no fault at all.'
   );
   App.gloss(
     'thp',
     'transparent huge pages (THP)',
-    'Linux can use larger mappings for eligible memory under its current policy. Advice is a request, not evidence of the actual mapping size. Modern multi-size THP and PMD-size THP have different translation properties.'
+    'Linux can back memory with huge pages automatically when it can find them. Asking for them (madvise) is a request, not a guarantee.'
   );
   function lifecycle(root) {
     var sec = section(
       root,
       'os',
       'A mapping is not a resident page',
-      'Follow bytes and permissions through mmap, first touch, fork and reclaim.'
+      'Follow one page through mmap, first touch, fork, copy-on-write and reclaim.'
     );
-    App.CacheUI.teaching(
+    U.model(
       sec,
-      'This is a reduced Linux-style lifecycle with four 4 KiB pages and two processes. Each frame displays one representative word; zero/copy/writeback accounting covers the full page. There is one conceptual TLB per process, no fault-time model, and no page-table allocation accounting. Invalidation completion is assumed in this scene; the shootdown lab below makes that wait explicit.'
+      'A simplified Linux-style lifecycle: four 4 KiB pages, two processes, one TLB each. Frames show one word, but zeroing and copying count whole pages. Faults take no time, and TLB invalidations finish at once (the shootdown lab below adds that wait).'
     );
     U.checkpoint(
       sec,
-      'A private anonymous mmap succeeds. Does it already require four private data frames?',
-      [
-        'No: mapping policy can exist before first touch',
-        'Yes: mmap must populate every data page'
-      ],
+      'A private anonymous mmap of four pages succeeds. Has the kernel allocated four physical frames yet?',
+      ['No: frames come later, on first touch', 'Yes: mmap allocates every page up front'],
       0,
-      'Read a new anonymous page, then write it. This chosen path first uses a shared read-only zero page, then allocates private memory.'
+      'Read a new page, then write it. The read maps a shared zero page; only the write allocates a private frame.'
     );
     var o = { kind: 'anon', warm: false, swap: true },
       state,
@@ -87,8 +84,8 @@
       ctl,
       'Initial file page cache',
       [
-        [0, 'Empty in this model'],
-        [1, 'Already warm']
+        [0, 'Empty'],
+        [1, 'Already cached']
       ],
       0,
       function (v) {
@@ -98,10 +95,10 @@
     );
     U.select(
       ctl,
-      'Model swap availability',
+      'Swap',
       [
-        [1, 'Available'],
-        [0, 'Disabled']
+        [1, 'On'],
+        [0, 'Off']
       ],
       1,
       function (v) {
@@ -207,11 +204,11 @@
       if (!history.length) return;
       cursor = i;
       draw(history[i]);
-    });
+    }, view);
     function reset() {
       state = M.create(o);
       history = [
-        { label: 'No mappings yet. Create a VMA with mmap, or run a story.', state: state }
+        { label: 'Nothing mapped yet. Press mmap, or run one of the stories.', state: state }
       ];
       actor = 'parent';
       actorCtl.value = actor;
@@ -239,7 +236,7 @@
         history.length +
         ' · ' +
         e.label +
-        (cursor < history.length - 1 ? ' · History preview: move to the last event to act.' : '');
+        (cursor < history.length - 1 ? ' · Viewing history: go to the last event to act again.' : '');
       buttons.forEach(function (b) {
         b.disabled = cursor < history.length - 1;
       });
@@ -248,27 +245,27 @@
       tables.replaceChildren();
       U.metric(
         metrics,
-        'Minor / storage-backed faults',
+        'Minor / major faults',
         q.stats.minor + ' / ' + q.stats.major,
-        'Model outcomes, not predicted Linux counter totals'
+        'Major means a storage read was needed'
       );
       U.metric(
         metrics,
         'Allocated / copied / zeroed',
         q.stats.allocations + ' frames / ' + q.stats.copyBytes + ' B / ' + q.stats.zeroBytes + ' B',
-        'Initial warm page-cache frames excluded'
+        'Frames allocated, bytes copied, bytes zeroed'
       );
       U.metric(
         metrics,
         'Writeback / swap out / swap in',
         q.stats.writebackBytes + ' / ' + q.stats.swapOutBytes + ' / ' + q.stats.swapInBytes + ' B',
-        'File and anonymous backing are separate'
+        'File pages go to the file, anonymous pages to swap'
       );
       U.metric(
         metrics,
         'Walks / TLB hits',
         q.stats.walks + ' / ' + q.stats.tlbHits,
-        'A walk does not necessarily cause a fault'
+        'A page walk is not a fault'
       );
       var ids = Object.keys(q.frames),
         height = Math.max(390, 65 * ids.length + 60);
@@ -353,7 +350,7 @@
       });
       U.table(
         tables,
-        ['Backing state', 'Representative contents'],
+        ['Backing store', 'Contents (one word per page)'],
         [
           ['File backing', q.file.join(' / ')],
           [
@@ -384,55 +381,52 @@
           ],
           [
             'Forbidden accesses',
-            q.stats.protectionFaults +
-              ' (SIGSEGV outcome shown; this teaching UI keeps the process available)'
+            q.stats.protectionFaults + ' (each would be a SIGSEGV; the lab keeps the process running)'
           ]
         ]
       );
     }
     reset();
-    U.text('h3', sec, 'Explain the changed ownership');
+    U.text('h3', sec, 'What just happened');
     U.text(
       'p',
       sec,
-      'MAP_PRIVATE writes make private anonymous data; they do not update file backing. MAP_SHARED processes can refer to the same page-cache frame. CPU visibility of those stores and durable storage are different boundaries. This model writes dirty file data back before evicting it; it does not model filesystem journaling, device caches, msync/fsync guarantees or crash persistence. Fork initially shares private data with write protection. A permitted later store either copies the page or reuses an exclusively owned anonymous frame.'
+      'A write to a MAP_PRIVATE mapping makes a private copy; the file never changes. With MAP_SHARED, both processes use the same page-cache frame, so each sees the other’s writes. After fork, both processes share private pages read-only; the first write either copies the page or, if only one process still uses it, just makes it writable again.'
     );
     U.text(
       'p',
       sec,
-      'Cold file and nonresident swap faults require modeled storage reads here. Real Linux fault counts depend on readahead, fault-around, swap cache, huge mappings and competing activity. A major fault is not a DRAM cache miss; a minor fault is not a TLB miss. Reclaim cannot simply discard dirty anonymous contents: this scenario needs swap or retains the page. Real memory pressure also involves reclaim policy, writeback, compaction and possible OOM handling.'
+      'A major fault reads from storage; a minor fault doesn’t. Neither one is a cache miss or a TLB miss. Reclaim can drop a clean file page, but a dirty anonymous page needs somewhere to go: swap, or it stays. Real Linux adds readahead, fault-around and the swap cache on top of this.'
     );
-    source(
-      sec,
-      'Linux memory-management concepts',
-      'https://docs.kernel.org/admin-guide/mm/concepts.html'
-    );
+    U.sources(sec, [
+      ['Linux memory-management concepts', 'https://docs.kernel.org/admin-guide/mm/concepts.html']
+    ]);
     measurement(sec);
   }
   function pages(root) {
     var sec = section(
       root,
       'pages',
-      'Page size: reach, fault work and fallback',
-      'Compare the same sparse or dense accesses under explicitly chosen mapping outcomes.'
+      'Bigger pages: when they help',
+      'One huge-page TLB entry covers 512 small pages, but only if your accesses actually share it.'
     );
-    App.CacheUI.teaching(
+    U.model(
       sec,
-      'The LRU TLB below has the same selected entry count for both page sizes to isolate reach. Actual CPU structures, capacities, associativity and page-size support must be checked separately; this is not their replacement model. The 2 MiB case represents a PMD-size huge leaf on the four-level x86-64 example. Linux multi-size THP can also use smaller PTE-mapped large pages; “THP” does not universally mean a 2 MiB leaf.'
+      'One LRU TLB with the same number of entries for both page sizes, so only the reach changes. The huge page is a 2 MiB x86-64 page. (Linux can also build large pages between 4 KiB and 2 MiB.)'
     );
     U.checkpoint(
       sec,
-      'One word is used in each of 256 widely separated 2 MiB regions. Does mapping each as a huge page necessarily improve this TLB trace?',
+      'A program touches one word in each of 256 far-apart 2 MiB regions. Do huge pages cut its TLB misses?',
       ['No: there are still 256 distinct translations', 'Yes: larger pages always reduce misses'],
       0,
-      'Each sparse access falls in a different huge mapping. Compare distinct translations and mapped footprint, not page size alone.'
+      'Every access lands in a different huge page, so it still needs 256 translations, and now each one maps 2 MiB.'
     );
     var o = { pages: 256, passes: 2, entries: 64, pattern: 'dense' },
       outcome = 'success',
       ctl = h('div', { class: 'perf-controls' }, sec);
     [
       ['pages', '4 KiB regions touched', [64, 256, 512, 1024]],
-      ['entries', 'TLB entries in each model', [16, 64, 128]],
+      ['entries', 'TLB entries', [16, 64, 128]],
       [
         'pattern',
         'Page access pattern',
@@ -451,10 +445,10 @@
       ctl,
       'Huge mapping outcome',
       [
-        ['success', 'THP: eligible 2 MiB mapping succeeds'],
-        ['fallback', 'THP: falls back to base pages'],
-        ['explicit', 'HugeTLB: pool / reservation available'],
-        ['unavailable', 'HugeTLB: allocation unavailable']
+        ['success', 'THP: got a 2 MiB page'],
+        ['fallback', 'THP: fell back to 4 KiB pages'],
+        ['explicit', 'HugeTLB: pages reserved'],
+        ['unavailable', 'HugeTLB: none available']
       ],
       outcome,
       function (v) {
@@ -502,12 +496,12 @@
                 big.mappedBytes + ' B'
               ]
             : [
-                'Explicit huge pages unavailable',
+                'No huge pages available',
                 '—',
                 '—',
                 '—',
-                'No mapping, no access trace',
-                'Do not silently report base-page success'
+                'mmap fails; nothing runs',
+                '—'
               ]
         ]
       );
@@ -542,69 +536,57 @@
       U.text(
         'p',
         results,
-        'Two complete passes; one word per selected 4 KiB region. “Mapped footprint” is the sum of whole selected mappings, not measured RSS or useful bytes. Sparse huge mappings can increase memory commitment, allocation/zeroing and reclaim work without reducing misses in this trace. The model assumes each huge mapping is fully backed; actual residency and promotion timing require observation.'
+        'Two passes, one word per 4 KiB region. “Mapped footprint” is the memory the mappings cover. With sparse accesses, huge pages can multiply the memory used and zeroed without saving a single miss.'
       );
     }
     draw();
     U.text(
       'p',
       sec,
-      'THP policy and MADV_HUGEPAGE permit an optimization; they do not prove that it happened. Eligibility, fragmentation, compaction and kernel configuration affect promotion and fallback. Explicit HugeTLB uses a separately managed pool/reservation mechanism and can fail when the requested allocation is unavailable. Avoid treating a lower TLB miss count as a guaranteed application speedup: larger faults, memory pressure and copy/zero costs can move the bottleneck.'
+      'Asking for huge pages (THP or MADV_HUGEPAGE) does not guarantee you get them: fragmentation and kernel settings decide. HugeTLB pages come from a reserved pool and simply fail when it is empty. And fewer TLB misses don’t always mean a faster program, because bigger faults and more zeroing cost time too. To see what you actually got, check AnonHugePages in /proc/PID/smaps while the program runs.'
     );
-    U.text(
-      'p',
-      sec,
-      'Observe /proc/PID/smaps (including AnonHugePages and mapping flags), actual kernel policy and the relevant per-size statistics while the process is alive. A base KernelPageSize field alone is not a complete THP diagnosis. Compare pinned, repeated native runs with the same useful footprint and recorded page state. Do not infer a 2 MiB hardware leaf solely from a successful madvise call.'
-    );
-    source(
-      sec,
-      'Linux THP and multi-size THP',
-      'https://docs.kernel.org/admin-guide/mm/transhuge.html'
-    );
-    U.text('span', sec, ' · ');
-    source(
-      sec,
-      'Linux explicit HugeTLB pages',
-      'https://docs.kernel.org/admin-guide/mm/hugetlbpage.html'
-    );
+    U.sources(sec, [
+      ['Linux transparent huge pages', 'https://docs.kernel.org/admin-guide/mm/transhuge.html'],
+      ['Linux HugeTLB pages', 'https://docs.kernel.org/admin-guide/mm/hugetlbpage.html']
+    ]);
   }
   function walks(root) {
     var sec = section(
       root,
       'walk-contention',
       'Page walks are memory traffic',
-      'A translation chain competes with the data it enables.'
+      'Each page walk is a chain of memory reads, and those reads compete with ordinary data for the same memory slots.'
     );
-    App.CacheUI.teaching(
+    U.model(
       sec,
-      'Eight translations have serial dependent page-table reads, followed by final data reads. Selected upper levels are treated as already cached. All remaining requests, including background data, share a finite service pool with one admission per model clock and round-robin class arbitration. Request latency, walker count, cache hits and slots are chosen parameters, not measured hardware values. Each modeled request transfers one 64-byte line; actual PTE cache-line sharing and lower cache hits can reduce traffic.'
+      'Eight translations, each a chain of page-table reads followed by its data read. Everything, background data included, shares a few memory slots, one new request per clock, taken in turn. Latency, walkers and slots are made-up values; every request moves one 64-byte line.'
     );
     U.checkpoint(
       sec,
-      'Can adding independent ordinary data requests slow a page walk even when the number of TLB misses stays fixed?',
+      'Can extra ordinary data traffic slow down page walks, even with the same number of TLB misses?',
       [
         'Yes: both use finite memory resources',
         'No: translation has a separate unlimited memory path'
       ],
       0,
-      'Watch the admitted PTE reads, the serial levels and the shared service occupancy.'
+      'Walk reads wait for memory slots like everything else. Add background requests and watch the walks stretch.'
     );
     var o = { walks: 8, walkers: 2, levels: 4, cached: 2, slots: 4, latency: 20, demand: 16 },
       ctl = h('div', { class: 'perf-controls' }, sec);
     [
-      ['walkers', 'Concurrent model walkers', [1, 2, 4, 8]],
+      ['walkers', 'Page walkers', [1, 2, 4, 8]],
       [
         'levels',
-        'Hardware walk levels',
+        'Page-table levels',
         [
-          [3, '3: 2 MiB leaf in the example'],
-          [4, '4: 4 KiB leaf in the x86-64 example'],
-          [5, '5: x86-64 with LA57; separately scoped']
+          [3, '3 (2 MiB page)'],
+          [4, '4 (4 KiB page, x86-64)'],
+          [5, '5 (x86-64 five-level paging)']
         ]
       ],
       ['cached', 'Cached upper levels', [0, 1, 2]],
-      ['slots', 'Shared memory service slots', [1, 2, 4, 8]],
-      ['latency', 'Chosen request latency', [10, 20, 40]],
+      ['slots', 'Memory slots', [1, 2, 4, 8]],
+      ['latency', 'Memory latency (clocks)', [10, 20, 40]],
       ['demand', 'Background data requests', [0, 16, 64]]
     ].forEach(function (a) {
       U.select(ctl, a[1], a[2], o[a[0]], function (v) {
@@ -618,7 +600,7 @@
       caption = U.text('p', view, ''),
       log = h('details', null, sec),
       r;
-    U.text('summary', log, 'Request dependencies and traffic');
+    U.text('summary', log, 'Show each walk');
     var rows = h('div', null, log);
     var step = App.CacheUI.replayControls(sec, 'Walk model clock', function (i) {
       if (!r) return;
@@ -680,9 +662,9 @@
         'text',
         { x: 100, y: 286, class: 's' },
         svg,
-        'Green: PTE line · violet: final data line · background requests shown in shared occupancy'
+        'Green: page-table read · violet: data read · background requests count toward the slots'
       );
-    });
+    }, view);
     function run() {
       r = M.walks(o);
       sec._walkResult = r;
@@ -690,27 +672,27 @@
       rows.replaceChildren();
       U.metric(
         metrics,
-        'Drain time',
-        r.cycles + ' model clocks',
-        'Includes PTE, target data and background requests'
+        'Finished after',
+        r.cycles + ' clocks',
+        'Walks, data and background requests'
       );
       U.metric(
         metrics,
         'PTE reads / line bytes',
         r.pteReads + ' / ' + r.pteReads * 64 + ' B',
-        'Eight bytes interpreted per entry, whole modeled lines transferred'
+        'Each read uses 8 bytes but moves a 64-byte line'
       );
       U.metric(
         metrics,
-        'All transferred lines',
+        'Total bytes moved',
         r.lineBytes + ' B',
-        'PTE + final data + background'
+        'Walks + data + background'
       );
       U.metric(
         metrics,
-        'Admission blocked',
+        'Blocked',
         r.blocked + ' clocks',
-        'A ready request finds all service slots occupied'
+        'A ready request found every slot busy'
       );
       U.table(
         rows,
@@ -725,36 +707,32 @@
     U.text(
       'p',
       sec,
-      'Each level can start only after the preceding uncached entry returns. Other walks can overlap; a walker is released when translation finishes, before the target data returns. Page-walk caches, ordinary caches, merging and hardware prioritization alter real traffic. Linux may describe a five-level software hierarchy with folded levels even on four-level hardware: do not count software abstractions as extra hardware reads. Measure walk activity with events supported on the actual CPU, and distinguish walk completions, cycles spent walking and ordinary cache misses.'
+      'Each level waits for the one before it, but separate walks overlap. A walker is free as soon as its translation is done, before the data arrives. Real CPUs keep upper levels in page-walk caches, and Linux describes five software levels that fold down to the four the hardware actually walks.'
     );
-    source(
-      sec,
-      'Linux page-table hierarchy and folded levels',
-      'https://docs.kernel.org/mm/page_tables.html'
-    );
+    U.sources(sec, [['Linux page tables', 'https://docs.kernel.org/mm/page_tables.html']]);
   }
   function shootdowns(root) {
     var sec = section(
       root,
       'shootdown',
-      'Changing a PTE is a distributed operation',
-      'Wait for stale translations to stop being usable before relying on the new mapping.'
+      'Changing a page table is a multi-core job',
+      'Other cores may still hold the old translation in their TLBs. The change is safe only once every one of them confirms it is gone.'
     );
-    App.CacheUI.teaching(
+    U.model(
       sec,
-      'This scenario sends IPIs to the selected CPUs that may hold translations, includes local invalidation, remote handler delay and acknowledgements, and lets the origin continue only after all required completions. CPU masks, batching, full-context thresholds and all clocks are chosen rules, not a reproduction of a particular Linux release or x86 invalidation instruction. A 64-CPU run is a server scaling extension, not an implied host topology.'
+      'The kernel interrupts every CPU that may hold the old translation (an IPI); each one invalidates it, and the origin waits for every reply. Batching rules and timings are made up. The 64-CPU option shows how this scales on a large server.'
     );
     U.checkpoint(
       sec,
-      'One remote CPU handles its IPI late. Can the origin finish after the average acknowledgement time?',
-      ['No: it needs the last required completion', 'Yes: average latency bounds the operation'],
+      'One remote CPU answers its interrupt late. When can the origin continue?',
+      ['After the slowest CPU replies', 'At the average reply time'],
       0,
-      'The wall time is a critical path; sum of CPU invalidation work is a different quantity.'
+      'It waits for the slowest reply. The total invalidation work across all CPUs is a different number.'
     );
     var o = { cpus: 8, touchers: 8, pages: 16, batch: true, late: 0 },
       mask = 'all',
       ctl = h('div', { class: 'perf-controls' }, sec);
-    U.select(ctl, 'Online model CPUs', [1, 4, 8, 16, 64], 8, function (v) {
+    U.select(ctl, 'CPUs', [1, 4, 8, 16, 64], 8, function (v) {
       o.cpus = +v;
       run();
     });
@@ -772,7 +750,7 @@
         run();
       }
     );
-    U.select(ctl, 'Pages whose PTEs change', [1, 16, 256], 16, function (v) {
+    U.select(ctl, 'Pages changed', [1, 16, 256], 16, function (v) {
       o.pages = +v;
       run();
     });
@@ -797,7 +775,7 @@
       svg = figure(sec, 'First shootdown round and its last required acknowledgement', 900, 300),
       explain = U.text('p', sec, ''),
       details = h('details', null, sec);
-    U.text('summary', details, 'Every CPU and round');
+    U.text('summary', details, 'Show every CPU and round');
     var table = h('div', null, details);
     function run() {
       o.touchers =
@@ -810,7 +788,7 @@
       U.metric(
         metrics,
         'Origin blocked',
-        r.cycles + ' model clocks',
+        r.cycles + ' clocks',
         r.rounds + ' sequential invalidation round(s)'
       );
       U.metric(metrics, 'Remote IPIs', String(r.ipis), o.touchers + ' participating CPU(s)');
@@ -818,13 +796,13 @@
         metrics,
         'Sum of invalidation work',
         r.totalWork + ' CPU-clocks',
-        'Excludes send, handler wait and acknowledgements'
+        'Invalidation work only'
       );
       U.metric(
         metrics,
-        'Chosen invalidation',
-        r.full ? 'Full context' : 'Per-page',
-        r.full ? 'Collateral refill cost omitted' : 'Two model clocks per page'
+        'Invalidation',
+        r.full ? 'Whole TLB' : 'Per page',
+        r.full ? 'Drops every entry; refills not counted' : '2 clocks per page'
       );
       var events = r.events.filter(function (e) {
           return e.round === 0;
@@ -867,13 +845,13 @@
         'text',
         { x: 85, y: shown * 32 + 38, class: 's' },
         svg,
-        'First round: 0 → ' + end + ' model clocks · green invalidate · violet acknowledgement'
+        'First round, 0–' + end + ' clocks · green: invalidate · violet: reply'
       );
       explain.textContent =
         (o.touchers > 8
-          ? 'First eight CPU lanes shown; the full table includes the delayed last CPU. '
+          ? 'Showing the first 8 CPUs; the table below has all of them. '
           : '') +
-        'All required acknowledgements, including unshown lanes, determine completion. Batching amortizes messages; a full-context choice also drops unrelated translations. Their later refills are outside this timer, so this comparison does not prove the best real threshold.';
+        'The slowest reply sets the finish time. Batching saves messages. Flushing the whole TLB is quicker now but costs refills later, which this timer doesn’t count.';
       U.table(
         table,
         ['Round / CPU', 'Operation', 'Start → end'],
@@ -886,31 +864,33 @@
     U.text(
       'p',
       sec,
-      'Measure a controlled mapping/protection workload separately from first-touch faults and scheduler noise. Trace only available kernel TLB/IPI events and perf software counters; tracepoint names and permissions vary. An address-space CPU mask can avoid CPUs that never used the mapping, and ASIDs/PCIDs and deferred invalidation can change the implementation. Correctness still requires the appropriate architecture/kernel completion contract before reusing memory or relying on revoked access.'
+      'Linux interrupts only the CPUs that have run this process. Tagged TLB entries (PCID on x86, ASID on Arm) let it postpone some flushes, and Arm can also broadcast invalidations in hardware without interrupts. Either way, memory is reused only after every CPU has confirmed.'
     );
-    source(
-      sec,
-      'Linux cache and TLB flushing contract',
-      'https://docs.kernel.org/core-api/cachetlb.html'
-    );
+    U.sources(sec, [
+      ['Linux cache and TLB flushing', 'https://docs.kernel.org/core-api/cachetlb.html'],
+      [
+        'arm64 broadcast TLB invalidation (LKML)',
+        'https://lkml.iu.edu/hypermail/linux/kernel/1907.1/01679.html'
+      ]
+    ]);
   }
   function numa(root) {
     var sec = section(
       root,
       'numa',
-      'First touch, migration and remote memory',
-      'A two-node server extension: moving execution does not automatically move its pages.'
+      'Remote memory: where pages live',
+      'On a two-node server, a page stays where it was first touched, even if the thread that uses it moves.'
     );
-    App.CacheUI.teaching(
+    U.model(
       sec,
-      'This is an explicit two-node NUMA teaching model, separate from the recorded host topology. Pages are placed by a selected first-touch/interleave policy and stay there when the issuing CPU moves. Two independent memory service pools return 64-byte reads; remote responses serialize on one chosen link. Caches, coherence, outbound-request bandwidth, write traffic, automatic page migration and full controller timing are omitted. Model clocks are not measured socket latency.'
+      'Two memory nodes. Pages are placed by first touch or interleaving and never move. Remote replies share one link. No caches, no writes, no automatic page migration.'
     );
     U.checkpoint(
       sec,
-      'Pages were first touched on node 0. Execution moves to node 1 without page migration. Where is the data?',
+      'Pages were first touched on node 0. The thread then moves to node 1. Where is the data?',
       ['Still on node 0, so accesses become remote', 'Automatically local to the migrated thread'],
       0,
-      'Compare changing the issuing CPU with changing the placement policy. Linux policy and automatic balancing can change real placement over time.'
+      'Moving a thread doesn’t move its memory. (Linux’s automatic NUMA balancing may migrate pages later.)'
     );
     var o = { cpuNode: 0, placement: 'node0', spacing: 2, linkBytes: 8 },
       ctl = h('div', { class: 'perf-controls' }, sec);
@@ -932,11 +912,11 @@
         run();
       }
     );
-    U.select(ctl, 'NUMA request spacing', [0, 2, 8, 32], 2, function (v) {
+    U.select(ctl, 'Clocks between requests', [0, 2, 8, 32], 2, function (v) {
       o.spacing = +v;
       run();
     });
-    U.select(ctl, 'Remote response link bytes/clock', [4, 8, 16, 32], 8, function (v) {
+    U.select(ctl, 'Remote link (bytes/clock)', [4, 8, 16, 32], 8, function (v) {
       o.linkBytes = +v;
       run();
     });
@@ -953,20 +933,20 @@
         metrics,
         'Local / remote requests',
         r.local + ' / ' + r.remote,
-        '128 offered 64-byte reads, caches excluded'
+        '128 reads of 64 bytes'
       );
       U.metric(
         metrics,
-        'Mean arrival→return',
-        r.mean.toFixed(1) + ' model clocks',
-        'Includes memory-slot and link waiting'
+        'Average latency',
+        r.mean.toFixed(1) + ' clocks',
+        'Queueing included'
       );
       U.metric(metrics, 'Remote link traffic', r.linkBytes + ' B', 'Response data only');
       U.metric(
         metrics,
-        'Drain time',
-        r.cycles + ' model clocks',
-        (r.lineBytes / r.cycles).toFixed(2) + ' total line B/clock'
+        'Finished after',
+        r.cycles + ' clocks',
+        (r.lineBytes / r.cycles).toFixed(2) + ' bytes/clock overall'
       );
       box(svg, 10, 22, 270, 'Issuer on node ' + o.cpuNode, 'Pages: ' + o.placement, true);
       box(
@@ -996,14 +976,14 @@
         'text',
         { x: 290, y: 172, class: 's' },
         svg,
-        'Remote return link: ' + o.linkBytes + ' B/clock · selected fixed transport + serialization'
+        'Remote link: ' + o.linkBytes + ' bytes/clock'
       );
       U.table(
         result,
-        ['Placement fact / selected rule', 'Value'],
+        ['Setting', 'Value'],
         [
           [
-            'Pages resident on node 0 / node 1',
+            'Pages on node 0 / node 1',
             r.requests.filter(function (q) {
               return q.id < 64 && q.node === 0;
             }).length +
@@ -1016,10 +996,10 @@
             'Each memory pool',
             '8 service slots; 40-clock latency; one 64-byte return every 2 clocks'
           ],
-          ['Transport', 'Remote outbound +10 clocks; serialized return +20; local return +2'],
+          ['Travel time', 'Remote: +10 clocks out, +20 back, one at a time. Local: +2'],
           [
-            'Offered work',
-            'Two passes over 64 pages; one line per page per pass, with cache hits deliberately excluded'
+            'Work',
+            'Two passes over 64 pages, one line per page, no cache hits'
           ]
         ]
       );
@@ -1028,42 +1008,31 @@
     U.text(
       'p',
       sec,
-      'Measure placement before interpreting timing: lscpu and numactl --hardware describe topology; /proc/PID/numa_maps and numastat -p describe placement. Compare CPU binding, memory binding, first touch and interleave with the same useful work. Remote access can add latency and saturate a link; interleave may improve aggregate bandwidth while sacrificing locality. A single-node laptop cannot validate the two-node effect.'
+      'On Linux, numactl --hardware lists the nodes and /proc/PID/numa_maps shows where a process’s pages are. Interleaving can raise total bandwidth while giving up locality. A laptop with one node can’t show this effect at all.'
     );
-    source(
-      sec,
-      'Linux NUMA memory policy',
-      'https://docs.kernel.org/admin-guide/mm/numa_memory_policy.html'
-    );
+    U.sources(sec, [
+      ['Linux NUMA memory policy', 'https://docs.kernel.org/admin-guide/mm/numa_memory_policy.html']
+    ]);
   }
   function measurement(sec) {
-    U.text('h3', sec, 'Observe page faults and actual mapping state');
-    U.code(
-      sec,
-      'python3 benchmarks/run_all.py --serve\n# Individual fallback: python3 benchmarks/vm.py --output vm-results.json'
-    );
-    U.text(
-      'p',
-      sec,
-      'The native probe records getrusage minor/major fault deltas around first read, first write, repeated write and a child COW write. It also records mapping information while alive. File fixtures are created immediately before mmap and are initially page-cache warm; this does not force a cold-storage fault. Anonymous huge-page advice is recorded separately from observed AnonHugePages. Run the full protocol for repeated samples; --quick only checks execution.'
-    );
-    var label = h('label', { class: 'perf-field' }, sec);
-    U.text('span', label, 'Import VM observation JSON');
-    var input = h(
-        'input',
-        { type: 'file', accept: '.json,application/json', 'aria-label': 'VM observation JSON' },
-        label
-      ),
-      status = U.text('p', sec, 'No native VM observations loaded.', {
-        role: 'status',
-        class: 'vm-measurement-status'
+    var n = U.native(sec, {
+        title: 'Page faults on your machine',
+        what: 'Counts minor and major faults around the first read, the first write, a repeated write and a child’s copy-on-write write, and records the mapping as the kernel reports it. A request for huge pages is recorded separately from the huge pages actually used.',
+        command: 'python3 benchmarks/vm.py --output vm-results.json',
+        label: 'Import VM observation JSON',
+        aria: 'VM observation JSON',
+        empty: 'No native VM observations loaded.',
+        statusClass: 'vm-measurement-status',
+        outClass: 'vm-results'
       }),
-      out = h('div', { class: 'vm-results' }, sec);
+      input = n.input,
+      status = n.status,
+      out = n.out;
     function render(data, label) {
       validate(data);
       if (label) U.text('h3', out, label, { class: 'measurement-run-title' });
       status.textContent =
-        'Measured data · ' +
+        'Measured · ' +
         String(data.context.cpu_model || 'unknown CPU') +
         ' · ' +
         (data.complete === true ? 'complete run' : 'partial run');
@@ -1083,7 +1052,7 @@
         })
       );
       var details = h('details', null, out);
-      U.text('summary', details, 'Mapping evidence and original context');
+      U.text('summary', details, 'Show the mappings and recorded context');
       U.code(
         details,
         JSON.stringify(
@@ -1106,20 +1075,10 @@
       U.text(
         'p',
         out,
-        'These are whole-stage observations on the recorded host, not predicted hardware fault latency or a count of hardware page-table reads. Counter deltas may include unrelated process faults; huge mappings and kernel optimizations can change their relationship to touched base pages.'
+        'Fault counts cover the whole process, so a few may be unrelated. Huge pages and kernel shortcuts change how many faults a page costs.'
       );
     }
-    input.onchange = async function () {
-      out.replaceChildren();
-      try {
-        var f = input.files[0];
-        if (!f) return;
-        if (f.size > 2 * 1024 * 1024) throw new Error('Maximum file size is 2 MiB.');
-        render(JSON.parse(await f.text()), 'Manual import · locally read, not uploaded');
-      } catch (e) {
-        status.textContent = 'Could not import: ' + e.message;
-      }
-    };
+    U.importInto(input, out, status, render);
     App.Measurements.bind('vm', status, out, render);
   }
   function validate(data) {
