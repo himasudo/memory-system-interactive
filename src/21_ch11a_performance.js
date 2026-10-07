@@ -1,4 +1,4 @@
-/* Performance foundations and the shared experiment embedded in End to End. */
+/* The performance chapter, its shared UI helpers (App.LabUI), and the labs End to End reuses. */
 (function () {
   'use strict';
   var h = App.h,
@@ -7,18 +7,14 @@
     uid = 0;
   var SOURCES = {
     stat: [
-      'Linux perf stat (upstream documentation)',
+      'Linux perf stat',
       'https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux-stable/+/master/tools/perf/Documentation/perf-stat.txt'
     ],
     ibs: [
-      'Linux AMD IBS documentation',
+      'Linux perf on AMD IBS',
       'https://android.googlesource.com/kernel/common/+/0e674132ddfa938cd53ba7c3706f0d83b2a91491/tools/perf/Documentation/perf-amd-ibs.txt'
     ],
-    amd: [
-      'Historical AMD Family 17h optimization guide, 55723',
-      'https://docs.amd.com/v/u/en-US/55723_3.01'
-    ],
-    bench: ['Runnable Linux benchmarks and protocol', 'benchmarks/README.md']
+    bench: ['Benchmark protocol (benchmarks/README.md)', 'benchmarks/README.md']
   };
   function text(tag, parent, str, attrs) {
     var el = h(tag, attrs || null, parent);
@@ -29,11 +25,78 @@
     var q = SOURCES[key];
     return text('a', parent, q[0], { href: q[1], target: '_blank', rel: 'noopener' });
   }
+  /* A short label above a block: "Simulation", "Your machine", "Vendor docs"… */
+  /* One of the seven labels explained on the Start page. */
   function badge(parent, label) {
-    return text('span', parent, label, { class: 'evidence-label' });
+    return text('span', parent, label, {
+      class: 'evidence-label evidence-kind',
+      'data-evidence-kind': label
+    });
   }
   function code(parent, str) {
     return text('pre', parent, str, { class: 'p-code no-autolink' });
+  }
+  /* What a simulation leaves out, in one or two visible sentences. */
+  function model(parent, copy) {
+    var p = h('p', { class: 'lab-model' }, parent);
+    text('b', p, 'Model');
+    p.appendChild(document.createTextNode(' ' + copy));
+    return p;
+  }
+  /* One line of sources: [[title, url], …]. */
+  function sources(parent, list) {
+    var p = h('p', { class: 'lab-sources' }, parent);
+    text('span', p, list.length > 1 ? 'Sources' : 'Source');
+    list.forEach(function (q, i) {
+      if (i) p.appendChild(document.createTextNode(' · '));
+      var external = /^https?:/.test(q[1]);
+      text('a', p, q[0], external ? { href: q[1], target: '_blank', rel: 'noopener' } : { href: q[1] });
+    });
+    return p;
+  }
+  /* The same "run it on your machine" block in every chapter that has a native benchmark. */
+  function native(parent, o) {
+    var box = h('div', { class: 'lab-native' }, parent);
+    var head = h('div', { class: 'lab-native-head' }, box);
+    badge(head, 'Your machine');
+    text('h3', head, o.title || 'Run it on your machine');
+    if (o.what) text('p', box, o.what);
+    code(
+      box,
+      'python3 benchmarks/run_all.py --serve' + (o.command ? '\n# this suite only: ' + o.command : '')
+    );
+    text(
+      'p',
+      box,
+      'With --serve, results appear here automatically. You can also load a saved JSON file.',
+      { class: 'note' }
+    );
+    var label = h('label', { class: 'perf-field lab-native-file' }, box);
+    text('span', label, o.label);
+    var input = h(
+      'input',
+      { type: 'file', accept: '.json,application/json', 'aria-label': o.aria || o.label },
+      label
+    );
+    var status = text('p', box, o.empty, { role: 'status', class: o.statusClass || '' });
+    var out = h('div', { class: o.outClass || '' }, box);
+    var more = h('p', { class: 'lab-native-more' }, box);
+    text('a', more, 'How the benchmarks run and what to keep fixed →', { href: '#perf/measure' });
+    return { box: box, input: input, status: status, out: out };
+  }
+  /* Loads a JSON result file chosen in the browser; nothing is uploaded. */
+  function importInto(input, out, status, render) {
+    input.onchange = async function () {
+      out.replaceChildren();
+      try {
+        var file = input.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) throw new Error('Choose a file smaller than 2 MiB.');
+        render(JSON.parse(await file.text()), 'Loaded from a file (read in this browser only)');
+      } catch (e) {
+        status.textContent = 'Could not import: ' + e.message;
+      }
+    };
   }
   function select(parent, label, values, value, change) {
     var id = 'perf-control-' + ++uid,
@@ -75,87 +138,73 @@
   }
   function checkpoint(parent, prompt, choices, correct, explanation) {
     var box = h('div', { class: 'prediction' }, parent);
-    text('h3', box, 'Predict before running');
+    text('h3', box, 'Predict first');
     text('p', box, prompt);
-    var result = text('p', box, 'Choose a prediction, then compare it with the experiment.', {
+    var choicesEl = h('div', { class: 'perf-actions' }, box);
+    var result = text('p', box, 'Pick an answer, then check it with the controls below.', {
       class: 'note',
       'aria-live': 'polite'
     });
-    var choicesEl = h('div', { class: 'perf-actions' }, box);
     choices.forEach(function (c, i) {
       var b = text('button', choicesEl, c, { type: 'button', 'aria-pressed': 'false' });
       b.onclick = function () {
         choicesEl.querySelectorAll('button').forEach(function (x) {
           x.setAttribute('aria-pressed', String(x === b));
         });
-        result.textContent =
-          (i === correct ? 'That matches this model. ' : 'Test that prediction. ') + explanation;
+        box.dataset.answer = i === correct ? 'right' : 'wrong';
+        result.textContent = (i === correct ? 'Right. ' : 'Not quite. ') + explanation;
       };
     });
   }
-  function evidence(parent) {
-    var e = h('div', { class: 'evidence-contract' }, parent);
-    badge(e, 'Mechanisms and scoped evidence');
+  function vocabulary(parent) {
     text(
       'p',
-      e,
-      'Synthetic addresses and chosen finite-resource models expose mechanisms. Documentation, external observations and your native measurements retain their own scope; none is a universal processor calibration.'
+      parent,
+      'Most confusion about memory performance comes from mixing these up. Every number on this page says which one it is and where its timer starts and stops.'
     );
-    table(
-      e,
-      ['Evidence category', 'What it means here'],
-      App.Evidence.claims.slice(0, 7).map(function (q) {
-        return [q.kind, q.scope];
-      })
-    );
-    text('a', e, 'Modern implementations and published measurement methods →', {
-      href: '#map/reference'
-    });
-  }
-  function vocabulary(parent) {
     table(
       parent,
-      ['Quantity', 'Definition / denominator', 'Interpretation'],
+      ['Quantity', 'What it counts', 'Watch out for'],
       [
         [
           'Latency',
-          'Time from a named start event to a named end event',
-          'Always name both boundaries. A load-to-use interval is not a retirement interval.'
+          'Time for one operation, from a named start to a named end',
+          'Say where the timer starts and stops. Load-to-use is not the same as time to retire.'
         ],
         [
           'Throughput',
-          'Completed useful operations / elapsed time',
-          'Independent operations can overlap while each stays slow.'
+          'Operations finished per second',
+          'Many slow operations can overlap, so throughput can rise while latency stays the same.'
         ],
         [
           'Bandwidth',
-          'Bytes / elapsed time (GB/s = 10⁹ B/s)',
-          'Useful bytes, cache-line bytes and DRAM-bus bytes are different accounting boundaries.'
+          'Bytes moved per second (1 GB/s = 10⁹ bytes/s)',
+          'The bytes you use, the 64-byte lines moved and the bytes on the DRAM bus can all differ.'
         ],
         [
           'IPC / CPI',
-          'Retired architectural instructions / core cycles; inverse',
-          'Do not substitute µops, fused groups, TSC ticks, wall time, or another thread’s counters.'
+          'Instructions retired per core cycle, and its inverse',
+          'Count instructions and cycles over the same interval, on the same thread.'
         ],
         [
           'Miss rate / MPKI',
-          'Misses / accesses; 1000 × misses / retired instructions',
-          'Specify cache level and instruction/data, demand/prefetch and measurement scope.'
+          'Misses per access, or misses per 1000 instructions',
+          'Say which cache, and whether prefetches and instruction fetches are counted.'
         ],
         [
-          'Occupancy / utilization',
-          'Average entries in use; fraction of time a service resource is busy',
-          'A full queue and a busy execution resource are different observations.'
+          'Occupancy',
+          'Average number of entries in use in a queue',
+          'A full queue and a busy unit are different problems.'
         ],
         [
           'p50 / p95 / p99',
-          'Nearest-rank quantiles of the stated population',
-          'A p99 of repeated whole-run averages is not a p99 of individual loads.'
+          'The value that 50 / 95 / 99 % of samples fall below',
+          'A p99 of run averages is not the p99 of single loads.'
         ],
         [
-          'Service / queue time',
-          'Time being served / time waiting for a resource',
-          'Observed latency also includes transport, dependency readiness and retirement waiting when those lie inside its boundaries.'
+          'Queue time vs service time',
+          'Time waiting for a resource vs time being served by it',
+          'Measured latency also includes travel time and waiting for older work to retire.'
         ]
       ]
     );
@@ -164,7 +213,7 @@
     text(
       'p',
       parent,
-      'For a stable system and a consistent boundary, average outstanding requests N = completion rate λ × average residence time W. This is Little’s law. It relates averages, not peak queue capacity.'
+      'Little’s law links the three: average requests in flight = completion rate × average time each one takes. To move 20 GB/s in 64-byte lines when each load takes 80 ns, about 25 lines must be in flight at once.'
     );
     var controls = h('div', { class: 'perf-controls' }, parent),
       bw = 20,
@@ -183,48 +232,52 @@
       result.replaceChildren();
       metric(
         result,
-        'Required concurrency',
+        'Lines in flight needed',
         ((bw * ns) / line).toFixed(1) + ' lines',
-        'N = GB/s × ns / bytes per line'
+        'GB/s × ns ÷ 64 bytes per line'
       );
       metric(
         result,
         'One dependent chain',
         (line / ns).toFixed(2) + ' GB/s',
-        '64-byte line traffic; only 8 B may be useful'
+        'One line at a time; only 8 of its 64 bytes may be used'
       );
       metric(
         result,
         'Useful pointer data',
         (8 / ns).toFixed(2) + ' GB/s',
-        'One 8-byte pointer per returned line'
+        'One 8-byte pointer per line'
       );
     }
     draw();
     text(
       'p',
       parent,
-      'At 20 GB/s and 80 ns, about 25 lines must be outstanding on average. More MSHRs alone do not provide that concurrency: the program must expose independent addresses, and downstream resources must accept the traffic. Finite-run fill/drain effects also change measured throughput.'
+      'More miss buffers alone don’t create that overlap. The program has to supply independent addresses, and every queue further down has to accept the traffic.'
     );
     checkpoint(
       parent,
-      'If 16 independent loads each take 80 ns, must their aggregate bandwidth equal one pointer chain’s bandwidth?',
+      'If 16 independent loads each take 80 ns, is their combined bandwidth the same as one pointer chain’s?',
       [
         'Yes: latency fixes bandwidth',
         'No: independent loads can overlap',
         'They always run exactly 16× faster'
       ],
       1,
-      'Overlap can raise bandwidth; queue capacity and shared service limit the gain.'
+      'Overlap raises bandwidth, until a queue or a shared unit fills up. The next lab shows where that happens.'
     );
   }
   function streamLab(parent) {
     var root = h('div', { class: 'stream-lab' }, parent);
-    badge(root, 'Teaching approximation · all demand loads miss');
+    badge(root, 'Simulation');
     text(
       'p',
       root,
-      'Each loop body has one 8-byte load to a distinct 64-byte line plus three abstract non-memory instructions. Chains are independent; each next load within one chain waits for the previous value. In-order retirement and finite queues constrain execution. No hit-rate, prefetch, write, bank-address or proprietary controller policy is assumed.'
+      'Each loop iteration does one 8-byte load from a new 64-byte line, plus three other instructions. Loads in one chain wait for each other; separate chains don’t. Add chains, shrink a queue, and watch which resource fills first.'
+    );
+    model(
+      root,
+      'Every load misses the caches. There are no prefetches, writes or DRAM banks, and the controller serves requests in arrival order.'
     );
     var ctl = h('div', { class: 'perf-controls' }, root),
       o = {
@@ -246,25 +299,16 @@
       });
     }
     knob('chains', 'Independent chains', [1, 2, 4, 8, 16, 32]);
-    knob('mshr', 'Miss entries (model)', [2, 4, 8, 12, 24, 48]);
+    knob('mshr', 'Miss entries', [2, 4, 8, 12, 24, 48]);
     knob('controller', 'Controller queue entries', [1, 2, 4, 8, 16]);
     knob('lanes', 'Parallel service slots', [1, 2, 4, 8, 16]);
     knob('serviceNs', 'Service per request (ns)', [20, 40, 80, 160]);
     knob('bw', 'Return link limit (GB/s)', [2, 5, 10, 20, 40]);
-    var more = h('details', { class: 'perf-details' }, root);
-    text('summary', more, 'Finite front end and return-buffer controls');
-    var extra = h('div', { class: 'perf-controls' }, more);
-    [
-      ['rob', 'ROB loop bodies', [4, 8, 16, 32, 64]],
-      ['lq', 'Load queue entries', [4, 8, 16, 24, 48]],
-      ['fill', 'Return queue entries', [1, 2, 4, 8]]
-    ].forEach(function (a) {
-      knobs[a[0]] = select(extra, a[1], a[2], o[a[0]], function (v) {
-        o[a[0]] = +v;
-        run();
-      });
-    });
-    var presets = h('div', { class: 'perf-actions' }, root);
+    knob('rob', 'ROB loop bodies', [4, 8, 16, 32, 64]);
+    knob('lq', 'Load queue entries', [4, 8, 16, 24, 48]);
+    knob('fill', 'Return queue entries', [1, 2, 4, 8]);
+    var presets = h('div', { class: 'perf-actions lab-presets' }, root);
+    text('span', presets, 'Presets', { class: 'lab-presets-label' });
     [
       ['One chain', { chains: 1 }],
       ['Miss-entry pressure', { chains: 32, mshr: 2, lq: 24, rob: 32 }],
@@ -333,10 +377,10 @@
     text(
       'figcaption',
       chart,
-      'Miss-entry occupancy over time. The vertical marker follows the trace; the table gives the same cycle’s queue state.'
+      'Miss entries in use over the whole run. The dashed marker is the cycle shown in the table above.'
     );
     var details = h('details', { class: 'perf-details' }, root);
-    text('summary', details, 'Inspect all counters, timing boundaries and traffic');
+    text('summary', details, 'Show every counter');
     var stats = h('div', null, details);
     var sweepWrap = h('div', { class: 'perf-sweep' }, root);
     var sweep = text('button', sweepWrap, 'Sweep 1 / 2 / 4 / 8 / 16 / 32 chains', {
@@ -413,26 +457,21 @@
         metrics,
         'Line bandwidth',
         bw.toFixed(2) + ' GB/s',
-        'Full run, including fill and drain'
+        'Whole run, including start-up and drain'
       );
       metric(
         metrics,
         'Average load-to-use',
         (sim.latency.mean / ghz).toFixed(1) + ' ns',
-        'Issue → returned value; includes queueing'
+        'From issue to data back, waiting included'
       );
       metric(
         metrics,
-        'Average outstanding',
+        'Average in flight',
         sim.occupancy.mshr.toFixed(2) + ' lines',
-        'Allocated miss entries, not all waiting loads'
+        'Miss entries in use'
       );
-      metric(
-        metrics,
-        'Modeled IPC',
-        sim.ipc.toFixed(3),
-        '4 abstract instructions / retired loop body'
-      );
+      metric(metrics, 'IPC', sim.ipc.toFixed(3), '4 instructions per loop iteration');
       var most = Object.keys(sim.stalls)
         .filter(function (k) {
           return sim.stalls[k] > 0;
@@ -443,37 +482,37 @@
       text(
         'p',
         explain,
-        'Most frequent observed block: ' +
-          (most[0] || 'none') +
-          '. A blocked-cycle counter is a symptom, not proof of the root bottleneck. Trace downstream: a full controller holds requests in the fabric; finite miss entries and the load queue then prevent more work entering the machine.'
+        'Blocked most often by: ' +
+          (most[0] || 'nothing') +
+          '. That is where the backup shows, not always where it starts: a full controller holds requests upstream, then the miss entries and the load queue fill behind it.'
       );
       text(
         'p',
         explain,
-        'Full-run check: λW = ' +
+        'Little’s law check: completion rate × average latency = ' +
           (sim.throughput * sim.latency.mean).toFixed(3) +
-          ' lines; time-average miss occupancy = ' +
+          ' lines, and the average miss entries in use = ' +
           sim.occupancy.mshr.toFixed(3) +
-          '. These agree because both use issue → return, and the run starts and ends empty.'
+          '. They match because both count from issue to return over the whole run.'
       );
       table(
         stats,
-        ['Metric', 'Value', 'Boundary'],
+        ['Counter', 'Value', 'What it counts'],
         [
           [
             'Completed / retired',
             sim.completed + ' / ' + sim.retired,
-            'No requests dropped; all queues drain'
+            'Every request finishes; nothing is dropped'
           ],
           [
             'CPI / demand miss MPKI',
             sim.cpi.toFixed(3) + ' / ' + sim.mpki,
-            'Synthetic 4-instruction bodies, every load misses'
+            'Each loop body is 4 instructions and its load always misses'
           ],
           [
             'Useful / line bytes',
             sim.usefulBytes + ' / ' + sim.bytes,
-            '8-byte payload / 64-byte returned line; no RFO or writebacks'
+            '8 bytes used out of each 64-byte line; no stores, so no RFOs or write-backs'
           ],
           [
             'Middle-half line bandwidth',
@@ -482,7 +521,7 @@
               sim.window.start +
               '–' +
               sim.window.end +
-              '; not guaranteed asymptotic steady state'
+              '; the middle half skips start-up and drain'
           ],
           [
             'p50 / p95 / p99 / max',
@@ -491,7 +530,7 @@
                 return (x / ghz).toFixed(1);
               })
               .join(' / ') + ' ns',
-            'Individual simulated requests, issue → return; nearest rank'
+            'Each request from issue to return'
           ],
           [
             'Service / transport / queue',
@@ -500,7 +539,7 @@
                 return (x / ghz).toFixed(1);
               })
               .join(' / ') + ' ns',
-            'These components sum to mean issue → return latency'
+            'Together they make up the average issue-to-return time'
           ],
           [
             'Dependency / ready-resource wait',
@@ -509,22 +548,22 @@
                 return (x / ghz).toFixed(1);
               })
               .join(' / ') + ' ns',
-            'Before issue; excludes one rename/admission cycle'
+            'Time before issue, waiting for an address or a free slot'
           ],
           [
             'Return → retirement',
             (sim.timing.retireWait / ghz).toFixed(1) + ' ns',
-            'In-order retirement may wait for older work'
+            'Data is back but older instructions haven’t retired yet'
           ],
           [
             'Return link utilization',
             (100 * sim.busUtil).toFixed(1) + '%',
-            'One serialized 64-byte transfer; service slots are parallel'
+            'Busy time of the link that returns lines, one 64-byte line at a time'
           ],
           [
             'Front-end blocked',
             ((100 * sim.frontStall) / sim.cycles).toFixed(1) + '%',
-            'A body was waiting to enter but ROB or LQ was full'
+            'New work was waiting because the ROB or load queue was full'
           ]
         ]
       );
@@ -608,11 +647,11 @@
           r.occupancy.mshr.toFixed(2)
         ];
       });
-      table(sweepResult, ['Chains', 'Line GB/s', 'Mean load ns', 'Average outstanding'], rows);
+      table(sweepResult, ['Chains', 'Line GB/s', 'Mean load ns', 'Average in flight'], rows);
       text(
         'p',
         sweepResult,
-        'Same resources and 192 total requests in every run. Predict the knee, then change the limiting resource and repeat. Saturation can increase latency without increasing bandwidth.'
+        'Every run has the same queues and 192 requests. Bandwidth climbs until one resource saturates; after that, more chains only add waiting time.'
       );
     };
     run();
@@ -620,11 +659,15 @@
     return root;
   }
   function criticalLab(parent) {
-    badge(parent, 'Teaching approximation · dependency timing, no resource contention');
+    badge(parent, 'Simulation');
     text(
       'p',
       parent,
-      'Edges mean “must finish before this can start.” DTLB lookup and VIPT indexing overlap. A walk is serial within one translation. Independent older work can overlap memory waiting, but retirement waits for both. The next mode adds finite resources.'
+      'Each bar is one step of hist[123]++, and an edge means “must finish before this can start.” The TLB lookup and the cache index overlap. Unrelated older work can overlap the memory wait, but retirement waits for both.'
+    );
+    model(
+      parent,
+      'Timing only: nothing competes for ports, queues or memory here. The next mode adds that.'
     );
     var o = { level: 'DRAM', walk: false, work: 32, background: true },
       ctl = h('div', { class: 'perf-controls' }, parent);
@@ -663,19 +706,14 @@
         output,
         'Histogram value ready',
         r.valueAt.toFixed(0) + ' cycles',
-        'Dependent consumer can use the result'
+        'The next instruction can use it'
       );
-      metric(
-        output,
-        'Retirement',
-        r.end.toFixed(0) + ' cycles',
-        'Also waits for independent older work'
-      );
+      metric(output, 'Retirement', r.end.toFixed(0) + ' cycles', 'Also waits for the older work');
       metric(
         output,
         'Store reaches L1',
         r.commitAt.toFixed(0) + ' cycles',
-        'Assumes exclusive ownership; after retirement'
+        'After retirement, with the line already owned'
       );
       var height = 56 + r.nodes.length * 34;
       svg.setAttribute('viewBox', '0 0 960 ' + height);
@@ -700,23 +738,7 @@
           s(
             'path',
             {
-              d:
-                'M' +
-                x +
-                ' ' +
-                y +
-                ' L' +
-                (x + 4) +
-                ' ' +
-                y +
-                ' L' +
-                (x + 4) +
-                ' ' +
-                yy +
-                ' L' +
-                xx +
-                ' ' +
-                yy,
+              d: 'M' + x + ' ' + y + ' L' + (x + 4) + ' ' + y + ' L' + (x + 4) + ' ' + yy + ' L' + xx + ' ' + yy,
               class: 'dag-edge'
             },
             svg
@@ -747,10 +769,10 @@
         );
       });
       desc.textContent =
-        'Amber: longest dependency path to retirement. Blue: overlapping work. Labels show start–end cycles. The unrelated writeback is not required by this instruction and is not charged to its dependency path; it would compete for resources in a contention model.';
+        'Amber: the longest chain of dependencies, which sets the finish time. Blue: work that overlaps it. Numbers are start–end cycles. The writeback of an older line is shown but is not on this chain.';
       table(
         detail,
-        ['Node', 'Depends on', 'Start → end cycles'],
+        ['Step', 'Waits for', 'Start → end cycles'],
         r.nodes.map(function (n) {
           return [
             n.label,
@@ -758,7 +780,7 @@
               .map(function (k) {
                 return r.by[k].label;
               })
-              .join(', ') || 'entry',
+              .join(', ') || '—',
             n.start.toFixed(0) + ' → ' + n.end.toFixed(0)
           ];
         })
@@ -766,140 +788,44 @@
       text(
         'p',
         detail,
-        'Cache latencies are the configured teaching load-to-use inputs, not per-hop delays to sum. One lookup cycle is represented by the overlapping DTLB/index nodes; the remaining selected latency follows them. The walk assumes two walk-cache hits plus two L2 reads. The graph omits port contention, branch recovery, memory ordering and a calibrated hardware pipeline.'
+        'Cache latencies come from the latency settings and are total load-to-use times, not per-level delays to add up. A page walk here hits the walk cache for the upper two levels and reads the last two entries from L2.',
+        { class: 'note' }
       );
     }
     draw();
     App.onCfg(draw);
   }
   function measurement(parent) {
-    badge(parent, 'Real experiment · run on Linux, outside the browser');
     text(
       'p',
       parent,
-      'Start with a hypothesis: doubling independent chains should raise throughput until a resource saturates. Keep total working-set size fixed, randomize pointer order, and compare 1 / 2 / 4 / 8 / 16 chains. A single chain probes dependency-limited behavior; many chains probe overlap. A sequential read/write sweep measures useful-byte throughput with different prefetch and write-allocation behavior.'
+      'The memory benchmark runs the experiment above on your own CPU. It follows randomly ordered pointer chains through a fixed amount of memory with 1, 2, 4, 8 and 16 chains, then streams through memory reading and writing. One chain shows latency. More chains show how much overlap your memory system allows.'
     );
-    code(
-      parent,
-      'python3 benchmarks/run_all.py --serve\n# Measurement only: python3 benchmarks/run_all.py\n# Individual fallback: python3 benchmarks/run.py --output results.json'
-    );
-    text(
-      'p',
-      parent,
-      'Choose an allowed logical CPU. The runner pins before allocation/first touch, warms each working set, compiles native code with optimization, retains a checksum and records every repetition plus context. Inspect generated assembly before drawing microarchitectural conclusions. The working set is total bytes across all chains, not bytes per chain.'
-    );
-    link(parent, 'bench');
-    table(
-      parent,
-      ['Control', 'Record / hold constant'],
-      [
-        [
-          'CPU placement',
-          'Affinity and SMT sibling activity; other cores can compete for shared resources. Pinning alone does not isolate a CPU.'
-        ],
-        [
-          'Clock and thermal state',
-          'Governor, boost policy, temperature/background load. Invariant TSC ticks are a time base, not dynamic core cycles. Use wall ns for this harness; PMU cycles for IPC.'
-        ],
-        [
-          'Memory placement',
-          'First touch, NUMA policy, actual page sizes, THP state, alignment, ASLR and random seed. Report warm-up; distinguish first-touch faults from warmed traversal.'
-        ],
-        [
-          'Compiler',
-          'Version, flags, exact source/binary hash, assembly, checksums. Avoid dead-code removal and unintended vectorization in dependent chains.'
-        ],
-        [
-          'Platform',
-          'CPU family/model/stepping, microcode, kernel, BIOS, DIMM speed/timings/channel population. Unknown metadata stays unknown.'
-        ],
-        [
-          'Statistics',
-          'Retain raw repetitions, mean, median, variance, p95/p99 of run averages and sample count. Few repetitions cannot characterize rare per-load tails.'
-        ]
-      ]
-    );
-    text('h3', parent, 'Observe the mechanism with Linux tools');
-    code(
-      parent,
-      'perf list\nperf stat -r 5 -e cycles,instructions,cache-references,cache-misses -- \\\n  taskset -c 2 benchmarks/memlab --mode chase --bytes 67108864 --chains 1 --steps 2000000 --repeats 1 --cpu 2\n# Only when this CPU, kernel and perf expose the required sampling support:\nperf mem record -- taskset -c 2 benchmarks/memlab --mode chase --bytes 67108864 --chains 1 --steps 2000000 --repeats 1 --cpu 2\nperf mem report\nperf c2c record -- ./your-sharing-benchmark\nperf c2c report'
-    );
-    text(
-      'p',
-      parent,
-      'These perf examples cover the whole process, including allocation, construction and warm-up; their counts do not share the C harness’s timed-kernel boundary. Use them to inspect the workload first, or gate counting around the same region for direct comparison. Check event availability, permission errors, multiplexing/running percentage and scope. Generic cache-misses is not automatically a precise L1/L2/L3 miss count. Do not copy raw event encodings between CPU families.'
-    );
-    table(
-      parent,
-      ['Simulated observation', 'Hardware route', 'Limit'],
-      [
-        [
-          'Modeled IPC / CPI',
-          'perf stat cycles + instructions',
-          'Use matching scope and interval; architectural instruction counts differ from model loop bodies.'
-        ],
-        [
-          'Misses / MPKI',
-          'Model-specific cache PMCs, checked against AMD PPR and perf list',
-          'Generic aliases need validation; prefetch/demand and cache-level definitions vary.'
-        ],
-        [
-          'Load latency / data source',
-          'AMD IBS Op via supported perf mem; inspect available fields',
-          'Sampling and event weights have specific semantics; an Intel use-latency sample is not interchangeable with AMD miss latency.'
-        ],
-        [
-          'Sharing and ownership traffic',
-          'perf c2c on a multithreaded sharing workload, if supported',
-          'HITM/peer classifications and availability depend on CPU and kernel; the single-thread chase is not a false-sharing experiment.'
-        ],
-        [
-          'Queue pressure',
-          'Throughput/latency sweeps plus applicable stall/resource PMCs',
-          'Exact queue occupancy is often not exposed. Infer a bottleneck cautiously and test a competing explanation.'
-        ],
-        [
-          'Line vs useful bandwidth',
-          'Memory-controller PMCs where documented; compare useful bytes/time',
-          'Do not infer physical DRAM bytes from useful traffic when caches, RFOs or prefetches intervene.'
-        ]
-      ]
-    );
-    link(parent, 'stat');
-    text('span', parent, ' · ');
-    link(parent, 'ibs');
-    text('h3', parent, 'Import measurements');
-    text(
-      'p',
-      parent,
-      'The unified workflow loads every suite automatically. Open Results to import one visitor bundle or compare with the shipped reference. This per-suite input remains a fallback; files stay local and do not overwrite the teaching model’s latency defaults.'
-    );
-    var lab = h('label', { class: 'perf-field' }, parent);
-    text('span', lab, 'Benchmark result JSON');
-    var input = h(
-      'input',
-      { type: 'file', accept: '.json,application/json', 'aria-label': 'Benchmark result JSON' },
-      lab
-    );
-    var status = text('p', parent, 'No hardware result loaded.', { role: 'status' }),
-      out = h('div', { class: 'measurement-results' }, parent);
+    var n = native(parent, {
+      title: 'Memory and overlap results',
+      command: 'python3 benchmarks/run.py --output results.json',
+      label: 'Benchmark result JSON',
+      empty: 'No results loaded yet.',
+      outClass: 'measurement-results'
+    });
+    n.box.querySelector('.lab-native-more').remove();
     function render(result, label) {
       validateMeasurement(result);
-      if (label) text('h3', out, label, { class: 'measurement-run-title' });
-      status.textContent =
-        'Measured data · ' +
+      if (label) text('h3', n.out, label, { class: 'measurement-run-title' });
+      n.status.textContent =
+        'Measured · ' +
         result.samples.length +
         ' repetitions · ' +
         String(result.context.cpu_model || 'CPU not recorded') +
-        (result.complete === false ? ' · PARTIAL RUN' : '');
+        (result.complete === false ? ' · partial run' : '');
       text(
         'p',
-        out,
-        'Recorded clock: ' +
+        n.out,
+        'Clock: ' +
           String(result.context.clock || 'not recorded') +
-          '. Timing: ' +
+          '. Timer covers: ' +
           String(result.context.timing_boundary || 'not recorded') +
-          '. Percentiles are across run-average ns/operation, not individual-load tails.'
+          '. Percentiles are over run averages, not single loads.'
       );
       var groups = {};
       result.samples.forEach(function (r) {
@@ -907,7 +833,7 @@
         (groups[k] || (groups[k] = [])).push(r);
       });
       table(
-        out,
+        n.out,
         ['Mode / bytes / chains', 'n', 'Mean ns/op', 'Median', 'p95 / p99', 'SD', 'Useful GB/s'],
         Object.keys(groups).map(function (k) {
           var a = groups[k],
@@ -927,9 +853,7 @@
             a.length,
             mean.toFixed(3),
             MeasurementBundle.stats(vals).median.toFixed(3),
-            LabModel.quantile(vals, 0.95).toFixed(3) +
-              ' / ' +
-              LabModel.quantile(vals, 0.99).toFixed(3),
+            LabModel.quantile(vals, 0.95).toFixed(3) + ' / ' + LabModel.quantile(vals, 0.99).toFixed(3),
             sd.toFixed(3),
             LabModel.mean(
               a.map(function (r) {
@@ -939,23 +863,96 @@
           ];
         })
       );
-      var raw = h('details', { class: 'perf-details' }, out);
-      text('summary', raw, 'Inspect recorded context and raw repetitions');
+      var raw = h('details', { class: 'perf-details' }, n.out);
+      text('summary', raw, 'Show the recorded context and every repetition');
       code(raw, JSON.stringify(result, null, 2));
     }
-    input.onchange = async function () {
-      out.replaceChildren();
-      try {
-        var file = input.files[0];
-        if (!file) return;
-        if (file.size > 2 * 1024 * 1024)
-          throw new Error('Choose a JSON result smaller than 2 MiB.');
-        render(JSON.parse(await file.text()), 'Manual import · locally read, not uploaded');
-      } catch (e) {
-        status.textContent = 'Could not import: ' + e.message;
-      }
-    };
-    App.Measurements.bind('memory', status, out, render);
+    importInto(n.input, n.out, n.status, render);
+    App.Measurements.bind('memory', n.status, n.out, render);
+    text('h3', parent, 'Keep these fixed between runs');
+    text(
+      'p',
+      parent,
+      'The runner records all of this for you. Change one thing at a time, or two runs can differ for reasons that have nothing to do with the memory system.'
+    );
+    table(
+      parent,
+      ['What', 'Why it matters'],
+      [
+        [
+          'Which CPU the test runs on',
+          'Another thread on the same core, or on a core sharing the cache, competes for the same resources.'
+        ],
+        [
+          'Clock speed and temperature',
+          'Boost and thermal limits change speed mid-run. The timer measures nanoseconds; CPU cycles need perf counters.'
+        ],
+        [
+          'Where memory lives',
+          'First touch, NUMA node and page size decide which memory and which TLB entries the test uses.'
+        ],
+        [
+          'Compiler and flags',
+          'The compiler can remove or vectorize a loop. Check the generated assembly.'
+        ],
+        [
+          'Machine details',
+          'CPU model, kernel, BIOS and DIMM speed and population. Anything not recorded stays “unknown”.'
+        ],
+        [
+          'Number of repetitions',
+          'Keep every repetition. A few runs show the typical case, not rare slow loads.'
+        ]
+      ]
+    );
+    text('h3', parent, 'Look deeper with perf');
+    code(
+      parent,
+      'perf list\nperf stat -r 5 -e cycles,instructions,cache-references,cache-misses -- \\\n  taskset -c 2 benchmarks/memlab --mode chase --bytes 67108864 --chains 1 --steps 2000000 --repeats 1 --cpu 2\n# Sample individual loads (needs CPU and kernel support):\nperf mem record -- taskset -c 2 benchmarks/memlab --mode chase --bytes 67108864 --chains 1 --steps 2000000 --repeats 1 --cpu 2\nperf mem report\n# Find contended cache lines in a multithreaded program:\nperf c2c record -- ./your-sharing-benchmark\nperf c2c report'
+    );
+    text(
+      'p',
+      parent,
+      'perf counts the whole process, including setup, so its numbers cover more than the benchmark’s own timer. perf mem samples single loads with each vendor’s hardware: AMD uses IBS, Arm uses SPE, and on Intel the latency it reports is load-to-use. Event names differ between CPUs, so check perf list on the machine you test.'
+    );
+    table(
+      parent,
+      ['In the simulation', 'On real hardware', 'Careful'],
+      [
+        ['IPC', 'perf stat: cycles and instructions', 'Count both over the same interval.'],
+        [
+          'Misses per 1000 instructions',
+          'The CPU’s own cache events (see perf list)',
+          'The generic cache-misses event is not always an L1, L2 or L3 count.'
+        ],
+        [
+          'Load latency',
+          'perf mem (AMD IBS, Arm SPE, Intel load-latency sampling)',
+          'Each vendor samples and weights loads differently.'
+        ],
+        [
+          'Cache lines bouncing between cores',
+          'perf c2c on a multithreaded program',
+          'Support depends on the CPU and kernel.'
+        ],
+        [
+          'Full queues',
+          'Throughput and latency sweeps, plus stall events',
+          'Real queue occupancy is rarely visible. Test one explanation against another.'
+        ],
+        [
+          'Useful vs total bandwidth',
+          'Memory-controller events, where documented',
+          'Caches, ownership reads and prefetches change the bytes on the bus.'
+        ]
+      ]
+    );
+    sources(parent, [
+      ['perf mem', 'https://man7.org/linux/man-pages/man1/perf-mem.1.html'],
+      SOURCES.stat,
+      SOURCES.ibs,
+      SOURCES.bench
+    ]);
   }
   function validateMeasurement(r) {
     if (
@@ -988,8 +985,7 @@
   App.Performance = {
     streamLab: streamLab,
     criticalLab: criticalLab,
-    validateMeasurement: validateMeasurement,
-    evidence: evidence
+    validateMeasurement: validateMeasurement
   };
   App.LabUI = {
     text: text,
@@ -998,48 +994,52 @@
     metric: metric,
     badge: badge,
     code: code,
-    checkpoint: checkpoint
+    checkpoint: checkpoint,
+    model: model,
+    sources: sources,
+    native: native,
+    importInto: importInto
   };
   [
     [
       'bandwidth',
       'bandwidth',
-      'Bytes transferred per unit time. State the boundary: useful payload, cache-line traffic and DRAM-bus traffic need not be equal.'
+      'Bytes moved per second. Say which bytes: the ones the program uses, the 64-byte lines moved, or the bytes on the DRAM bus.'
     ],
     [
       'throughput',
       'throughput',
-      'Completed operations per unit time. Independent work can overlap without reducing the latency of each operation.'
+      'Operations finished per second. Independent operations can overlap, so throughput can rise while each operation stays just as slow.'
     ],
     [
       'cpi',
       'CPI',
-      'Core cycles divided by retired architectural instructions, using the same interval and execution scope. The reciprocal of IPC.'
+      'Core cycles per retired instruction, counted over the same interval on the same thread. The inverse of IPC.'
     ],
     [
       'mpki',
       'MPKI',
-      'Misses per thousand retired instructions. Specify cache level, demand versus prefetch, and instruction/data scope.'
+      'Misses per thousand retired instructions. Say which cache, and whether prefetches and instruction fetches count.'
     ],
     [
       'occupancy',
       'queue occupancy',
-      'Number of entries currently in use. Average occupancy is the time integral of entries divided by elapsed time.'
+      'How many entries of a queue are in use. The average is taken over time.'
     ],
     [
       'backpressure',
       'backpressure',
-      'An occupied downstream resource prevents its upstream producer from advancing. It can propagate back to dispatch or fetch.'
+      'A full queue stops the stage that feeds it. The stall can spread backwards all the way to dispatch or fetch.'
     ],
     [
       'little',
       'Little’s law',
-      'For a stable system with consistent boundaries: average outstanding work N = average completion rate λ × average residence time W.'
+      'Average requests in flight = completion rate × average time per request. It holds for any stable system measured over one consistent boundary.'
     ],
     [
       'p99',
       'p99 latency',
-      'A 99th percentile of a stated population. This lab uses nearest rank; repeated run averages are not individual-access latency samples.'
+      'The latency that 99 % of samples are faster than. A p99 of run averages says nothing about single slow loads.'
     ]
   ].forEach(function (t) {
     App.gloss(t[0], t[1], t[2]);
@@ -1051,36 +1051,23 @@
     group: 'Performance lab',
     short: 'Measure & explain',
     title: 'Predict, measure, explain',
-    lede: 'Turn a mechanism into a testable prediction. Separate the latency of one dependent request from the throughput of many independent requests.',
+    lede: 'One slow load and many overlapping loads are different questions. Predict how much overlap a memory system needs, run a small machine with finite queues, then measure your own computer.',
     points: [
-      'Follow finite queues from the front end to the returning cache line.',
-      'Compare synthetic observations with native Linux experiments.',
-      'Keep evidence, units and timing boundaries visible.'
+      'Latency, throughput and bandwidth answer different questions.',
+      'Finite queues decide where overlap stops.',
+      'The same experiments run natively on Linux, on any x86-64 or Arm machine.'
     ],
     build: function (root) {
       var P = App.P;
-      evidence(
-        P.sec(
-          root,
-          'evidence',
-          'Read the evidence',
-          'Model parameters and hardware observations retain separate scopes.'
-        )
-      );
       vocabulary(
-        P.sec(
-          root,
-          'vocabulary',
-          'Name the quantity',
-          'A number is useful only when its units and boundary are clear.'
-        )
+        P.sec(root, 'vocabulary', 'Name the quantity', 'Latency, throughput and bandwidth are different numbers.')
       );
       littleLaw(
         P.sec(
           root,
           'predict',
           'Predict the concurrency',
-          'Latency, throughput and bandwidth describe different aspects of the same execution.'
+          'How many loads must be in flight to reach a given bandwidth?'
         )
       );
       streamLab(
@@ -1088,33 +1075,51 @@
           root,
           'queues',
           'Run a finite machine',
-          'Change one resource, observe the bottleneck, and explain the result.'
+          'Change one resource and find which queue fills first.'
         )
       );
       measurement(
         P.sec(
           root,
           'measure',
-          'Measure real hardware',
-          'Use the same hypothesis on a real machine, then investigate differences.'
+          'How the benchmarks work',
+          'What the native harness measures, what to keep fixed, and how to dig deeper with perf.'
         )
       );
       var last = P.sec(
         root,
         'explain',
         'Explain a surprising result',
-        'Make one controlled change before assigning a cause.'
+        'Change one thing at a time before naming a cause.'
+      );
+      table(
+        last,
+        ['You see', 'One possible reason'],
+        [
+          [
+            'Many misses but high throughput',
+            'Independent misses overlap, so each one costs less than its latency.'
+          ],
+          [
+            'A busy memory link but low useful bandwidth',
+            'Each 64-byte line brings back only one 8-byte pointer.'
+          ],
+          [
+            'Latency rises when you add more work',
+            'Bandwidth is already saturated; the extra requests just wait in queues.'
+          ]
+        ]
       );
       text(
         'p',
         last,
-        'High miss rate can coexist with high throughput when independent misses overlap. Low useful bandwidth can coexist with a busy return link when each line provides only one pointer. More outstanding work can raise queueing latency after bandwidth saturates. When a measurement disagrees, first check boundaries, generated code, residency, placement and frequency; then test the proposed bottleneck by changing one resource or workload property.'
+        'When a measurement disagrees with the model, check the boring things first: what the timer covers, the generated code, where memory lives and the clock speed. Then change one resource or one property of the workload and see if the result moves the way your explanation predicts.'
       );
       h(
         'p',
         null,
         last,
-        'Return to the <a href="#e2e/critical">dependency graph</a>, <a href="#hier/parallel">hierarchy walkthrough</a>, or <a href="#core/run">instruction-level core simulator</a>.'
+        'Go back to the <a href="#e2e/critical">dependency graph</a>, the <a href="#hier/parallel">hierarchy walkthrough</a> or the <a href="#core/run">core simulator</a>.'
       );
     }
   });

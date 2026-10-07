@@ -1,4 +1,4 @@
-/* Phase 2: independent, deterministic teaching models. No proprietary implementation policy. */
+/* Deterministic cache models behind the L1d and hierarchy labs. They copy no vendor's policy. */
 var CacheLab = (function () {
   'use strict';
   function integer(v, min, max, name) {

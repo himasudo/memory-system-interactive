@@ -8,22 +8,19 @@
     var sec = App.labSection(
       root,
       'controller',
-      'Queues, scheduling and the shared DRAM bus',
-      'Compare one request table under different scheduling policies.'
+      'Inside the memory controller',
+      'Requests wait in queues and a scheduler picks the next DRAM command. Change the policy and watch speed and fairness trade off.'
     );
-    App.CacheUI.teaching(
+    U.model(
       sec,
-      'This controller enforces a stated subset of DRAM-style timing constraints. All numerical timings are small, chosen model clocks, not DDR4-2400 values or core cycles. Channels have separate command/data buses; ranks on one channel share those buses. Coordinates are supplied explicitly, so no undocumented hardware address hash is invented. The detailed DDR4 device walkthrough above remains the concrete device example.'
+      'The main DRAM timing rules, with small made-up timings in controller clocks. Each request names its channel, rank, bank and row directly, so there is no address hashing. Channels have their own buses; ranks on one channel share them.'
     );
     U.checkpoint(
       sec,
-      'Can serving younger row hits improve total throughput while making an older row-conflict request wait longer?',
-      [
-        'Yes, locality and fairness can conflict',
-        'No, a faster total means every request improves'
-      ],
+      'If the controller serves newer row hits first, can total throughput go up while an older request waits longer?',
+      ['Yes: speed and fairness can conflict', 'No: if the total is faster, every request is faster'],
       0,
-      'Inspect per-request waiting and bypass counts as well as the completion time. An age rule changes the tradeoff; it is not proof of a bounded hardware latency.'
+      'Compare the per-request waits and bypass counts, not just the finish time. The age limit trades some speed back for fairness.'
     );
     var o = {
         channels: 1,
@@ -43,42 +40,61 @@
       work = { pattern: 'locality', spacing: 2, writes: 25, count: 48 },
       custom = false,
       current = [],
-      r,
-      controls = h('div', { class: 'perf-controls' }, sec);
-    function knob(key, label, values) {
-      U.select(controls, label, values, o[key], function (v) {
+      r;
+    function group(title) {
+      var g = h('div', { class: 'lab-group' }, sec);
+      U.text('div', g, title, { class: 'lab-group-title' });
+      return h('div', { class: 'perf-controls' }, g);
+    }
+    var gSched = group('Scheduler'),
+      gLayout = group('Channels, banks and queues'),
+      gWork = group('Requests'),
+      gRefresh = group('Refresh'),
+      controls = gWork;
+    function knob(key, label, values, into) {
+      U.select(into, label, values, o[key], function (v) {
         o[key] = isNaN(Number(v)) ? v : +v;
         if (key === 'banks') o.groups = Math.min(2, o.banks);
         run();
       });
     }
-    knob('policy', 'Controller scheduling', [
-      ['fcfs', 'FCFS: oldest request in the selected queue'],
-      ['frfcfs', 'Ready commands, then row hits, then age']
-    ]);
-    knob('arbitration', 'Read/write arbitration', [
-      ['arrival', 'One combined arrival-ordered candidate pool'],
-      ['drain', 'Separate queues with write draining']
-    ]);
-    knob('channels', 'Independent channels', [1, 2]);
-    knob('ranks', 'Ranks per channel', [1, 2]);
-    knob('banks', 'Banks per rank', [1, 2, 4, 8]);
-    knob('readQ', 'Read queue entries', [2, 4, 8, 16]);
-    knob('writeQ', 'Write queue entries', [8, 16]);
-    knob('high', 'Write high watermark', [4, 6, 8]);
-    knob('low', 'Write low watermark', [0, 2, 4]);
-    knob('age', 'Age override (model clocks; 0 = off)', [0, 40, 80, 160]);
+    knob(
+      'policy',
+      'Controller scheduling',
+      [
+        ['fcfs', 'FCFS: oldest request first'],
+        ['frfcfs', 'FR-FCFS: ready row hits first, then oldest']
+      ],
+      gSched
+    );
+    knob(
+      'arbitration',
+      'Read/write arbitration',
+      [
+        ['arrival', 'One shared queue, in arrival order'],
+        ['drain', 'Separate read and write queues; writes drain in bursts']
+      ],
+      gSched
+    );
+    knob('age', 'Age limit (clocks; 0 = off)', [0, 40, 80, 160], gSched);
+    knob('channels', 'Independent channels', [1, 2], gLayout);
+    knob('ranks', 'Ranks per channel', [1, 2], gLayout);
+    knob('banks', 'Banks per rank', [1, 2, 4, 8], gLayout);
+    knob('readQ', 'Read queue entries', [2, 4, 8, 16], gLayout);
+    knob('writeQ', 'Write queue entries', [8, 16], gLayout);
+    knob('high', 'Start draining writes at', [4, 6, 8], gLayout);
+    knob('low', 'Stop draining writes at', [0, 2, 4], gLayout);
     [
       [
         'pattern',
         'Generated access pattern',
         [
           ['locality', 'Four accesses per open row'],
-          ['stream', 'New rows spread over resources'],
-          ['conflict', 'Alternate rows of one bank']
+          ['stream', 'New rows spread over banks'],
+          ['conflict', 'Alternating rows in one bank']
         ]
       ],
-      ['spacing', 'Arrival spacing (model clocks)', [0, 1, 2, 4, 8, 16, 32]],
+      ['spacing', 'Clocks between arrivals', [0, 1, 2, 4, 8, 16, 32]],
       ['writes', 'Write fraction (%)', [0, 25, 50, 75, 100]]
     ].forEach(function (a) {
       U.select(controls, a[1], a[2], work[a[0]], function (v) {
@@ -87,17 +103,17 @@
         run();
       });
     });
-    knob('REFI', 'Refresh interval (0 = off)', [0, 64, 128, 256]);
-    knob('RFC', 'Refresh busy time', [12, 24, 40]);
-    var advanced = h('details', { class: 'perf-details' }, sec);
-    U.text('summary', advanced, 'Timing constraints and reduced-model scope');
+    knob('REFI', 'Refresh interval (0 = off)', [0, 64, 128, 256], gRefresh);
+    knob('RFC', 'Refresh busy time', [12, 24, 40], gRefresh);
+    var advanced = h('div', { class: 'lab-group' }, sec);
+    U.text('div', advanced, 'DRAM timing rules', { class: 'lab-group-title' });
     var timed = h('div', { class: 'perf-controls' }, advanced);
     [
-      ['FAW', 'Four-activate window', [8, 12, 24, 48]],
-      ['WR', 'Write recovery before precharge', [2, 6, 12]],
-      ['RTW', 'Read→write data-bus gap', [1, 3, 8]],
-      ['WTRS', 'Write-data-end→read command, other group', [1, 3, 5]],
-      ['WTRL', 'Write-data-end→read command, same group', [5, 8, 12]]
+      ['FAW', 'Four-activate window (tFAW)', [8, 12, 24, 48]],
+      ['WR', 'Write recovery before close (tWR)', [2, 6, 12]],
+      ['RTW', 'Read → write bus gap', [1, 3, 8]],
+      ['WTRS', 'Write → read, other bank group', [1, 3, 5]],
+      ['WTRL', 'Write → read, same bank group', [5, 8, 12]]
     ].forEach(function (a) {
       o[a[0]] = M.defaults[a[0]];
       U.select(timed, a[1], a[2], o[a[0]], function (v) {
@@ -107,42 +123,41 @@
     });
     U.table(
       advanced,
-      ['Constraint', 'Reduced implementation'],
+      ['Timing rule', 'What it enforces here'],
       [
-        ['tRCD / tRP / tRAS / tRC', 'ACT→column; PRE→ACT; ACT→PRE; ACT→next ACT on that bank'],
         [
-          'tRRD_S/L and tFAW',
-          'Rank-local ACT spacing, and at most four ACTs in the chosen sliding window'
+          'tRCD / tRP / tRAS / tRC',
+          'Open → read or write; close → open; open → close; open → next open, per bank'
         ],
-        ['tCCD_S/L', 'Column-command spacing; same-group restriction only within one rank'],
-        ['tRTP / tWR', 'Read-command→PRE and end-of-write-data→PRE'],
-        ['tWTR_S/L', 'End of the latest write burst→read command on the same rank'],
-        [
-          'Read→write and rank switching',
-          'Additional gaps on the shared data bus; deliberately simplified'
-        ],
+        ['tRRD_S/L and tFAW', 'Gap between row opens in a rank, and at most four opens per window'],
+        ['tCCD_S/L', 'Gap between reads or writes; longer inside one bank group'],
+        ['tRTP / tWR', 'Read → close, and end of write data → close'],
+        ['tWTR_S/L', 'End of a write burst → next read on the same rank'],
+        ['Read ↔ write, rank switches', 'Extra gaps on the shared data bus (simplified)'],
         [
           'Refresh',
-          'Due rank stops new work, finishes prepared requests, precharges and waits for data to drain before REF; no requests use it during RFC'
+          'A rank due for refresh takes no new work, finishes what it started, closes its rows, then refreshes'
         ]
       ]
     );
     U.text(
       'p',
       advanced,
-      'One command per channel per clock. A request reserves its bank between PRE/ACT and its column command to prevent row-opening thrash. FCFS can block ready work behind its oldest request; FR-FCFS-style arbitration chooses among timing-ready commands and favors column commands. Started transactions finish before read/write mode switches. The age override favors old ready requests and old reads at a mode boundary; it is not a strict starvation guarantee. Refresh is scheduled relative to actual REF issue, with simplified rank staggering. This is not a complete JEDEC validator: power states, auto-precharge, all command-pair rules, ECC, PHY/training, address mapping, merging and bounded return queues are omitted.'
+      'One command per channel per clock. FCFS can leave ready work stuck behind the oldest request; FR-FCFS picks among commands that are ready now and prefers reads and writes to open rows. The age limit favors old requests but is not a hard guarantee. Not modeled: power states, auto-precharge, every command-pair rule, ECC, link training and return queues.',
+      { class: 'note' }
     );
-    U.text('a', advanced, 'Compare a production research simulator: gem5 DRAM controller', {
-      href: 'https://gem5.googlesource.com/public/gem5/+/bf238470726b4cc5c0b34fcb349d767726fe53bc/src/mem/DRAMCtrl.py',
-      target: '_blank',
-      rel: 'noopener'
-    });
+    U.sources(advanced, [
+      [
+        'gem5 DRAM controller model',
+        'https://gem5.googlesource.com/public/gem5/+/bf238470726b4cc5c0b34fcb349d767726fe53bc/src/mem/DRAMCtrl.py'
+      ]
+    ]);
     var editor = h('details', { class: 'perf-details' }, sec);
-    U.text('summary', editor, 'Edit exact request arrivals and coordinates');
+    U.text('summary', editor, 'Edit the requests by hand');
     U.text(
       'p',
       editor,
-      'One row per 64-byte request: ID arrival channel rank bank row R|W. Every request addresses a distinct column/line even when the row matches; same-address ordering and memory values are outside this controller model. Arrival is the offered time before bounded-queue admission.'
+      'One request per line: ID, arrival clock, channel, rank, bank, row, R or W. Each request moves its own 64-byte line.'
     );
     var input = h(
         'textarea',
@@ -158,7 +173,7 @@
       custom = false;
       run();
     };
-    U.text('button', actions, 'Five-request audit example', { type: 'button' }).onclick =
+    U.text('button', actions, 'Five-request example', { type: 'button' }).onclick =
       function () {
         input.value = 'A 0 0 0 0 3 R\nB 1 0 0 1 9 R\nC 2 0 0 0 3 R\nD 3 0 0 0 7 R\nE 4 0 0 1 9 W';
         custom = true;
@@ -244,15 +259,15 @@
             .join(' · ') || 'none; timing, policy or idle input prevents issue')
       );
       timeline(snap.t);
-    });
+    }, state);
     U.text(
       'figcaption',
       fig,
-      '80-clock window; scroll horizontally on narrow screens. Upper ticks mark commands (hover for details); lower rectangles are 64-byte data bursts, green reads and violet writes. The same-channel bursts cannot overlap. Separate channels can transfer at once.'
+      'An 80-clock window. Ticks are commands (hover for details); bars are 64-byte data bursts, green for reads and violet for writes. Bursts on one channel never overlap; separate channels transfer at the same time.'
     );
     var latency = h('div', null, sec),
       detail = h('details', { class: 'perf-details' }, sec);
-    U.text('summary', detail, 'Per-request latency decomposition and command log');
+    U.text('summary', detail, 'Show every request and command');
     var tables = h('div', null, detail);
     var buttons = h('div', { class: 'perf-actions' }, sec),
       compare = U.text('button', buttons, 'Compare both schedulers on this trace', {
@@ -288,7 +303,7 @@
       U.text(
         'p',
         comparison,
-        'Both runs use identical arrivals, coordinates, capacities and timing parameters. FCFS applies within the active arbitration pool; write-drain mode is not one global FCFS order.'
+        'Both runs use the same requests and timing rules. With write draining on, FCFS orders each queue separately.'
       );
     };
     sweep.onclick = function () {
@@ -320,7 +335,7 @@
       U.text(
         'p',
         comparison,
-        'This sweep regenerates the selected pattern, preserving its 48 requests and mix. It does not reuse a manually edited trace. Throughput can saturate while waiting grows. Full-queue counts sum channel-clocks, not stall cycles of a CPU instruction.'
+        'The sweep regenerates 48 requests of the chosen pattern (not your edited table). Bandwidth levels off while waiting keeps growing.'
       );
     };
     download.onclick = function () {
@@ -330,7 +345,7 @@
             JSON.stringify(
               {
                 schema: 'memory-lab-controller-model-v1',
-                evidence: 'teaching approximation; not hardware measurement',
+                evidence: 'simulation, not a hardware measurement',
                 parameters: r.p,
                 requests: r.requests,
                 commands: r.commands,
@@ -476,7 +491,7 @@
           (custom ? 'edited' : 'generated') +
           ' trace · ' +
           r.requests.length +
-          ' requests · all times in model clocks';
+          ' requests · times in controller clocks';
         metrics.replaceChildren();
         explain.replaceChildren();
         tables.replaceChildren();
@@ -484,21 +499,21 @@
         comparison.replaceChildren();
         U.metric(
           metrics,
-          'Completion interval',
+          'Finished after',
           r.cycles + ' clocks',
-          'First offered arrival → final data beat'
+          'First arrival to last data beat'
         );
         U.metric(
           metrics,
-          'Aggregate line bandwidth',
+          'Line bandwidth',
           r.bandwidth.toFixed(2) + ' B/clock',
-          (100 * r.busUtil).toFixed(1) + '% of combined data-bus occupancy'
+          'Data bus busy ' + (100 * r.busUtil).toFixed(1) + '% of the time'
         );
         U.metric(
           metrics,
           'Mean / p95 request latency',
           r.latency.mean.toFixed(1) + ' / ' + r.latency.p95,
-          'Offered arrival → final data beat; includes admission wait'
+          'Arrival to last data beat, queueing included'
         );
         U.metric(
           metrics,
@@ -521,7 +536,7 @@
             r.stats.refreshes +
             '. Read p95: ' +
             (r.readP95 === null ? 'no reads' : r.readP95 + ' clocks') +
-            '. A hit row does not eliminate queueing, bus contention or refresh.'
+            '. Even row hits still wait for queues, the bus and refresh.'
         );
         U.table(
           latency,
@@ -540,7 +555,7 @@
         U.text(
           'p',
           latency,
-          'Nearest-rank quantiles of individual simulated requests. Admission wait is arrival→queue admission; queue wait is admission→first command; the command interval is first command→last data and includes further arbitration/timing waits. It is not pure service time or full CPU load-to-use latency. Fabric, translation and cache-return stages are outside this boundary.'
+          'Percentiles over single requests, from arrival at the controller to the last data beat. The trip through the caches and the interconnect is not included.'
         );
         U.table(
           tables,
@@ -591,18 +606,6 @@
       }
     }
     run();
-    U.text('h3', sec, 'Measure loaded latency on your machine');
-    U.text(
-      'p',
-      sec,
-      'First establish a pinned dependent pointer-chase baseline with a working set beyond the measured cache plateau. Then place independent bandwidth generators on other physical cores and repeat at increasing load, keeping topology, frequency, page policy and thermals recorded. Separate CPU cache/fabric interference from the DRAM-controller inference: a slower chase alone does not identify the controller policy, row hit rate or bank mapping.'
-    );
-    U.text(
-      'p',
-      sec,
-      'Use the native harness and protocol below. Report both chase ns/load and generator useful GB/s. Hardware latency samples and whole-trial averages are different distributions; generic cache-misses is not a DRAM row-miss counter. No browser time here is a hardware measurement.'
-    );
-    U.text('a', sec, 'Runnable hardware measurement protocol', { href: 'benchmarks/README.md' });
     measurement(sec);
   }
   function validate(data) {
@@ -651,31 +654,19 @@
     return data;
   }
   function measurement(sec) {
-    U.code(
-      sec,
-      'python3 benchmarks/run_all.py --serve\n# Individual fallback: python3 benchmarks/loaded.py --cpus 0,2,4,6 --output loaded-results.json'
-    );
-    U.text(
-      'p',
-      sec,
-      'This harness warms and validates a randomized dependent ring, then adds zero through N pinned read/write generators. Each worker allocates and first-touches its own memory after pinning. The chase starts after every generator has completed a full pass. Generator progress is counted in 64 KiB chunks around the chase interval: its useful bandwidth is approximate and includes boundary quantization. The chase timer covers the dependent kernel, not setup or joins.'
-    );
-    var label = h('label', { class: 'perf-field' }, sec);
-    U.text('span', label, 'Import loaded-latency result JSON');
-    var input = h(
-        'input',
-        {
-          type: 'file',
-          accept: '.json,application/json',
-          'aria-label': 'Loaded latency result JSON'
-        },
-        label
-      ),
-      status = U.text('p', sec, 'No loaded-latency hardware results loaded.', {
-        role: 'status',
-        class: 'loaded-status'
+    var n = U.native(sec, {
+        title: 'Loaded latency on your machine',
+        what: 'One core chases pointers while other cores flood memory with reads or writes. You get the chase latency and the other cores’ bandwidth at each load level. Use more memory than your last-level cache holds, or you are measuring cache contention instead of DRAM.',
+        command: 'python3 benchmarks/loaded.py --cpus 0,2,4,6 --output loaded-results.json',
+        label: 'Import loaded-latency result JSON',
+        aria: 'Loaded latency result JSON',
+        empty: 'No loaded-latency hardware results loaded.',
+        statusClass: 'loaded-status',
+        outClass: 'loaded-results'
       }),
-      out = h('div', { class: 'loaded-results' }, sec);
+      input = n.input,
+      status = n.status,
+      out = n.out;
     function render(data, label) {
       validate(data);
       if (label) U.text('h3', out, label, { class: 'measurement-run-title' });
@@ -685,7 +676,7 @@
         (groups[key] || (groups[key] = [])).push(r);
       });
       status.textContent =
-        'Measured data · ' +
+        'Measured · ' +
         String(data.context.cpu_model || 'unknown CPU') +
         ' · ' +
         (data.complete === true ? 'complete run' : 'partial / completion not recorded');
@@ -724,23 +715,13 @@
       U.text(
         'p',
         out,
-        'These are real whole-trial measurements with the supplied context. They do not identify row policy, queue size, individual-load tails or DRAM-bus bytes. A small working set may measure cache contention instead of external-memory contention; establish the working-set plateau first.'
+        'Whole-run averages from your machine. They show that latency rises under load, not why: row policy, queue sizes and DRAM-bus bytes are not visible from here.'
       );
       var details = h('details', null, out);
-      U.text('summary', details, 'Original loaded-latency context');
+      U.text('summary', details, 'Show the recorded context');
       U.code(details, JSON.stringify(data.context, null, 2));
     }
-    input.onchange = async function () {
-      out.replaceChildren();
-      try {
-        var f = input.files[0];
-        if (!f) return;
-        if (f.size > 2 * 1024 * 1024) throw new Error('Maximum file size is 2 MiB.');
-        render(JSON.parse(await f.text()), 'Manual import · locally read, not uploaded');
-      } catch (e) {
-        status.textContent = 'Could not import: ' + e.message;
-      }
-    };
+    U.importInto(input, out, status, render);
     App.Measurements.bind('loaded', status, out, render);
   }
   App.extendChapter('dram', build);

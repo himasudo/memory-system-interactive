@@ -10,19 +10,19 @@
     var sec = App.labSection(
       root,
       'write-pressure',
-      'A dirty victim can block a returning fill',
-      'Follow the backpressure from the writeback queue to miss admission.'
+      'When writebacks block fills',
+      'A returning line needs room. If the line it evicts is dirty and the writeback queue is full, the fill waits, and so does everything behind it.'
     );
     teaching(
       sec,
-      '32 cold 8-byte temporal stores visit distinct lines in order. Each allocates a 64-byte line after an assumed eight-cycle fetch. A four-line fully associative cache evicts dirty victims. Fill entries remain occupied until installation succeeds; a full writeback queue blocks that installation. The writeback sink is a separate serial resource here, not a DDR controller.'
+      '32 stores to 32 new lines, a 4-line cache and an 8-cycle fetch. A fill entry stays busy until its line is installed. Writebacks drain one at a time into a simple sink, not a real DRAM controller.'
     );
     U.checkpoint(
       sec,
-      'If a fill has returned but its dirty victim cannot enter the writeback queue, is that fill’s miss entry necessarily free?',
-      ['Yes, data has returned', 'No, allocation can remain blocked'],
+      'A fill has arrived, but its dirty victim can’t enter the writeback queue. Is the fill’s miss entry free again?',
+      ['Yes, the data has arrived', 'No, it stays busy until the line is installed'],
       1,
-      'Data arrival, cache installation and release of finite resources are distinct events.'
+      'Arriving, being installed and freeing the entry are three separate events.'
     );
     var o = { fill: 4, writeback: 2, drain: 12 },
       ctl = h('div', { class: 'perf-controls' }, sec);
@@ -49,7 +49,7 @@
           'Cycle ' +
             t.t +
             ' · ' +
-            (t.blocked ? 'returned fill blocked by dirty victim' : 'buffers can progress')
+            (t.blocked ? 'a fill is waiting for its dirty victim to leave' : 'nothing is blocked')
         );
         U.table(
           state,
@@ -61,55 +61,55 @@
             ['Installed / writebacks completed', t.installed + ' / ' + t.written]
           ]
         );
-      });
+      }, state);
     function draw() {
       r = M.writePressure(o);
       sec._pressureResult = r;
       metrics.replaceChildren();
       U.metric(
         metrics,
-        'Fill installation blocked',
+        'Fills waiting',
         r.fillBlocked + ' cycles',
-        'Writeback capacity unavailable'
+        'No room in the writeback queue'
       );
       U.metric(
         metrics,
-        'New request admission blocked',
+        'New misses blocked',
         r.frontBlocked + ' cycles',
-        'All fill entries remain occupied'
+        'Every fill entry was busy'
       );
       U.metric(
         metrics,
-        'Lower-level traffic',
+        'Traffic to the next level',
         r.rfoBytes + r.writebackBytes + ' B',
         r.rfoBytes + ' B RFO + ' + r.writebackBytes + ' B writeback'
       );
       U.metric(
         metrics,
-        'Completion / residency',
+        'Finished after',
         r.cycles + ' cycles',
-        r.dirtyResident +
-          ' dirty lines remain resident; their eventual eviction is outside this interval'
+        r.dirtyResident + ' dirty lines still in the cache at the end'
       );
       step.set(r.trace.length);
     }
     draw();
-    U.text(
+    h(
       'p',
+      null,
       sec,
-      'This model isolates a causal chain, so it excludes hits, prefetches and a shared read/write bus. Real replacement policies, buffer sizes, write combining and ownership optimizations change the result. Phase 3’s controller experiment adds read/write competition rather than relabeling this sink as DRAM.'
+      'Real caches have other buffer sizes and replacement rules, and can combine writes. The <a href="#dram/controller">DRAM controller lab</a> adds reads and writes competing for one bus.'
     );
   }
   function writeTraffic(root) {
     var sec = App.labSection(
       root,
       'write-traffic',
-      'Useful stores versus ownership and writeback bytes',
-      'The accounting boundary decides what “write bandwidth” means.'
+      'How many bytes does a store really move?',
+      'Writing 8 bytes can read a whole line first and write a whole line back later.'
     );
     teaching(
       sec,
-      'Compare idealized passes over a fully associative LRU cache with 64-byte lines. Temporal stores allocate on a cold miss and write dirty victims back. A final drain is included. The non-temporal column assumes aligned, complete lines, effective write combining, no prior residency and no reuse benefit. It is an ideal traffic bound, not a promise that every NT instruction avoids a read.'
+      'A fully associative LRU cache with 64-byte lines; dirty lines are written back at the end. The non-temporal column is the best case: whole aligned lines, fully combined, never read first.'
     );
     var o = { lines: 16, cache: 8, passes: 2, useful: 64 },
       ctl = h('div', { class: 'perf-controls' }, sec);
@@ -135,7 +135,7 @@
       sec._trafficResult = r;
       U.table(
         out,
-        ['Boundary', 'Temporal stores', 'Ideal complete-line non-temporal stream'],
+        ['Bytes', 'Normal stores', 'Non-temporal stores, best case'],
         [
           ['Useful bytes', o.lines * o.passes * o.useful, o.lines * o.passes * o.useful],
           [
@@ -144,16 +144,16 @@
             o.useful === 64 ? 0 : 'not modeled for partial lines'
           ],
           [
-            'Write bytes after final drain',
+            'Written back, after the final drain',
             r.counts.writebackBytes,
             o.useful === 64
               ? o.lines * o.passes * 64
-              : 'partial write combining is implementation-dependent'
+              : 'depends on how the CPU combines partial lines'
           ],
           [
             'Total line traffic',
             r.counts.totalLineBytes,
-            o.useful === 64 ? o.lines * o.passes * 64 : 'no numerical claim'
+            o.useful === 64 ? o.lines * o.passes * 64 : 'not modeled'
           ]
         ]
       );
@@ -161,36 +161,36 @@
         'p',
         out,
         o.lines <= o.cache
-          ? 'The temporal working set fits: later passes reuse dirty lines, and the final drain writes each line once. Bypassing the cache can discard that reuse advantage.'
-          : 'The cyclic working set exceeds this fully associative LRU cache. Each pass allocates and eventually writes back every line. A one-pass full-line stream can avoid substantial ownership reads when the NT assumptions hold.'
+          ? 'The data fits: later passes hit lines that are already dirty, and each line is written back once at the end. Non-temporal stores would throw that reuse away.'
+          : 'The data doesn’t fit, so every pass reads each line for ownership and writes it back later. Writing whole lines with non-temporal stores can skip those ownership reads.'
       );
     }
     draw();
     U.checkpoint(
       sec,
-      'Can you infer the temporal/non-temporal runtime crossover from byte counts alone?',
-      ['Yes, bytes determine all costs', 'No, reuse and resource limits matter'],
+      'Do byte counts alone tell you whether non-temporal stores will be faster?',
+      ['Yes, fewer bytes is always faster', 'No, reuse and queue limits matter too'],
       1,
-      'Measure working-set size, number of passes and alignment. Include required completion/order boundaries consistently; traffic bounds are not timings.'
+      'Byte counts are a bound, not a time. Measure with different data sizes, pass counts and alignments.'
     );
   }
   function ownership(root) {
     var sec = App.labSection(
       root,
       'transactions',
-      'Atomic updates, false sharing and transient ownership',
-      'Change the counter layout without changing the useful work.'
+      'Atomics and false sharing',
+      'Two threads update different counters. Whether the counters share a cache line decides how much traffic that causes.'
     );
     teaching(
       sec,
-      'A generic MOESI teaching protocol with explicit GetS, GetM, data and acknowledgement events extends the stable-state walkthrough above. IS/IM/SM/OM mean a request is pending; they are not AMD’s state names. Operations in this trace run one at a time. Logical event ticks expose ordering and must not be read as parallel runtime or hardware atomic latency.'
+      'The MOESI protocol from the walkthrough above, now with its messages: GetS, GetM, data and acknowledgements. IS, IM, SM and OM mean a request is still in flight. Operations run one at a time; ticks show order, not time.'
     );
     U.checkpoint(
       sec,
-      'Two cores update different 8-byte counters in the same 64-byte line. Can the counters still cause ownership transfers?',
+      'Two cores update different 8-byte counters that sit in the same 64-byte line. Can that still move the line back and forth?',
       ['No, their values are independent', 'Yes, ownership is tracked per line'],
       1,
-      'Padding changes the coherence unit that the two writers share, even though the source-level counters were already independent.'
+      'Coherence works on whole lines. Padding each counter onto its own line removes the sharing, even though the program logic didn’t change.'
     );
     var o = { placement: 'two', layout: 'packed', kind: 'add', flush: false },
       ctl = h('div', { class: 'perf-controls' }, sec);
@@ -277,14 +277,14 @@
       var cards = h('div', { class: 'coherence-cards' }, state);
       for (var c = 0; c < r.p.cores; c++) {
         var card = h('div', { class: 'perf-metric' }, cards);
-        U.text('strong', card, 'Physical core ' + c);
+        U.text('strong', card, 'Core ' + c);
         Object.keys(e.lines).forEach(function (k) {
           U.text('p', card, 'Line ' + k + ': ' + e.lines[k].states[c]);
         });
       }
       U.table(
         state,
-        ['Line', 'Coherent word values [0…7]', 'Backing memory [0…7]'],
+        ['Line', 'Current values, words 0–7', 'Memory, words 0–7'],
         Object.keys(e.lines).map(function (k) {
           return [k, e.lines[k].values.join(' · '), e.lines[k].memory.join(' · ')];
         })
@@ -292,9 +292,9 @@
       U.text(
         'p',
         state,
-        'A dirty cache can hold the authoritative value while backing memory is stale. This value table is a single coherent abstraction; it does not claim that every invalid cache contains those bytes.'
+        'A dirty cache can hold the newest value while memory still has an old one.'
       );
-    });
+    }, state);
     function draw() {
       var threads = o.placement === 'one' ? 1 : o.placement === 'four' ? 4 : 2,
         cores = o.placement === 'smt' ? 1 : threads,
@@ -332,84 +332,73 @@
         metrics,
         'Atomic operations / failed CAS',
         r.stats.atomics + ' / ' + r.stats.failedCAS,
-        'A retry is extra work even when ownership stays local'
+        'A retry costs work even if the line stays put'
       );
       U.metric(
         metrics,
         'Ownership handoffs',
         String(r.stats.ownershipMoves),
-        'Writable ownership acquired while another core had a copy'
+        'Write permission taken from another core'
       );
       U.metric(
         metrics,
         'Invalidations / acknowledgements',
         r.stats.invalidations + ' / ' + r.stats.acks,
-        'One acknowledgement for each invalidated peer'
+        'One acknowledgement per invalidated copy'
       );
       U.metric(
         metrics,
-        'Dirty peer / clean home data',
+        'Data from a core / from home',
         r.stats.peerBytes + ' / ' + r.stats.homeBytes + ' B',
-        'Home may be a shared cache; these are not DRAM bytes'
+        'Home is the shared cache or memory'
       );
       U.text(
         'p',
         note,
-        'This model obtains writable ownership even for a failed CAS. That is a chosen implementation policy, not a C11 or universal ISA requirement. C11 atomicity and memory ordering are separate; relaxed atomics still update one atomic object indivisibly. Ordinary stores here illustrate a scripted coherence order, not a valid concurrent C program when threads write the same non-atomic counter.'
+        'Here a failed CAS still takes write permission. That is this model’s choice, not a rule of C or of the instruction set. The “ordinary stores” option shows coherence traffic only: in C, two threads writing the same plain variable is a data race.'
       );
       if (o.placement === 'smt')
         U.text(
           'p',
           note,
-          'Both logical threads use one physical core’s private cache, so no inter-core ownership handoff is generated here. This does not make contention free: they still compete for shared resources and serialize updates to the same atomic object. Use the SMT lab and pinned native trials to examine that cost.'
+          'Both threads share one core’s cache, so the line never moves between cores. They still take turns on the same atomic and compete for the core’s resources (see the SMT lab in the core chapter).'
         );
       if (o.kind === 'peer')
         U.text(
           'p',
           note,
-          'Peer-read mode intentionally reads the writer’s line regardless of the layout selector. The M → O transition preserves a dirty owner while readers get S copies. A peer transfer avoids fetching stale backing memory.'
+          'This mode ignores the layout setting. The writer’s line goes from M to O: the writer keeps the newest copy, readers get S copies from it, and stale memory is never read.'
         );
       step.set(r.events.length);
     }
     draw();
-    U.text('h3', sec, 'While ownership is pending');
+    U.text('h3', sec, 'Why the in-between states exist');
     U.table(
       sec,
-      ['Event / race', 'Why a transient state is needed', 'Deliberate scope'],
+      ['Moment', 'Why an extra state is needed', 'In this lab'],
       [
         [
-          'GetS sent; data absent',
-          'The line is neither a usable S copy nor simply an untouched I line',
-          'IS tracks an outstanding request'
+          'Read request sent, data not back yet',
+          'The line is not a usable S copy yet, but it is not plain I either',
+          'IS marks the request in flight'
         ],
         [
-          'Upgrade sent; acknowledgements absent',
-          'Writing early could leave another valid old copy',
-          'SM/OM waits for invalidations'
+          'Upgrade sent, acknowledgements not back',
+          'Writing now could leave an old copy somewhere else',
+          'SM and OM wait for every invalidation'
         ],
         [
-          'Another writer or probe arrives mid-transition',
-          'Data, permissions and messages can be in flight simultaneously',
-          'A real protocol must serialize, queue or retry/NACK the conflict; this sequential trace does not simulate that race'
+          'Another write or probe arrives mid-change',
+          'Data, permission and messages can all be in flight at once',
+          'Real protocols queue, retry or reject it; this lab runs one operation at a time'
         ],
         [
-          'Store retires before ownership',
-          'Architectural retirement can precede coherent visibility',
-          'The buffer event precedes the visible store event; neither requires a write to DRAM'
+          'Store retires before it owns the line',
+          'Retiring and becoming visible to other cores are separate steps',
+          'The store waits in the store buffer; nothing is written to DRAM'
         ]
       ]
     );
-    U.text('h3', sec, 'Measure the mechanism on your machine');
-    U.text(
-      'p',
-      sec,
-      'HITM describes evidence associated with a modified peer copy in some tools; event names and data-source encodings differ by CPU. perf c2c can locate contended cache lines and offsets on supported hardware. Linux uses IBS Op for supported AMD implementations. Check the installed kernel, perf version, PMUs and permissions; do not transfer raw events between CPU models. Elapsed runtime alone does not count bounces.'
-    );
-    U.text('a', sec, 'Upstream Linux perf c2c documentation', {
-      href: 'https://kernel.googlesource.com/pub/scm/linux/kernel/git/frowand/linux/+/b72b5fecc1b8a2e595bd03d7d257c88ea3f9fd45/tools/perf/Documentation/perf-c2c.txt',
-      target: '_blank',
-      rel: 'noopener'
-    });
     measurement(sec);
   }
   function validate(data) {
@@ -453,29 +442,23 @@
     return data;
   }
   function measurement(sec) {
-    U.text('h3', sec, 'Native packed / padded / shared-counter experiment');
-    U.code(
-      sec,
-      'python3 benchmarks/run_all.py --serve\n# Individual fallback: python3 benchmarks/sharing.py --cpus 0,2 --output sharing-results.json'
-    );
-    U.text(
-      'p',
-      sec,
-      'The unified workflow selects documented physical cores and SMT siblings where permitted. The harness uses aligned, lock-free C11 uint64 atomics with relaxed ordering, explicit add/CAS kernels, worker affinity, warm-up, randomized repeated cases and checksum validation. It includes a one-thread baseline. Timing covers the release barrier through all joins. Increase iterations until that fixed overhead is negligible. The compiler, topology and raw trials stay attached. Different placement runs stay separate.'
-    );
-    var lab = h('label', { class: 'perf-field' }, sec);
-    U.text('span', lab, 'Import atomic-counter result JSON');
-    var input = h(
-        'input',
-        {
-          type: 'file',
-          accept: '.json,application/json',
-          'aria-label': 'Atomic counter result JSON'
-        },
-        lab
-      ),
-      status = U.text('p', sec, 'No hardware results loaded.', { role: 'status' }),
-      out = h('div', { class: 'sharing-results' }, sec);
+    var n = U.native(sec, {
+        what: 'Threads update one shared counter, counters packed into one line, or counters padded onto separate lines, using atomic add and compare-and-swap. The result is nanoseconds per update for each layout and CPU placement. To see which lines bounce between cores, run perf c2c on a CPU that supports it.',
+        command: 'python3 benchmarks/sharing.py --cpus 0,2 --output sharing-results.json',
+        label: 'Import atomic-counter result JSON',
+        aria: 'Atomic counter result JSON',
+        empty: 'No hardware results loaded.',
+        outClass: 'sharing-results'
+      }),
+      input = n.input,
+      status = n.status,
+      out = n.out;
+    U.sources(n.box, [
+      [
+        'perf c2c',
+        'https://kernel.googlesource.com/pub/scm/linux/kernel/git/frowand/linux/+/b72b5fecc1b8a2e595bd03d7d257c88ea3f9fd45/tools/perf/Documentation/perf-c2c.txt'
+      ]
+    ]);
     function render(d, label) {
       validate(d);
       if (label) U.text('h3', out, label, { class: 'measurement-run-title' });
@@ -489,7 +472,7 @@
         (groups[key] || (groups[key] = [])).push(v);
       });
       status.textContent =
-        'Measured data · ' +
+        'Measured · ' +
         String(d.context.cpu_model || 'unknown CPU') +
         ' · ' +
         (d.complete === true ? 'complete run' : 'partial / completion not recorded');
@@ -528,35 +511,25 @@
       U.text(
         'p',
         out,
-        'ns/update is inverse aggregate throughput, not one atomic’s latency. p95 is across whole-trial averages. Ownership transfers and physical DRAM bytes were not measured by this harness.'
+        'ns per update is total time ÷ total updates, not the latency of one atomic. p95 is over whole-run averages. The benchmark does not count line transfers.'
       );
       var details = h('details', null, out);
-      U.text('summary', details, 'Original measurement context');
+      U.text('summary', details, 'Show the recorded context');
       U.code(details, JSON.stringify(d.context, null, 2));
     }
-    input.onchange = async function () {
-      out.replaceChildren();
-      try {
-        var f = input.files[0];
-        if (!f) return;
-        if (f.size > 2 * 1024 * 1024) throw new Error('Maximum file size is 2 MiB.');
-        render(JSON.parse(await f.text()), 'Manual import · locally read, not uploaded');
-      } catch (e) {
-        status.textContent = 'Could not import: ' + e.message;
-      }
-    };
+    U.importInto(input, out, status, render);
     App.Measurements.bind('sharing', status, out, render);
   }
   function locks(root) {
     var sec = App.labSection(
       root,
       'locks',
-      'From atomic retries to locks',
-      'Distinguish waiting policy from the atomic operation that grants ownership.'
+      'From atomics to locks',
+      'How a lock waits matters as much as the atomic that takes it.'
     );
     teaching(
       sec,
-      'Core 0 holds a lock while two other cores poll it three times, then releases it. A scripted test-and-set-style CAS loop requests writable ownership on every attempt; test-test-and-set reads first. This model does not schedule threads or predict lock throughput. A single waiter may retain M across failed retries, so “every retry bounces” would be wrong.'
+      'Core 0 holds the lock; two other cores check it three times each, then core 0 releases it. “Retry CAS” asks for write permission on every check; “read first” only reads until the lock looks free. No thread scheduling.'
     );
     var policy = 'cas',
       ctl = h('div', { class: 'perf-controls' }, sec);
@@ -592,7 +565,7 @@
       out.replaceChildren();
       U.table(
         out,
-        ['Observable in this trace', 'Count'],
+        ['In this trace', 'Count'],
         [
           ['Failed CAS operations', r.stats.failedCAS],
           ['Ownership handoffs', r.stats.ownershipMoves],
@@ -603,51 +576,47 @@
       U.text(
         'p',
         out,
-        'Read-only polling can retain shared copies until release, but release still invalidates those copies and several waiters can race to acquire. Backoff, fairness, preemption and scheduler costs require separate experiments.'
+        'Reading first keeps shared copies while the lock is held, so the line stops bouncing. The release still invalidates every copy, and all the waiters race for the lock at once.'
       );
     }
     draw();
     U.table(
       sec,
-      ['Primitive', 'Memory-system connection', 'Additional cost / guarantee'],
+      ['Primitive', 'What the memory system sees', 'Also costs'],
       [
         [
           'CAS retry loop',
-          'Retries an atomic update after observing a changed value',
-          'Retries may multiply instructions without a transfer on each retry'
+          'An atomic update, retried when the value changed',
+          'Extra instructions per retry, even when the line stays local'
         ],
         [
-          'Spinlock / test-test-and-set',
-          'Shared polling, then ownership for acquisition',
-          'Busy waits; release/acquire ordering must protect the payload'
+          'Spinlock (read, then CAS)',
+          'Shared reads while waiting, one ownership request to take it',
+          'Burns CPU while waiting; needs acquire/release ordering to protect the data'
         ],
         [
           'Ticket lock',
-          'Atomic ticket allocation plus waiting on a serving counter',
-          'FIFO ticket order; central counters can still cause coherence traffic'
+          'One atomic to take a ticket, then reads of a “now serving” counter',
+          'First come, first served, but every waiter still reads one hot line'
         ],
+        ['Mutex, no contention', 'Usually one atomic in user space', 'Depends on the C library and mutex type'],
         [
-          'Uncontended mutex',
-          'A library may acquire with a user-space atomic fast path',
-          'Exact implementation depends on libc and mutex attributes'
-        ],
-        [
-          'Contended mutex',
-          'May spin briefly, then park and wake through the kernel',
-          'Scheduling and futex paths add costs beyond cache ownership'
+          'Mutex, contended',
+          'May spin briefly, then sleep in the kernel (futex)',
+          'Sleeping and waking cost far more than the cache line'
         ]
       ]
     );
     U.text(
       'p',
       sec,
-      'The relaxed counter benchmark is not a lock implementation. Protecting non-atomic payload data requires a language-level synchronization relation, typically release on unlock and acquire on successful lock acquisition. A C data race cannot be repaired by a diagram of coherent hardware.'
+      'A lock protects other data only through memory ordering: release when unlocking, acquire when locking. Coherent caches alone do not make a racy C program correct.'
     );
     h(
       'p',
       null,
       sec,
-      'Continue with <a href="#coh/transactions">the ownership experiment</a> and <a href="#core/smt">SMT resource competition</a>.'
+      'Next: <a href="#coh/transactions">atomics and false sharing</a> and <a href="#core/smt">two threads on one core</a>.'
     );
   }
   App.extendChapter('hier', pressure);
