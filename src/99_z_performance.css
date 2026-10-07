@@ -1,4 +1,4 @@
-/* Phase 1: use the existing palette, typography and long-scroll chapter rhythm. */
+/* Lab and performance-chapter styles, built on the existing palette and type. */
 [hidden] {
   display: none !important;
 }
@@ -6,23 +6,33 @@
   display: none !important;
 }
 .evidence-contract,
-.prediction,
 .perf-explanation {
-  border-left: 3px solid var(--act);
-  padding: 14px 20px;
+  border-left: 3px solid var(--bd2);
+  padding: 12px 18px;
   background: var(--panel);
   border-radius: 0 8px 8px 0;
 }
+.perf-explanation p {
+  margin: 0;
+  color: var(--tx2);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.perf-explanation p + p,
+.perf-explanation h3 + p {
+  margin-top: 6px;
+}
 .evidence-label {
   display: inline-block;
-  font: 650 10px var(--mono);
-  letter-spacing: 0.05em;
+  font: 650 9.5px var(--mono);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--act);
-  padding: 5px 8px;
-  border: 1px solid var(--bd2);
-  border-radius: 4px;
-  margin-bottom: 10px;
+  color: var(--tx2);
+  background: var(--sunk);
+  padding: 3px 9px;
+  border: 1px solid var(--bd);
+  border-radius: 99px;
+  margin-bottom: 8px;
 }
 .ch-perf .p-sec > p,
 .stream-lab > p,
@@ -33,15 +43,19 @@
 }
 .perf-controls {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 18px 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 10px 14px;
+  margin: 16px 0;
+  padding: 14px;
+  background: var(--sunk);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
 }
 .perf-field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 11.5px;
   color: var(--tx2);
   min-width: 0;
 }
@@ -49,9 +63,10 @@
 .perf-field input {
   width: 100%;
   min-width: 0;
-  min-height: 40px;
-  padding: 8px;
-  background: var(--sunk);
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  background: var(--panel);
   color: var(--tx);
   border: 1px solid var(--bd2);
   border-radius: 6px;
@@ -70,32 +85,32 @@
 }
 .perf-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
-  gap: 12px;
-  margin: 22px 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 10px;
+  margin: 16px 0;
 }
 .perf-metric {
-  padding: 16px;
-  border: 1px solid var(--bd2);
+  padding: 12px 14px;
+  border: 1px solid var(--bd);
   border-radius: 8px;
   background: var(--panel);
   display: grid;
-  gap: 6px;
+  gap: 4px;
   align-content: start;
 }
 .perf-metric > span {
-  font: 600 11px var(--mono);
+  font: 600 10.5px var(--mono);
   color: var(--tx2);
 }
 .perf-metric strong {
-  font: 650 clamp(19px, 2.6vw, 27px) var(--mono);
+  font: 650 clamp(16px, 1.6vw, 21px) / 1.25 var(--mono);
   color: var(--act);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .perf-metric small {
   font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--tx2);
+  line-height: 1.45;
+  color: var(--tx3);
 }
 .perf-table-wrap {
   max-width: 100%;
@@ -242,8 +257,37 @@ svg .actb {
 .e2e-modes button {
   flex: 1;
 }
+.prediction {
+  border: 1px solid var(--bd);
+  border-left: 3px solid var(--act);
+  padding: 12px 16px;
+  background: var(--panel);
+  border-radius: 0 10px 10px 0;
+}
 .prediction > h3 {
-  font-size: 16px;
+  margin: 0 0 4px;
+  font: 700 10px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--act);
+}
+.prediction > p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--tx);
+}
+.prediction .perf-actions {
+  margin: 10px 0 8px;
+}
+.prediction > p.note {
+  font-size: 12.5px;
+  color: var(--tx2);
+}
+.prediction[data-answer='right'] {
+  border-left-color: var(--ok);
+}
+.prediction[data-answer='right'] > p.note {
+  color: var(--ok);
 }
 .ch-perf .p-code {
   font: 12px/1.6 var(--mono);
@@ -495,4 +539,265 @@ svg .actb {
   .perf-metric strong {
     font-size: 18px;
   }
+}
+
+/* ---------- makeover: two-part chapters and the shared lab pieces ---------- */
+.lab-part {
+  margin: 72px 0 8px;
+  padding: 26px 0 6px;
+  border-top: 1px solid var(--bd2);
+  max-width: 1320px;
+}
+.lab-part-kicker {
+  font: 700 10px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--a2);
+}
+.lab-part h2 {
+  margin: 6px 0 6px;
+  font-size: clamp(24px, 2.4vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-weight: 680;
+}
+.lab-part > p {
+  margin: 0;
+  max-width: 720px;
+  color: var(--tx2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.lab-index {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  gap: 8px;
+}
+.lab-index button {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  width: 100%;
+  height: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--tx);
+  font: inherit;
+  cursor: pointer;
+}
+.lab-index button:hover {
+  border-color: var(--a2);
+}
+.lab-index-k {
+  flex: none;
+  font: 700 10px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a2);
+  white-space: nowrap;
+}
+.lab-index-t b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 620;
+}
+.lab-index-t small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--tx3);
+}
+.lab-scene .scene-kicker {
+  color: var(--a2);
+}
+.lab-scene > p,
+.lab-scene > div > p:not([class]) {
+  max-width: 82ch;
+}
+.lab-model {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 12px 0;
+  padding: 9px 14px;
+  max-width: 900px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--tx2);
+  background: var(--sunk);
+  border: 1px dashed var(--bd2);
+  border-radius: 8px;
+}
+.lab-model > b {
+  flex: none;
+  font: 700 9.5px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--a3);
+}
+.lab-sources {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--tx3);
+}
+.lab-sources > span:first-child {
+  margin-right: 8px;
+  font: 700 9.5px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.lab-sources a {
+  color: var(--tx2);
+}
+.lab-native {
+  margin: 22px 0 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--bd2);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.lab-native-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+.lab-native-head .evidence-label {
+  margin: 0;
+}
+.lab-native-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.lab-native > p {
+  margin: 8px 0;
+  max-width: 82ch;
+  color: var(--tx2);
+  font-size: 13.5px;
+}
+.lab-native .p-code {
+  margin: 10px 0;
+  font: 12px/1.6 var(--mono);
+  white-space: pre;
+  overflow: auto;
+}
+.lab-native-file {
+  max-width: 420px;
+}
+.lab-native [role='status'] {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--tx2);
+}
+.lab-native-more {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+}
+.lab-presets {
+  margin: 4px 0 14px;
+}
+.lab-presets-label {
+  font: 700 9.5px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  margin-right: 4px;
+}
+.sec-group {
+  margin: 8px 4px 2px;
+  padding: 8px 6px 4px;
+  border-top: 1px solid var(--bd);
+  font: 700 9.5px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--a2);
+}
+@media (max-width: 760px) {
+  .lab-part {
+    margin-top: 48px;
+  }
+  .lab-native {
+    padding: 14px;
+  }
+  .lab-model {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+/* Control groups in the DRAM controller lab. */
+.lab-group {
+  margin: 12px 0;
+  padding: 10px 14px 4px;
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+}
+.lab-group-title {
+  margin: 0 0 6px;
+  font: 700 9.5px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+/* Start page: the label legend and the four starting points. */
+.label-legend {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 14px;
+  margin: 12px 0 0;
+  max-width: 820px;
+}
+.label-legend dt {
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+  font-size: 13.5px;
+  color: var(--tx);
+}
+.label-legend dd {
+  display: contents;
+}
+.label-legend dd > span:last-child {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--tx2);
+}
+.label-legend .evidence-label {
+  justify-self: start;
+  align-self: start;
+  margin: 1px 0 0;
+}
+.path-cards.path-cards-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 1320px;
+}
+@media (max-width: 1100px) {
+  .path-cards.path-cards-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .path-cards.path-cards-4 {
+    grid-template-columns: 1fr;
+  }
+  .label-legend {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .label-legend dd > span:last-child {
+    margin-bottom: 8px;
+  }
+}
+/* Long paths and commands in lab text wrap instead of widening the page. */
+.lab-scene p,
+.lab-scene li,
+.lab-scene code,
+.impl-note p {
+  overflow-wrap: anywhere;
 }
