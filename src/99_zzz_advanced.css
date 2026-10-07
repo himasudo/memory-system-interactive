@@ -1,6 +1,34 @@
-.advanced-chart { overflow-x:auto; }
-.advanced-chart svg { min-width:680px; width:100%; display:block; }
-.ecc-bits { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:16px 0; }
-.ecc-bits label { display:flex; gap:8px; align-items:center; border:1px solid var(--bd); border-radius:6px; padding:10px; background:var(--panel); color:var(--tx); font-size:12px; }
-.ecc-bits input { accent-color:var(--a1); flex:none; }
-@media(max-width:560px){ .ecc-bits { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.advanced-chart {
+  overflow-x: auto;
+}
+.advanced-chart svg {
+  min-width: 680px;
+  width: 100%;
+  display: block;
+}
+.ecc-bits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+.ecc-bits label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--bd);
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--panel);
+  color: var(--tx);
+  font-size: 12px;
+}
+.ecc-bits input {
+  accent-color: var(--a1);
+  flex: none;
+}
+@media (max-width: 560px) {
+  .ecc-bits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
