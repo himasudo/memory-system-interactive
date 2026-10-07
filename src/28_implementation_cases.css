@@ -1,21 +1,114 @@
-.implementation-case .evidence-kind,.published-evidence-figure{margin-block:12px}
-.evidence-kind{border:1px solid var(--bd2);white-space:normal}
-.evidence-kind[data-evidence-kind="Vendor documented"]{border-left:4px solid var(--a2)}
-.evidence-kind[data-evidence-kind="Academic / peer-reviewed"]{border-left:4px solid var(--a4)}
-.evidence-kind[data-evidence-kind="Reputable independent measurement"]{border-left:4px solid var(--a1)}
-.evidence-kind[data-evidence-kind="Locally measured"]{border-left:4px solid var(--ok)}
-.evidence-kind[data-evidence-kind="Inference"]{border-style:dashed;border-left:4px solid var(--a3)}
-.evidence-kind[data-evidence-kind="Teaching model"]{border-style:dotted}
-.evidence-kind[data-evidence-kind="Unknown / undocumented"]{border-style:dashed;color:var(--tx2)}
-.implementation-figure{margin:18px 0;padding:14px;border:1px solid var(--bd);border-radius:12px;background:var(--panel)}
-.implementation-figure svg{width:100%;max-width:850px;display:block;margin:auto}
-.implementation-figure figcaption{font-size:13px;color:var(--tx2);line-height:1.6}
-.implementation-figure .implementation-unknown rect{stroke-dasharray:6 4}
-.evidence-limits{padding:12px;border-left:3px solid var(--bd2);background:var(--sunk)}
-.published-evidence-figure{padding:18px;border:1px solid var(--bd);border-radius:10px}
-.evidence-bar-row{display:grid;grid-template-columns:170px minmax(80px,1fr) 120px;align-items:center;gap:12px;margin-block:16px}
-.evidence-bar-track{background:var(--sunk);height:18px;border:1px solid var(--bd);border-radius:4px}
-.evidence-bar{height:100%;background:var(--a2);border-radius:3px}
-.counter-boundaries{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-block:18px}
-.counter-boundary{display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px;border:1px solid var(--bd2);border-radius:10px;text-align:center}
-@media(max-width:650px){.evidence-bar-row{grid-template-columns:1fr 110px}.evidence-bar-track{grid-column:1/-1;grid-row:auto}.counter-boundaries{grid-template-columns:1fr}.implementation-figure{padding:8px}.evidence-bar-row strong{font-size:12px}}
+.implementation-case .evidence-kind,
+.published-evidence-figure {
+  margin-block: 12px;
+}
+.evidence-kind {
+  border: 1px solid var(--bd2);
+  white-space: normal;
+}
+.evidence-kind[data-evidence-kind='Vendor documented'] {
+  border-left: 4px solid var(--a2);
+}
+.evidence-kind[data-evidence-kind='Academic / peer-reviewed'] {
+  border-left: 4px solid var(--a4);
+}
+.evidence-kind[data-evidence-kind='Reputable independent measurement'] {
+  border-left: 4px solid var(--a1);
+}
+.evidence-kind[data-evidence-kind='Locally measured'] {
+  border-left: 4px solid var(--ok);
+}
+.evidence-kind[data-evidence-kind='Inference'] {
+  border-style: dashed;
+  border-left: 4px solid var(--a3);
+}
+.evidence-kind[data-evidence-kind='Teaching model'] {
+  border-style: dotted;
+}
+.evidence-kind[data-evidence-kind='Unknown / undocumented'] {
+  border-style: dashed;
+  color: var(--tx2);
+}
+.implementation-figure {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.implementation-figure svg {
+  width: 100%;
+  max-width: 850px;
+  display: block;
+  margin: auto;
+}
+.implementation-figure figcaption {
+  font-size: 13px;
+  color: var(--tx2);
+  line-height: 1.6;
+}
+.implementation-figure .implementation-unknown rect {
+  stroke-dasharray: 6 4;
+}
+.evidence-limits {
+  padding: 12px;
+  border-left: 3px solid var(--bd2);
+  background: var(--sunk);
+}
+.published-evidence-figure {
+  padding: 18px;
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+}
+.evidence-bar-row {
+  display: grid;
+  grid-template-columns: 170px minmax(80px, 1fr) 120px;
+  align-items: center;
+  gap: 12px;
+  margin-block: 16px;
+}
+.evidence-bar-track {
+  background: var(--sunk);
+  height: 18px;
+  border: 1px solid var(--bd);
+  border-radius: 4px;
+}
+.evidence-bar {
+  height: 100%;
+  background: var(--a2);
+  border-radius: 3px;
+}
+.counter-boundaries {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-block: 18px;
+}
+.counter-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--bd2);
+  border-radius: 10px;
+  text-align: center;
+}
+@media (max-width: 650px) {
+  .evidence-bar-row {
+    grid-template-columns: 1fr 110px;
+  }
+  .evidence-bar-track {
+    grid-column: 1/-1;
+    grid-row: auto;
+  }
+  .counter-boundaries {
+    grid-template-columns: 1fr;
+  }
+  .implementation-figure {
+    padding: 8px;
+  }
+  .evidence-bar-row strong {
+    font-size: 12px;
+  }
+}

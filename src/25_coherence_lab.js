@@ -1,90 +1,660 @@
-(function(){
+(function () {
   'use strict';
-  var U=App.LabUI,h=App.h,s=App.s,M=CacheLab,teaching=App.CacheUI.teaching,transport=App.CacheUI.replayControls;
-  function pressure(root){
-    var sec=App.labSection(root,'write-pressure','A dirty victim can block a returning fill','Follow the backpressure from the writeback queue to miss admission.');
-    teaching(sec,'32 cold 8-byte temporal stores visit distinct lines in order. Each allocates a 64-byte line after an assumed eight-cycle fetch. A four-line fully associative cache evicts dirty victims. Fill entries remain occupied until installation succeeds; a full writeback queue blocks that installation. The writeback sink is a separate serial resource here, not a DDR controller.');
-    U.checkpoint(sec,'If a fill has returned but its dirty victim cannot enter the writeback queue, is that fill’s miss entry necessarily free?',['Yes, data has returned','No, allocation can remain blocked'],1,'Data arrival, cache installation and release of finite resources are distinct events.');
-    var o={fill:4,writeback:2,drain:12},ctl=h('div',{'class':'perf-controls'},sec);
-    [['fill','Fill entries',[1,2,4,8]],['writeback','Writeback entries',[1,2,4,8]],['drain','Cycles per 64-byte writeback',[2,4,12,32]]].forEach(function(a){U.select(ctl,a[1],a[2],o[a[0]],function(v){o[a[0]]=+v;draw();});});
-    var metrics=h('div',{'class':'perf-metrics'},sec),state=h('div',null,sec),r,step=transport(sec,'Fill / writeback cycle',function(i){if(!r)return;var t=r.trace[i];state.replaceChildren();U.text('h3',state,'Cycle '+t.t+' · '+(t.blocked?'returned fill blocked by dirty victim':'buffers can progress'));U.table(state,['Resource','Occupancy / state'],[['Fill entries',t.fill+' / '+r.p.fill],['Writeback entries',t.wb+' / '+r.p.writeback],['Resident dirty lines',t.resident.join(', ')||'none'],['Installed / writebacks completed',t.installed+' / '+t.written]]);});
-    function draw(){r=M.writePressure(o);sec._pressureResult=r;metrics.replaceChildren();U.metric(metrics,'Fill installation blocked',r.fillBlocked+' cycles','Writeback capacity unavailable');U.metric(metrics,'New request admission blocked',r.frontBlocked+' cycles','All fill entries remain occupied');U.metric(metrics,'Lower-level traffic',r.rfoBytes+r.writebackBytes+' B',r.rfoBytes+' B RFO + '+r.writebackBytes+' B writeback');U.metric(metrics,'Completion / residency',r.cycles+' cycles',r.dirtyResident+' dirty lines remain resident; their eventual eviction is outside this interval');step.set(r.trace.length);}draw();
-    U.text('p',sec,'This model isolates a causal chain, so it excludes hits, prefetches and a shared read/write bus. Real replacement policies, buffer sizes, write combining and ownership optimizations change the result. Phase 3’s controller experiment adds read/write competition rather than relabeling this sink as DRAM.');
-  }
-  function writeTraffic(root){
-    var sec=App.labSection(root,'write-traffic','Useful stores versus ownership and writeback bytes','The accounting boundary decides what “write bandwidth” means.');
-    teaching(sec,'Compare idealized passes over a fully associative LRU cache with 64-byte lines. Temporal stores allocate on a cold miss and write dirty victims back. A final drain is included. The non-temporal column assumes aligned, complete lines, effective write combining, no prior residency and no reuse benefit. It is an ideal traffic bound, not a promise that every NT instruction avoids a read.');
-    var o={lines:16,cache:8,passes:2,useful:64},ctl=h('div',{'class':'perf-controls'},sec);
-    [['lines','Working-set lines',[4,8,16,32]],['cache','Model cache lines',[4,8,16]],['passes','Full passes',[1,2,4,8]],['useful','Useful store bytes per line',[8,64]]].forEach(function(a){U.select(ctl,a[1],a[2],o[a[0]],function(v){o[a[0]]=+v;draw();});});
-    var out=h('div',null,sec);
-    function draw(){var ops=[];for(var pass=0;pass<o.passes;pass++)for(var line=0;line<o.lines;line++)ops.push({addr:line*64,size:o.useful,op:'write'});var r=M.replay(ops,{sets:1,ways:o.cache,line:64,drain:true});out.replaceChildren();sec._trafficResult=r;U.table(out,['Boundary','Temporal stores','Ideal complete-line non-temporal stream'],[['Useful bytes',o.lines*o.passes*o.useful,o.lines*o.passes*o.useful],['Read-for-ownership bytes',r.counts.rfoBytes,o.useful===64?0:'not modeled for partial lines'],['Write bytes after final drain',r.counts.writebackBytes,o.useful===64?o.lines*o.passes*64:'partial write combining is implementation-dependent'],['Total line traffic',r.counts.totalLineBytes,o.useful===64?o.lines*o.passes*64:'no numerical claim']]);
-      U.text('p',out,o.lines<=o.cache?'The temporal working set fits: later passes reuse dirty lines, and the final drain writes each line once. Bypassing the cache can discard that reuse advantage.':'The cyclic working set exceeds this fully associative LRU cache. Each pass allocates and eventually writes back every line. A one-pass full-line stream can avoid substantial ownership reads when the NT assumptions hold.');
-    }draw();
-    U.checkpoint(sec,'Can you infer the temporal/non-temporal runtime crossover from byte counts alone?',['Yes, bytes determine all costs','No, reuse and resource limits matter'],1,'Measure working-set size, number of passes and alignment. Include required completion/order boundaries consistently; traffic bounds are not timings.');
-  }
-  function ownership(root){
-    var sec=App.labSection(root,'transactions','Atomic updates, false sharing and transient ownership','Change the counter layout without changing the useful work.');
-    teaching(sec,'A generic MOESI teaching protocol with explicit GetS, GetM, data and acknowledgement events extends the stable-state walkthrough above. IS/IM/SM/OM mean a request is pending; they are not AMD’s state names. Operations in this trace run one at a time. Logical event ticks expose ordering and must not be read as parallel runtime or hardware atomic latency.');
-    U.checkpoint(sec,'Two cores update different 8-byte counters in the same 64-byte line. Can the counters still cause ownership transfers?',['No, their values are independent','Yes, ownership is tracked per line'],1,'Padding changes the coherence unit that the two writers share, even though the source-level counters were already independent.');
-    var o={placement:'two',layout:'packed',kind:'add',flush:false},ctl=h('div',{'class':'perf-controls'},sec);
-    U.select(ctl,'Thread placement',[['one','One thread'],['smt','Two SMT siblings, one physical core'],['two','Two physical cores'],['four','Four physical cores']],'two',function(v){o.placement=v;draw();});
-    U.select(ctl,'Counter layout',[['same','One shared counter'],['packed','Separate counters in one line'],['padded','Separate 64-byte lines']],'packed',function(v){o.layout=v;draw();});
-    U.select(ctl,'Operation sequence',[['add','Atomic fetch_add'],['cas','CAS with stale expected value and retry'],['store','Ordinary stores to separate counters'],['peer','One writer, then peer readers']],'add',function(v){o.kind=v;draw();});
-    U.select(ctl,'Final dirty eviction',[[0,'Keep cache ownership'],[1,'Write back at the end']],0,function(v){o.flush=!!+v;draw();});
-    var metrics=h('div',{'class':'perf-metrics'},sec),note=h('div',{'class':'perf-explanation'},sec),state=h('div',{'class':'coherence-state'},sec),r,ops;
-    var step=transport(sec,'Coherence event',function(i){if(!r)return;var e=r.events[i];state.replaceChildren();U.text('h3',state,'Event '+(i+1)+' / '+r.events.length+' · '+e.label);U.text('p',state,'Logical tick '+e.t+' · operation '+(e.op+1)+' · line '+e.key+(e.pending.length?' · waiting for acknowledgements from cores '+e.pending.join(', '):''));
-      var cards=h('div',{'class':'coherence-cards'},state);for(var c=0;c<r.p.cores;c++){var card=h('div',{'class':'perf-metric'},cards);U.text('strong',card,'Physical core '+c);Object.keys(e.lines).forEach(function(k){U.text('p',card,'Line '+k+': '+e.lines[k].states[c]);});}
-      U.table(state,['Line','Coherent word values [0…7]','Backing memory [0…7]'],Object.keys(e.lines).map(function(k){return [k,e.lines[k].values.join(' · '),e.lines[k].memory.join(' · ')];}));
-      U.text('p',state,'A dirty cache can hold the authoritative value while backing memory is stale. This value table is a single coherent abstraction; it does not claim that every invalid cache contains those bytes.');
+  var U = App.LabUI,
+    h = App.h,
+    s = App.s,
+    M = CacheLab,
+    teaching = App.CacheUI.teaching,
+    transport = App.CacheUI.replayControls;
+  function pressure(root) {
+    var sec = App.labSection(
+      root,
+      'write-pressure',
+      'A dirty victim can block a returning fill',
+      'Follow the backpressure from the writeback queue to miss admission.'
+    );
+    teaching(
+      sec,
+      '32 cold 8-byte temporal stores visit distinct lines in order. Each allocates a 64-byte line after an assumed eight-cycle fetch. A four-line fully associative cache evicts dirty victims. Fill entries remain occupied until installation succeeds; a full writeback queue blocks that installation. The writeback sink is a separate serial resource here, not a DDR controller.'
+    );
+    U.checkpoint(
+      sec,
+      'If a fill has returned but its dirty victim cannot enter the writeback queue, is that fill’s miss entry necessarily free?',
+      ['Yes, data has returned', 'No, allocation can remain blocked'],
+      1,
+      'Data arrival, cache installation and release of finite resources are distinct events.'
+    );
+    var o = { fill: 4, writeback: 2, drain: 12 },
+      ctl = h('div', { class: 'perf-controls' }, sec);
+    [
+      ['fill', 'Fill entries', [1, 2, 4, 8]],
+      ['writeback', 'Writeback entries', [1, 2, 4, 8]],
+      ['drain', 'Cycles per 64-byte writeback', [2, 4, 12, 32]]
+    ].forEach(function (a) {
+      U.select(ctl, a[1], a[2], o[a[0]], function (v) {
+        o[a[0]] = +v;
+        draw();
+      });
     });
-    function draw(){var threads=o.placement==='one'?1:o.placement==='four'?4:2,cores=o.placement==='smt'?1:threads,values={},script=[];
-      function word(t){return o.layout==='same'?0:o.layout==='packed'?t:t*8;}
-      if(o.kind==='peer'){script.push({core:0,word:0,kind:'store',value:7});for(var t=1;t<threads;t++)script.push({core:o.placement==='smt'?0:t,word:0,kind:'read'});}
-      else for(var round=0;round<4;round++)for(var thread=0;thread<threads;thread++){
-        var w=word(thread),core=o.placement==='smt'?0:thread,v=values[w]||0;
-        if(o.kind==='cas'){script.push({core:core,word:w,kind:'cas',expected:0,value:1});if(v!==0)script.push({core:core,word:w,kind:'cas',expected:v,value:v+1});values[w]=v+1;}
-        else{script.push({core:core,word:w,kind:o.kind,value:round+1});values[w]=v+1;}
+    var metrics = h('div', { class: 'perf-metrics' }, sec),
+      state = h('div', null, sec),
+      r,
+      step = transport(sec, 'Fill / writeback cycle', function (i) {
+        if (!r) return;
+        var t = r.trace[i];
+        state.replaceChildren();
+        U.text(
+          'h3',
+          state,
+          'Cycle ' +
+            t.t +
+            ' · ' +
+            (t.blocked ? 'returned fill blocked by dirty victim' : 'buffers can progress')
+        );
+        U.table(
+          state,
+          ['Resource', 'Occupancy / state'],
+          [
+            ['Fill entries', t.fill + ' / ' + r.p.fill],
+            ['Writeback entries', t.wb + ' / ' + r.p.writeback],
+            ['Resident dirty lines', t.resident.join(', ') || 'none'],
+            ['Installed / writebacks completed', t.installed + ' / ' + t.written]
+          ]
+        );
+      });
+    function draw() {
+      r = M.writePressure(o);
+      sec._pressureResult = r;
+      metrics.replaceChildren();
+      U.metric(
+        metrics,
+        'Fill installation blocked',
+        r.fillBlocked + ' cycles',
+        'Writeback capacity unavailable'
+      );
+      U.metric(
+        metrics,
+        'New request admission blocked',
+        r.frontBlocked + ' cycles',
+        'All fill entries remain occupied'
+      );
+      U.metric(
+        metrics,
+        'Lower-level traffic',
+        r.rfoBytes + r.writebackBytes + ' B',
+        r.rfoBytes + ' B RFO + ' + r.writebackBytes + ' B writeback'
+      );
+      U.metric(
+        metrics,
+        'Completion / residency',
+        r.cycles + ' cycles',
+        r.dirtyResident +
+          ' dirty lines remain resident; their eventual eviction is outside this interval'
+      );
+      step.set(r.trace.length);
+    }
+    draw();
+    U.text(
+      'p',
+      sec,
+      'This model isolates a causal chain, so it excludes hits, prefetches and a shared read/write bus. Real replacement policies, buffer sizes, write combining and ownership optimizations change the result. Phase 3’s controller experiment adds read/write competition rather than relabeling this sink as DRAM.'
+    );
+  }
+  function writeTraffic(root) {
+    var sec = App.labSection(
+      root,
+      'write-traffic',
+      'Useful stores versus ownership and writeback bytes',
+      'The accounting boundary decides what “write bandwidth” means.'
+    );
+    teaching(
+      sec,
+      'Compare idealized passes over a fully associative LRU cache with 64-byte lines. Temporal stores allocate on a cold miss and write dirty victims back. A final drain is included. The non-temporal column assumes aligned, complete lines, effective write combining, no prior residency and no reuse benefit. It is an ideal traffic bound, not a promise that every NT instruction avoids a read.'
+    );
+    var o = { lines: 16, cache: 8, passes: 2, useful: 64 },
+      ctl = h('div', { class: 'perf-controls' }, sec);
+    [
+      ['lines', 'Working-set lines', [4, 8, 16, 32]],
+      ['cache', 'Model cache lines', [4, 8, 16]],
+      ['passes', 'Full passes', [1, 2, 4, 8]],
+      ['useful', 'Useful store bytes per line', [8, 64]]
+    ].forEach(function (a) {
+      U.select(ctl, a[1], a[2], o[a[0]], function (v) {
+        o[a[0]] = +v;
+        draw();
+      });
+    });
+    var out = h('div', null, sec);
+    function draw() {
+      var ops = [];
+      for (var pass = 0; pass < o.passes; pass++)
+        for (var line = 0; line < o.lines; line++)
+          ops.push({ addr: line * 64, size: o.useful, op: 'write' });
+      var r = M.replay(ops, { sets: 1, ways: o.cache, line: 64, drain: true });
+      out.replaceChildren();
+      sec._trafficResult = r;
+      U.table(
+        out,
+        ['Boundary', 'Temporal stores', 'Ideal complete-line non-temporal stream'],
+        [
+          ['Useful bytes', o.lines * o.passes * o.useful, o.lines * o.passes * o.useful],
+          [
+            'Read-for-ownership bytes',
+            r.counts.rfoBytes,
+            o.useful === 64 ? 0 : 'not modeled for partial lines'
+          ],
+          [
+            'Write bytes after final drain',
+            r.counts.writebackBytes,
+            o.useful === 64
+              ? o.lines * o.passes * 64
+              : 'partial write combining is implementation-dependent'
+          ],
+          [
+            'Total line traffic',
+            r.counts.totalLineBytes,
+            o.useful === 64 ? o.lines * o.passes * 64 : 'no numerical claim'
+          ]
+        ]
+      );
+      U.text(
+        'p',
+        out,
+        o.lines <= o.cache
+          ? 'The temporal working set fits: later passes reuse dirty lines, and the final drain writes each line once. Bypassing the cache can discard that reuse advantage.'
+          : 'The cyclic working set exceeds this fully associative LRU cache. Each pass allocates and eventually writes back every line. A one-pass full-line stream can avoid substantial ownership reads when the NT assumptions hold.'
+      );
+    }
+    draw();
+    U.checkpoint(
+      sec,
+      'Can you infer the temporal/non-temporal runtime crossover from byte counts alone?',
+      ['Yes, bytes determine all costs', 'No, reuse and resource limits matter'],
+      1,
+      'Measure working-set size, number of passes and alignment. Include required completion/order boundaries consistently; traffic bounds are not timings.'
+    );
+  }
+  function ownership(root) {
+    var sec = App.labSection(
+      root,
+      'transactions',
+      'Atomic updates, false sharing and transient ownership',
+      'Change the counter layout without changing the useful work.'
+    );
+    teaching(
+      sec,
+      'A generic MOESI teaching protocol with explicit GetS, GetM, data and acknowledgement events extends the stable-state walkthrough above. IS/IM/SM/OM mean a request is pending; they are not AMD’s state names. Operations in this trace run one at a time. Logical event ticks expose ordering and must not be read as parallel runtime or hardware atomic latency.'
+    );
+    U.checkpoint(
+      sec,
+      'Two cores update different 8-byte counters in the same 64-byte line. Can the counters still cause ownership transfers?',
+      ['No, their values are independent', 'Yes, ownership is tracked per line'],
+      1,
+      'Padding changes the coherence unit that the two writers share, even though the source-level counters were already independent.'
+    );
+    var o = { placement: 'two', layout: 'packed', kind: 'add', flush: false },
+      ctl = h('div', { class: 'perf-controls' }, sec);
+    U.select(
+      ctl,
+      'Thread placement',
+      [
+        ['one', 'One thread'],
+        ['smt', 'Two SMT siblings, one physical core'],
+        ['two', 'Two physical cores'],
+        ['four', 'Four physical cores']
+      ],
+      'two',
+      function (v) {
+        o.placement = v;
+        draw();
       }
-      ops=script;r=M.coherence(ops,{cores:cores,flush:o.flush});sec._coherenceResult=r;metrics.replaceChildren();note.replaceChildren();
-      U.metric(metrics,'Atomic operations / failed CAS',r.stats.atomics+' / '+r.stats.failedCAS,'A retry is extra work even when ownership stays local');U.metric(metrics,'Ownership handoffs',String(r.stats.ownershipMoves),'Writable ownership acquired while another core had a copy');U.metric(metrics,'Invalidations / acknowledgements',r.stats.invalidations+' / '+r.stats.acks,'One acknowledgement for each invalidated peer');U.metric(metrics,'Dirty peer / clean home data',r.stats.peerBytes+' / '+r.stats.homeBytes+' B','Home may be a shared cache; these are not DRAM bytes');
-      U.text('p',note,'This model obtains writable ownership even for a failed CAS. That is a chosen implementation policy, not a C11 or universal ISA requirement. C11 atomicity and memory ordering are separate; relaxed atomics still update one atomic object indivisibly. Ordinary stores here illustrate a scripted coherence order, not a valid concurrent C program when threads write the same non-atomic counter.');
-      if(o.placement==='smt')U.text('p',note,'Both logical threads use one physical core’s private cache, so no inter-core ownership handoff is generated here. This does not make contention free: they still compete for shared resources and serialize updates to the same atomic object. Use the SMT lab and pinned native trials to examine that cost.');
-      if(o.kind==='peer')U.text('p',note,'Peer-read mode intentionally reads the writer’s line regardless of the layout selector. The M → O transition preserves a dirty owner while readers get S copies. A peer transfer avoids fetching stale backing memory.');
+    );
+    U.select(
+      ctl,
+      'Counter layout',
+      [
+        ['same', 'One shared counter'],
+        ['packed', 'Separate counters in one line'],
+        ['padded', 'Separate 64-byte lines']
+      ],
+      'packed',
+      function (v) {
+        o.layout = v;
+        draw();
+      }
+    );
+    U.select(
+      ctl,
+      'Operation sequence',
+      [
+        ['add', 'Atomic fetch_add'],
+        ['cas', 'CAS with stale expected value and retry'],
+        ['store', 'Ordinary stores to separate counters'],
+        ['peer', 'One writer, then peer readers']
+      ],
+      'add',
+      function (v) {
+        o.kind = v;
+        draw();
+      }
+    );
+    U.select(
+      ctl,
+      'Final dirty eviction',
+      [
+        [0, 'Keep cache ownership'],
+        [1, 'Write back at the end']
+      ],
+      0,
+      function (v) {
+        o.flush = !!+v;
+        draw();
+      }
+    );
+    var metrics = h('div', { class: 'perf-metrics' }, sec),
+      note = h('div', { class: 'perf-explanation' }, sec),
+      state = h('div', { class: 'coherence-state' }, sec),
+      r,
+      ops;
+    var step = transport(sec, 'Coherence event', function (i) {
+      if (!r) return;
+      var e = r.events[i];
+      state.replaceChildren();
+      U.text('h3', state, 'Event ' + (i + 1) + ' / ' + r.events.length + ' · ' + e.label);
+      U.text(
+        'p',
+        state,
+        'Logical tick ' +
+          e.t +
+          ' · operation ' +
+          (e.op + 1) +
+          ' · line ' +
+          e.key +
+          (e.pending.length
+            ? ' · waiting for acknowledgements from cores ' + e.pending.join(', ')
+            : '')
+      );
+      var cards = h('div', { class: 'coherence-cards' }, state);
+      for (var c = 0; c < r.p.cores; c++) {
+        var card = h('div', { class: 'perf-metric' }, cards);
+        U.text('strong', card, 'Physical core ' + c);
+        Object.keys(e.lines).forEach(function (k) {
+          U.text('p', card, 'Line ' + k + ': ' + e.lines[k].states[c]);
+        });
+      }
+      U.table(
+        state,
+        ['Line', 'Coherent word values [0…7]', 'Backing memory [0…7]'],
+        Object.keys(e.lines).map(function (k) {
+          return [k, e.lines[k].values.join(' · '), e.lines[k].memory.join(' · ')];
+        })
+      );
+      U.text(
+        'p',
+        state,
+        'A dirty cache can hold the authoritative value while backing memory is stale. This value table is a single coherent abstraction; it does not claim that every invalid cache contains those bytes.'
+      );
+    });
+    function draw() {
+      var threads = o.placement === 'one' ? 1 : o.placement === 'four' ? 4 : 2,
+        cores = o.placement === 'smt' ? 1 : threads,
+        values = {},
+        script = [];
+      function word(t) {
+        return o.layout === 'same' ? 0 : o.layout === 'packed' ? t : t * 8;
+      }
+      if (o.kind === 'peer') {
+        script.push({ core: 0, word: 0, kind: 'store', value: 7 });
+        for (var t = 1; t < threads; t++)
+          script.push({ core: o.placement === 'smt' ? 0 : t, word: 0, kind: 'read' });
+      } else
+        for (var round = 0; round < 4; round++)
+          for (var thread = 0; thread < threads; thread++) {
+            var w = word(thread),
+              core = o.placement === 'smt' ? 0 : thread,
+              v = values[w] || 0;
+            if (o.kind === 'cas') {
+              script.push({ core: core, word: w, kind: 'cas', expected: 0, value: 1 });
+              if (v !== 0)
+                script.push({ core: core, word: w, kind: 'cas', expected: v, value: v + 1 });
+              values[w] = v + 1;
+            } else {
+              script.push({ core: core, word: w, kind: o.kind, value: round + 1 });
+              values[w] = v + 1;
+            }
+          }
+      ops = script;
+      r = M.coherence(ops, { cores: cores, flush: o.flush });
+      sec._coherenceResult = r;
+      metrics.replaceChildren();
+      note.replaceChildren();
+      U.metric(
+        metrics,
+        'Atomic operations / failed CAS',
+        r.stats.atomics + ' / ' + r.stats.failedCAS,
+        'A retry is extra work even when ownership stays local'
+      );
+      U.metric(
+        metrics,
+        'Ownership handoffs',
+        String(r.stats.ownershipMoves),
+        'Writable ownership acquired while another core had a copy'
+      );
+      U.metric(
+        metrics,
+        'Invalidations / acknowledgements',
+        r.stats.invalidations + ' / ' + r.stats.acks,
+        'One acknowledgement for each invalidated peer'
+      );
+      U.metric(
+        metrics,
+        'Dirty peer / clean home data',
+        r.stats.peerBytes + ' / ' + r.stats.homeBytes + ' B',
+        'Home may be a shared cache; these are not DRAM bytes'
+      );
+      U.text(
+        'p',
+        note,
+        'This model obtains writable ownership even for a failed CAS. That is a chosen implementation policy, not a C11 or universal ISA requirement. C11 atomicity and memory ordering are separate; relaxed atomics still update one atomic object indivisibly. Ordinary stores here illustrate a scripted coherence order, not a valid concurrent C program when threads write the same non-atomic counter.'
+      );
+      if (o.placement === 'smt')
+        U.text(
+          'p',
+          note,
+          'Both logical threads use one physical core’s private cache, so no inter-core ownership handoff is generated here. This does not make contention free: they still compete for shared resources and serialize updates to the same atomic object. Use the SMT lab and pinned native trials to examine that cost.'
+        );
+      if (o.kind === 'peer')
+        U.text(
+          'p',
+          note,
+          'Peer-read mode intentionally reads the writer’s line regardless of the layout selector. The M → O transition preserves a dirty owner while readers get S copies. A peer transfer avoids fetching stale backing memory.'
+        );
       step.set(r.events.length);
-    }draw();
-    U.text('h3',sec,'While ownership is pending');
-    U.table(sec,['Event / race','Why a transient state is needed','Deliberate scope'],[['GetS sent; data absent','The line is neither a usable S copy nor simply an untouched I line','IS tracks an outstanding request'],['Upgrade sent; acknowledgements absent','Writing early could leave another valid old copy','SM/OM waits for invalidations'],['Another writer or probe arrives mid-transition','Data, permissions and messages can be in flight simultaneously','A real protocol must serialize, queue or retry/NACK the conflict; this sequential trace does not simulate that race'],['Store retires before ownership','Architectural retirement can precede coherent visibility','The buffer event precedes the visible store event; neither requires a write to DRAM']]);
-    U.text('h3',sec,'Measure the mechanism on your machine');
-    U.text('p',sec,'HITM describes evidence associated with a modified peer copy in some tools; event names and data-source encodings differ by CPU. perf c2c can locate contended cache lines and offsets on supported hardware. Linux uses IBS Op for supported AMD implementations. Check the installed kernel, perf version, PMUs and permissions; do not transfer raw events between CPU models. Elapsed runtime alone does not count bounces.');
-    U.text('a',sec,'Upstream Linux perf c2c documentation',{href:'https://kernel.googlesource.com/pub/scm/linux/kernel/git/frowand/linux/+/b72b5fecc1b8a2e595bd03d7d257c88ea3f9fd45/tools/perf/Documentation/perf-c2c.txt',target:'_blank',rel:'noopener'});
+    }
+    draw();
+    U.text('h3', sec, 'While ownership is pending');
+    U.table(
+      sec,
+      ['Event / race', 'Why a transient state is needed', 'Deliberate scope'],
+      [
+        [
+          'GetS sent; data absent',
+          'The line is neither a usable S copy nor simply an untouched I line',
+          'IS tracks an outstanding request'
+        ],
+        [
+          'Upgrade sent; acknowledgements absent',
+          'Writing early could leave another valid old copy',
+          'SM/OM waits for invalidations'
+        ],
+        [
+          'Another writer or probe arrives mid-transition',
+          'Data, permissions and messages can be in flight simultaneously',
+          'A real protocol must serialize, queue or retry/NACK the conflict; this sequential trace does not simulate that race'
+        ],
+        [
+          'Store retires before ownership',
+          'Architectural retirement can precede coherent visibility',
+          'The buffer event precedes the visible store event; neither requires a write to DRAM'
+        ]
+      ]
+    );
+    U.text('h3', sec, 'Measure the mechanism on your machine');
+    U.text(
+      'p',
+      sec,
+      'HITM describes evidence associated with a modified peer copy in some tools; event names and data-source encodings differ by CPU. perf c2c can locate contended cache lines and offsets on supported hardware. Linux uses IBS Op for supported AMD implementations. Check the installed kernel, perf version, PMUs and permissions; do not transfer raw events between CPU models. Elapsed runtime alone does not count bounces.'
+    );
+    U.text('a', sec, 'Upstream Linux perf c2c documentation', {
+      href: 'https://kernel.googlesource.com/pub/scm/linux/kernel/git/frowand/linux/+/b72b5fecc1b8a2e595bd03d7d257c88ea3f9fd45/tools/perf/Documentation/perf-c2c.txt',
+      target: '_blank',
+      rel: 'noopener'
+    });
     measurement(sec);
   }
-  function validate(data){
-    if(!data||data.schema!=='memory-lab-sharing-v1'||!data.context||typeof data.context!=='object'||Array.isArray(data.context)||!Array.isArray(data.samples)||!data.samples.length||data.samples.length>5000)throw new Error('Expected memory-lab-sharing-v1 with context and 1–5000 samples.');
-    data.samples.forEach(function(r){if(!r||['same','packed','padded'].indexOf(r.mode)<0||['add','cas'].indexOf(r.op)<0)throw new Error('Unknown benchmark case.');['threads','iterations','operations','elapsed_ns','checksum'].forEach(function(k){if(!Number.isSafeInteger(r[k])||r[k]<=0)throw new Error('Invalid '+k);});if(r.threads>4||r.operations!==r.threads*r.iterations||r.checksum!==r.operations||!Number.isSafeInteger(r.cas_failures)||r.cas_failures<0||r.stride_bytes!==({same:0,packed:8,padded:64}[r.mode])||r.line_bytes_assumed!==64||!Array.isArray(r.observed_cpus)||r.observed_cpus.length!==r.threads||r.observed_cpus.some(function(v){return !Number.isSafeInteger(v)||v<0;}))throw new Error('Counter, layout or affinity validation failed.');});return data;
+  function validate(data) {
+    if (
+      !data ||
+      data.schema !== 'memory-lab-sharing-v1' ||
+      !data.context ||
+      typeof data.context !== 'object' ||
+      Array.isArray(data.context) ||
+      !Array.isArray(data.samples) ||
+      !data.samples.length ||
+      data.samples.length > 5000
+    )
+      throw new Error('Expected memory-lab-sharing-v1 with context and 1–5000 samples.');
+    data.samples.forEach(function (r) {
+      if (
+        !r ||
+        ['same', 'packed', 'padded'].indexOf(r.mode) < 0 ||
+        ['add', 'cas'].indexOf(r.op) < 0
+      )
+        throw new Error('Unknown benchmark case.');
+      ['threads', 'iterations', 'operations', 'elapsed_ns', 'checksum'].forEach(function (k) {
+        if (!Number.isSafeInteger(r[k]) || r[k] <= 0) throw new Error('Invalid ' + k);
+      });
+      if (
+        r.threads > 4 ||
+        r.operations !== r.threads * r.iterations ||
+        r.checksum !== r.operations ||
+        !Number.isSafeInteger(r.cas_failures) ||
+        r.cas_failures < 0 ||
+        r.stride_bytes !== { same: 0, packed: 8, padded: 64 }[r.mode] ||
+        r.line_bytes_assumed !== 64 ||
+        !Array.isArray(r.observed_cpus) ||
+        r.observed_cpus.length !== r.threads ||
+        r.observed_cpus.some(function (v) {
+          return !Number.isSafeInteger(v) || v < 0;
+        })
+      )
+        throw new Error('Counter, layout or affinity validation failed.');
+    });
+    return data;
   }
-  function measurement(sec){
-    U.text('h3',sec,'Native packed / padded / shared-counter experiment');
-    U.code(sec,'python3 benchmarks/run_all.py --serve\n# Individual fallback: python3 benchmarks/sharing.py --cpus 0,2 --output sharing-results.json');
-    U.text('p',sec,'The unified workflow selects documented physical cores and SMT siblings where permitted. The harness uses aligned, lock-free C11 uint64 atomics with relaxed ordering, explicit add/CAS kernels, worker affinity, warm-up, randomized repeated cases and checksum validation. It includes a one-thread baseline. Timing covers the release barrier through all joins. Increase iterations until that fixed overhead is negligible. The compiler, topology and raw trials stay attached. Different placement runs stay separate.');
-    var lab=h('label',{'class':'perf-field'},sec);U.text('span',lab,'Import atomic-counter result JSON');var input=h('input',{type:'file',accept:'.json,application/json','aria-label':'Atomic counter result JSON'},lab),status=U.text('p',sec,'No hardware results loaded.',{role:'status'}),out=h('div',{'class':'sharing-results'},sec);
-    function render(d,label){validate(d);if(label)U.text('h3',out,label,{'class':'measurement-run-title'});var groups={};d.samples.forEach(function(v){var key=[v.placement_id||'',v.threads,v.mode,v.op].filter(function(v){return v!=='';}).join(' / ');(groups[key]||(groups[key]=[])).push(v);});
-      status.textContent='Measured data · '+String(d.context.cpu_model||'unknown CPU')+' · '+(d.complete===true?'complete run':'partial / completion not recorded');
-      U.table(out,[d.context.placement_runs?'Placement / threads / layout / op':'Threads / layout / op','Trials','Median ns/update','p95 of trial averages','CAS retries / successful updates'],Object.keys(groups).sort().map(function(k){var a=groups[k],ns=a.map(function(v){return v.elapsed_ns/v.operations;}),ops=a.reduce(function(n,v){return n+v.operations;},0);return [k,a.length,MeasurementBundle.stats(ns).median.toFixed(2),LabModel.quantile(ns,.95).toFixed(2),(a.reduce(function(n,v){return n+v.cas_failures;},0)/ops).toFixed(3)];}));
-      U.text('p',out,'ns/update is inverse aggregate throughput, not one atomic’s latency. p95 is across whole-trial averages. Ownership transfers and physical DRAM bytes were not measured by this harness.');var details=h('details',null,out);U.text('summary',details,'Original measurement context');U.code(details,JSON.stringify(d.context,null,2));
+  function measurement(sec) {
+    U.text('h3', sec, 'Native packed / padded / shared-counter experiment');
+    U.code(
+      sec,
+      'python3 benchmarks/run_all.py --serve\n# Individual fallback: python3 benchmarks/sharing.py --cpus 0,2 --output sharing-results.json'
+    );
+    U.text(
+      'p',
+      sec,
+      'The unified workflow selects documented physical cores and SMT siblings where permitted. The harness uses aligned, lock-free C11 uint64 atomics with relaxed ordering, explicit add/CAS kernels, worker affinity, warm-up, randomized repeated cases and checksum validation. It includes a one-thread baseline. Timing covers the release barrier through all joins. Increase iterations until that fixed overhead is negligible. The compiler, topology and raw trials stay attached. Different placement runs stay separate.'
+    );
+    var lab = h('label', { class: 'perf-field' }, sec);
+    U.text('span', lab, 'Import atomic-counter result JSON');
+    var input = h(
+        'input',
+        {
+          type: 'file',
+          accept: '.json,application/json',
+          'aria-label': 'Atomic counter result JSON'
+        },
+        lab
+      ),
+      status = U.text('p', sec, 'No hardware results loaded.', { role: 'status' }),
+      out = h('div', { class: 'sharing-results' }, sec);
+    function render(d, label) {
+      validate(d);
+      if (label) U.text('h3', out, label, { class: 'measurement-run-title' });
+      var groups = {};
+      d.samples.forEach(function (v) {
+        var key = [v.placement_id || '', v.threads, v.mode, v.op]
+          .filter(function (v) {
+            return v !== '';
+          })
+          .join(' / ');
+        (groups[key] || (groups[key] = [])).push(v);
+      });
+      status.textContent =
+        'Measured data · ' +
+        String(d.context.cpu_model || 'unknown CPU') +
+        ' · ' +
+        (d.complete === true ? 'complete run' : 'partial / completion not recorded');
+      U.table(
+        out,
+        [
+          d.context.placement_runs ? 'Placement / threads / layout / op' : 'Threads / layout / op',
+          'Trials',
+          'Median ns/update',
+          'p95 of trial averages',
+          'CAS retries / successful updates'
+        ],
+        Object.keys(groups)
+          .sort()
+          .map(function (k) {
+            var a = groups[k],
+              ns = a.map(function (v) {
+                return v.elapsed_ns / v.operations;
+              }),
+              ops = a.reduce(function (n, v) {
+                return n + v.operations;
+              }, 0);
+            return [
+              k,
+              a.length,
+              MeasurementBundle.stats(ns).median.toFixed(2),
+              LabModel.quantile(ns, 0.95).toFixed(2),
+              (
+                a.reduce(function (n, v) {
+                  return n + v.cas_failures;
+                }, 0) / ops
+              ).toFixed(3)
+            ];
+          })
+      );
+      U.text(
+        'p',
+        out,
+        'ns/update is inverse aggregate throughput, not one atomic’s latency. p95 is across whole-trial averages. Ownership transfers and physical DRAM bytes were not measured by this harness.'
+      );
+      var details = h('details', null, out);
+      U.text('summary', details, 'Original measurement context');
+      U.code(details, JSON.stringify(d.context, null, 2));
     }
-    input.onchange=async function(){out.replaceChildren();try{var f=input.files[0];if(!f)return;if(f.size>2*1024*1024)throw new Error('Maximum file size is 2 MiB.');render(JSON.parse(await f.text()),'Manual import · locally read, not uploaded');}catch(e){status.textContent='Could not import: '+e.message;}};
-    App.Measurements.bind('sharing',status,out,render);
+    input.onchange = async function () {
+      out.replaceChildren();
+      try {
+        var f = input.files[0];
+        if (!f) return;
+        if (f.size > 2 * 1024 * 1024) throw new Error('Maximum file size is 2 MiB.');
+        render(JSON.parse(await f.text()), 'Manual import · locally read, not uploaded');
+      } catch (e) {
+        status.textContent = 'Could not import: ' + e.message;
+      }
+    };
+    App.Measurements.bind('sharing', status, out, render);
   }
-  function locks(root){
-    var sec=App.labSection(root,'locks','From atomic retries to locks','Distinguish waiting policy from the atomic operation that grants ownership.');
-    teaching(sec,'Core 0 holds a lock while two other cores poll it three times, then releases it. A scripted test-and-set-style CAS loop requests writable ownership on every attempt; test-test-and-set reads first. This model does not schedule threads or predict lock throughput. A single waiter may retain M across failed retries, so “every retry bounces” would be wrong.');
-    var policy='cas',ctl=h('div',{'class':'perf-controls'},sec);U.select(ctl,'Waiting policy',[['cas','Retry CAS on every poll'],['read','Read-only polling, then CAS']],'cas',function(v){policy=v;draw();});var out=h('div',null,sec);
-    function draw(){var ops=[{core:0,word:0,kind:'store',value:1}];for(var i=0;i<3;i++)for(var core=1;core<3;core++)ops.push(policy==='cas'?{core:core,word:0,kind:'cas',expected:0,value:1}:{core:core,word:0,kind:'read'});ops.push({core:0,word:0,kind:'store',value:0},{core:1,word:0,kind:'cas',expected:0,value:1});var r=M.coherence(ops,{cores:3});sec._lockResult=r;out.replaceChildren();U.table(out,['Observable in this trace','Count'],[['Failed CAS operations',r.stats.failedCAS],['Ownership handoffs',r.stats.ownershipMoves],['Invalidations',r.stats.invalidations],['Dirty-peer data bytes',r.stats.peerBytes]]);U.text('p',out,'Read-only polling can retain shared copies until release, but release still invalidates those copies and several waiters can race to acquire. Backoff, fairness, preemption and scheduler costs require separate experiments.');}draw();
-    U.table(sec,['Primitive','Memory-system connection','Additional cost / guarantee'],[['CAS retry loop','Retries an atomic update after observing a changed value','Retries may multiply instructions without a transfer on each retry'],['Spinlock / test-test-and-set','Shared polling, then ownership for acquisition','Busy waits; release/acquire ordering must protect the payload'],['Ticket lock','Atomic ticket allocation plus waiting on a serving counter','FIFO ticket order; central counters can still cause coherence traffic'],['Uncontended mutex','A library may acquire with a user-space atomic fast path','Exact implementation depends on libc and mutex attributes'],['Contended mutex','May spin briefly, then park and wake through the kernel','Scheduling and futex paths add costs beyond cache ownership']]);
-    U.text('p',sec,'The relaxed counter benchmark is not a lock implementation. Protecting non-atomic payload data requires a language-level synchronization relation, typically release on unlock and acquire on successful lock acquisition. A C data race cannot be repaired by a diagram of coherent hardware.');
-    h('p',null,sec,'Continue with <a href="#coh/transactions">the ownership experiment</a> and <a href="#core/smt">SMT resource competition</a>.');
+  function locks(root) {
+    var sec = App.labSection(
+      root,
+      'locks',
+      'From atomic retries to locks',
+      'Distinguish waiting policy from the atomic operation that grants ownership.'
+    );
+    teaching(
+      sec,
+      'Core 0 holds a lock while two other cores poll it three times, then releases it. A scripted test-and-set-style CAS loop requests writable ownership on every attempt; test-test-and-set reads first. This model does not schedule threads or predict lock throughput. A single waiter may retain M across failed retries, so “every retry bounces” would be wrong.'
+    );
+    var policy = 'cas',
+      ctl = h('div', { class: 'perf-controls' }, sec);
+    U.select(
+      ctl,
+      'Waiting policy',
+      [
+        ['cas', 'Retry CAS on every poll'],
+        ['read', 'Read-only polling, then CAS']
+      ],
+      'cas',
+      function (v) {
+        policy = v;
+        draw();
+      }
+    );
+    var out = h('div', null, sec);
+    function draw() {
+      var ops = [{ core: 0, word: 0, kind: 'store', value: 1 }];
+      for (var i = 0; i < 3; i++)
+        for (var core = 1; core < 3; core++)
+          ops.push(
+            policy === 'cas'
+              ? { core: core, word: 0, kind: 'cas', expected: 0, value: 1 }
+              : { core: core, word: 0, kind: 'read' }
+          );
+      ops.push(
+        { core: 0, word: 0, kind: 'store', value: 0 },
+        { core: 1, word: 0, kind: 'cas', expected: 0, value: 1 }
+      );
+      var r = M.coherence(ops, { cores: 3 });
+      sec._lockResult = r;
+      out.replaceChildren();
+      U.table(
+        out,
+        ['Observable in this trace', 'Count'],
+        [
+          ['Failed CAS operations', r.stats.failedCAS],
+          ['Ownership handoffs', r.stats.ownershipMoves],
+          ['Invalidations', r.stats.invalidations],
+          ['Dirty-peer data bytes', r.stats.peerBytes]
+        ]
+      );
+      U.text(
+        'p',
+        out,
+        'Read-only polling can retain shared copies until release, but release still invalidates those copies and several waiters can race to acquire. Backoff, fairness, preemption and scheduler costs require separate experiments.'
+      );
+    }
+    draw();
+    U.table(
+      sec,
+      ['Primitive', 'Memory-system connection', 'Additional cost / guarantee'],
+      [
+        [
+          'CAS retry loop',
+          'Retries an atomic update after observing a changed value',
+          'Retries may multiply instructions without a transfer on each retry'
+        ],
+        [
+          'Spinlock / test-test-and-set',
+          'Shared polling, then ownership for acquisition',
+          'Busy waits; release/acquire ordering must protect the payload'
+        ],
+        [
+          'Ticket lock',
+          'Atomic ticket allocation plus waiting on a serving counter',
+          'FIFO ticket order; central counters can still cause coherence traffic'
+        ],
+        [
+          'Uncontended mutex',
+          'A library may acquire with a user-space atomic fast path',
+          'Exact implementation depends on libc and mutex attributes'
+        ],
+        [
+          'Contended mutex',
+          'May spin briefly, then park and wake through the kernel',
+          'Scheduling and futex paths add costs beyond cache ownership'
+        ]
+      ]
+    );
+    U.text(
+      'p',
+      sec,
+      'The relaxed counter benchmark is not a lock implementation. Protecting non-atomic payload data requires a language-level synchronization relation, typically release on unlock and acquire on successful lock acquisition. A C data race cannot be repaired by a diagram of coherent hardware.'
+    );
+    h(
+      'p',
+      null,
+      sec,
+      'Continue with <a href="#coh/transactions">the ownership experiment</a> and <a href="#core/smt">SMT resource competition</a>.'
+    );
   }
-  App.extendChapter('hier',pressure);App.extendChapter('stores',function(root){writeTraffic(root);locks(root);});App.extendChapter('coh',ownership);
-  App.SharingLab={validate:validate};
+  App.extendChapter('hier', pressure);
+  App.extendChapter('stores', function (root) {
+    writeTraffic(root);
+    locks(root);
+  });
+  App.extendChapter('coh', ownership);
+  App.SharingLab = { validate: validate };
 })();
