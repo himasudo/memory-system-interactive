@@ -6,28 +6,33 @@
   border: 1px solid var(--bd2);
   white-space: normal;
 }
-.evidence-kind[data-evidence-kind='Vendor documented'] {
-  border-left: 4px solid var(--a2);
+.evidence-kind[data-evidence-kind='Vendor docs'] {
+  border-color: var(--a2);
+  color: var(--a2);
 }
-.evidence-kind[data-evidence-kind='Academic / peer-reviewed'] {
-  border-left: 4px solid var(--a4);
+.evidence-kind[data-evidence-kind='Peer-reviewed'] {
+  border-color: var(--a4);
+  color: var(--a4);
 }
-.evidence-kind[data-evidence-kind='Reputable independent measurement'] {
-  border-left: 4px solid var(--a1);
+.evidence-kind[data-evidence-kind='Published measurement'] {
+  border-color: var(--a1);
+  color: var(--a1);
 }
-.evidence-kind[data-evidence-kind='Locally measured'] {
-  border-left: 4px solid var(--ok);
+.evidence-kind[data-evidence-kind='Your machine'] {
+  border-color: var(--ok);
+  color: var(--ok);
 }
 .evidence-kind[data-evidence-kind='Inference'] {
   border-style: dashed;
-  border-left: 4px solid var(--a3);
+  border-color: var(--a3);
+  color: var(--a3);
 }
-.evidence-kind[data-evidence-kind='Teaching model'] {
+.evidence-kind[data-evidence-kind='Simulation'] {
   border-style: dotted;
 }
-.evidence-kind[data-evidence-kind='Unknown / undocumented'] {
+.evidence-kind[data-evidence-kind='Not published'] {
   border-style: dashed;
-  color: var(--tx2);
+  color: var(--tx3);
 }
 .implementation-figure {
   margin: 18px 0;
@@ -110,5 +115,69 @@
   }
   .evidence-bar-row strong {
     font-size: 12px;
+  }
+}
+/* Package diagrams: link labels and core cells. */
+.implementation-figure .impl-edge-label {
+  font-size: 10.5px;
+  fill: var(--tx3);
+}
+.implementation-figure .impl-cell {
+  font-size: 9.5px;
+  fill: var(--tx2);
+}
+.implementation-figure figcaption {
+  margin-top: 8px;
+}
+/* The comparison table that opens "Real chips". */
+.chip-compare .p-table {
+  min-width: 820px;
+}
+.chip-compare .p-table th {
+  font: 600 12.5px/1.4 var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tx);
+}
+.chip-compare .p-table td {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.chip-compare .p-table td:first-child {
+  font-family: var(--sans);
+  font-weight: 600;
+  color: var(--tx2);
+  white-space: nowrap;
+}
+.chip-compare .p-table td:nth-child(2) {
+  color: var(--tx3);
+}
+/* "What it changes" / "Try it" under each package diagram. */
+.impl-notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+  max-width: 1100px;
+}
+.impl-note {
+  padding: 14px 16px;
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.impl-note h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.impl-note p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--tx2);
+}
+@media (max-width: 760px) {
+  .impl-notes {
+    grid-template-columns: 1fr;
   }
 }
