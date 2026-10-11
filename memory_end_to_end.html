@@ -2606,6 +2606,281 @@ svg .actb {
   }
 }
 
+/* ======================= the course: navigation, part pages, lessons ======================= */
+
+/* ---------- sidebar: parts with the current part open ---------- */
+.nav-part{display:flex;flex-direction:column;gap:2px;margin-top:2px}
+.nav .nav-part-head{grid-template-columns:30px minmax(0,1fr) auto}
+.nav-part-head .nav-num{font:650 10.5px var(--mono);letter-spacing:.02em}
+.nav-part-head .nav-label{font-weight:640;color:var(--tx)}
+.nav-prog{font:600 10px var(--mono);color:var(--tx3);padding-left:6px;white-space:nowrap}
+.nav-items{display:none;flex-direction:column;gap:1px;margin:0 0 6px}
+.nav-part.open .nav-items{display:flex}
+.nav-items a{min-height:34px!important;padding-top:5px!important;padding-bottom:5px!important}
+.nav-items .nav-label{font-size:12px;font-weight:480}
+.nav-lab{font:600 8.5px var(--mono);font-style:normal;text-transform:uppercase;letter-spacing:.08em;color:var(--act);border:1px solid color-mix(in srgb,var(--act) 40%,transparent);border-radius:4px;padding:0 4px;margin-left:4px;vertical-align:1px}
+.nav a.done .nav-num{color:var(--ok)!important}
+.nav a.done .nav-label::after{content:" \2713";color:var(--ok);font-size:11px}
+.nav-part-head.in-part{background:color-mix(in srgb,var(--sunk) 70%,transparent)}
+.nav-home{margin-bottom:6px}
+@media (min-width:901px){
+  .nav-items{padding-left:10px;border-left:1px solid var(--bd);margin-left:22px}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav-prog{opacity:0;pointer-events:none}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav-items{padding-left:0;border-left:0;margin-left:0}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav .nav-part-head{grid-template-columns:30px 0 0}
+  body:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) .nav-part-head .nav-num{color:var(--tx)}
+}
+@media (max-width:900px){
+  .nav-items{padding-left:10px;border-left:1px solid var(--bd);margin-left:22px}
+}
+
+/* ---------- course headers ---------- */
+.course-head{grid-template-columns:minmax(0,1fr)!important}
+.course-head .num{white-space:normal;flex-wrap:wrap;line-height:1.5}
+.lesson-head h1{font-size:clamp(30px,3.2vw,46px)}
+.lesson-head .ch-lede,.part-head .ch-lede{font-size:18px;line-height:1.55;max-width:760px;color:var(--tx2)}
+
+/* ---------- course footer: done toggle, previous / next ---------- */
+.course-foot{margin:88px 0 0;padding-top:28px;border-top:1px solid var(--bd);display:grid;gap:22px;max-width:1060px}
+.done-toggle{justify-self:start;display:inline-flex;align-items:center;gap:10px;min-height:42px;padding:9px 14px;border-radius:9px;font:600 13px var(--sans)}
+.done-box{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--bd2);display:inline-grid;place-items:center;transition:background .15s,border-color .15s}
+.done-toggle[aria-pressed="true"]{border-color:color-mix(in srgb,var(--ok) 55%,transparent);color:var(--ok);background:var(--okbg)}
+.done-toggle[aria-pressed="true"] .done-box{background:var(--ok);border-color:var(--ok)}
+.done-toggle[aria-pressed="true"] .done-box::after{content:"\2713";color:var(--bg);font-size:12px;font-weight:800;line-height:1}
+.course-jumps{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px}
+.course-jump{display:flex;flex-direction:column;gap:4px;padding:16px 18px;border:1px solid var(--bd);border-radius:12px;background:var(--panel);color:var(--tx);text-decoration:none;transition:border-color .15s,transform .15s}
+.course-jump:hover{border-color:var(--act)}
+.course-jump span{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+.course-jump strong{font-size:15px;font-weight:650;line-height:1.3}
+.course-jump small{color:var(--tx2);font-size:13px;line-height:1.45}
+.course-jump.next{border-color:color-mix(in srgb,var(--act) 45%,var(--bd));text-align:left}
+.course-jump.next span{color:var(--act)}
+@media (max-width:720px){.course-jumps{grid-template-columns:1fr}.course-jump.next{order:-1}}
+
+/* ---------- part overview pages ---------- */
+.part-page{max-width:980px;display:grid;gap:44px}
+.part-page h2{font-size:13px;font:650 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin:0 0 14px}
+.part-outcomes ul{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.part-outcomes li{position:relative;padding-left:26px;font-size:16px;line-height:1.5}
+.part-outcomes li::before{content:"";position:absolute;left:4px;top:.55em;width:9px;height:9px;border-radius:2px;background:var(--act)}
+.lesson-cards{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.lesson-cards a{display:grid;grid-template-columns:44px minmax(0,1fr) 24px;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--bd);border-radius:11px;background:var(--panel);color:var(--tx);text-decoration:none;transition:border-color .15s}
+.lesson-cards a:hover{border-color:var(--act)}
+.lc-num{font:650 12px var(--mono);color:var(--act)}
+.lc-body strong{display:block;font-size:15.5px;font-weight:640;line-height:1.3}
+.lc-body small{display:block;margin-top:3px;color:var(--tx2);font-size:13.5px;line-height:1.45}
+.lc-done{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--bd2)}
+.lesson-cards li.is-done .lc-done{background:var(--ok);border-color:var(--ok)}
+.lesson-cards li.is-done .lc-num{color:var(--ok)}
+.part-runs p{max-width:760px;color:var(--tx2);font-size:14.5px;line-height:1.65;margin:0 0 10px}
+
+/* ---------- lesson layout: a reading column and a margin for definitions ---------- */
+.lx{max-width:1060px;--lx-text:color-mix(in srgb,var(--tx) 90%,var(--bg))}
+.lx-row{display:grid;grid-template-columns:minmax(0,680px) minmax(0,290px);column-gap:56px;align-items:start}
+.lx-main{grid-column:1;min-width:0}
+.lx-row.lx-wide .lx-main{grid-column:1/-1}
+.lx-side{grid-column:2;margin:2px 0 0;display:grid;gap:12px}
+.lx-term{border-left:2px solid color-mix(in srgb,var(--act) 55%,var(--bd));padding:1px 0 2px 12px}
+.lx-term dt{font:650 12.5px/1.35 var(--sans);color:var(--tx);margin:0 0 3px}
+.lx-term dd{margin:0;font-size:13px;line-height:1.5;color:var(--tx2)}
+.lx-text p{margin:0 0 18px;font-size:16.5px;line-height:1.72;color:var(--lx-text);max-width:680px}
+.lx-text p code,.lx-list code,.lx-olist code,.lx-note code,.lx-q code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--sunk);border:1px solid var(--bd);white-space:nowrap}
+.lx-list,.lx-olist{margin:0 0 20px;padding-left:22px;font-size:16px;line-height:1.65;color:var(--lx-text)}
+.lx-list li,.lx-olist li{margin:0 0 8px;padding-left:4px}
+.lx-sub h3{font-size:17px;font-weight:660;margin:12px 0 10px;letter-spacing:-.01em}
+.lx-art{margin:6px 0 30px}
+.lx-art .lx-main{min-width:0}
+
+/* hex values in prose */
+.lx code.lx-hex{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--sunk);border:1px solid var(--bd);white-space:nowrap;color:var(--tx)}
+/* margin notes are placed by script on wide screens (see layoutNotes in 02_course.js) */
+@media (min-width:1181px){
+  .lx{position:relative}
+  .lx-side{position:absolute;left:736px;width:290px;margin:0}
+}
+
+/* where this lesson sits */
+.lx-where{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:0;border:1px solid var(--bd);border-radius:12px;background:var(--panel);margin:0 0 20px;max-width:1026px;overflow:hidden}
+.lx-know,.lx-learn{padding:18px 20px}
+.lx-know{border-right:1px solid var(--bd);background:color-mix(in srgb,var(--sunk) 55%,var(--panel))}
+.lx-where-k{font:650 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:10px}
+.lx-learn .lx-where-k{color:var(--act)}
+.lx-where ul{margin:0;padding-left:18px;display:grid;gap:7px;font-size:14.5px;line-height:1.5;color:var(--tx2)}
+.lx-learn ul{color:var(--tx)}
+
+/* sections */
+.lx-sec{margin-top:64px;scroll-margin-top:84px}
+.lx-sec-head{display:flex;align-items:baseline;gap:14px;border-top:1px solid var(--bd);padding-top:26px;margin:0 0 24px;max-width:1026px}
+.lx-sec-k{font:650 12px var(--mono);color:var(--act);min-width:30px}
+.lx-sec-head h2{margin:0;font-size:clamp(22px,2.1vw,27px);line-height:1.2;letter-spacing:-.02em;font-weight:660}
+
+/* code, shell sessions and real outputs */
+.lx-code,.lx-quote,.lx-table,.lx-bits,.lx-chain{margin:0;border:1px solid var(--bd);border-radius:11px;background:var(--panel);overflow:hidden}
+.lx-code-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--bd);background:color-mix(in srgb,var(--sunk) 60%,var(--panel))}
+.lx-code-t{font:650 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-right:auto}
+.lx-code-bar .evidence-label{margin:0}
+.lx-chip-x{font:11px var(--mono);color:var(--tx3)}
+.lx-what{margin:0;padding:10px 14px 0;font-size:13px;line-height:1.5;color:var(--tx2)}
+.lx-code pre,.lx-quote pre{margin:0;padding:12px 0 14px;overflow-x:auto;background:var(--sunk);font:13px/1.62 var(--mono)}
+.lx-what+pre{margin-top:10px;border-top:1px solid var(--bd)}
+.lx-code code,.lx-quote pre code{font-size:inherit;display:block}
+.lx-code .ln,.lx-quote .ln{display:block;padding:0 16px 0 calc(16px + 2ch);text-indent:-2ch;white-space:pre-wrap;overflow-wrap:anywhere}
+.lx-code .ln-com,.lx-code .c-com,.lx-quote .c-com{color:var(--tx3)}
+.lx-code .ln-cmd{color:var(--tx)}
+.lx-code .ln-prompt{color:var(--act);user-select:none}
+.lx-code.lang-out .ln:not(.ln-cmd):not(.ln-com){color:var(--tx2)}
+.lx-code mark,.lx-quote mark{background:var(--actbg);color:var(--act);border-radius:3px;padding:0 2px}
+.lx-cap{padding:9px 14px 11px;font-size:13px;line-height:1.5;color:var(--tx2);border-top:1px solid var(--bd)}
+.lx-src{padding:8px 14px 10px;font-size:12px;color:var(--tx3);border-top:1px solid var(--bd)}
+.lx-src a{color:var(--a4)}
+.lx-quote blockquote{margin:0;padding:14px 18px;font-size:15px;line-height:1.6;color:var(--tx);border-left:3px solid var(--a2);background:var(--sunk)}
+.lx-quote blockquote p{margin:0 0 8px}.lx-quote blockquote p:last-child{margin:0}
+
+/* tables */
+.lx-table-wrap{overflow-x:auto}
+.lx-table table{border-collapse:collapse;width:100%;font-size:14px}
+.lx-table th{font:650 10.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--bd);background:color-mix(in srgb,var(--sunk) 50%,var(--panel));white-space:nowrap}
+.lx-table td{padding:9px 14px;border-bottom:1px solid var(--bd);vertical-align:top;line-height:1.5;color:var(--tx2)}
+.lx-table tr:last-child td{border-bottom:0}
+.lx-table td:first-child{color:var(--tx)}
+.lx-table table.mono-cells td:not(:first-child){font-family:var(--mono);font-size:13px}
+.lx-table tr.hot td{background:var(--actbg);color:var(--tx)}
+
+/* bit fields */
+.lx-bits{padding:14px}
+.lx-bits-t{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:650 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin:0 0 12px}
+.lx-bits-t .evidence-label{margin:0 0 0 auto}
+.lx-bits-strip{display:flex;gap:4px;flex-wrap:wrap}
+.lx-bit{flex-basis:auto;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 6px 9px;border-radius:7px;border:1px solid var(--bd2);background:var(--sunk);text-align:center}
+.lx-bits.dense .lx-bit{min-width:44px;padding:7px 3px 8px}
+.b-range{font:600 10px var(--mono);color:var(--tx3);white-space:nowrap}
+.b-val{font:650 15px var(--mono);color:var(--tx);white-space:nowrap;max-width:100%;overflow-wrap:anywhere}
+.lx-bits.dense .b-val{font-size:13.5px}
+.b-name{font-size:11.5px;line-height:1.25;color:var(--tx2)}
+.lx-bit.tone-a1{border-color:color-mix(in srgb,var(--a1) 60%,transparent);background:var(--a1bg)}
+.lx-bit.tone-a2{border-color:color-mix(in srgb,var(--a2) 60%,transparent);background:var(--a2bg)}
+.lx-bit.tone-a3{border-color:color-mix(in srgb,var(--a3) 60%,transparent);background:var(--a3bg)}
+.lx-bit.tone-a4{border-color:color-mix(in srgb,var(--a4) 60%,transparent);background:var(--a4bg)}
+.lx-bit.tone-mute{opacity:.62}
+.lx-bit.hot{border-color:var(--act);box-shadow:0 0 0 1px var(--act) inset;background:var(--actbg)}
+.lx-bits .lx-cap{margin:12px -14px -14px}
+
+/* chains of boxes */
+.lx-chain{padding:14px}
+.lx-chain ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:10px 30px;align-items:stretch}
+.lx-chain li{position:relative;flex:1 1 150px;min-width:130px;display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--bd2);border-radius:9px;background:var(--sunk)}
+.lx-chain li+li::before{content:"\2192";position:absolute;left:-23px;top:50%;transform:translateY(-50%);color:var(--wire);font-size:16px}
+.lx-chain li.hot{border-color:var(--act);background:var(--actbg)}
+.lx-chain li.hot+li::before,.lx-chain li.hot::before{color:var(--act)}
+.lx-chain .c-k{font:650 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--tx3)}
+.lx-chain .c-v{font:650 14px var(--mono);color:var(--tx);overflow-wrap:anywhere}
+.lx-chain .c-d{font-size:12.5px;line-height:1.4;color:var(--tx2)}
+.lx-chain.vertical ol{flex-direction:column;gap:22px}
+.lx-chain.vertical li{flex:none}
+.lx-chain.vertical li+li::before{content:"\2193";left:22px;top:-21px;transform:none}
+.lx-chain .lx-cap{margin:14px -14px -14px}
+
+/* figures */
+.lx-svg{margin:0;border:1px solid var(--bd);border-radius:11px;background:var(--panel);padding:14px 14px 0}
+.lx-svg svg{display:block;width:100%;height:auto}
+.lx-svg figcaption{margin:10px -14px 0;padding:9px 14px 11px;border-top:1px solid var(--bd);font-size:13px;color:var(--tx2)}
+
+/* callouts */
+.lx-note{border:1px solid var(--bd);border-left:3px solid var(--tx3);border-radius:10px;background:var(--panel);padding:13px 16px 12px;max-width:680px}
+.lx-wide .lx-note{max-width:none}
+.lx-note-k{font:650 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:6px}
+.lx-note-b p{margin:0 0 8px;font-size:14.5px;line-height:1.62;color:var(--tx2)}
+.lx-note-b p:last-child{margin:0}
+.lx-note-b ul{margin:4px 0 0;padding-left:18px;font-size:14.5px;line-height:1.6;color:var(--tx2)}
+.note-arm{border-left-color:var(--a2)}.note-arm .lx-note-k{color:var(--a2)}
+.note-amd{border-left-color:var(--a1)}.note-amd .lx-note-k{color:var(--a1)}
+.note-intel{border-left-color:var(--a4)}.note-intel .lx-note-k{color:var(--a4)}
+.note-vm{border-left-color:var(--a3)}.note-vm .lx-note-k{color:var(--a3)}
+.note-careful{border-left-color:var(--bad)}.note-careful .lx-note-k{color:var(--bad)}
+.note-deeper{border-left-color:var(--act)}.note-deeper .lx-note-k{color:var(--act)}
+.note-linux{border-left-color:var(--a3)}.note-linux .lx-note-k{color:var(--a3)}
+.note-why{border-left-color:var(--ok)}.note-why .lx-note-k{color:var(--ok)}
+
+/* try it */
+.lx-try{border:1px solid color-mix(in srgb,var(--act) 45%,var(--bd));border-radius:13px;background:var(--panel);padding:18px 18px 20px}
+.lx-try-k{font:700 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--act);margin-bottom:6px}
+.lx-try h3{margin:0 0 6px;font-size:18px;font-weight:660;letter-spacing:-.01em}
+.lx-try-intro{margin:0 0 14px;color:var(--tx2);font-size:14.5px;line-height:1.55;max-width:680px}
+.lx-form{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;margin:0 0 14px}
+.lx-form label{display:flex;flex-direction:column;gap:5px;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--tx3)}
+.lx-form input,.lx-form select{font:14px var(--mono);min-height:38px;min-width:0;width:100%}
+.lx-form .grow{flex:1 1 240px}
+.lx-out{display:grid;gap:10px}
+.lx-out .lx-bits,.lx-out .lx-table,.lx-out .lx-chain{background:var(--bg)}
+.lx-msg{font-size:14px;line-height:1.55;color:var(--tx2);margin:0}
+.lx-msg.bad{color:var(--bad)}
+.lx-msg b{color:var(--tx)}
+.lx-checks{display:flex;flex-wrap:wrap;gap:6px}
+.lx-checks label{flex-direction:row;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font:13px var(--mono);color:var(--tx2);padding:6px 9px;border:1px solid var(--bd2);border-radius:7px;background:var(--sunk);cursor:pointer}
+.lx-checks input{width:auto;min-height:0}
+
+/* questions */
+.lx-q{border:1px solid var(--bd);border-radius:12px;background:var(--panel);padding:16px 16px 14px;margin:0 0 14px;max-width:760px}
+.lx-q.inline{border-color:color-mix(in srgb,var(--a4) 45%,var(--bd))}
+.lx-q-k{font:650 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:6px}
+.lx-q.inline .lx-q-k{color:var(--a4)}
+.lx-q-p{margin:0 0 12px;font-size:15.5px;line-height:1.55;color:var(--tx)}
+.lx-q-opts{display:grid;gap:7px}
+.lx-q-opt{display:flex;align-items:flex-start;gap:10px;text-align:left;width:100%;padding:10px 12px;border-radius:9px;font:500 14px/1.45 var(--sans);background:var(--sunk);white-space:normal;min-height:0}
+.lx-q-letter{flex:none;width:22px;height:22px;border-radius:6px;border:1px solid var(--bd2);display:inline-grid;place-items:center;font:650 11px var(--mono);color:var(--tx3)}
+.lx-q-opt.right{border-color:var(--ok);background:var(--okbg)}
+.lx-q-opt.right .lx-q-letter{border-color:var(--ok);color:var(--ok)}
+.lx-q-opt.wrong{border-color:var(--bad);background:var(--badbg)}
+.lx-q-opt.wrong .lx-q-letter{border-color:var(--bad);color:var(--bad)}
+.lx-q-fb{margin-top:10px;font-size:14px;line-height:1.55;color:var(--tx2)}
+.lx-q-fb:empty{display:none}
+.lx-q-fb.ok b{color:var(--ok)}.lx-q-fb.no b{color:var(--bad)}
+
+/* summary */
+.lx-remember-list{margin:0;padding:0;list-style:none;display:grid;gap:10px;max-width:760px}
+.lx-remember-list li{position:relative;padding:12px 14px 12px 40px;border:1px solid var(--bd);border-radius:10px;background:var(--panel);font-size:15px;line-height:1.55}
+.lx-remember-list li::before{content:"";position:absolute;left:16px;top:19px;width:8px;height:8px;border-radius:2px;background:var(--act)}
+.lx-sources{margin:18px 0 0;font-size:13px;color:var(--tx3);line-height:1.7;max-width:900px}
+.lx-sources b{color:var(--tx2);margin-right:6px}
+.lx-sources a{color:var(--a4)}
+
+/* labs placed inside lessons */
+.lx-labrow .lab-scene{margin:0;border:1px solid color-mix(in srgb,var(--act) 45%,var(--bd));border-radius:13px;background:var(--panel);padding:18px}
+.lx-labrow .lab-scene .scene-lead{display:block;border:0;padding:0;margin:0 0 12px}
+.lx-labrow .lab-scene .scene-kicker{display:block;font:700 10.5px var(--mono);letter-spacing:.12em;color:var(--act);margin:0 0 6px}
+.lx-labrow .lab-scene .scene-kicker::after{content:" \00b7  Try it"}
+.lx-labrow .lab-scene .scene-lead h2{font-size:18px;margin:0 0 4px}
+.lx-labrow .lab-scene .scene-lead p{margin:0;color:var(--tx2);font-size:14.5px}
+
+/* ---------- narrow screens ---------- */
+@media (max-width:1180px){
+  .lx-row{grid-template-columns:minmax(0,1fr);}
+  .lx-side{grid-column:1;margin:-6px 0 22px;padding:12px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--panel)}
+  .lx-term{border-left:0;padding:0}
+  .lx-side .lx-term+.lx-term{border-top:1px solid var(--bd);padding-top:10px}
+  .lx-text p{max-width:none}
+}
+@media (max-width:720px){
+  .lx-where{grid-template-columns:1fr}
+  .lx-know{border-right:0;border-bottom:1px solid var(--bd)}
+  .lx-text p{font-size:16px;line-height:1.68}
+  .lx-sec{margin-top:52px}
+  .lx-sec-head{gap:10px}
+  .lx-code pre,.lx-quote pre{font-size:12px}
+  .lx-code .ln,.lx-quote .ln{padding:0 12px 0 calc(12px + 2ch)}
+  .lx-bit{min-width:52px}
+  .lx-chain li+li::before{content:"\2193";left:16px;top:-19px;transform:none}
+  .lx-chain ol{flex-direction:column;gap:22px}
+  .lx-chain li{flex:none}
+  .lx-try{padding:15px 13px 16px}
+  .part-outcomes li{font-size:15px}
+}
+
+/* evidence labels added with the course */
+.evidence-kind[data-evidence-kind='Lab run']{border-color:var(--act);color:var(--act)}
+.evidence-kind[data-evidence-kind='Linux source']{border-color:var(--a3);color:var(--a3)}
+.evidence-kind[data-evidence-kind='Specification']{border-color:var(--a4);color:var(--a4);border-style:dashed}
+
 </style>
 </head>
 <body>
@@ -2742,6 +3017,7 @@ var App = (function(){
     perf: ['vocabulary', 'predict', 'queues', 'datasets', 'measure', 'compare', 'explain']
   };
   function organizeChapter(sec, ch){
+    if (ch.lesson) return; /* lessons place their labs inline, where the concept is taught */
     var list = sec._sections; if (!list || !list.length) return;
     var order = SECTION_ORDER[ch.id];
     if (order){
@@ -2817,6 +3093,7 @@ var App = (function(){
   }
 
   function makeChapterHeader(sec, ch){
+    if (App.Course && App.Course.header(sec, ch)) return;
     var hd = h('header', {'class': 'chh'}, sec);
     var copy = h('div', {'class': 'ch-copy'}, hd);
     h('div', {'class': 'num'}, copy, (ch.ref ? 'REFERENCE' : 'CHAPTER ' + ch.num) + ' · ' + chapterGroup(ch));
@@ -2829,6 +3106,7 @@ var App = (function(){
   }
 
   function makeChapterFooter(sec, ch){
+    if (App.Course && App.Course.footer(sec, ch)) return;
     var idx = chapterIndex(ch.id), prev = idx > 0 ? chapters[idx - 1] : null, next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
     if (!prev && !next) return;
     var foot = h('footer', {'class':'chapter-footer','aria-label':'Continue through the atlas'}, sec);
@@ -2864,6 +3142,7 @@ var App = (function(){
     var cn = document.getElementById('crumbNum'), ct = document.getElementById('crumbTitle');
     if (cn) cn.textContent = ch.num;
     if (ct) ct.textContent = ch.short;
+    if (App.Course) App.Course.onShow(ch);
     setTimeout(secNavUpdate, 0);
     closeNav();
     if (built[ch.id].api.onShow) built[ch.id].api.onShow();
@@ -2928,9 +3207,11 @@ var App = (function(){
     initTheme();
     initShell();
     var n = 0; App.CH_LABEL = App.CH_LABEL || {};
-    chapters.forEach(function(c){ c.num = c.ref ? 'A\u2013Z' : String(n++).padStart(2, '0'); App.CH_LABEL[c.id] = [c.num, c.short]; });
+    if (App.Course) App.Course.order(chapters);
+    chapters.forEach(function(c){ if (!c.num) c.num = c.ref ? 'A\u2013Z' : String(n++).padStart(2, '0'); App.CH_LABEL[c.id] = [c.num, c.short]; });
     var nav = document.getElementById('nav'), lastGroup = null;
-    chapters.forEach(function(c){
+    if (App.Course){ App.Course.nav(nav); App.Course.indexTerms(); }
+    else chapters.forEach(function(c){
       var grp = chapterGroup(c);
       if (grp !== lastGroup){ h('div', {'class': 'nav-group'}, nav, grp); lastGroup = grp; }
       var a = h('a', {href: '#' + c.id}, nav,
@@ -3820,6 +4101,547 @@ d('pollute','cache pollution','Useless prefetched lines evicting useful ones.');
 d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. The reason the whole hierarchy exists.');
 })();
 
+/* ======================= the course: parts, lessons, navigation, progress =======================
+   The lab reads as a course. Pages are grouped into parts; each part has an overview page.
+   A lesson is written as short steps: one or two sentences, then one artifact (code, a real
+   output, a table, a diagram), then what it means. New terms are defined in the margin where
+   they first appear. Each lesson ends with questions, a short summary and a link to the next. */
+(function(){
+  'use strict';
+  var h = App.h;
+
+  /* ---------- the course map ---------- */
+  var PARTS = [
+    {id: 'start', n: '', title: 'Start here', pages: ['start']},
+    {id: 'found', n: 'I', title: 'Foundations',
+      lede: 'The background every later part uses: binary and hex, addresses, instructions, cycles, caches, virtual memory in brief, and how cores and devices share memory.',
+      outcomes: ['Read hex values and bit ranges', 'Read a few lines of x86 assembly', 'Tell latency from throughput', 'Explain why caches and virtual memory exist'],
+      pages: ['bits', 'addr', 'instr', 'asm', 'time', 'whycache', 'vm', 'share']},
+    {id: 'machine', n: 'II', title: 'The machine and the core',
+      lede: 'A map of the whole machine, then the path from a line of C to the µops a core executes.',
+      outcomes: ['Name every block between a core and DRAM', 'Follow C to instructions to µops', 'Read an out-of-order pipeline cycle by cycle'],
+      pages: ['map', 'code', 'core']},
+    {id: 'vmem', n: 'III', title: 'Virtual memory',
+      lede: 'How every address a program uses is translated: pages, page tables, the TLB, page faults, copy-on-write and huge pages, and what the kernel does behind each one. The outputs shown are from real runs on a Linux machine.',
+      outcomes: ['Translate a virtual address by hand through all four levels', 'Read /proc/self/maps, pagemap and smaps', 'Decode any page-fault error code', 'Predict when the TLB is flushed and when other CPUs are interrupted', 'Measure page-fault costs and keep them out of benchmarks'],
+      runs: true,
+      pages: ['vm-addresses', 'vm-pages', 'vm-space', 'vm-tree', 'vm-levels', 'vm-pte', 'vm-walk', 'vm-tlb', 'xlate', 'vm-huge', 'vm-vipt', 'vm-switch', 'vm-shootdown',
+        'vm-faults', 'vm-demand', 'vm-files', 'vm-cow', 'vm-protect', 'vm-cost', 'vm-buddy', 'vm-reclaim', 'vm-alias', 'vm-virt', 'vm-review']},
+    {id: 'cache', n: 'IV', title: 'Caches and DRAM',
+      lede: 'Inside an L1 lookup, down through L2, L3 and the fabric, into the DRAM chips, and the prefetchers that fetch lines before they are asked for.',
+      outcomes: ['Split an address into tag, index and offset', 'Follow a miss to DRAM and back', 'Explain row hits, misses and conflicts', 'Tell a useful prefetch from a late or useless one'],
+      pages: ['l1d', 'hier', 'dram', 'pref']},
+    {id: 'order', n: 'V', title: 'Stores, ordering and coherence',
+      lede: 'What happens after a store retires, which orders other cores may observe, and how caches keep many copies of one line consistent.',
+      outcomes: ['Follow a store from the store queue to L1', 'Read a litmus test', 'Step through MOESI state changes'],
+      pages: ['stores', 'coh']},
+    {id: 'io', n: 'VI', title: 'Devices and I/O',
+      lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, and the queues behind every disk and network request. The outputs shown are from real runs on a Linux machine.',
+      outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt'],
+      runs: true,
+      pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review']},
+    {id: 'system', n: 'VII', title: 'The whole system',
+      lede: 'Everything together: one access end to end, then predicting, measuring and explaining performance on your own machine.',
+      outcomes: ['Add up one access from instruction to DRAM', 'Predict throughput from queue sizes', 'Measure your own machine and compare'],
+      pages: ['e2e', 'perf']},
+    {id: 'ref', n: '', title: 'Reference', pages: ['atlas', 'gloss']}
+  ];
+  /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
+  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab'};
+  /* The machine every "Lab run" output in the course was captured on. */
+  var RUN_MACHINE = 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses. Physical addresses are the virtual machine’s own: the host translates them once more. Timings are this machine’s and will differ on yours.';
+
+  var pageInfo = {};   /* id -> {part, index, count} */
+  var lessons = {};
+
+  /* ---------- progress (per reader, in this browser only) ---------- */
+  var DONE_KEY = 'memLab.done', done = {};
+  try { (JSON.parse(localStorage.getItem(DONE_KEY) || '[]') || []).forEach(function(id){ if (typeof id === 'string') done[id] = 1; }); } catch(e){}
+  function saveDone(){ try { localStorage.setItem(DONE_KEY, JSON.stringify(Object.keys(done))); } catch(e){} }
+  function isDone(id){ return !!done[id]; }
+  function setDone(id, on){ if (on) done[id] = 1; else delete done[id]; saveDone(); refreshMarks(); }
+
+  /* ---------- registration ---------- */
+  App.lesson = function(def){
+    if (lessons[def.id]) throw new Error('Duplicate lesson: ' + def.id);
+    lessons[def.id] = def;
+    App.chapter({id: def.id, short: def.short, title: def.title, lede: def.lede, lesson: def,
+      build: function(root){ return renderLesson(root, def); }});
+  };
+  PARTS.forEach(function(p){
+    if (!p.n) return;
+    App.chapter({id: 'part-' + p.id, short: p.title, title: p.title, lede: p.lede, partPage: p,
+      build: function(root){ return renderPart(root, p); }});
+  });
+
+  function partOf(id){ return pageInfo[id] ? pageInfo[id].part : null; }
+  function registered(id){ return App.chapters.some(function(c){ return c.id === id; }); }
+  function chap(id){ for (var i = 0; i < App.chapters.length; i++) if (App.chapters[i].id === id) return App.chapters[i]; return null; }
+  function livePages(p){ return p.pages.filter(registered); }
+
+  /* ---------- order the chapters and number them ---------- */
+  function order(chapters){
+    var rank = {}, k = 0;
+    PARTS.forEach(function(p){
+      if (p.n) rank['part-' + p.id] = k++;
+      var list = livePages(p);
+      list.forEach(function(id, i){ rank[id] = k++; pageInfo[id] = {part: p, index: i + 1, count: list.length}; });
+      if (p.n) pageInfo['part-' + p.id] = {part: p, index: 0, count: list.length};
+    });
+    chapters.forEach(function(c, i){ if (rank[c.id] === undefined) rank[c.id] = 10000 + i; });
+    chapters.sort(function(a, b){ return rank[a.id] - rank[b.id]; });
+    chapters.forEach(function(c){
+      var info = pageInfo[c.id];
+      if (!info) return;
+      if (c.id === 'start') c.num = '00';
+      else if (info.part.id === 'ref') c.num = c.id === 'gloss' ? 'A–Z' : 'REF';
+      else if (info.index === 0) c.num = info.part.n;
+      else c.num = info.part.n + '.' + String(info.index).padStart(2, '0');
+      c.group = info.part.title;
+    });
+  }
+
+  /* ---------- sidebar: parts, with the current part open ---------- */
+  var navEl = null;
+  function navLink(parent, c, cls){
+    var a = h('a', {href: '#' + c.id, 'class': cls || ''}, parent,
+      '<span class="nav-num">' + navNum(c) + '</span><span class="nav-label">' + c.short + (LAB_PAGES[c.id] ? ' <em class="nav-lab">lab</em>' : '') + '</span><span class="nav-arrow">›</span>');
+    a.dataset.id = c.id;
+    a.addEventListener('mouseup', function(){ a.blur(); });
+    return a;
+  }
+  function navNum(c){ var i = pageInfo[c.id]; if (!i) return c.num || ''; if (c.id === 'start') return '00'; if (i.part.id === 'ref') return c.id === 'gloss' ? 'A–Z' : 'REF'; return String(i.index).padStart(2, '0'); }
+  function buildNav(nav){
+    navEl = nav; nav.innerHTML = '';
+    PARTS.forEach(function(p){
+      var list = livePages(p); if (!list.length) return;
+      if (p.id === 'start'){ navLink(nav, chap('start'), 'nav-home'); return; }
+      if (p.id === 'ref'){ h('div', {'class': 'nav-group'}, nav, p.title); list.forEach(function(id){ navLink(nav, chap(id)); }); return; }
+      var box = h('div', {'class': 'nav-part', 'data-part': p.id}, nav);
+      var head = h('a', {href: '#part-' + p.id, 'class': 'nav-part-head'}, box,
+        '<span class="nav-num">' + p.n + '</span><span class="nav-label">' + p.title + '</span><span class="nav-prog"></span>');
+      head.dataset.id = 'part-' + p.id;
+      var items = h('div', {'class': 'nav-items'}, box);
+      list.forEach(function(id){ navLink(items, chap(id)); });
+    });
+    refreshMarks();
+  }
+  function refreshMarks(){
+    if (!navEl) return;
+    PARTS.forEach(function(p){
+      var box = navEl.querySelector('.nav-part[data-part="' + p.id + '"]'); if (!box) return;
+      var list = livePages(p), n = list.filter(isDone).length;
+      var pr = box.querySelector('.nav-prog'); if (pr) pr.textContent = n ? n + '/' + list.length : String(list.length);
+    });
+    var links = navEl.querySelectorAll('a[data-id]');
+    for (var i = 0; i < links.length; i++) links[i].classList.toggle('done', isDone(links[i].dataset.id));
+    var marks = document.querySelectorAll('[data-done-for]');
+    for (var j = 0; j < marks.length; j++) marks[j].classList.toggle('is-done', isDone(marks[j].getAttribute('data-done-for')));
+  }
+  function onShow(ch){
+    if (!navEl) return;
+    var info = pageInfo[ch.id], cur = info ? info.part.id : null;
+    var boxes = navEl.querySelectorAll('.nav-part');
+    for (var i = 0; i < boxes.length; i++) boxes[i].classList.toggle('open', boxes[i].getAttribute('data-part') === cur);
+    var heads = navEl.querySelectorAll('.nav-part-head');
+    for (var j = 0; j < heads.length; j++) heads[j].classList.toggle('in-part', heads[j].parentNode.getAttribute('data-part') === cur);
+    var cn = document.getElementById('crumbNum'); if (cn) cn.textContent = ch.num;
+  }
+
+  /* ---------- headers and footers ---------- */
+  function kicker(ch){
+    var i = pageInfo[ch.id]; if (!i) return null;
+    if (ch.id === 'start') return 'Course home';
+    if (i.part.id === 'ref') return 'Reference';
+    if (i.index === 0) return 'Part ' + i.part.n;
+    return 'Part ' + i.part.n + ' · ' + i.part.title + ' · ' + (LAB_PAGES[ch.id] ? 'Lab' : 'Lesson ' + i.index + ' of ' + i.count);
+  }
+  function header(sec, ch){
+    var k = kicker(ch); if (!k) return false;
+    var hd = h('header', {'class': 'chh course-head' + (ch.lesson ? ' lesson-head' : '') + (ch.partPage ? ' part-head' : '')}, sec);
+    var copy = h('div', {'class': 'ch-copy'}, hd);
+    h('div', {'class': 'num'}, copy, k);
+    h('h1', null, copy, ch.title);
+    if (ch.lede) h('p', {'class': 'ch-lede'}, copy, ch.lede);
+    if (!ch.lesson && !ch.partPage && ch.points && ch.points.length) h('ul', {'class': 'ch-points'}, copy, ch.points.map(function(p){ return '<li>' + p + '</li>'; }).join(''));
+    return true;
+  }
+  function neighbours(id){
+    var cs = App.chapters, i = -1;
+    for (var k = 0; k < cs.length; k++) if (cs[k].id === id) i = k;
+    return {prev: i > 0 ? cs[i - 1] : null, next: i >= 0 && i < cs.length - 1 ? cs[i + 1] : null};
+  }
+  function label(c){ var i = pageInfo[c.id]; if (!i || !i.index) return c.num + ' · ' + c.short; return (LAB_PAGES[c.id] ? 'Lab · ' : 'Lesson ' + c.num + ' · ') + c.short; }
+  function footer(sec, ch){
+    if (!pageInfo[ch.id]) return false;
+    var nb = neighbours(ch.id), foot = h('footer', {'class': 'course-foot', 'aria-label': 'Continue the course'}, sec);
+    if (ch.id !== 'start' && ch.id !== 'gloss' && ch.id !== 'atlas' && !ch.partPage){
+      var mark = h('button', {type: 'button', 'class': 'done-toggle', 'data-done-for': ch.id, 'aria-pressed': isDone(ch.id) ? 'true' : 'false'}, foot,
+        '<span class="done-box" aria-hidden="true"></span><span class="done-text"></span>');
+      var txt = mark.querySelector('.done-text');
+      var sync = function(){ var on = isDone(ch.id); mark.setAttribute('aria-pressed', on ? 'true' : 'false'); txt.textContent = on ? 'Marked as done' : 'Mark this ' + (LAB_PAGES[ch.id] ? 'lab' : 'lesson') + ' as done'; };
+      mark.onclick = function(){ setDone(ch.id, !isDone(ch.id)); sync(); };
+      sync();
+    }
+    var row = h('div', {'class': 'course-jumps'}, foot);
+    if (nb.prev){ var bp = h('a', {'class': 'course-jump prev', href: '#' + nb.prev.id}, row, '<span>← Previous</span><strong>' + label(nb.prev) + '</strong>'); }
+    else h('span', {'class': 'course-jump-spacer'}, row);
+    if (nb.next){
+      var nd = nb.next.lesson ? nb.next.lesson.lede : nb.next.lede || '';
+      h('a', {'class': 'course-jump next', href: '#' + nb.next.id}, row, '<span>Next →</span><strong>' + label(nb.next) + '</strong>' + (nd ? '<small>' + nd + '</small>' : ''));
+    }
+    return true;
+  }
+
+  /* ---------- part overview pages ---------- */
+  function renderPart(root, p){
+    var wrap = h('div', {'class': 'part-page'}, root);
+    if (p.outcomes){
+      var o = h('section', {'class': 'part-outcomes'}, wrap);
+      h('h2', null, o, 'By the end of this part you can');
+      h('ul', null, o, p.outcomes.map(function(x){ return '<li>' + x + '</li>'; }).join(''));
+    }
+    var list = livePages(p);
+    var ls = h('section', {'class': 'part-lessons'}, wrap);
+    h('h2', null, ls, list.length + (list.length === 1 ? ' page' : ' pages') + ', in order');
+    var ol = h('ol', {'class': 'lesson-cards'}, ls);
+    list.forEach(function(id){
+      var c = chap(id), i = pageInfo[id], d = c.lesson ? c.lesson.lede : (c.lede || '');
+      var li = h('li', {'data-done-for': id}, ol);
+      h('a', {href: '#' + id}, li, '<span class="lc-num">' + (LAB_PAGES[id] ? 'Lab' : String(i.index).padStart(2, '0')) + '</span><span class="lc-body"><strong>' + c.short + '</strong>' + (d ? '<small>' + d + '</small>' : '') + '</span><span class="lc-done" aria-label="done"></span>');
+    });
+    if (p.runs){
+      var r = h('section', {'class': 'part-runs'}, wrap);
+      h('h2', null, r, 'Where the outputs come from');
+      h('p', null, r, 'Outputs marked <span class="evidence-label evidence-kind" data-evidence-kind="Lab run">Lab run</span> were captured by running small programs on ' + RUN_MACHINE);
+      h('p', null, r, 'The programs and the raw outputs are in the repository’s <code>labruns/</code> folder, so you can run them on your own Linux machine. Reading physical frame numbers and kernel trace events needs root.');
+    }
+    refreshMarks();
+    return {};
+  }
+
+  /* =================== lessons =================== */
+  function esc(t){ return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  /* code text: escape, then ⟦marked⟧ text becomes a highlight */
+  function codeHTML(text){
+    return esc(text).replace(/⟦([^⟧]*)⟧/g, '<mark>$1</mark>');
+  }
+  function shellHTML(text){
+    return text.split('\n').map(function(line){
+      var cls = /^\$ /.test(line) ? 'ln-cmd' : /^\s*#/.test(line) ? 'ln-com' : '';
+      var body = codeHTML(line);
+      if (cls === 'ln-cmd') body = '<span class="ln-prompt">$ </span>' + body.slice(2);
+      return '<span class="ln' + (cls ? ' ' + cls : '') + '">' + (body || ' ') + '</span>';
+    }).join('');
+  }
+  function cHTML(text){
+    /* light C/asm colouring: comments and strings; everything else plain */
+    return text.split('\n').map(function(line){
+      var m = line.match(/^(.*?)(\/\/.*|\/\*.*|#.*)$/), body;
+      if (m && !/["']/.test(m[1].slice(-1)) && !/#include|#define|#if|#endif/.test(line)) body = codeHTML(m[1]) + '<span class="c-com">' + codeHTML(m[2]) + '</span>';
+      else body = codeHTML(line);
+      return '<span class="ln">' + (body || ' ') + '</span>';
+    }).join('');
+  }
+  function chip(kind, extra){
+    if (!kind) return '';
+    return '<span class="evidence-label evidence-kind" data-evidence-kind="' + esc(kind) + '">' + esc(kind) + '</span>' + (extra ? '<span class="lx-chip-x">' + extra + '</span>' : '');
+  }
+  function termNote(t){
+    var title, def, key = null;
+    if (typeof t === 'string'){ key = t; var e = App.G[t]; title = e ? e.t : t; def = e ? e.d : ''; }
+    else { title = t[0]; def = t[1]; }
+    return '<div class="lx-term"' + (key ? ' data-term="' + key + '"' : '') + '><dt>' + title + '</dt><dd>' + def + '</dd></div>';
+  }
+
+  /* In lesson prose, hex values such as 0x7f3a1b2c3d4e are set in code type (outside tags and
+     outside existing <code> elements). */
+  function prose(html){
+    var out = '', inCode = 0, parts = String(html).split(/(<[^>]+>)/);
+    parts.forEach(function(t){
+      if (t.charAt(0) === '<'){ if (/^<code\b/i.test(t)) inCode++; else if (/^<\/code>/i.test(t)) inCode = Math.max(0, inCode - 1); out += t; return; }
+      out += inCode ? t : t.replace(/(^|[^\w&#])(0x[0-9a-fA-F]+)\b/g, '$1<code class="lx-hex">$2</code>');
+    });
+    return out;
+  }
+  function Builder(lesson, secEl, sectionNo){
+    this.lesson = lesson; this.el = secEl; this.no = sectionNo; this.k = 0;
+  }
+  var B = Builder.prototype;
+  B.row = function(cls, mainHTML, side){
+    var r = h('div', {'class': 'lx-row ' + (cls || '')}, this.el);
+    var m = h('div', {'class': 'lx-main'}, r, mainHTML || '');
+    if (side && side.length) h('dl', {'class': 'lx-side'}, r, side.map(termNote).join(''));
+    return m;
+  };
+  /* a short paragraph; terms: glossary keys or [title, definition] pairs shown in the margin */
+  B.p = function(html, terms){ this.row('lx-text', '<p>' + prose(html) + '</p>', terms); return this; };
+  B.h = function(title){ this.row('lx-sub', '<h3>' + title + '</h3>'); return this; };
+  B.list = function(items, terms){ this.row('lx-text', '<ul class="lx-list">' + items.map(function(x){ return '<li>' + prose(x) + '</li>'; }).join('') + '</ul>', terms); return this; };
+  B.steps = function(items, terms){ this.row('lx-text', '<ol class="lx-olist">' + items.map(function(x){ return '<li>' + prose(x) + '</li>'; }).join('') + '</ol>', terms); return this; };
+  /* a block of code, a shell session, or a real output */
+  B.code = function(text, o){
+    o = o || {};
+    var lang = o.lang || 'c', body = lang === 'sh' || lang === 'out' ? shellHTML(text) : lang === 'text' ? codeHTML(text).split('\n').map(function(l){ return '<span class="ln">' + (l || ' ') + '</span>'; }).join('') : cHTML(text);
+    var langName = {c: 'C', sh: 'shell', out: 'output', asm: 'assembly', text: o.title ? '' : 'text'}[lang] || lang;
+    var m = this.row('lx-art' + (o.wide ? ' lx-wide' : ''), '', o.terms);
+    var fig = h('figure', {'class': 'lx-code no-autolink lang-' + lang}, m);
+    h('div', {'class': 'lx-code-bar'}, fig, '<span class="lx-code-t">' + (o.title || langName) + '</span>' + chip(o.label, o.labelNote));
+    if (o.what) h('p', {'class': 'lx-what'}, fig, o.what);
+    h('pre', null, fig, '<code>' + body + '</code>');
+    if (o.src) h('figcaption', {'class': 'lx-src'}, fig, srcLinks(o.src));
+    if (o.cap) h('figcaption', {'class': 'lx-cap'}, fig, o.cap);
+    return this;
+  };
+  /* a measured output from a lab run */
+  B.run = function(text, o){ o = o || {}; o.lang = o.lang || 'out'; o.label = o.label || 'Lab run'; o.title = o.title || 'output'; return this.code(text, o); };
+  /* a registered lab-run excerpt (src/38_runs.js), quoted with the file it came from */
+  B.out = function(id, o){
+    var r = App.RUNS.get(id); o = o || {};
+    var lines = o.lines ? o.lines.map(function(i){ return r.lines[i]; }) : r.lines;
+    if (o.what === undefined) o.what = r.what;
+    o.title = o.title || 'output';
+    o.labelNote = o.labelNote || 'labruns/' + r.file.replace('/out/', '/out/');
+    return this.run(lines.join('\n'), o);
+  };
+  /* a quotation from a source document */
+  B.quote = function(text, o){
+    o = o || {};
+    var m = this.row('lx-art', '', o.terms);
+    var fig = h('figure', {'class': 'lx-quote'}, m);
+    h('div', {'class': 'lx-code-bar'}, fig, '<span class="lx-code-t">' + (o.cite || '') + '</span>' + chip(o.label || 'Vendor docs'));
+    var isCode = o.code;
+    if (isCode) h('pre', {'class': 'no-autolink'}, fig, '<code>' + cHTML(text) + '</code>');
+    else h('blockquote', null, fig, text.split('\n').map(function(t){ return '<p>' + t + '</p>'; }).join(''));
+    if (o.src) h('figcaption', {'class': 'lx-src'}, fig, srcLinks(o.src));
+    return this;
+  };
+  function srcLinks(src){
+    var list = Array.isArray(src[0]) ? src : [src];
+    return list.map(function(s){ return '<a href="' + esc(s[1]) + '" target="_blank" rel="noopener noreferrer">' + s[0] + ' ↗</a>'; }).join(' · ');
+  }
+  /* a strip of bit fields: [{bits:'47:39', name:'PML4 index', val:'254', tone:'a1'}] */
+  B.bits = function(fields, o){
+    o = o || {};
+    var m = this.row('lx-art' + (o.wide ? ' lx-wide' : ''), '', o.terms);
+    var fig = h('figure', {'class': 'lx-bits' + (o.dense ? ' dense' : '')}, m);
+    if (o.title) h('div', {'class': 'lx-bits-t'}, fig, o.title + (o.label ? chip(o.label) : ''));
+    var strip = h('div', {'class': 'lx-bits-strip no-autolink'}, fig);
+    fields.forEach(function(f){
+      var w = f.w || 1;
+      var c = h('div', {'class': 'lx-bit tone-' + (f.tone || 'n') + (f.hot ? ' hot' : ''), style: {flexGrow: w}}, strip);
+      h('span', {'class': 'b-range'}, c, f.bits);
+      h('span', {'class': 'b-val'}, c, f.val == null ? '' : String(f.val));
+      h('span', {'class': 'b-name'}, c, f.name || '');
+    });
+    if (o.cap) h('figcaption', {'class': 'lx-cap'}, fig, o.cap);
+    return this;
+  };
+  B.table = function(head, rows, o){
+    o = o || {};
+    var m = this.row('lx-art' + (o.wide ? ' lx-wide' : ''), '', o.terms);
+    var fig = h('figure', {'class': 'lx-table'}, m);
+    if (o.title || o.label) h('div', {'class': 'lx-code-bar'}, fig, '<span class="lx-code-t">' + (o.title || '') + '</span>' + chip(o.label));
+    var wrap = h('div', {'class': 'lx-table-wrap'}, fig);
+    var t = h('table', {'class': o.mono === false ? '' : 'mono-cells'}, wrap);
+    h('thead', null, t, '<tr>' + head.map(function(x){ return '<th>' + x + '</th>'; }).join('') + '</tr>');
+    h('tbody', null, t, rows.map(function(r){ return '<tr' + (r.hot ? ' class="hot"' : '') + '>' + (r.cells || r).map(function(x){ return '<td>' + x + '</td>'; }).join('') + '</tr>'; }).join(''));
+    if (o.cap) h('figcaption', {'class': 'lx-cap'}, fig, o.cap);
+    if (o.src) h('figcaption', {'class': 'lx-src'}, fig, srcLinks(o.src));
+    return this;
+  };
+  /* boxes joined by arrows, one per step of a chain: [{k:'CR3', v:'0x107a24000', d:'…', hot:true}] */
+  B.chain = function(items, o){
+    o = o || {};
+    var m = this.row('lx-art' + (o.wide ? ' lx-wide' : ''), '', o.terms);
+    var fig = h('figure', {'class': 'lx-chain' + (o.vertical ? ' vertical' : '')}, m);
+    if (o.title) h('div', {'class': 'lx-bits-t'}, fig, o.title + (o.label ? chip(o.label) : ''));
+    var ol = h('ol', {'class': 'no-autolink'}, fig);
+    items.forEach(function(it){
+      var li = h('li', {'class': (it.hot ? 'hot ' : '') + (it.tone ? 'tone-' + it.tone : '')}, ol);
+      if (it.k) h('span', {'class': 'c-k'}, li, it.k);
+      if (it.v) h('span', {'class': 'c-v'}, li, it.v);
+      if (it.d) h('span', {'class': 'c-d'}, li, it.d);
+      if (it.arrow) h('span', {'class': 'c-arrow'}, li, it.arrow);
+    });
+    if (o.cap) h('figcaption', {'class': 'lx-cap'}, fig, o.cap);
+    return this;
+  };
+  /* an SVG figure drawn with App.P helpers */
+  B.fig = function(w, ht, draw, o){
+    o = o || {};
+    var m = this.row('lx-art lx-figrow' + (o.wide ? ' lx-wide' : ''), '', o.terms);
+    var sv = App.P.fig(m, w, ht, o.cap); sv.parentNode.classList.add('lx-svg');
+    if (o.maxw) sv.parentNode.style.maxWidth = o.maxw + 'px';
+    draw(sv);
+    return this;
+  };
+  /* a callout: kind = arm | amd | intel | vm | careful | deeper | linux */
+  var NOTE = {arm: 'On Arm', amd: 'On AMD', intel: 'On Intel', vm: 'On a virtual machine', careful: 'Careful', deeper: 'Going deeper', linux: 'In Linux', why: 'Why it matters', other: 'Elsewhere'};
+  B.note = function(kind, html, title){
+    var m = this.row('lx-art', '');
+    h('aside', {'class': 'lx-note note-' + kind}, m, '<div class="lx-note-k">' + (title || NOTE[kind] || kind) + '</div><div class="lx-note-b">' + html.split('\n').map(function(t){ return /^\s*<(ul|ol|pre|table|div)/.test(t) ? t : '<p>' + prose(t) + '</p>'; }).join('') + '</div>');
+    return this;
+  };
+  /* an interactive panel; build(el) fills it */
+  B.try = function(title, intro, build){
+    var m = this.row('lx-art lx-tryrow', '');
+    var box = h('section', {'class': 'lx-try'}, m);
+    h('div', {'class': 'lx-try-k'}, box, 'Try it');
+    h('h3', null, box, title);
+    if (intro) h('p', {'class': 'lx-try-intro'}, box, intro);
+    var body = h('div', {'class': 'lx-try-body'}, box);
+    build(body);
+    return this;
+  };
+  /* an existing lab section (App.labSection inside fn) placed right here */
+  B.lab = function(fn){
+    var m = this.row('lx-art lx-labrow lx-wide', '');
+    fn(m);
+    return this;
+  };
+  /* a question to answer before reading on */
+  B.ask = function(q){ var m = this.row('lx-art', ''); quiz(m, [q], {inline: true}); return this; };
+  /* free HTML (used sparingly) */
+  B.html = function(html, cls){ this.row('lx-art ' + (cls || ''), html); return this; };
+  B.custom = function(fn, cls){ var m = this.row('lx-art ' + (cls || ''), ''); fn(m); return this; };
+
+  /* ---------- multiple-choice questions ---------- */
+  function quiz(parent, qs, o){
+    o = o || {};
+    qs.forEach(function(q, qi){
+      var box = h('div', {'class': 'lx-q' + (o.inline ? ' inline' : '')}, parent);
+      h('div', {'class': 'lx-q-k'}, box, o.inline ? 'Predict' : 'Question ' + (qi + 1));
+      h('p', {'class': 'lx-q-p'}, box, q.q);
+      var opts = h('div', {'class': 'lx-q-opts', role: 'group', 'aria-label': 'Answers'}, box);
+      var fb = h('div', {'class': 'lx-q-fb', 'aria-live': 'polite'}, box);
+      q.options.forEach(function(text, i){
+        var b = h('button', {type: 'button', 'class': 'lx-q-opt'}, opts, '<span class="lx-q-letter">' + 'ABCDEF'.charAt(i) + '</span><span>' + text + '</span>');
+        b.onclick = function(){
+          var right = i === q.answer;
+          Array.prototype.forEach.call(opts.children, function(x, j){ x.classList.remove('picked', 'right', 'wrong'); if (j === q.answer && right) x.classList.add('right'); });
+          b.classList.add('picked', right ? 'right' : 'wrong');
+          fb.className = 'lx-q-fb ' + (right ? 'ok' : 'no');
+          fb.innerHTML = '<b>' + (right ? 'Right.' : 'Not quite.') + '</b> ' + (right ? q.why : (q.hint || 'Try another answer.'));
+          if (!right && q.hint) fb.innerHTML += '';
+        };
+      });
+    });
+  }
+
+  function renderLesson(root, L){
+    var info = pageInfo[L.id] || {index: 0};
+    var sec = root.closest('.ch'), wrap = h('div', {'class': 'lx no-autolink'}, root);
+    /* where this lesson sits */
+    if (L.know || L.learn){
+      var where = h('div', {'class': 'lx-where'}, wrap);
+      if (L.know){ var kn = h('div', {'class': 'lx-know'}, where); h('div', {'class': 'lx-where-k'}, kn, 'You already know'); h('ul', null, kn, L.know.map(function(x){ return '<li>' + x + '</li>'; }).join('')); }
+      if (L.learn){ var le = h('div', {'class': 'lx-learn'}, where); h('div', {'class': 'lx-where-k'}, le, 'In this lesson'); h('ul', null, le, L.learn.map(function(x){ return '<li>' + x + '</li>'; }).join('')); }
+    }
+    var list = [];
+    (L.sections || []).forEach(function(S, i){
+      var el = h('section', {'class': 'lx-sec', id: L.id + '--' + S.id, 'data-sec': S.id}, wrap);
+      var head = h('div', {'class': 'lx-sec-head'}, el);
+      h('span', {'class': 'lx-sec-k'}, head, (info.index ? info.index + '.' : '') + (i + 1));
+      h('h2', null, head, S.title);
+      S.body(new Builder(L, el, i + 1));
+      list.push({id: S.id, title: S.title, el: el});
+    });
+    if (L.check && L.check.length){
+      var ck = h('section', {'class': 'lx-sec lx-check', id: L.id + '--check', 'data-sec': 'check'}, wrap);
+      h('div', {'class': 'lx-sec-head'}, ck, '<span class="lx-sec-k">✓</span><h2>Check yourself</h2>');
+      quiz(h('div', {'class': 'lx-check-body'}, ck), L.check);
+      list.push({id: 'check', title: 'Check yourself', el: ck});
+    }
+    if (L.remember && L.remember.length){
+      var rm = h('section', {'class': 'lx-sec lx-remember', id: L.id + '--remember', 'data-sec': 'remember'}, wrap);
+      h('div', {'class': 'lx-sec-head'}, rm, '<span class="lx-sec-k">★</span><h2>What to remember</h2>');
+      h('ul', {'class': 'lx-remember-list'}, rm, L.remember.map(function(x){ return '<li>' + x + '</li>'; }).join(''));
+      if (L.sources && L.sources.length) h('p', {'class': 'lx-sources'}, rm, '<b>Sources</b> ' + srcLinks(L.sources));
+      list.push({id: 'remember', title: 'What to remember', el: rm});
+    }
+    /* lab sections placed inside the lesson join the section menu in page order */
+    var labs = sec._sections || [];
+    labs.forEach(function(x){ x.el.classList.add('lx-lab'); });
+    var all = list.concat(labs.filter(function(x){ return list.indexOf(x) < 0; }));
+    all.sort(function(a, b){ return a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1; });
+    sec._sections = all;
+    watchNotes(wrap);
+    return {onShow: function(){ layoutNotes(wrap); }};
+  }
+
+  /* ---------- margin notes ----------
+     On wide screens each definition sits in the margin next to the paragraph that introduces the
+     term. Notes are positioned here rather than by the grid, so a long note never pushes the next
+     paragraph down: a note that would overlap the one above it moves down, and a section grows at
+     its end if its notes need the room. On narrower screens the notes stay in the text flow. */
+  function layoutNotes(lx){
+    if (!lx.isConnected || !lx.offsetParent) return;
+    var sides = Array.prototype.slice.call(lx.querySelectorAll('.lx-side'));
+    var secs = Array.prototype.slice.call(lx.querySelectorAll('.lx-sec'));
+    if (!sides.length) return;
+    if (getComputedStyle(sides[0]).position !== 'absolute'){ sides.forEach(function(sd){ sd.style.top = ''; }); secs.forEach(function(s){ s.style.paddingBottom = ''; }); return; }
+    var last = -Infinity;
+    secs.forEach(function(sec){
+      var mine = sides.filter(function(sd){ return sd.closest('.lx-sec') === sec; });
+      var pad = parseFloat(sec.style.paddingBottom) || 0;
+      if (!mine.length){ if (pad) sec.style.paddingBottom = ''; return; }
+      var base = lx.getBoundingClientRect().top;
+      var obstacles = Array.prototype.map.call(sec.querySelectorAll('.lx-wide, .lx-sec-head'), function(el){ var r = el.getBoundingClientRect(); return [r.top - base - 10, r.bottom - base + 10]; });
+      mine.forEach(function(sd){
+        var row = sd.parentNode, y = Math.max(row.getBoundingClientRect().top - base + 3, last + 16), ht = sd.offsetHeight, moved = true, guard = 0;
+        while (moved && guard++ < 20){ moved = false; obstacles.forEach(function(o){ if (y < o[1] && y + ht > o[0]){ y = o[1]; moved = true; } }); }
+        sd.style.top = y + 'px';
+        last = y + ht;
+      });
+      /* the section's own bottom, without any room added earlier for its notes */
+      var bottom = sec.getBoundingClientRect().bottom - base - pad;
+      var need = last > bottom ? Math.ceil(last - bottom + 8) : 0;
+      if (need !== pad) sec.style.paddingBottom = need ? need + 'px' : '';
+    });
+  }
+  function watchNotes(lx){
+    var pending = false;
+    function soon(){ if (pending) return; pending = true; requestAnimationFrame(function(){ pending = false; layoutNotes(lx); }); }
+    soon(); setTimeout(soon, 120);
+    window.addEventListener('resize', soon, {passive: true});
+    if (window.ResizeObserver){
+      var lastW = 0;
+      new ResizeObserver(function(entries){ var w = entries[0].contentRect.width; if (Math.abs(w - lastW) > 1){ lastW = w; soon(); } }).observe(lx);
+      Array.prototype.forEach.call(lx.querySelectorAll('.lx-main'), function(m){ new ResizeObserver(soon).observe(m); });
+    }
+  }
+
+  /* Before any page is shown, map every term a lesson defines in its margin to the first lesson
+     (in course order) that defines it, so "Taught in" links in definitions work from any page.
+     The lesson bodies are run once against a builder that only records term keys. */
+  function DryBuilder(){ this.keys = []; }
+  ['p', 'list', 'steps', 'h', 'code', 'run', 'out', 'quote', 'bits', 'table', 'chain', 'fig', 'note', 'try', 'lab', 'ask', 'html', 'custom'].forEach(function(m){
+    DryBuilder.prototype[m] = function(a, b){
+      var t = (m === 'p' || m === 'list' || m === 'steps') ? b : (b && typeof b === 'object' && !Array.isArray(b) ? b.terms : null);
+      if (m === 'table' || m === 'fig') t = arguments[2] && arguments[2].terms;
+      if (t) for (var i = 0; i < t.length; i++) if (typeof t[i] === 'string') this.keys.push(t[i]);
+      return this;
+    };
+  });
+  function indexTerms(){
+    if (!App.TERM_HOME) return;
+    var seen = {};
+    App.chapters.forEach(function(c){
+      var L = c.lesson; if (!L) return;
+      var d = new DryBuilder();
+      (L.sections || []).forEach(function(S){ try { S.body(d); } catch(e){} });
+      d.keys.forEach(function(k){ if (!seen[k]){ seen[k] = 1; App.TERM_HOME[k] = L.id; } });
+    });
+  }
+
+  App.Course = {
+    parts: PARTS, info: pageInfo, lessons: lessons, order: order, nav: buildNav, onShow: onShow,
+    header: header, footer: footer, isDone: isDone, setDone: setDone, indexTerms: indexTerms,
+    livePages: livePages, labPages: LAB_PAGES, runMachine: RUN_MACHINE, quiz: quiz, chip: chip, esc: esc
+  };
+})();
+
 /* ======================= glossary sources + chapter links ======================= */
 (function(){
   var W = function(t, label){ return [label || t.replace(/_/g, ' '), 'https://en.wikipedia.org/wiki/' + t, 'Wikipedia']; };
@@ -3964,7 +4786,19 @@ App.Evidence = {
     },
     {
       kind: 'Vendor docs',
-      means: 'Stated in AMD, Intel or Arm documentation for a named product.'
+      means: 'Stated in AMD, Intel or Arm documentation for a named product or architecture.'
+    },
+    {
+      kind: 'Specification',
+      means: 'From a published standard, such as PCI Express or NVM Express.'
+    },
+    {
+      kind: 'Linux source',
+      means: 'Quoted from the Linux kernel source at the version named.'
+    },
+    {
+      kind: 'Lab run',
+      means: 'Output of a small program the lab ran on a stated Linux machine. The programs are in the repository, so you can run them yourself.'
     },
     {
       kind: 'Peer-reviewed',
@@ -3992,13 +4826,20 @@ App.Evidence = {
 /* ======================= automatic links: chapter references and glossary terms ======================= */
 (function(){
   /* ---- chapter references: [[ch:id]], [[chs:a,b]], [[chr:a,b]], [[num:id]] ---- */
-  var REF = /\[\[(ch|chs|chr|num):([a-z0-9_,]+)\]\]/g;
+  var REF = /\[\[(ch|chs|chr|num):([a-z0-9_,-]+)\]\]/g;
   function nums(ids){ return ids.map(function(i){ return App.chNum(i); }); }
+  /* In the course, a reference names the lesson ("Lesson III.04"), lab or part. */
+  function kind(id){
+    var i = App.Course && App.Course.info[id];
+    if (!i) return 'Chapter';
+    if (!i.index) return 'Part';
+    return App.Course.labPages[id] ? 'Lab' : 'Lesson';
+  }
   function plain(k, ids){
     var n = nums(ids);
     if (k === 'num') return n[0];
-    if (k === 'ch') return ids[0] === 'gloss' ? 'the glossary' : 'Chapter ' + n[0];
-    return 'Chapters ' + n[0] + (k === 'chr' ? '\u2013' : ' and ') + n[1];
+    if (k === 'ch') return ids[0] === 'gloss' ? 'the glossary' : ids[0] === 'atlas' ? 'the hardware atlas' : ids[0] === 'start' ? 'the course home' : kind(ids[0]) + ' ' + n[0];
+    return kind(ids[0]) + 's ' + n[0] + (k === 'chr' ? '\u2013' : ' and ') + n[1];
   }
   function link(id, label){ var a = document.createElement('a'); a.href = '#' + id; a.className = 'ch-ref'; a.textContent = label; return a; }
   function resolveRefs(t){
@@ -4011,7 +4852,7 @@ App.Evidence = {
       var k = m[1], ids = m[2].split(','), n = nums(ids);
       if (k === 'num') frag.appendChild(document.createTextNode(n[0]));
       else if (k === 'ch') frag.appendChild(link(ids[0], plain('ch', ids)));
-      else { frag.appendChild(document.createTextNode('Chapters ')); frag.appendChild(link(ids[0], n[0])); frag.appendChild(document.createTextNode(k === 'chr' ? '\u2013' : ' and ')); frag.appendChild(link(ids[1], n[1])); }
+      else { frag.appendChild(document.createTextNode(kind(ids[0]) + 's ')); frag.appendChild(link(ids[0], n[0])); frag.appendChild(document.createTextNode(k === 'chr' ? '\u2013' : ' and ')); frag.appendChild(link(ids[1], n[1])); }
       last = m.index + m[0].length;
     }
     var tail = last < text.length ? document.createTextNode(text.slice(last)) : null;
@@ -20112,6 +20953,431 @@ build: function(root){
   }
   App.extendChapter('perf', build);
   automatic();
+})();
+
+/* ======================= lab runs: real outputs quoted by the lessons =======================
+   Every excerpt names the file under labruns/ it was taken from. tests/runs.test.cjs checks that
+   each quoted line (⟦highlight⟧ marks removed, lines starting with "#" or "…" skipped) appears in
+   that file, so a lesson can only quote what a program really printed. */
+var LabRuns = (function () {
+  'use strict';
+  var R = {
+    /* ---- Part III: the main run (labruns/vm/story.c) ---- */
+    'story.mmap': {
+      file: 'vm/out/story.txt',
+      what: 'The main run (story.c): reserve 4 pages at 0x7f3a1b2c3000, then look at page 0.',
+      lines: [
+        '== mmap(0x7f3a1b2c3000, 16384, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE) = 0x7f3a1b2c3000',
+        'its line in /proc/self/maps:',
+        '  7f3a1b2c3000-7f3a1b2c7000 rw-p 00000000 00:00 0',
+        'page 0 after mmap              pagemap=⟦0x0000000000000000⟧  present=0 exclusive=0 pfn=0x0'
+      ]
+    },
+    'story.store': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: the store, then what pagemap says about page 0.',
+      lines: [
+        '== store p[0xd4e] = 1  (address 0x7f3a1b2c3d4e)',
+        'faults during the store: 1',
+        'page 0 after the store         pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=⟦0x129b49⟧'
+      ]
+    },
+    'story.pagemap0': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: page 0 before and after the store.',
+      lines: [
+        'page 0 after mmap              pagemap=0x0000000000000000  present=0 exclusive=0 pfn=0x0',
+        'page 0 after the store         pagemap=⟦0x8100000000129b49⟧  present=1 exclusive=1 pfn=0x129b49'
+      ]
+    },
+    'story.objdump': {
+      file: 'vm/out/story.objdump.txt',
+      what: 'objdump -d story: the instruction the compiler made from p[0xd4e] = 1. %r12 holds p.',
+      lines: ['    1e97:\tmovb   $0x1,0xd4e(%r12)']
+    },
+    'story.maps': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: /proc/self/maps at start (file paths shortened to …/name).',
+      lines: []
+    }
+  };
+  function get(id) {
+    var r = R[id];
+    if (!r) throw new Error('Unknown lab run: ' + id);
+    return r;
+  }
+  function text(id) {
+    return get(id).lines.join('\n');
+  }
+  return { runs: R, get: get, text: text };
+})();
+if (typeof App !== 'undefined') App.RUNS = LabRuns;
+if (typeof module !== 'undefined') module.exports = LabRuns;
+
+/* ======================= small interactive tools used inside lessons ("Try it") ======================= */
+(function () {
+  'use strict';
+  var h = App.h;
+
+  function parseHex(s) {
+    s = String(s || '').trim().toLowerCase().replace(/[_\s]/g, '');
+    if (!s) return null;
+    if (!/^(0x)?[0-9a-f]+$/.test(s)) return null;
+    if (s.indexOf('0x') !== 0) s = '0x' + s;
+    try { return BigInt(s); } catch (e) { return null; }
+  }
+  function hx(v, w) { var t = v.toString(16); if (w) t = t.padStart(w, '0'); return '0x' + t; }
+  function bitsHTML(fields, dense) {
+    return '<div class="lx-bits' + (dense ? ' dense' : '') + '" style="border:0;padding:0;background:none"><div class="lx-bits-strip no-autolink">' +
+      fields.map(function (f) {
+        return '<div class="lx-bit tone-' + (f.tone || 'n') + (f.hot ? ' hot' : '') + '" style="flex-grow:' + (f.w || 1) + '"><span class="b-range">' + f.bits + '</span><span class="b-val">' + f.val + '</span><span class="b-name">' + (f.name || '') + '</span></div>';
+      }).join('') + '</div></div>';
+  }
+  function field(parent, label, value, o) {
+    o = o || {};
+    var l = h('label', { 'class': o.grow ? 'grow' : '' }, parent);
+    h('span', null, l, label);
+    var i = h('input', { type: 'text', value: value, spellcheck: 'false', autocomplete: 'off', 'aria-label': label }, l);
+    if (o.width) l.style.maxWidth = o.width;
+    return i;
+  }
+  function select(parent, label, options, value) {
+    var l = h('label', null, parent);
+    h('span', null, l, label);
+    var s = h('select', { 'aria-label': label }, l);
+    options.forEach(function (o) { var op = h('option', { value: o[0] }, s, o[1]); if (o[0] === value) op.selected = true; });
+    return s;
+  }
+
+  /* ---- 1. split a virtual address (and optionally build the physical address) ---- */
+  function splitter(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var iVA = field(form, 'Virtual address', opts.va || '0x00007f3a1b2c3d4e', { grow: true });
+    var iSize = opts.sizes === false ? null : select(form, 'Page size', [['12', '4 KiB'], ['21', '2 MiB'], ['30', '1 GiB']], '12');
+    var iPFN = opts.pfn === false ? null : field(form, 'Frame number (PFN) of that page', opts.pfnValue || '0x129b49', { width: '220px' });
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function run() {
+      var va = parseHex(iVA.value), shift = iSize ? Number(iSize.value) : 12;
+      out.innerHTML = '';
+      if (va === null || va >= (1n << 64n)) { h('p', { 'class': 'lx-msg bad' }, out, 'Enter a hex number of up to 16 digits, such as 0x00007f3a1b2c3d4e.'); return; }
+      var top = va >> 47n, canon = top === 0n || top === 0x1ffffn;
+      var offMask = (1n << BigInt(shift)) - 1n, off = va & offMask;
+      var fields = [];
+      if (opts.mode === 'levels') {
+        fields.push({ bits: '63:48', val: hx(va >> 48n, 4), name: 'copies of bit 47', tone: 'mute', w: 1.2 });
+        var lv = [['47:39', 39, 'PML4 index'], ['38:30', 30, 'PDPT index'], ['29:21', 21, 'PD index'], ['20:12', 12, 'PT index']];
+        lv.forEach(function (x) {
+          if (x[1] < shift) return;
+          fields.push({ bits: x[0], val: String((va >> BigInt(x[1])) & 0x1ffn), name: x[2], tone: 'a1' });
+        });
+        fields.push({ bits: (shift - 1) + ':0', val: hx(off, Math.ceil(shift / 4)), name: 'offset', tone: 'a3', w: shift / 9 });
+      } else {
+        fields.push({ bits: '63:' + shift, val: hx(va >> BigInt(shift)), name: shift === 12 ? 'VPN (page number)' : 'page number', tone: 'a1', w: 2.2 });
+        fields.push({ bits: (shift - 1) + ':0', val: hx(off, Math.ceil(shift / 4)), name: 'page offset', tone: 'a3', w: 1 });
+      }
+      h('div', null, out, bitsHTML(fields));
+      var msg = [];
+      if (!canon) msg.push('<b>Not canonical.</b> Bits 63:48 are not all copies of bit 47, so the CPU will not translate this address: using it raises a general-protection exception (#GP), not a page fault.');
+      else msg.push('<b>Canonical</b>, in the ' + (top === 0n ? 'user half (0 to 0x00007fffffffffff).' : 'kernel half (0xffff800000000000 and up).'));
+      if (iPFN) {
+        var pfn = parseHex(iPFN.value);
+        if (pfn === null) msg.push('Enter a frame number in hex to build the physical address.');
+        else {
+          var align = shift > 12 ? (1n << BigInt(shift - 12)) : 1n;
+          if (shift > 12 && pfn % align !== 0n) msg.push('A ' + (shift === 21 ? '2 MiB' : '1 GiB') + ' page needs a first frame number that is a multiple of ' + align + ' (0x' + align.toString(16) + '). ' + hx(pfn) + ' is not.');
+          else msg.push('Physical address = PFN × ' + (1n << 12n) + ' + offset = ' + hx(pfn << 12n) + ' + ' + hx(off) + ' = <b>' + hx((pfn << 12n) + off) + '</b>');
+        }
+      }
+      msg.forEach(function (m) { h('p', { 'class': 'lx-msg' }, out, m); });
+    }
+    [iVA, iSize, iPFN].forEach(function (x) { if (x) x.addEventListener('input', run); });
+    run();
+  }
+
+  /* ---- 2. decode a 64-bit x86-64 page-table entry ---- */
+  var PTE_BITS = [
+    [63, 'NX', 'no instruction fetch through this entry'],
+    [8, 'G', 'global: kept across CR3 loads'],
+    [7, 'PS', 'in a PDPT or PD entry: maps a 1 GiB or 2 MiB page'],
+    [6, 'D', 'dirty: a write went through this entry'],
+    [5, 'A', 'accessed: used for a translation'],
+    [4, 'PCD', 'cache disable (memory type)'],
+    [3, 'PWT', 'write-through (memory type)'],
+    [2, 'U/S', 'user mode may use it'],
+    [1, 'R/W', 'writes allowed'],
+    [0, 'P', 'present: the entry is valid']
+  ];
+  function pteDecoder(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var i = field(form, 'Entry (64 bits, hex)', opts.value || '0x8000000129b49067', { grow: true });
+    var lvl = select(form, 'Level', [['pt', 'PT (maps a 4 KiB page)'], ['pd', 'PD'], ['pdpt', 'PDPT'], ['pml4', 'PML4']], opts.level || 'pt');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function run() {
+      var e = parseHex(i.value);
+      out.innerHTML = '';
+      if (e === null || e >= (1n << 64n)) { h('p', { 'class': 'lx-msg bad' }, out, 'Enter a hex value of up to 16 digits.'); return; }
+      var fields = [];
+      fields.push({ bits: '63', val: String((e >> 63n) & 1n), name: 'NX', tone: (e >> 63n) & 1n ? 'a1' : 'mute' });
+      fields.push({ bits: '62:52', val: hx((e >> 52n) & 0x7ffn), name: 'ignored (OS use)', tone: 'mute' });
+      fields.push({ bits: '51:12', val: hx((e >> 12n) & ((1n << 40n) - 1n)), name: 'frame / next table', tone: 'a4', w: 2.4 });
+      fields.push({ bits: '11:9', val: String((e >> 9n) & 7n), name: 'ignored', tone: 'mute' });
+      [8, 7, 6, 5, 4, 3, 2, 1, 0].forEach(function (b) {
+        var d = PTE_BITS.filter(function (x) { return x[0] === b; })[0];
+        var on = (e >> BigInt(b)) & 1n;
+        fields.push({ bits: String(b), val: String(on), name: d[1], tone: on ? 'a2' : 'mute' });
+      });
+      h('div', null, out, bitsHTML(fields, true));
+      var present = e & 1n;
+      var lines = [];
+      if (!present) lines.push('<b>P = 0: not present.</b> The CPU ignores every other bit and the walk stops with a page fault. (Linux may keep its own data in those bits, for example where a swapped-out page went.)');
+      else {
+        var ps = (e >> 7n) & 1n, isLeaf = lvl.value === 'pt' || ((lvl.value === 'pd' || lvl.value === 'pdpt') && ps);
+        var addr = e & 0x000ffffffffff000n;
+        if (lvl.value === 'pml4' && ps) lines.push('<b>Bit 7 must be 0 in a PML4 entry</b> (there are no 512 GiB pages); the CPU reports a reserved-bit page fault.');
+        else if (isLeaf) {
+          var size = lvl.value === 'pt' ? '4 KiB' : lvl.value === 'pd' ? '2 MiB' : '1 GiB';
+          lines.push('<b>Maps a ' + size + ' page</b> starting at physical address ' + hx(lvl.value === 'pt' ? addr : addr & ~((lvl.value === 'pd' ? 1n << 21n : 1n << 30n) - 1n)) + (lvl.value === 'pt' ? ' (PFN ' + hx(addr >> 12n) + ')' : '') + '.');
+          if (lvl.value === 'pt' && ps) lines.push('In a PT entry bit 7 is not PS: it is the PAT bit, part of the memory type.');
+        } else lines.push('<b>Points to the next table</b>, at physical address ' + hx(addr) + '.');
+        var perm = [];
+        perm.push((e >> 1n) & 1n ? 'writable' : 'read-only');
+        perm.push((e >> 2n) & 1n ? 'user mode allowed' : 'kernel only');
+        perm.push((e >> 63n) & 1n ? 'no instruction fetch' : 'instructions allowed');
+        lines.push('Permissions this entry allows: ' + perm.join(', ') + '.' + (isLeaf ? '' : ' (Permissions combine across levels: the strictest entry on the path wins.)'));
+        var st = [];
+        if ((e >> 5n) & 1n) st.push('A = 1 (used)');
+        if ((e >> 6n) & 1n) st.push('D = 1 (written)' + (isLeaf ? '' : ', ignored in a non-leaf entry'));
+        if ((e >> 8n) & 1n) st.push('G = 1 (global)');
+        if (st.length) lines.push(st.join('; ') + '.');
+      }
+      lines.forEach(function (m) { h('p', { 'class': 'lx-msg' }, out, m); });
+    }
+    i.addEventListener('input', run); lvl.addEventListener('change', run);
+    run();
+  }
+
+  /* ---- 3. page-fault error code: bits to meaning, both ways ---- */
+  var ERR = [[0, 'P', 'a translation existed (1) or did not (0)'], [1, 'W/R', 'the access was a write'], [2, 'U/S', 'the CPU was in user mode'], [3, 'RSVD', 'a reserved bit was set in an entry'], [4, 'I/D', 'the access was an instruction fetch'], [5, 'PK', 'a protection key refused it'], [6, 'SS', 'a shadow-stack access']];
+  function errDecoder(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var i = field(form, 'Error code (hex)', opts.value || '0x6', { width: '170px' });
+    var boxes = h('div', { 'class': 'lx-checks' }, form);
+    var cb = ERR.map(function (x) {
+      var l = h('label', null, boxes);
+      var c = h('input', { type: 'checkbox', 'aria-label': x[1] }, l);
+      h('span', null, l, 'bit ' + x[0] + ' ' + x[1]);
+      return c;
+    });
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function show(v) {
+      out.innerHTML = '';
+      cb.forEach(function (c, k) { c.checked = !!((v >> ERR[k][0]) & 1); });
+      var parts = ERR.filter(function (x) { return (v >> x[0]) & 1; }).map(function (x) { return x[1] + ': ' + x[2]; });
+      var kind = (v & 16) ? 'instruction fetch' : (v & 2) ? 'write' : 'read';
+      var who = (v & 4) ? 'user mode' : 'kernel mode';
+      var why = (v & 1) ? 'a translation existed but refused the access' : 'no valid translation (P = 0 somewhere on the path)';
+      h('p', { 'class': 'lx-msg' }, out, '<b>0x' + v.toString(16) + '</b>: a ' + kind + ' in ' + who + '; ' + why + '.');
+      if (parts.length) h('p', { 'class': 'lx-msg' }, out, 'Bits set: ' + parts.join('; ') + '.');
+    }
+    i.addEventListener('input', function () { var v = parseHex(i.value); if (v === null || v > 0xffffn) { out.innerHTML = '<p class="lx-msg bad">Enter a small hex value such as 0x6.</p>'; return; } show(Number(v)); });
+    cb.forEach(function (c) { c.addEventListener('change', function () { var v = 0; cb.forEach(function (d, k) { if (d.checked) v |= 1 << ERR[k][0]; }); i.value = '0x' + v.toString(16); show(v); }); });
+    show(Number(parseHex(i.value)));
+  }
+
+  /* ---- 4. TLB reach ---- */
+  function reach(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var iE = field(form, 'Entries', String(opts.entries || 1536), { width: '120px' });
+    var iP = select(form, 'Page size', [['4096', '4 KiB'], ['2097152', '2 MiB'], ['1073741824', '1 GiB']], '4096');
+    var iW = field(form, 'Working set (MiB)', String(opts.ws || 8), { width: '160px' });
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function fmt(b) { return b >= 1073741824 ? (b / 1073741824) + ' GiB' : b >= 1048576 ? (b / 1048576) + ' MiB' : (b / 1024) + ' KiB'; }
+    function run() {
+      var e = Number(iE.value), p = Number(iP.value), w = Number(iW.value) * 1048576;
+      out.innerHTML = '';
+      if (!(e > 0 && e <= 1e6 && w > 0 && w <= 1048576 * 1048576)) { h('p', { 'class': 'lx-msg bad' }, out, 'Enter entries (1 to 1,000,000) and a working set in MiB.'); return; }
+      var r = e * p, pages = Math.ceil(w / p), miss = Math.max(0, 1 - e / pages);
+      h('p', { 'class': 'lx-msg' }, out, 'Reach = ' + e + ' × ' + fmt(p) + ' = <b>' + fmt(r) + '</b>.');
+      h('p', { 'class': 'lx-msg' }, out, 'The working set spans ' + pages.toLocaleString() + ' pages. ' + (miss === 0 ? '<b>It fits:</b> after warm-up, no access needs a walk.' : 'With accesses spread at random, roughly <b>' + Math.round(miss * 100) + '%</b> of them miss this TLB (1 − entries ÷ pages, a rough model that ignores associativity).'));
+    }
+    [iE, iP, iW].forEach(function (x) { x.addEventListener('input', run); x.addEventListener('change', run); });
+    run();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach };
+})();
+
+/* ======================= Part III · Virtual memory, lessons 1–4 ======================= */
+(function () {
+  'use strict';
+  var g = App.g, LW = function () { return App.LW; };
+  var d = App.gloss;
+  d('frame', 'frame (page frame)', 'A 4 KiB block of physical memory that starts at a multiple of 4096. One page is mapped onto one frame.');
+  d('pgoff', 'page offset', 'The low 12 bits of an address: where a byte sits inside its 4 KiB page. Translation copies them unchanged.');
+  d('pagemap', '/proc/self/pagemap', 'A file Linux generates on each read: 8 bytes per virtual page of the reading process. Bit 63 = the page has a frame, bit 56 = the frame is mapped exactly once, bits 54:0 = the PFN (zero unless you are root).');
+  d('kernel', 'kernel', 'The core of the operating system. It runs in kernel mode, decides which memory each process may use, and writes the page tables.');
+  d('kmode', 'kernel mode, user mode', 'The CPU’s privileged and unprivileged states. The kernel runs in kernel mode; programs run in user mode and cannot touch kernel memory or control registers.');
+  d('memctl', 'memory controller', 'The part of the processor that reads and writes DRAM. It only ever sees physical addresses.');
+  d('ifetch', 'instruction fetch', 'The CPU reading the bytes of the next instructions from memory. Their addresses are virtual too, and are translated like any load.');
+  d('syscall', 'system call', 'A request from a program to the kernel, such as mmap or read. The CPU switches to kernel mode to run it and back to user mode afterwards.');
+  d('mmap', 'mmap', 'The system call that adds a range of virtual addresses to the calling process: anonymous memory, a file, or shared memory.');
+  d('anon', 'anonymous memory', 'Memory with no file behind it (MAP_ANONYMOUS, the heap, the stack). It reads as zeros until written.');
+  d('vmarea', 'region (VMA)', 'A range of virtual addresses with one set of permissions and one origin (a file or nothing). Linux calls it a VMA, virtual memory area; /proc/self/maps prints one line per region.');
+  d('maps', '/proc/self/maps', 'A file Linux generates on each read: one line per region of the reading process, giving start-end, permissions, file offset, device, inode and file name.');
+  d('aslr', 'ASLR', 'Address-space layout randomization: at every program start the kernel picks random base addresses for the stack, the heap, the shared libraries and (for position-independent programs) the program itself.');
+  d('canon', 'canonical address', 'A 64-bit value whose bits 63:48 all equal bit 47 (with 4-level paging). Only canonical addresses can be translated; using any other raises #GP.');
+  d('gpf', '#GP (general protection)', 'Exception 13: the CPU refused an instruction for breaking a rule, such as using a non-canonical address. It is a different exception from a page fault.');
+  d('khalf', 'user half, kernel half', 'The two canonical ranges of a 48-bit address space: 0 to 0x00007fffffffffff for the process, 0xffff800000000000 and up for the kernel, which is the same in every process.');
+  d('directmap', 'direct map', 'A range of the kernel half that maps all of RAM at one fixed offset (0xffff888000000000 unless boot-time randomization moves it), so the kernel can reach any frame by adding that offset.');
+  d('vmpte', 'VmPTE', 'A line in /proc/<pid>/status: kilobytes of page tables the process uses, not counting its top-level table.');
+
+  var P = App.P;
+
+  /* ---------- III.01 ---------- */
+  App.lesson({
+    id: 'vm-addresses', short: 'Two kinds of address', title: 'Two kinds of address',
+    lede: 'Every address a program computes is virtual. Hardware turns it into a physical address on every access.',
+    know: ['A byte in memory is found by its number, its address ([[ch:addr]]).', 'Loads and stores move data between registers and memory ([[ch:instr]]).', 'Part I gave the idea in brief: programs use virtual addresses ([[ch:vm]]).'],
+    learn: ['Tell a virtual address from a physical one', 'Say what the MMU does on every access, and what it never does', 'Name what translation gives a system: isolation, relocation, laziness and sharing'],
+    sections: [
+      { id: 'store', title: 'One store', body: function (L) {
+        L.p('This part follows one small program from start to end. It asks the kernel for 16 KiB of fresh memory, then stores one byte into it.', ['kernel']);
+        L.code('char *p = mmap((void *)0x7f3a1b2c3000, 16384,      /* where, how much  */\n               PROT_READ | PROT_WRITE,             /* may read, write  */\n               MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);\n\np[0xd4e] = 1;                                     /* store one byte   */', { title: 'labruns/vm/story.c (shortened)', cap: 'MAP_FIXED_NOREPLACE asks for exactly that address (or fails), so every run uses the same numbers.' });
+        L.p('<code>mmap</code> is a system call. It returned the address we asked for, and the store writes to that address plus 0xd4e.', ['syscall', 'mmap']);
+        L.out('story.store', { lines: [0] });
+        L.p('The compiler turned the store into one instruction. Register <code>%r12</code> holds <code>p</code>, and the instruction adds 0xd4e to it.');
+        L.out('story.objdump', { title: 'objdump -d story' });
+        L.p('So the CPU computes the address 0x7f3a1b2c3d4e and stores 1 there. Every address a program can compute is like this one: a pointer, <code>&amp;x</code>, whatever <code>malloc</code> returns.');
+        L.p('These are ' + g('va', 'virtual addresses') + '. Each process has its own set of them.', ['va', 'proc']);
+      } },
+      { id: 'physical', title: 'Where the byte really went', body: function (L) {
+        L.p('The memory chips never see 0x7f3a1b2c3d4e. RAM, the caches and the memory controller work with physical addresses: the numbers of real locations.', ['pa', 'memctl']);
+        L.p('Linux tells root which physical memory backs each page of a process. This is the answer for our page, read right after the store:');
+        L.out('story.store', { lines: [2] });
+        L.p('The byte landed at physical address 0x129b49d4e. The next lesson shows how that number is built from <code>pfn=0x129b49</code> and the last three digits of the virtual address.');
+        L.note('vm', 'The machine these runs come from is itself a virtual machine, so its “physical” addresses are the virtual machine’s own. The host translates them once more; [[ch:vm-virt]] covers that second step.');
+      } },
+      { id: 'mmu', title: 'The MMU translates every access', body: function (L) {
+        L.p('The translation is done by the ' + g('mmu', 'MMU') + ', a unit inside every CPU core. It runs on every load, every store and every instruction fetch.', ['mmu', 'ifetch']);
+        L.chain([
+          { k: 'load/store unit', v: '0x7f3a1b2c3d4e', d: 'computes the virtual address' },
+          { k: 'MMU', v: 'translate + check', d: 'finds the physical address and checks the access is allowed', hot: true },
+          { k: 'caches and RAM', v: '0x129b49d4e', d: 'see only the physical address' }
+        ], { cap: 'The path of every access. Nothing after the MMU ever sees the virtual address.' });
+        L.p('The MMU reads tables that the kernel writes. It never allocates memory and never decides who may use what: the kernel does both.', ['kmode']);
+        L.p('The MMU writes only two status bits in those tables, which [[ch:vm-pte]] covers.');
+        L.p('When the tables have no answer, the MMU stops the instruction and hands control to the kernel. That event is a page fault, the subject of [[ch:vm-faults]].', ['pf']);
+        L.note('deeper', 'x86-64 still has segment registers, but in 64-bit mode the CPU treats the code and data segment bases as 0, so a virtual address goes straight to the MMU. Only FS and GS keep a base: glibc uses FS to find each thread’s own variables, and the kernel uses GS for its per-CPU data.');
+        L.note('arm', 'An AArch64 core has the same job split: its MMU translates every access using tables the kernel writes. There are no segments. Instead the top bits of an address pick one of two table bases, TTBR0_EL1 for user addresses and TTBR1_EL1 for the kernel.');
+      } },
+      { id: 'why', title: 'What translation buys', body: function (L) {
+        L.p('Why not let programs use physical addresses directly? Because one level of translation gives four things at once.');
+        L.table(['Property', 'What it means', 'Lesson'], [
+          ['Isolation', 'No address in process A reaches memory that belongs to process B, unless the kernel maps the same memory into both on purpose.', '[[ch:vm-space]]'],
+          ['Relocation', 'Every program can use the same addresses, wherever its memory physically is.', '[[ch:vm-space]]'],
+          ['Laziness', 'A process can reserve far more addresses than it touches; physical memory is handed out page by page, on first use.', '[[ch:vm-demand]]'],
+          ['Sharing', 'One piece of physical memory can appear in many address spaces, such as the C library’s code.', '[[ch:vm-alias]]']
+        ], { mono: false });
+        L.p('Our run already shows laziness. Right after <code>mmap</code>, the page had no physical memory at all:');
+        L.out('story.mmap', { lines: [3], what: 'The main run: page 0 right after mmap, before any store.' });
+        L.p('<code>present=0</code>: the region existed, but no memory backed it. Physical memory arrived only when the store touched the page.');
+      } }
+    ],
+    check: [
+      { q: 'A C program prints a pointer: 0x7ffd4a3c2e58. What kind of address is that?', options: ['A virtual address', 'A physical address', 'A frame number', 'A disk address'], answer: 0, why: 'Every address a program can see or compute is virtual. Only the kernel and the hardware deal in physical addresses.' },
+      { q: 'Which of these does the MMU do?', options: ['Translate and check permissions on every access', 'Give a page physical memory when it is first used', 'Decide which process may use which memory', 'Copy a page after fork'], answer: 0, why: 'The MMU only translates and checks, using tables the kernel wrote. Allocating, deciding and copying are the kernel’s work.', hint: 'Think of what must happen on every single access, fast, in hardware.' },
+      { q: 'Right after mmap reserves 16 KiB, how much physical memory backs the region?', options: ['None', '16 KiB', '4 KiB', 'It depends on the cache size'], answer: 0, why: 'mmap only reserves addresses. pagemap showed present=0 until the first store.' }
+    ],
+    remember: [
+      'Programs see only virtual addresses; caches and RAM see only physical ones.',
+      'The MMU in each core translates every load, store and instruction fetch, using tables the kernel writes.',
+      'The MMU never allocates or decides. When it cannot translate, it hands the problem to the kernel (a page fault).',
+      'Translation gives isolation, relocation, laziness and sharing.'
+    ],
+    sources: [['Intel SDM Vol. 3A, ch. 4 “Paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, ch. 5 “Page Translation and Protection”', 'https://docs.amd.com/v/u/en-US/24593_3.43'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest'], ['Linux: examining process page tables (pagemap)', 'https://docs.kernel.org/admin-guide/mm/pagemap.html']]
+  });
+
+  /* ---------- III.02 ---------- */
+  App.lesson({
+    id: 'vm-pages', short: 'Pages and frames', title: 'Pages, frames and the page offset',
+    lede: 'Translation works on 4 KiB blocks. The low 12 bits of every address pass through untouched.',
+    know: ['Programs use virtual addresses; the MMU turns each one into a physical address ([[ch:vm-addresses]]).', 'One hex digit is 4 bits ([[ch:bits]]).'],
+    learn: ['Split an address into a page number and an offset', 'Turn a frame number into a physical address', 'Read a /proc/self/pagemap entry'],
+    sections: [
+      { id: 'blocks', title: 'Blocks, not bytes', body: function (L) {
+        L.p('A table with one entry per byte would be bigger than the memory it describes. So translation works on blocks.');
+        L.p('Virtual memory is cut into ' + g('page', 'pages') + ' of 4096 bytes. Physical memory is cut into ' + g('frame', 'frames') + ' of the same size.', ['page', 'frame']);
+        L.chain([
+          { k: 'page 0 of our region', v: '0x7f3a1b2c3000', d: 'virtual, 4096 bytes' },
+          { k: 'one translation', v: 'page → frame', d: 'all 4096 bytes move together', hot: true },
+          { k: 'frame 0x129b49', v: '0x129b49000', d: 'physical, 4096 bytes' }
+        ]);
+        L.p('One translation maps a whole page onto a whole frame. Our 16 KiB region is 4 pages, and each can land in any free frame.');
+      } },
+      { id: 'offset', title: 'The page offset', body: function (L) {
+        L.p('4096 is 2¹², so the low 12 bits of an address say where a byte sits inside its page. That is the ' + g('pgoff', 'page offset') + '.', ['pgoff']);
+        L.bits([
+          { bits: '63:12', val: '0x7f3a1b2c3', name: 'virtual page number (VPN)', tone: 'a1', w: 2.2 },
+          { bits: '11:0', val: '0xd4e', name: 'page offset', tone: 'a3' }
+        ], { title: 'The virtual address 0x00007f3a1b2c3d4e' });
+        L.p('Twelve bits are exactly three hex digits. So you can read the offset straight off the address: its last three digits, 0xd4e.');
+        L.p('The rest is the ' + g('vpn', 'virtual page number') + ': the address shifted right by 12.', ['vpn']);
+        L.code('0x00007f3a1b2c3d4e >> 12    = 0x7f3a1b2c3   /* VPN: which page */\n0x00007f3a1b2c3d4e & 0xfff  = 0xd4e         /* offset: where in the page */', { title: 'C arithmetic' });
+      } },
+      { id: 'pfn', title: 'Frame numbers', body: function (L) {
+        L.p('Frames are numbered the same way. A frame’s ' + g('pfn', 'page frame number') + ' is its physical address shifted right by 12.', ['pfn']);
+        L.p('Translation replaces the page number with a frame number, and copies the offset unchanged.');
+        L.table(['', 'Page or frame number', 'Offset'], [
+          ['Virtual address', '0x7f3a1b2c3', '0xd4e'],
+          { cells: ['Physical address', '0x129b49   (translated)', '0xd4e   (copied)'], hot: true }
+        ]);
+        L.code('physical address = PFN × 4096 + offset\n                 = 0x129b49000 + 0xd4e\n                 = 0x129b49d4e', { title: 'the rule', lang: 'text' });
+        L.p('Multiplying by 4096 is the same as shifting left by 12, so the PFN’s hex digits simply move three places left.');
+      } },
+      { id: 'pagemap', title: 'Read it from the kernel: pagemap', body: function (L) {
+        L.p('Linux publishes each process’s page-to-frame map in ' + g('pagemap', '/proc/self/pagemap') + '. The file holds 8 bytes for every virtual page.', ['pagemap']);
+        L.code('uint64_t e;\nint fd = open("/proc/self/pagemap", O_RDONLY);\npread(fd, &e, 8, (va / 4096) * 8);    /* entry number = VPN */', { title: 'labruns/common/lab.h (shortened)' });
+        L.p('The entry is found by VPN: page number × 8 bytes into the file. This is the entry for our page after the store:');
+        L.out('story.pagemap0', { lines: [1] });
+        L.bits([
+          { bits: '63', val: '1', name: 'present', tone: 'a2' },
+          { bits: '62', val: '0', name: 'swapped', tone: 'mute' },
+          { bits: '61', val: '0', name: 'file or shared', tone: 'mute' },
+          { bits: '57–60', val: '0', name: '', tone: 'mute' },
+          { bits: '56', val: '1', name: 'mapped once', tone: 'a2' },
+          { bits: '55', val: '0', name: 'soft-dirty', tone: 'mute' },
+          { bits: '54:0', val: '0x129b49', name: 'PFN', tone: 'a4', w: 2.4 }
+        ], { title: 'pagemap entry 0x8100000000129b49', dense: true });
+        L.p('Bit 63 says the page has a frame. Bits 54 to 0 hold the PFN, which only root can read; everyone else reads 0 there.');
+        L.p('Bit 56 says the frame is mapped exactly once. That will change after <code>fork</code> in [[ch:vm-cow]].');
+        L.quote('Since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get PFNs. … Starting from 4.2 the PFN field is zeroed if the user does not have CAP_SYS_ADMIN. Reason: information about PFNs helps in exploiting Rowhammer vulnerability.', { cite: 'Documentation/admin-guide/mm/pagemap.rst, Linux v6.18', label: 'Linux source', src: ['pagemap.rst', 'https://docs.kernel.org/admin-guide/mm/pagemap.html'] });
+      } },
+      { id: 'price', title: 'The price of fixed-size blocks', body: function (L) {
+        L.p('Fixed-size frames mean any free frame can hold any page, and permissions can be set page by page.');
+        L.p('The price is one translation record per 4 KiB. A program using 64 MiB needs 16384 of them, at 8 bytes each.');
+        L.code('64 MiB / 4 KiB  = 16384 pages\n16384 × 8 bytes = 128 KiB of entries', { lang: 'text', title: 'arithmetic' });
+        L.p('[[ch:vm-tree]] measures exactly that 128 KiB on the lab machine. [[ch:vm-huge]] shows the other way out: bigger pages.');
+        L.try('Split an address', 'Change the address, the page size or the frame number. The offset is copied; only the page number is translated.', function (el) { LW().splitter(el, {}); });
+        L.note('arm', 'Arm calls the page size the translation granule. AArch64 supports 4 KiB, 16 KiB and 64 KiB granules, and the kernel chooses one at build time. With 16 KiB pages (Apple silicon Macs use them) the offset is 14 bits; with 64 KiB pages it is 16.');
+      } }
+    ],
+    check: [
+      { q: 'What is the page offset of 0x7ffd4a3c2e58 with 4 KiB pages?', options: ['0xe58', '0x2e58', '0x58', '0x7ffd4a3c2'], answer: 0, why: '12 bits = the last three hex digits.' },
+      { q: 'Virtual page 0x7f3a1b2c4 maps to frame 0x125396. Where is the byte at virtual 0x7f3a1b2c4d4e?', options: ['0x125396d4e', '0x7f3a1b2c4d4e', '0x125396000', '0x125396d4e000'], answer: 0, why: 'PFN × 4096 + offset = 0x125396000 + 0xd4e.' },
+      { q: 'pagemap reads 0x8000000000003241 for a page. What does that tell you?', options: ['The page has a frame (0x3241) that is mapped more than once', 'The page has no frame', 'The page is swapped out', 'The page is mapped exactly once'], answer: 0, why: 'Bit 63 is set (present), bit 56 is clear (not exclusively mapped), and the PFN is 0x3241. [[ch:vm-demand]] shows which frame that is.' }
+    ],
+    remember: [
+      'A page is 4 KiB of virtual addresses; a frame is 4 KiB of physical memory.',
+      'Low 12 bits = page offset, copied as is. The bits above = page number, translated.',
+      'Physical address = PFN × 4096 + offset.',
+      'pagemap: bit 63 present, bit 56 mapped exactly once, bits 54:0 the PFN (root only).'
+    ],
+    sources: [['Linux: examining process page tables (pagemap)', 'https://docs.kernel.org/admin-guide/mm/pagemap.html']]
+  });
 })();
 
 App.start();

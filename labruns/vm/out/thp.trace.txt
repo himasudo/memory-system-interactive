@@ -1,0 +1,5 @@
+# == store to 0x7f3a1b2c3d4e
+page_fault_user: address=0x7f3a1b2c3d4e ip=0x55ddfaf615a8 error_code=0x6
+mm_page_alloc: pfn=0x11537f order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x155600 order=9 migratetype=1 gfp_flags=GFP_TRANSHUGE|__GFP_NORETRY|__GFP_THISNODE
+mm_page_alloc: pfn=0x103115 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
