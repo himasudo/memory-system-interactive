@@ -311,7 +311,7 @@
   /* a quotation from a source document */
   B.quote = function(text, o){
     o = o || {};
-    var m = this.row('lx-art', '', o.terms);
+    var m = this.row('lx-art' + (o.wide ? ' lx-wide' : ''), '', o.terms);
     var fig = h('figure', {'class': 'lx-quote'}, m);
     h('div', {'class': 'lx-code-bar'}, fig, '<span class="lx-code-t">' + (o.cite || '') + '</span>' + chip(o.label || 'Vendor docs'));
     var isCode = o.code;

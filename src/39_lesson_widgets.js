@@ -326,5 +326,145 @@
     reset();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim };
+  /* ---- 8. a buddy allocator over 16 frames: allocate by order, click a block to free it ---- */
+  function buddysim(el, opts) {
+    opts = opts || {};
+    var N = 16, MAXO = 4;
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var sel = select(form, 'Request', [['0', 'order 0: 1 frame'], ['1', 'order 1: 2 frames'], ['2', 'order 2: 4 frames'], ['3', 'order 3: 8 frames']], '0');
+    var bar = h('div', { 'class': 'lx-stepbar' }, form);
+    var bAlloc = h('button', { type: 'button', 'class': 'pri' }, bar, 'allocate');
+    var bReset = h('button', { type: 'button' }, bar, 'reset');
+    var mem = h('div', { 'class': 'lx-buddy' }, el);
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    var blocks, log, nextId;
+    function reset() { blocks = [{ pfn: 0, order: MAXO, used: false }]; log = ['Memory starts as one free block of order 4: frames 0–15.']; nextId = 1; render(); }
+    function sorted() { blocks.sort(function (a, b) { return a.pfn - b.pfn; }); }
+    function alloc(k) {
+      var free = blocks.filter(function (b) { return !b.used && b.order >= k; }).sort(function (a, b) { return a.order - b.order || a.pfn - b.pfn; });
+      if (!free.length) { log = ['No free block of order ' + k + ' or larger. Free something first.']; return; }
+      var b = free[0], steps = [];
+      while (b.order > k) {
+        var half = 1 << (b.order - 1);
+        steps.push('split order ' + b.order + ' at frame ' + b.pfn + ' into two buddies of order ' + (b.order - 1) + ': ' + b.pfn + ' and ' + (b.pfn + half));
+        blocks.push({ pfn: b.pfn + half, order: b.order - 1, used: false });
+        b.order--;
+      }
+      b.used = true; b.id = nextId++;
+      steps.push('allocated order ' + k + ' at frame ' + b.pfn + (k ? '–' + (b.pfn + (1 << k) - 1) : '') + ' (block ' + b.id + ')');
+      log = steps; sorted();
+    }
+    function free(b) {
+      var steps = ['freed block ' + b.id + ': order ' + b.order + ' at frame ' + b.pfn];
+      b.used = false; delete b.id;
+      for (;;) {
+        if (b.order >= MAXO) break;
+        var bp = b.pfn ^ (1 << b.order);
+        var buddy = blocks.filter(function (x) { return x.pfn === bp && x.order === b.order && !x.used; })[0];
+        if (!buddy) { steps.push('its buddy at frame ' + bp + ' (= ' + b.pfn + ' ^ ' + (1 << b.order) + ') is not free: stop'); break; }
+        blocks.splice(blocks.indexOf(buddy), 1);
+        b.pfn = b.pfn & ~(1 << b.order); b.order++;
+        steps.push('merged with its free buddy at ' + bp + ' into order ' + b.order + ' at frame ' + b.pfn);
+      }
+      log = steps; sorted();
+    }
+    function render() {
+      mem.innerHTML = '';
+      blocks.forEach(function (b) {
+        var size = 1 << b.order;
+        var cell = h('button', { type: 'button', 'class': 'lx-buddy-b' + (b.used ? ' used' : ''), style: { flexGrow: size }, 'aria-label': (b.used ? 'free ' : '') + 'block at frame ' + b.pfn + ', order ' + b.order }, mem,
+          '<span class="b-range">' + b.pfn + (size > 1 ? '–' + (b.pfn + size - 1) : '') + '</span><span class="b-val">' + (b.used ? '#' + b.id : 'free') + '</span><span class="b-name">order ' + b.order + '</span>');
+        cell.disabled = !b.used;
+        cell.onclick = function () { if (b.used) { free(b); render(); } };
+      });
+      out.innerHTML = '';
+      log.forEach(function (m) { h('p', { 'class': 'lx-msg' }, out, m); });
+      var lists = [];
+      for (var o = 0; o <= MAXO; o++) {
+        var f = blocks.filter(function (b) { return !b.used && b.order === o; }).map(function (b) { return b.pfn; });
+        lists.push('order ' + o + ': ' + (f.length ? f.join(', ') : '—'));
+      }
+      h('p', { 'class': 'lx-msg' }, out, '<b>Free lists</b> (first frame of each block) · ' + lists.join(' · '));
+    }
+    bAlloc.onclick = function () { alloc(Number(sel.value)); render(); };
+    bReset.onclick = reset;
+    reset();
+  }
+
+  /* ---- 9. page-cache reclaim in 8 frames: one LRU list, or an inactive and an active list ---- */
+  function lrusim(el, opts) {
+    opts = opts || {};
+    var N = 8;
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var chk = h('div', { 'class': 'lx-checks' }, form);
+    var l2 = h('label', null, chk), c2 = h('input', { type: 'checkbox', 'aria-label': 'two lists: inactive and active' }, l2);
+    c2.checked = opts.two !== false; h('span', null, l2, 'two lists: inactive and active');
+    var bar = h('div', { 'class': 'lx-stepbar lx-wrap' }, el);
+    var bPages = ['a', 'b', 'c'].map(function (p) { var b = h('button', { type: 'button' }, bar, 'read ' + p); b.onclick = function () { read(p); render(); }; return b; });
+    var bX = h('button', { type: 'button' }, bar, 'read the next page of the big file');
+    var bar2 = h('div', { 'class': 'lx-stepbar lx-wrap' }, el);
+    var bPlay = h('button', { type: 'button', 'class': 'pri' }, bar2, 'a b c twice, then 12 big-file pages');
+    var bReset = h('button', { type: 'button' }, bar2, 'reset');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    var inact, act, lru, nx, reads, disk, log;
+    function reset() { inact = []; act = []; lru = []; nx = 1; reads = 0; disk = 0; log = ['Eight free frames. The small file has pages a, b and c; the big file has pages x1, x2 … (ref = marked referenced)']; render(); }
+    function find(list, p) { for (var i = 0; i < list.length; i++) if (list[i].p === p) return i; return -1; }
+    function say(m) { log.push(m); if (log.length > 5) log.shift(); }
+    function read(p) {
+      reads++;
+      if (!c2.checked) {
+        var j = find(lru, p);
+        if (j >= 0) { lru.unshift(lru.splice(j, 1)[0]); say(p + ': in memory, moved to the head of the list'); return; }
+        disk++;
+        var gone = '';
+        if (lru.length >= N) gone = ' · memory full: ' + lru.pop().p + ' evicted from the tail';
+        lru.unshift({ p: p }); say(p + ': read from disk into the head of the list' + gone);
+        return;
+      }
+      var i = find(act, p);
+      if (i >= 0) { act[i].ref = true; say(p + ': on the active list, marked referenced'); return; }
+      i = find(inact, p);
+      if (i >= 0) {
+        if (inact[i].ref) { var e = inact.splice(i, 1)[0]; e.ref = false; act.unshift(e); say(p + ': read again while referenced: moved to the active list'); }
+        else { inact[i].ref = true; say(p + ': on the inactive list, marked referenced'); }
+        return;
+      }
+      disk++;
+      var msg = [];
+      if (inact.length + act.length >= N) {
+        while (inact.length < act.length) { var d = act.pop(); inact.unshift(d); msg.push(d.p + ' moved back to the inactive list (it was longer than the active one)'); }
+        msg.push('memory full: ' + inact.pop().p + ' evicted from the inactive tail');
+      }
+      inact.unshift({ p: p, ref: true });
+      say(p + ': read from disk into the inactive head, marked referenced' + (msg.length ? ' · ' + msg.join(' · ') : ''));
+    }
+    function strip(list, label) {
+      var f = list.map(function (e, k) {
+        return { bits: k === 0 ? 'head' : k === list.length - 1 ? 'tail' : '&nbsp;', val: e.p, name: e.ref ? 'ref' : '&nbsp;', tone: e.p.charAt(0) === 'x' ? 'a4' : 'a1' };
+      });
+      if (!f.length) f = [{ bits: '&nbsp;', val: '—', name: '&nbsp;', tone: 'mute' }];
+      h('p', { 'class': 'lx-msg' }, out, '<b>' + label + '</b> · ' + list.length + (list.length === 1 ? ' page' : ' pages') + (c2.checked ? '' : ', most recent first'));
+      h('div', { 'class': 'lx-lru' }, out, bitsHTML(f, true));
+    }
+    function render() {
+      out.innerHTML = '';
+      if (c2.checked) { strip(inact, 'inactive list'); strip(act, 'active list'); } else strip(lru, 'one LRU list');
+      var all = c2.checked ? inact.concat(act) : lru;
+      var small = ['a', 'b', 'c'].filter(function (p) { return find(all, p) >= 0; });
+      log.forEach(function (m) { h('p', { 'class': 'lx-msg' }, out, m); });
+      h('p', { 'class': 'lx-msg' }, out, reads + ' reads, ' + disk + ' from disk · free frames: ' + (N - all.length) + ' · small-file pages in memory: <b>' + (small.length ? small.join(', ') : 'none') + '</b>');
+    }
+    bX.onclick = function () { read('x' + nx++); render(); };
+    bPlay.onclick = function () {
+      reset();
+      ['a', 'b', 'c', 'a', 'b', 'c'].forEach(read);
+      for (var k = 0; k < 12; k++) read('x' + nx++);
+      render();
+    };
+    bReset.onclick = reset;
+    c2.addEventListener('change', reset);
+    reset();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim, buddysim: buddysim, lrusim: lrusim };
 })();

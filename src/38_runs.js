@@ -472,6 +472,88 @@ var LabRuns = (function () {
       what: 'cost.c: a 64 MiB region filled in ahead of time with madvise(MADV_POPULATE_WRITE), then one store per 4 KiB page.',
       lines: ['== 3. prefaulting with madvise(MADV_POPULATE_WRITE), 64 MiB, small pages', 'faults inside madvise ⟦16384⟧ (28.1 ms)', 'faults during the store pass ⟦0⟧ (0.41 ms)']
     },
+    /* ---- lesson 19: where frames come from (machine B) ---- */
+    'zones.ranges': {
+      file: 'vm/out-b/zones.txt', machine: 'b',
+      what: "zones.sh: the zones machine B’s kernel set up at boot (physical address ranges).",
+      lines: ["$ dmesg | grep -A4 \"Zone ranges\"", "Zone ranges:", "  DMA      [mem 0x0000000000001000-0x0000000000ffffff]", "  DMA32    [mem 0x0000000001000000-0x00000000ffffffff]", "  Normal   [mem 0x0000000100000000-0x000000043fffffff]", "  Device   empty"]
+    },
+    'zones.buddy': {
+      file: 'vm/out-b/zones.txt', machine: 'b',
+      what: "/proc/buddyinfo: free blocks in each zone, by order, from order 0 (1 frame) on the left to order 10 (1024 frames) on the right.",
+      lines: ["$ cat /proc/buddyinfo", "Node 0, zone      DMA      0      0      0      0      0      0      0      0      1      1      3 ", "Node 0, zone    DMA32      2      2      2      2      2      2      5      2      2      2    754 ", "Node 0, zone   Normal   3509   5467   3830   1755    936    414    355    137     55     22    ⟦ 84 ⟧"]
+    },
+    'zones.types': {
+      file: 'vm/out-b/zones.txt', machine: 'b',
+      what: "/proc/pagetypeinfo: the size of a pageblock, and the Normal zone’s free blocks split by migrate type.",
+      lines: ["$ grep -E \"Page block|Pages per|zone   Normal, type\" /proc/pagetypeinfo | head -6", "Page block order: 9", "Pages per block:  512", "Node    0, zone   Normal, type    Unmovable      0     91    319    112     82     29     12      3      5      1      0 ", "Node    0, zone   Normal, type      Movable   3488   5295   3459   1595    836    373    339    134     50     21     84 ", "Node    0, zone   Normal, type  Reclaimable     21     81     52     48     18     12      4      0      0      0      0 ", "Node    0, zone   Normal, type   HighAtomic      0      0      0      0      0      0      0      0      0      0      0 "]
+    },
+    'zones.pcp': {
+      file: 'vm/out-b/zones.txt', machine: 'b',
+      what: "/proc/zoneinfo, Normal zone: free pages, the three watermarks, and CPU 0’s list of free frames.",
+      lines: ["$ awk ... /proc/zoneinfo    # the Normal zone: free pages, watermarks, CPU 0 list (see zones.sh)", "Node 0, zone   Normal", "  pages free     223669", "        min      6801", "        low      8501", "        high     10201", "    cpu: 0", "              count:    2061", "              high:     2251", "              batch:    63"]
+    },
+    'zones.config': {
+      file: 'vm/out-b/zones.txt', machine: 'b',
+      what: "Two settings of machine B’s kernel.",
+      lines: ["$ zcat /proc/config.gz | grep -E \"CONFIG_PCP_BATCH_SCALE_MAX|CONFIG_NUMA=\"", "CONFIG_NUMA=y", "CONFIG_PCP_BATCH_SCALE_MAX=5"]
+    },
+    'buddy.huge': {
+      file: 'vm/out-b/buddy.txt', machine: 'b',
+      what: "buddy.c: the Normal zone’s line of /proc/buddyinfo around one 2 MiB transparent huge-page fault.",
+      lines: ["== 1. one 2 MiB transparent huge page (Normal zone; free blocks of order 0 1 2 ... 10)", "before the fault          2197   5969   4168   1798    937    372    355    138     55    ⟦ 22 ⟧    84 ", "after the fault           2197   5969   4168   1798    937    372    355    138     55    ⟦ 20 ⟧    84 ", "huge page: pfn=0x162c00, pfn % 512 = 0: one block of order 9", "after munmap              2197   5969   4168   1798    937    372    355    138     55    ⟦ 22 ⟧    84 "]
+    },
+    'buddy.small': {
+      file: 'vm/out-b/buddy.txt', machine: 'b',
+      what: "buddy.c: 256 fresh pages, one store each. The trace counts blocks handed out (mm_page_alloc) and blocks taken from the zone’s free lists to refill CPU 0’s list (mm_page_alloc_zone_locked).",
+      lines: ["== 2. 256 fresh 4 KiB pages, one store each", "CPU 0's list before: count 2237 high 2755 batch 63", "mm_page_alloc: 256 blocks for user pages, 1 for page tables", "taken from the zone's free lists to refill CPU 0's list⟦: 0 pages⟧", "frames of the first 8 pages: 0x1504ba 0x13197b 0x14d7d4 0x112aad 0x153c15 0x12fdf2 0x149a2b 0x149a2c"]
+    },
+    'buddy.refill': {
+      file: 'vm/out-b/buddy.txt', machine: 'b',
+      what: "buddy.c: 16384 more fresh pages, enough to empty CPU 0’s list.",
+      lines: ["== 3. 16384 more fresh pages (64 MiB), one store each", "mm_page_alloc: 16384 blocks for user pages, 32 for page tables", "taken from the zone's free lists to refill CPU 0's list: 16065 pages", "refills, in order: ⟦63 126 252 504 1008 2016⟧ 2016 2016 2016 2016 2016 2016", "CPU 0's list after: count 1675 high 16384 batch 63"]
+    },
+    'buddy.lifo': {
+      file: 'vm/out-b/buddy.txt', machine: 'b',
+      what: "buddy.c: one page freed with MADV_DONTNEED, then written again.",
+      lines: ["== 4. free one page, then write it again", "page 0: pfn=0x1504ba before MADV_DONTNEED, pfn=0x1504ba after the next store"]
+    },
+    /* ---- lesson 20: reclaim (machine B) ---- */
+    'reclaim.meminfo': {
+      file: 'vm/out-b/reclaim.txt', machine: 'b',
+      what: "/proc/meminfo on machine B before the runs: the LRU lists for anonymous and file pages, and no swap.",
+      lines: ["$ grep -E \"^(MemTotal|MemFree|Active|Inactive|Unevictable|SwapTotal)\" /proc/meminfo", "MemTotal:       16479424 kB", "MemFree:        15927960 kB", "Active:             3952 kB", "Inactive:         454848 kB", "Active(anon):         28 kB", "Inactive(anon):   299292 kB", "Active(file):       3924 kB", "Inactive(file):   155556 kB", "Unevictable:        8588 kB", "SwapTotal:             0 kB"]
+    },
+    'reclaim.limit': {
+      file: 'vm/out-b/reclaim.txt', machine: 'b',
+      what: "reclaim.sh: the memory cgroup created for the runs, limited to 64 MiB.",
+      lines: ["$ cat /sys/fs/cgroup/memory/lab/memory.limit_in_bytes", "67108864"]
+    },
+    'reclaim.twice': {
+      file: 'vm/out-b/reclaim.txt', machine: 'b',
+      what: "reclaim.sh: a 16 MiB file read twice from inside the cgroup, by two cat processes; memory.stat after each read (bytes).",
+      lines: ["== 1. read a 16 MiB file twice inside the cgroup", "$ grep -E \"^(cache|rss|active_file|inactive_file) \" memory.stat    # after the first read", "cache 16916480", "rss 0", "⟦inactive_file 16781312⟧", "active_file 135168", "$ grep -E \"^(cache|rss|active_file|inactive_file) \" memory.stat    # after the second read", "cache 16916480", "rss 0", "inactive_file 0", "⟦active_file 16916480⟧"]
+    },
+    'reclaim.stream': {
+      file: 'vm/out-b/reclaim.txt', machine: 'b',
+      what: "reclaim.sh: a 256 MiB file read once inside the same cgroup. memory.failcnt counts the times usage hit the limit.",
+      lines: ["== 2. read a 256 MiB file once inside the cgroup", "$ cat memory.max_usage_in_bytes memory.failcnt", "⟦67104768⟧", "834", "$ grep -E \"^(cache|rss|active_file|inactive_file) \" memory.stat", "cache 66670592", "rss 0", "inactive_file 50069504", "⟦active_file 16601088⟧", "$ /proc/vmstat: change during the read (reclaim for the whole machine)", "pgsteal_kswapd 0", "pgsteal_direct 0", "pgscan_kswapd 0", "pgscan_direct 0", "oom_kill 0"]
+    },
+    'reclaim.oom': {
+      file: 'vm/out-b/reclaim.txt', machine: 'b',
+      what: "reclaim.sh: eat.c writes 128 MiB of anonymous memory inside the cgroup; there is no swap.",
+      lines: ["== 3. write 128 MiB of anonymous memory inside the cgroup", "written 0 MiB", "written 16 MiB", "written 32 MiB", "written 48 MiB", "⟦Killed⟧", "exit status: 137", "$ cat memory.oom_control", "oom_kill_disable 0", "under_oom 0", "⟦oom_kill 1⟧", "$ /proc/vmstat: change during the run", "pgsteal_kswapd 0", "pgsteal_direct 0", "pgscan_kswapd 0", "pgscan_direct 0", "⟦oom_kill 1⟧", "$ dmesg | grep \"Memory cgroup out of memory\" | tail -1", "Memory cgroup out of memory: Killed process 11049 (eat) total-vm:133640kB, anon-rss:65152kB, file-rss:1424kB, shmem-rss:0kB, UID:0 pgtables:168kB oom_score_adj:0"]
+    },
+    'reclaim.swap': {
+      file: 'vm/out-b/swap.txt', machine: 'b',
+      what: "Machine B: the active swap areas (none), and the kernel’s options for swap, zswap, zram and the multi-generation LRU.",
+      lines: ["$ cat /proc/swaps", "Filename    Type    Size    Used    Priority", "$ zcat /proc/config.gz | grep -E \"^(# )?CONFIG_(SWAP|ZSWAP|ZRAM|LRU_GEN)[= ]\"", "CONFIG_SWAP=y", "CONFIG_ZSWAP=y", "⟦# CONFIG_LRU_GEN is not set⟧", "CONFIG_ZRAM=y"]
+    },
+    'reclaim.wmark': {
+      file: 'vm/out-b/zones.txt', machine: 'b',
+      what: "/proc/zoneinfo, Normal zone: the three watermarks, in pages of 4 KiB.",
+      lines: ["$ awk ... /proc/zoneinfo    # the Normal zone: free pages, watermarks, CPU 0 list (see zones.sh)", "Node 0, zone   Normal", "…", "        min      ⟦6801⟧", "        low      ⟦8501⟧", "        high     ⟦10201⟧"]
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',
