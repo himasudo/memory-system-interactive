@@ -45,6 +45,10 @@
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
   var LAB_PAGES = {xlate: 'Lab', dev: 'Lab'};
+  /* Experiments that moved from the two labs into lessons. An old link such as #xlate/os opens
+     the lesson that holds the experiment now (#vm-cow/os); the section id did not change. */
+  var MOVED = {'xlate/os': 'vm-cow', 'xlate/native': 'vm-cost', 'xlate/pages': 'vm-huge', 'xlate/granules': 'vm-vipt',
+    'xlate/walk-contention': 'vm-tlb', 'xlate/shootdown': 'vm-shootdown', 'dev/iotlb': 'io-iommu', 'dev/queues': 'io-irq', 'dev/uring': 'io-uring'};
   /* The machines the "Lab run" outputs were captured on. Each output names its machine. */
   var MACHINES = {
     a: {name: 'machine A', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses.'},
@@ -546,6 +550,6 @@
   App.Course = {
     parts: PARTS, info: pageInfo, lessons: lessons, order: order, nav: buildNav, onShow: onShow,
     header: header, footer: footer, isDone: isDone, setDone: setDone, indexTerms: indexTerms,
-    livePages: livePages, labPages: LAB_PAGES, runMachine: RUN_MACHINE, machines: MACHINES, quiz: quiz, chip: chip, esc: esc
+    livePages: livePages, labPages: LAB_PAGES, moved: MOVED, runMachine: RUN_MACHINE, machines: MACHINES, quiz: quiz, chip: chip, esc: esc
   };
 })();

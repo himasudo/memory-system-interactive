@@ -104,6 +104,18 @@ async function main() {
       await q.locator('.lx-q-opt').first().click();
       assert.match(await q.locator('.lx-q-fb').textContent(), /^(Right\.|Not quite\.)/);
     });
+    await check('old links to moved experiments open the lesson that holds them', async () => {
+      for (const [from, to] of [['xlate/os', 'vm-cow/os'], ['dev/iotlb', 'io-iommu/iotlb']]) {
+        await page.goto(base + '/memory_end_to_end.html#' + from);
+        await page.waitForFunction(
+          (to) => document.querySelector('.ch.show')?.id === 'ch-' + to.split('/')[0],
+          to
+        );
+        assert.equal(await page.locator('#' + to.replace('/', '--')).count(), 1);
+        await page.waitForTimeout(500);
+        assert.equal(await page.evaluate(() => location.hash), '#' + to);
+      }
+    });
     await check('Mark as done persists and shows in the navigation', async () => {
       await page.evaluate(() => localStorage.removeItem('memLab.done'));
       await route('io-paths');

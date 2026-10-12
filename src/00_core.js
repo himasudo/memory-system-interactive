@@ -218,6 +218,8 @@ var App = (function(){
 
   function route(){
     var p = location.hash.slice(1).split('/');
+    var moved = p[1] && App.Course && App.Course.moved[p[0] + '/' + p[1]];
+    if (moved && App.Course.lessons[moved]){ p[0] = moved; try { history.replaceState(null, '', '#' + p.join('/')); } catch(e){} }
     show(p[0] || chapters[0].id);
     /* second jump after the workbenches above have finished sizing */
     if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});

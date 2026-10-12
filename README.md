@@ -22,7 +22,7 @@ The goal is to make low-level memory behavior **visible, stateful, and interacti
 
 ## Course
 
-The site is a course in seven parts. A page's number comes from its place in the course: `00` is the start page, `III.04` the fourth page of Part III. The routes did not change with the numbers (`#l1d`, `#xlate/walk`), so older links open the same page. The Atlas and the glossary are unnumbered references.
+The site is a course in seven parts. A page's number comes from its place in the course: `00` is the start page, `III.04` the fourth page of Part III. The routes did not change with the numbers (`#l1d`, `#xlate/walk`), so older links open the same page. Links to experiments that moved into lessons, such as `#xlate/os`, open the lesson that holds them now (`#vm-cow/os`). The Atlas and the glossary are unnumbered references.
 
 | Part | Pages | Contents |
 |---|---|---|
