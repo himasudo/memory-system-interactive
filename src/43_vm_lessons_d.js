@@ -106,7 +106,7 @@
       'The kernel decides with its regions: none → SEGV_MAPERR; forbidden → SEGV_ACCERR; otherwise fix the page and restart the instruction.',
       'Non-canonical addresses raise #GP, trap 13, never #PF.'
     ],
-    sources: [['Linux v6.18: arch/x86/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/fault.c'], ['Linux v6.18: arch/x86/include/asm/trap_pf.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/trap_pf.h'], ['Intel SDM Vol. 3A, §4.7 “Page-fault exceptions”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux v6.18: arch/arm64/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/mm/fault.c']]
+    sources: [['Linux v6.18: arch/x86/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/fault.c'], ['Linux v6.18: arch/x86/include/asm/trap_pf.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/trap_pf.h'], ['Intel SDM Vol. 3A (rev. 093), §5.7 “Page-fault exceptions”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux v6.18: arch/arm64/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/mm/fault.c']]
   });
   /* ---------- III.14 ---------- */
   App.lesson({

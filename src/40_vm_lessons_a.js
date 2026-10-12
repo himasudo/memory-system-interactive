@@ -85,7 +85,7 @@
       'The MMU never allocates or decides. When it cannot translate, it hands the problem to the kernel (a page fault).',
       'Translation gives isolation, relocation, laziness and sharing.'
     ],
-    sources: [['Intel SDM Vol. 3A, ch. 4 “Paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, ch. 5 “Page Translation and Protection”', 'https://docs.amd.com/v/u/en-US/24593_3.43'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest'], ['Linux: examining process page tables (pagemap)', 'https://docs.kernel.org/admin-guide/mm/pagemap.html']]
+    sources: [['Intel SDM Vol. 3A (rev. 093), ch. 5 “Paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2 (rev. 3.45), ch. 5 “Page translation and protection”', 'https://docs.amd.com/v/u/en-US/24593_3.45_APM_Vol2_PUB'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest'], ['Linux: examining process page tables (pagemap)', 'https://docs.kernel.org/admin-guide/mm/pagemap.html']]
   });
 
   /* ---------- III.02 ---------- */
@@ -141,7 +141,7 @@
         ], { title: 'pagemap entry 0x8100000000129b49', dense: true });
         L.p('Bit 63 says the page has a frame. Bits 54 to 0 hold the PFN, which only root can read; everyone else reads 0 there.');
         L.p('Bit 56 says the frame is mapped exactly once. That will change after <code>fork</code> in [[ch:vm-cow]].');
-        L.quote('Since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get PFNs. … Starting from 4.2 the PFN field is zeroed if the user does not have CAP_SYS_ADMIN. Reason: information about PFNs helps in exploiting Rowhammer vulnerability.', { cite: 'Documentation/admin-guide/mm/pagemap.rst, Linux v6.18', label: 'Linux source', src: ['pagemap.rst', 'https://docs.kernel.org/admin-guide/mm/pagemap.html'] });
+        L.quote('Since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get PFNs. … Starting from 4.2 the PFN field is zeroed if the user does not have CAP_SYS_ADMIN. Reason: information about PFNs helps in exploiting Rowhammer vulnerability.', { cite: 'Documentation/admin-guide/mm/pagemap.rst, Linux v6.18 (excerpt)', label: 'Linux source', src: ['pagemap.rst', 'https://docs.kernel.org/admin-guide/mm/pagemap.html'] });
       } },
       { id: 'price', title: 'The price of fixed-size blocks', body: function (L) {
         L.p('Fixed-size frames mean any free frame can hold any page, and permissions can be set page by page.');
@@ -218,7 +218,7 @@
         L.out('err.kernel', { lines: [2] });
         L.p('Trap 13 is #GP. A page fault is trap 14, and [[ch:vm-faults]] decodes its error code.');
         L.try('Is it canonical?', 'Type any 64-bit value. Try 0x0000800000000000, 0x00007fffffffffff and 0xffff888000000000.', function (el) { LW().splitter(el, { va: '0x0000800000000000', pfn: false, sizes: false }); });
-        L.note('other', 'Newer CPUs can translate 57-bit addresses with a fifth level of tables (CPU flag <code>la57</code>; Intel Xeon since Ice Lake, AMD since Zen 4). Then bits 63 to 57 must copy bit 56. The lab machine does not report <code>la57</code>, so every address here is 48 bits.', 'Five-level paging');
+        L.note('other', 'Newer CPUs can translate 57-bit addresses with a fifth level of tables (Intel Xeon since Ice Lake, AMD since Zen 4); bits 63 to 57 then copy bit 56. Linux lists <code>la57</code> in /proc/cpuinfo only when it uses that fifth level. Neither lab machine does: machine A’s CPU has 48-bit virtual addresses, and machine B’s kernel uses four levels although its CPU reports 57 bits. So every address here is 48 bits.', 'Five-level paging');
       } },
       { id: 'khalf', title: 'The kernel half', body: function (L) {
         L.p('The kernel’s code and data live in the kernel half, and that half is mapped in every process. So a system call or an interrupt can run kernel code without switching tables.', ['khalf']);
@@ -243,7 +243,7 @@
       'ASLR moves the starting points at every run; the order of regions stays.',
       'Only canonical addresses are translated. The user half differs per process; the kernel half is shared but kernel-only.'
     ],
-    sources: [['proc_pid_maps(5)', 'https://man7.org/linux/man-pages/man5/proc_pid_maps.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'], ['Intel SDM Vol. 1, §3.3.7.1 “Canonical addressing”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['proc_pid_maps(5)', 'https://man7.org/linux/man-pages/man5/proc_pid_maps.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'], ['Intel SDM Vol. 1 (rev. 093), §3.3.7.1 “Canonical addressing”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
   });
 
   /* ---------- III.04 ---------- */

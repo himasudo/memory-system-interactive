@@ -15,7 +15,7 @@
   d('walker', 'page walker', 'The hardware in the MMU that reads the page tables, level by level, after a TLB miss. One pass is a page walk.');
   d('cr4', 'CR4', 'A CPU control register whose bits switch processor features on, such as global pages (PGE), PCIDs (PCIDE), SMEP and SMAP.');
   d('smep', 'SMEP', 'Supervisor-mode execution prevention: the CPU refuses to run code from a user page while in kernel mode.');
-  d('smap', 'SMAP', 'Supervisor-mode access prevention: the CPU refuses kernel-mode reads and writes of user pages, except inside the kernel’s routines that copy to and from user memory.');
+  d('smap', 'SMAP', 'Supervisor-mode access prevention: the CPU refuses kernel-mode reads and writes of user pages unless the AC bit of RFLAGS is set. The kernel sets it only inside its routines that copy to and from user memory.');
   d('stlb', 'L2 TLB (STLB)', 'The second, larger level of TLB, checked when the L1 TLB misses. Intel calls it the STLB (shared TLB).');
   d('pwc', 'page-walk cache', 'A cache of upper-level page-table entries kept by the page walker, so a walk can skip levels. AMD calls it the page directory cache; Intel, paging-structure caches.');
   d('reach', 'TLB reach', 'Entries × page size: how much memory can be used without a TLB miss.');
@@ -90,7 +90,7 @@
       'CR3 holds the physical address of the current top table; the kernel loads it when it switches processes.',
       'Every process’s top table shares the kernel’s entries 273–511, so the kernel half is nearly free.'
     ],
-    sources: [['Intel SDM Vol. 3A, §4.5 “4-level paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux: page table levels', 'https://docs.kernel.org/mm/page_tables.html'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest']]
+    sources: [['Intel SDM Vol. 3A (rev. 093), §5.5 “4-level paging and 5-level paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux: page table levels', 'https://docs.kernel.org/mm/page_tables.html'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest']]
   });
 
   /* ---------- III.06 ---------- */
@@ -152,7 +152,7 @@
         L.p('That is 0x067 again: present, writable, user, accessed and dirty (the CPU ignores D in an entry that points to a table).');
         L.p('Why allow everything up there? Because permissions combine across all four levels, and the strictest entry wins. The upper entries stay open, and each PT entry decides for its own page.');
         L.note('intel', 'Bits 3 and 4 (PWT, PCD), and bit 7 in a PT entry (PAT), select a memory type through the page attribute table: write-back for normal RAM, uncacheable or write-combining for device memory. [[ch:stores]] and [[ch:io-mmio]] use them.', 'On Intel and AMD');
-        L.note('arm', 'Arm’s entries are called descriptors and lay out the same information differently: AP bits for read-only and user access, UXN and PXN for no-execute, AF for accessed, nG for not-global, and an index into MAIR_EL1 for the memory type. Older Arm cores fault on the first access to set AF in software; with FEAT_HAFDBS the hardware updates the access and dirty state itself, as x86 does.');
+        L.note('arm', 'Arm’s entries are called descriptors and lay out the same information differently: AP bits for read-only and user access, UXN and PXN for no-execute, AF for accessed, nG for not-global, and an index into MAIR_EL1 for the memory type. Without FEAT_HAFDBS (added in Armv8.1), the first access to a page with AF = 0 faults and the kernel sets AF. With it, the hardware sets AF itself, and a write to a read-only page with the DBM bit set makes the page writable instead of faulting: the dirty state, kept by hardware as on x86 (arch/arm64/Kconfig, ARM64_HW_AFDBM).');
       } }
     ],
     check: [
@@ -166,7 +166,7 @@
       'A (used) and D (written) are set by the CPU, cleared only by software.',
       'Our page: NX | 0x129b49 << 12 | 0x067 = 0x8000000129b49067. Upper entries: next table | 0x067.'
     ],
-    sources: [['Intel SDM Vol. 3A, §4.5, tables 4-15 to 4-20', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, §5.4', 'https://docs.amd.com/v/u/en-US/24593_3.43'], ['Linux v6.18: pgtable_types.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/pgtable_types.h'], ['Linux v6.18: mm/memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/memory.c']]
+    sources: [['Intel SDM Vol. 3A (rev. 093), §5.5, tables 5-15 to 5-20', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2 (rev. 3.45), §5.4 “Page-translation-table entry fields”', 'https://docs.amd.com/v/u/en-US/24593_3.45_APM_Vol2_PUB'], ['Linux v6.18: pgtable_types.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/pgtable_types.h'], ['Linux v6.18: mm/memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/memory.c']]
   });
 
   /* ---------- III.07 ---------- */
@@ -217,7 +217,7 @@
       } },
       { id: 'smep', title: 'SMEP and SMAP: protecting the kernel from user memory', body: function (L) {
         L.p('U/S keeps user code out of kernel pages. Two CR4 bits add the reverse check, so the kernel cannot be tricked into using user pages by mistake.', ['cr4']);
-        L.p('SMEP makes the CPU refuse to execute a user page in kernel mode. SMAP makes it refuse kernel-mode reads and writes of user pages, except inside the kernel’s routines that copy to and from user memory.', ['smep', 'smap']);
+        L.p('SMEP makes the CPU refuse to execute a user page in kernel mode. SMAP makes it refuse kernel-mode reads and writes of user pages unless the AC bit of RFLAGS is set, and the kernel sets it only inside its routines that copy to and from user memory.', ['smep', 'smap']);
         L.out('facts.flags');
         L.p('The lab machine’s CPU reports both, <code>smep</code> and <code>smap</code>. Linux turns them on whenever the CPU has them.');
       } },
@@ -239,7 +239,7 @@
       'SMEP and SMAP stop the kernel from executing or touching user pages by accident.',
       'P = 0 or a refused access anywhere on the path → page fault; nothing happens to memory.'
     ],
-    sources: [['Intel SDM Vol. 3A, §4.5 and §4.6 “Access rights”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, §5.6 “Page-protection checks”', 'https://docs.amd.com/v/u/en-US/24593_3.43']]
+    sources: [['Intel SDM Vol. 3A (rev. 093), §5.5 and §5.6 “Access rights”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2 (rev. 3.45), §5.6 “Page-protection checks”', 'https://docs.amd.com/v/u/en-US/24593_3.45_APM_Vol2_PUB']]
   });
 
   /* ---------- III.08 ---------- */
@@ -307,6 +307,6 @@
       'Reach = entries × page size. Past it, random accesses start to walk.',
       'Hits and misses are handled entirely in hardware; the kernel only handles failed walks.'
     ],
-    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'], ['Intel SDM Vol. 3A, §4.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'], ['Intel SDM Vol. 3A (rev. 093), §5.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
   });
 })();

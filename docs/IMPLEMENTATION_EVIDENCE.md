@@ -57,7 +57,8 @@ The Start page explains each label; the list lives in
    [labruns/README.md](../labruns/README.md); both are virtual machines, so
    their physical addresses are guest physical addresses, and the lessons say so.
 3. Quote kernel source from one version, Linux v6.18, and name the file and
-   function. Mark excerpts as excerpts.
+   function. A quote that leaves lines out says "excerpt" and shows `…` where
+   lines are missing.
 4. A number that a run cannot show and no source publishes is labelled
    **Inference** or **Not published**, never estimated in a figure.
 

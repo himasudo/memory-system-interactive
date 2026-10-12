@@ -22489,7 +22489,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'The MMU never allocates or decides. When it cannot translate, it hands the problem to the kernel (a page fault).',
       'Translation gives isolation, relocation, laziness and sharing.'
     ],
-    sources: [['Intel SDM Vol. 3A, ch. 4 “Paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, ch. 5 “Page Translation and Protection”', 'https://docs.amd.com/v/u/en-US/24593_3.43'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest'], ['Linux: examining process page tables (pagemap)', 'https://docs.kernel.org/admin-guide/mm/pagemap.html']]
+    sources: [['Intel SDM Vol. 3A (rev. 093), ch. 5 “Paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2 (rev. 3.45), ch. 5 “Page translation and protection”', 'https://docs.amd.com/v/u/en-US/24593_3.45_APM_Vol2_PUB'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest'], ['Linux: examining process page tables (pagemap)', 'https://docs.kernel.org/admin-guide/mm/pagemap.html']]
   });
 
   /* ---------- III.02 ---------- */
@@ -22545,7 +22545,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         ], { title: 'pagemap entry 0x8100000000129b49', dense: true });
         L.p('Bit 63 says the page has a frame. Bits 54 to 0 hold the PFN, which only root can read; everyone else reads 0 there.');
         L.p('Bit 56 says the frame is mapped exactly once. That will change after <code>fork</code> in [[ch:vm-cow]].');
-        L.quote('Since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get PFNs. … Starting from 4.2 the PFN field is zeroed if the user does not have CAP_SYS_ADMIN. Reason: information about PFNs helps in exploiting Rowhammer vulnerability.', { cite: 'Documentation/admin-guide/mm/pagemap.rst, Linux v6.18', label: 'Linux source', src: ['pagemap.rst', 'https://docs.kernel.org/admin-guide/mm/pagemap.html'] });
+        L.quote('Since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get PFNs. … Starting from 4.2 the PFN field is zeroed if the user does not have CAP_SYS_ADMIN. Reason: information about PFNs helps in exploiting Rowhammer vulnerability.', { cite: 'Documentation/admin-guide/mm/pagemap.rst, Linux v6.18 (excerpt)', label: 'Linux source', src: ['pagemap.rst', 'https://docs.kernel.org/admin-guide/mm/pagemap.html'] });
       } },
       { id: 'price', title: 'The price of fixed-size blocks', body: function (L) {
         L.p('Fixed-size frames mean any free frame can hold any page, and permissions can be set page by page.');
@@ -22622,7 +22622,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         L.out('err.kernel', { lines: [2] });
         L.p('Trap 13 is #GP. A page fault is trap 14, and [[ch:vm-faults]] decodes its error code.');
         L.try('Is it canonical?', 'Type any 64-bit value. Try 0x0000800000000000, 0x00007fffffffffff and 0xffff888000000000.', function (el) { LW().splitter(el, { va: '0x0000800000000000', pfn: false, sizes: false }); });
-        L.note('other', 'Newer CPUs can translate 57-bit addresses with a fifth level of tables (CPU flag <code>la57</code>; Intel Xeon since Ice Lake, AMD since Zen 4). Then bits 63 to 57 must copy bit 56. The lab machine does not report <code>la57</code>, so every address here is 48 bits.', 'Five-level paging');
+        L.note('other', 'Newer CPUs can translate 57-bit addresses with a fifth level of tables (Intel Xeon since Ice Lake, AMD since Zen 4); bits 63 to 57 then copy bit 56. Linux lists <code>la57</code> in /proc/cpuinfo only when it uses that fifth level. Neither lab machine does: machine A’s CPU has 48-bit virtual addresses, and machine B’s kernel uses four levels although its CPU reports 57 bits. So every address here is 48 bits.', 'Five-level paging');
       } },
       { id: 'khalf', title: 'The kernel half', body: function (L) {
         L.p('The kernel’s code and data live in the kernel half, and that half is mapped in every process. So a system call or an interrupt can run kernel code without switching tables.', ['khalf']);
@@ -22647,7 +22647,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'ASLR moves the starting points at every run; the order of regions stays.',
       'Only canonical addresses are translated. The user half differs per process; the kernel half is shared but kernel-only.'
     ],
-    sources: [['proc_pid_maps(5)', 'https://man7.org/linux/man-pages/man5/proc_pid_maps.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'], ['Intel SDM Vol. 1, §3.3.7.1 “Canonical addressing”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['proc_pid_maps(5)', 'https://man7.org/linux/man-pages/man5/proc_pid_maps.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'], ['Intel SDM Vol. 1 (rev. 093), §3.3.7.1 “Canonical addressing”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
   });
 
   /* ---------- III.04 ---------- */
@@ -22747,7 +22747,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
   d('walker', 'page walker', 'The hardware in the MMU that reads the page tables, level by level, after a TLB miss. One pass is a page walk.');
   d('cr4', 'CR4', 'A CPU control register whose bits switch processor features on, such as global pages (PGE), PCIDs (PCIDE), SMEP and SMAP.');
   d('smep', 'SMEP', 'Supervisor-mode execution prevention: the CPU refuses to run code from a user page while in kernel mode.');
-  d('smap', 'SMAP', 'Supervisor-mode access prevention: the CPU refuses kernel-mode reads and writes of user pages, except inside the kernel’s routines that copy to and from user memory.');
+  d('smap', 'SMAP', 'Supervisor-mode access prevention: the CPU refuses kernel-mode reads and writes of user pages unless the AC bit of RFLAGS is set. The kernel sets it only inside its routines that copy to and from user memory.');
   d('stlb', 'L2 TLB (STLB)', 'The second, larger level of TLB, checked when the L1 TLB misses. Intel calls it the STLB (shared TLB).');
   d('pwc', 'page-walk cache', 'A cache of upper-level page-table entries kept by the page walker, so a walk can skip levels. AMD calls it the page directory cache; Intel, paging-structure caches.');
   d('reach', 'TLB reach', 'Entries × page size: how much memory can be used without a TLB miss.');
@@ -22822,7 +22822,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'CR3 holds the physical address of the current top table; the kernel loads it when it switches processes.',
       'Every process’s top table shares the kernel’s entries 273–511, so the kernel half is nearly free.'
     ],
-    sources: [['Intel SDM Vol. 3A, §4.5 “4-level paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux: page table levels', 'https://docs.kernel.org/mm/page_tables.html'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest']]
+    sources: [['Intel SDM Vol. 3A (rev. 093), §5.5 “4-level paging and 5-level paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux: page table levels', 'https://docs.kernel.org/mm/page_tables.html'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest']]
   });
 
   /* ---------- III.06 ---------- */
@@ -22884,7 +22884,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         L.p('That is 0x067 again: present, writable, user, accessed and dirty (the CPU ignores D in an entry that points to a table).');
         L.p('Why allow everything up there? Because permissions combine across all four levels, and the strictest entry wins. The upper entries stay open, and each PT entry decides for its own page.');
         L.note('intel', 'Bits 3 and 4 (PWT, PCD), and bit 7 in a PT entry (PAT), select a memory type through the page attribute table: write-back for normal RAM, uncacheable or write-combining for device memory. [[ch:stores]] and [[ch:io-mmio]] use them.', 'On Intel and AMD');
-        L.note('arm', 'Arm’s entries are called descriptors and lay out the same information differently: AP bits for read-only and user access, UXN and PXN for no-execute, AF for accessed, nG for not-global, and an index into MAIR_EL1 for the memory type. Older Arm cores fault on the first access to set AF in software; with FEAT_HAFDBS the hardware updates the access and dirty state itself, as x86 does.');
+        L.note('arm', 'Arm’s entries are called descriptors and lay out the same information differently: AP bits for read-only and user access, UXN and PXN for no-execute, AF for accessed, nG for not-global, and an index into MAIR_EL1 for the memory type. Without FEAT_HAFDBS (added in Armv8.1), the first access to a page with AF = 0 faults and the kernel sets AF. With it, the hardware sets AF itself, and a write to a read-only page with the DBM bit set makes the page writable instead of faulting: the dirty state, kept by hardware as on x86 (arch/arm64/Kconfig, ARM64_HW_AFDBM).');
       } }
     ],
     check: [
@@ -22898,7 +22898,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'A (used) and D (written) are set by the CPU, cleared only by software.',
       'Our page: NX | 0x129b49 << 12 | 0x067 = 0x8000000129b49067. Upper entries: next table | 0x067.'
     ],
-    sources: [['Intel SDM Vol. 3A, §4.5, tables 4-15 to 4-20', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, §5.4', 'https://docs.amd.com/v/u/en-US/24593_3.43'], ['Linux v6.18: pgtable_types.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/pgtable_types.h'], ['Linux v6.18: mm/memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/memory.c']]
+    sources: [['Intel SDM Vol. 3A (rev. 093), §5.5, tables 5-15 to 5-20', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2 (rev. 3.45), §5.4 “Page-translation-table entry fields”', 'https://docs.amd.com/v/u/en-US/24593_3.45_APM_Vol2_PUB'], ['Linux v6.18: pgtable_types.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/pgtable_types.h'], ['Linux v6.18: mm/memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/memory.c']]
   });
 
   /* ---------- III.07 ---------- */
@@ -22949,7 +22949,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       } },
       { id: 'smep', title: 'SMEP and SMAP: protecting the kernel from user memory', body: function (L) {
         L.p('U/S keeps user code out of kernel pages. Two CR4 bits add the reverse check, so the kernel cannot be tricked into using user pages by mistake.', ['cr4']);
-        L.p('SMEP makes the CPU refuse to execute a user page in kernel mode. SMAP makes it refuse kernel-mode reads and writes of user pages, except inside the kernel’s routines that copy to and from user memory.', ['smep', 'smap']);
+        L.p('SMEP makes the CPU refuse to execute a user page in kernel mode. SMAP makes it refuse kernel-mode reads and writes of user pages unless the AC bit of RFLAGS is set, and the kernel sets it only inside its routines that copy to and from user memory.', ['smep', 'smap']);
         L.out('facts.flags');
         L.p('The lab machine’s CPU reports both, <code>smep</code> and <code>smap</code>. Linux turns them on whenever the CPU has them.');
       } },
@@ -22971,7 +22971,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'SMEP and SMAP stop the kernel from executing or touching user pages by accident.',
       'P = 0 or a refused access anywhere on the path → page fault; nothing happens to memory.'
     ],
-    sources: [['Intel SDM Vol. 3A, §4.5 and §4.6 “Access rights”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, §5.6 “Page-protection checks”', 'https://docs.amd.com/v/u/en-US/24593_3.43']]
+    sources: [['Intel SDM Vol. 3A (rev. 093), §5.5 and §5.6 “Access rights”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2 (rev. 3.45), §5.6 “Page-protection checks”', 'https://docs.amd.com/v/u/en-US/24593_3.45_APM_Vol2_PUB']]
   });
 
   /* ---------- III.08 ---------- */
@@ -23039,7 +23039,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'Reach = entries × page size. Past it, random accesses start to walk.',
       'Hits and misses are handled entirely in hardware; the kernel only handles failed walks.'
     ],
-    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'], ['Intel SDM Vol. 3A, §4.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'], ['Intel SDM Vol. 3A (rev. 093), §5.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
   });
 })();
 
@@ -23362,7 +23362,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'Linux keeps six PCID slots per CPU (PCID = slot + 1). Measured: 2000 switches, 1 flush.',
       'KPTI gives each process two top tables and switches CR3 at every kernel entry; PCIDs keep that cheap.'
     ],
-    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: Page Table Isolation', 'https://docs.kernel.org/arch/x86/pti.html'], ['Intel SDM Vol. 3A, §4.10.1 “Process-context identifiers (PCIDs)”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Lipp et al., Meltdown: Reading Kernel Memory from User Space, USENIX Security 2018', 'https://www.usenix.org/conference/usenixsecurity18/presentation/lipp']]
+    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: Page Table Isolation', 'https://docs.kernel.org/arch/x86/pti.html'], ['Intel SDM Vol. 3A (rev. 093), §5.10.1 “Process-context identifiers (PCIDs)”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Lipp et al., Meltdown: Reading Kernel Memory from User Space, USENIX Security 2018', 'https://www.usenix.org/conference/usenixsecurity18/presentation/lipp']]
   });
 
   /* ---------- III.12 ---------- */
@@ -23442,7 +23442,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'Clearing A bits does not flush, so a cached translation hides later use until the next flush.',
       'Arm (TLBI …IS) and AMD (INVLPGB) can broadcast invalidations in hardware, with no interrupt.'
     ],
-    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: The TLB (x86)', 'https://docs.kernel.org/arch/x86/tlb.html'], ['Linux v6.18: arch/x86/mm/pgtable.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/pgtable.c'], ['Linux v6.18: arch/arm64/include/asm/tlbflush.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/include/asm/tlbflush.h'], ['Intel SDM Vol. 3A, §4.10.4 “Invalidation of TLBs and paging-structure caches”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: The TLB (x86)', 'https://docs.kernel.org/arch/x86/tlb.html'], ['Linux v6.18: arch/x86/mm/pgtable.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/pgtable.c'], ['Linux v6.18: arch/arm64/include/asm/tlbflush.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/include/asm/tlbflush.h'], ['Intel SDM Vol. 3A (rev. 093), §5.10.4 “Invalidation of TLBs and paging-structure caches”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
   });
 
 })();
@@ -23555,7 +23555,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'The kernel decides with its regions: none → SEGV_MAPERR; forbidden → SEGV_ACCERR; otherwise fix the page and restart the instruction.',
       'Non-canonical addresses raise #GP, trap 13, never #PF.'
     ],
-    sources: [['Linux v6.18: arch/x86/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/fault.c'], ['Linux v6.18: arch/x86/include/asm/trap_pf.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/trap_pf.h'], ['Intel SDM Vol. 3A, §4.7 “Page-fault exceptions”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux v6.18: arch/arm64/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/mm/fault.c']]
+    sources: [['Linux v6.18: arch/x86/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/fault.c'], ['Linux v6.18: arch/x86/include/asm/trap_pf.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/trap_pf.h'], ['Intel SDM Vol. 3A (rev. 093), §5.7 “Page-fault exceptions”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux v6.18: arch/arm64/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/mm/fault.c']]
   });
   /* ---------- III.14 ---------- */
   App.lesson({
@@ -24046,7 +24046,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       { id: 'wmarks', title: 'When reclaim starts: watermarks', body: function (L) {
         L.p('Each zone has three thresholds, counted in free pages. [[ch:vm-buddy]] showed them for the Normal zone:', ['watermark']);
         L.out('reclaim.wmark');
-        L.quote('… when it reaches a certain threshold (low watermark), an allocation request will awaken the kswapd daemon. It will asynchronously scan memory pages and either just free them if the data they contain is available elsewhere, or evict to the backing storage device […]. As memory usage increases even more and reaches another threshold - min watermark - an allocation will trigger direct reclaim. In this case allocation is stalled until enough memory pages are reclaimed to satisfy the request.', { cite: 'Documentation/admin-guide/mm/concepts.rst, “Reclaim”, Linux v6.18', label: 'Linux source', terms: ['kswapd', 'directreclaim'] });
+        L.quote('… when it reaches a certain threshold (low watermark), an allocation request will awaken the kswapd daemon. It will asynchronously scan memory pages and either just free them if the data they contain is available elsewhere, or evict to the backing storage device […]. As memory usage increases even more and reaches another threshold - min watermark - an allocation will trigger direct reclaim. In this case allocation is stalled until enough memory pages are reclaimed to satisfy the request.', { cite: 'Documentation/admin-guide/mm/concepts.rst, “Reclaim”, Linux v6.18 (excerpt)', label: 'Linux source', terms: ['kswapd', 'directreclaim'] });
         L.table(['Mark', 'Free pages', 'Below the mark'], [
           ['high', '10201 (39.8 MiB)', 'kswapd, once awake, keeps reclaiming; above it, kswapd sleeps'],
           ['low', '8501 (33.2 MiB)', 'the next allocation wakes kswapd, which reclaims in the background'],
@@ -24310,7 +24310,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'A guest’s TLB entry covers the smaller of the guest page and the host page, so huge pages matter on both sides.',
       'A guest sees what the hypervisor tells it: a CPUID flag, paravirtual features such as KVM’s TLB flush, and a CPU description that may differ from the hardware.'
     ],
-    sources: [['Linux: The x86 kvm shadow mmu (mmu.rst)', 'https://docs.kernel.org/virt/kvm/x86/mmu.html'], ['Linux v6.18: arch/x86/kvm/vmx/vmx.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/kvm/vmx/vmx.c'], ['Linux v6.18: arch/x86/kernel/kvm.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/kernel/kvm.c'], ['Gandhi et al., MICRO 2014 (PDF)', 'https://scail.cs.wisc.edu/papers/micro14-virtualization.pdf'], ['Intel SDM Vol. 3C, “VMX Support for Address Translation”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, §15.25 “Nested Paging”', 'https://docs.amd.com/v/u/en-US/24593_3.43'], ['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB']]
+    sources: [['Linux: The x86 kvm shadow mmu (mmu.rst)', 'https://docs.kernel.org/virt/kvm/x86/mmu.html'], ['Linux v6.18: arch/x86/kvm/vmx/vmx.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/kvm/vmx/vmx.c'], ['Linux v6.18: arch/x86/kernel/kvm.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/kernel/kvm.c'], ['Gandhi et al., MICRO 2014 (PDF)', 'https://scail.cs.wisc.edu/papers/micro14-virtualization.pdf'], ['Intel SDM Vol. 3C (rev. 093), ch. 31 “VMX support for address translation”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2 (rev. 3.45), §15.25 “Nested paging”', 'https://docs.amd.com/v/u/en-US/24593_3.45_APM_Vol2_PUB'], ['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB']]
   });
 
 

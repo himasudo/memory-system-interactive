@@ -317,7 +317,7 @@
       'Linux keeps six PCID slots per CPU (PCID = slot + 1). Measured: 2000 switches, 1 flush.',
       'KPTI gives each process two top tables and switches CR3 at every kernel entry; PCIDs keep that cheap.'
     ],
-    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: Page Table Isolation', 'https://docs.kernel.org/arch/x86/pti.html'], ['Intel SDM Vol. 3A, §4.10.1 “Process-context identifiers (PCIDs)”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Lipp et al., Meltdown: Reading Kernel Memory from User Space, USENIX Security 2018', 'https://www.usenix.org/conference/usenixsecurity18/presentation/lipp']]
+    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: Page Table Isolation', 'https://docs.kernel.org/arch/x86/pti.html'], ['Intel SDM Vol. 3A (rev. 093), §5.10.1 “Process-context identifiers (PCIDs)”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Lipp et al., Meltdown: Reading Kernel Memory from User Space, USENIX Security 2018', 'https://www.usenix.org/conference/usenixsecurity18/presentation/lipp']]
   });
 
   /* ---------- III.12 ---------- */
@@ -397,7 +397,7 @@
       'Clearing A bits does not flush, so a cached translation hides later use until the next flush.',
       'Arm (TLBI …IS) and AMD (INVLPGB) can broadcast invalidations in hardware, with no interrupt.'
     ],
-    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: The TLB (x86)', 'https://docs.kernel.org/arch/x86/tlb.html'], ['Linux v6.18: arch/x86/mm/pgtable.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/pgtable.c'], ['Linux v6.18: arch/arm64/include/asm/tlbflush.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/include/asm/tlbflush.h'], ['Intel SDM Vol. 3A, §4.10.4 “Invalidation of TLBs and paging-structure caches”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: The TLB (x86)', 'https://docs.kernel.org/arch/x86/tlb.html'], ['Linux v6.18: arch/x86/mm/pgtable.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/pgtable.c'], ['Linux v6.18: arch/arm64/include/asm/tlbflush.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/include/asm/tlbflush.h'], ['Intel SDM Vol. 3A (rev. 093), §5.10.4 “Invalidation of TLBs and paging-structure caches”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
   });
 
 })();
