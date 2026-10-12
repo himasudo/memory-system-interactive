@@ -495,5 +495,103 @@
     render();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim, buddysim: buddysim, lrusim: lrusim, walk2d: walk2d };
+  /* ---- 11. PCIe link bandwidth, from the per-lane rates Linux uses (PCIE_SPEED2MBS_ENC) ---- */
+  function pcielink(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var GENS = [['2500', 'PCIe 1.x · 2.5 GT/s'], ['5000', 'PCIe 2.x · 5 GT/s'], ['8000', 'PCIe 3.x · 8 GT/s'], ['16000', 'PCIe 4.0 · 16 GT/s'], ['32000', 'PCIe 5.0 · 32 GT/s'], ['64000', 'PCIe 6.0 · 64 GT/s']];
+    var ENC = { 2500: [8, 10], 5000: [8, 10], 8000: [128, 130], 16000: [128, 130], 32000: [128, 130], 64000: [1, 1] };
+    var gen = select(form, 'Generation', GENS, opts.gen || '16000');
+    var lanes = select(form, 'Lanes', [['1', 'x1'], ['2', 'x2'], ['4', 'x4'], ['8', 'x8'], ['16', 'x16']], opts.lanes || '4');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function fmt(x, d) { return x.toFixed(d).replace(/\.0+$/, ''); }
+    function render() {
+      var gt = Number(gen.value), e = ENC[gt], lane = gt * e[0] / e[1], n = Number(lanes.value), tot = lane * n;
+      var ns = 4096 * 8 / (tot / 1000);
+      out.innerHTML = '';
+      h('p', { 'class': 'lx-msg' }, out, 'Per lane, after the line encoding (' + e[0] + '/' + e[1] + '): <b>' + fmt(lane / 1000, 2) + ' Gb/s</b> in each direction.');
+      h('p', { 'class': 'lx-msg' }, out, 'x' + n + ': <b>' + fmt(tot / 1000, 1) + ' Gb/s = ' + fmt(tot / 8000, 2) + ' GB/s</b> each way; both directions at once.');
+      h('p', { 'class': 'lx-msg' }, out, 'Moving 4 KiB of data takes at least <b>' + (ns >= 1000 ? fmt(ns / 1000, 2) + ' µs' : fmt(ns, 0) + ' ns') + '</b>. Packet headers, flow control and the device’s own work come on top.');
+    }
+    [gen, lanes].forEach(function (s) { s.addEventListener('change', render); });
+    render();
+  }
+
+  /* ---- 12. sizing a BAR: write all-ones, read back, keep the lowest set address bit ---- */
+  function barsize(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var SIZES = [['12', '4 KiB'], ['14', '16 KiB'], ['16', '64 KiB'], ['19', '512 KiB'], ['20', '1 MiB'], ['24', '16 MiB'], ['28', '256 MiB'], ['32', '4 GiB'], ['34', '16 GiB']];
+    var sz = select(form, 'Size the device decodes', SIZES, opts.size || '19');
+    var ty = select(form, 'Type', [['64', '64-bit memory'], ['32', '32-bit memory']], opts.type || '64');
+    var pf = select(form, 'Prefetchable', [['0', 'no'], ['1', 'yes']], '0');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function hx8(v) { return '0x' + (v >>> 0).toString(16).padStart(8, '0'); }
+    function render() {
+      out.innerHTML = '';
+      var k = Number(sz.value), is64 = ty.value === '64', flags = (is64 ? 4 : 0) | (pf.value === '1' ? 8 : 0);
+      if (!is64 && k >= 32) { h('p', { 'class': 'lx-msg' }, out, 'A 32-bit BAR cannot decode 4 GiB or more: choose a 64-bit BAR.'); return; }
+      var size = Math.pow(2, k);
+      var lo = (k >= 32 ? 0 : ((0x100000000 - size) >>> 0) & 0xfffffff0) | flags;
+      var hi = k >= 32 ? ((0x100000000 - Math.pow(2, k - 32)) >>> 0) : 0xffffffff;
+      var rows = [['write 0xffffffff to the BAR' + (is64 ? ' and to the next one' : ''), ''], ['read back (low)', hx8(lo) + '   bits 3:0 = ' + (flags >>> 0).toString(2).padStart(4, '0') + ': memory, ' + (is64 ? '64-bit' : '32-bit') + ', ' + (pf.value === '1' ? 'prefetchable' : 'not prefetchable')]];
+      if (is64) rows.push(['read back (high)', hx8(hi)]);
+      var lowmask = (lo & 0xfffffff0) >>> 0;
+      var mask = is64 ? 'mask = 0x' + hi.toString(16) + lowmask.toString(16).padStart(8, '0') : 'mask = ' + hx8(lowmask);
+      rows.push(['clear bits 3:0', mask]);
+      rows.push(['lowest set bit = size', '0x' + size.toString(16) + ' = ' + SIZES.filter(function (s) { return s[0] === sz.value; })[0][1]]);
+      rows.push(['write the old value back', 'the BAR keeps its address']);
+      h('div', { 'class': 'lx-table' }, out, '<div class="lx-table-wrap"><table class="mono-cells"><tbody>' + rows.map(function (r) { return '<tr><td style="font-family:var(--sans)">' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('') + '</tbody></table></div>');
+      h('p', { 'class': 'lx-msg' }, out, 'The device ties the low address bits to 0, so they read back as 0 however they are written: ' + k + ' of them for ' + SIZES.filter(function (s) { return s[0] === sz.value; })[0][1] + '. That is also why every BAR is aligned to its size.');
+    }
+    [sz, ty, pf].forEach(function (s) { s.addEventListener('change', render); });
+    render();
+  }
+
+  /* ---- 13. a ring of 8 slots with free-running head and tail indices ---- */
+  function ringsim(el, opts) {
+    opts = opts || {};
+    var N = 8;
+    var bar = h('div', { 'class': 'lx-stepbar lx-wrap' }, el);
+    var bP = h('button', { type: 'button', 'class': 'pri' }, bar, 'producer: add an entry');
+    var bP3 = h('button', { type: 'button' }, bar, 'add 3');
+    var bC = h('button', { type: 'button' }, bar, 'consumer: take an entry');
+    var bR = h('button', { type: 'button' }, bar, 'reset');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    var head, tail, msg;
+    function reset() { head = 0; tail = 0; msg = 'An empty ring: head = tail.'; render(); }
+    function produce() {
+      if (tail - head === N) { msg = 'Full: tail − head = 8. The producer must wait for the consumer.'; return; }
+      msg = 'Wrote entry ' + tail + ' into slot ' + (tail & (N - 1)) + ' (' + tail + ' & 7), then advanced tail to ' + (tail + 1) + '.';
+      tail++;
+    }
+    function consume() {
+      if (tail === head) { msg = 'Empty: head = tail. Nothing to take.'; return; }
+      msg = 'Took entry ' + head + ' from slot ' + (head & (N - 1)) + ', then advanced head to ' + (head + 1) + '.';
+      head++;
+    }
+    function render() {
+      out.innerHTML = '';
+      var f = [];
+      for (var i = 0; i < N; i++) {
+        var idx = null;
+        for (var k = head; k < tail; k++) if ((k & (N - 1)) === i) idx = k;
+        var tags = [];
+        if ((head & (N - 1)) === i) tags.push('head');
+        if ((tail & (N - 1)) === i) tags.push('tail');
+        f.push({ bits: 'slot ' + i, val: idx === null ? '—' : '#' + idx, name: tags.join(' · ') || '&nbsp;', tone: idx === null ? 'mute' : 'a4', hot: tags.length > 0 });
+      }
+      h('div', { 'class': 'lx-lru' }, out, bitsHTML(f, true));
+      h('p', { 'class': 'lx-msg' }, out, msg);
+      h('p', { 'class': 'lx-msg' }, out, 'head = <b>' + head + '</b>, tail = <b>' + tail + '</b>: ' + (tail - head) + ' waiting, ' + (N - tail + head) + ' free. Both only ever increase; the slot is index & 7.');
+      bP.disabled = bP3.disabled = tail - head === N; bC.disabled = tail === head;
+    }
+    bP.onclick = function () { produce(); render(); };
+    bP3.onclick = function () { for (var i = 0; i < 3; i++) produce(); render(); };
+    bC.onclick = function () { consume(); render(); };
+    bR.onclick = reset;
+    reset();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim, buddysim: buddysim, lrusim: lrusim, walk2d: walk2d, pcielink: pcielink, barsize: barsize, ringsim: ringsim };
 })();

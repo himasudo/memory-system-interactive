@@ -25,6 +25,8 @@ kdev=$(( (${devt%:*} << 20) | ${devt#*:} ))                            # dev_t a
 sh "$here/iomem.sh" "$fn" > "$here/out/iomem.txt" 2>&1
 python3 "$here/pcicfg.py" "$fn" > "$here/out/pcicfg.txt"
 sh "$here/queue.sh" "$disk" > "$here/out/queue.txt" 2>&1
+sh "$here/virtio.sh" "$disk" > "$here/out/virtio.txt" 2>&1
+sh "$here/memtype.sh" "$fn" > "$here/out/memtype.txt" 2>&1
 
 # trace one read: io_uring, the block layer (this disk only), the queue's interrupt, the program's
 # wakeups and CPU switches, and any DMA-mapping or bounce-buffer event

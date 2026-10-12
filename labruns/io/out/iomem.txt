@@ -45,9 +45,10 @@ virtio7  on 0000:00:08.0  type 1  bit 33 = 0
 virtio8  on 0000:00:09.0  type 19  bit 33 = 0
 virtio9  on 0000:00:0a.0  type 4  bit 33 = 0
 $ ls /sys/class/iommu    # IOMMU hardware the kernel found
-$ dmesg | grep -E "iommu: Default domain|TLB invalidation policy|PCI-DMA"
+$ dmesg | grep -E "iommu: Default domain|TLB invalidation policy|PCI-DMA|software IO TLB"
 iommu: Default domain type: Translated
 iommu: DMA domain TLB invalidation policy: lazy mode
 PCI-DMA: Using software bounce buffering for IO (SWIOTLB)
+software IO TLB: No low mem
 $ tr " " "\n" < /proc/cmdline | grep "^swiotlb"
 swiotlb=noforce

@@ -20,7 +20,7 @@ for v in /sys/bus/virtio/devices/virtio*; do
 done
 printf '%s\n' '$ ls /sys/class/iommu    # IOMMU hardware the kernel found'
 ls /sys/class/iommu
-printf '%s\n' '$ dmesg | grep -E "iommu: Default domain|TLB invalidation policy|PCI-DMA"'
-dmesg | grep -E "iommu: Default domain|TLB invalidation policy|PCI-DMA" | sed 's/^\[[ 0-9.]*\] //'
+printf '%s\n' '$ dmesg | grep -E "iommu: Default domain|TLB invalidation policy|PCI-DMA|software IO TLB"'
+dmesg | grep -E "iommu: Default domain|TLB invalidation policy|PCI-DMA|software IO TLB" | sed 's/^\[[ 0-9.]*\] //'
 printf '%s\n' '$ tr " " "\n" < /proc/cmdline | grep "^swiotlb"'
 tr " " "\n" < /proc/cmdline | grep "^swiotlb"

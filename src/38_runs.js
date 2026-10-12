@@ -591,6 +591,122 @@ var LabRuns = (function () {
       what: "virt.sh: boot messages of machine B’s kernel about KVM.",
       lines: ["$ dmesg | grep -E \"Hypervisor detected|Booting paravirtualized|pv remote TLB flush\"", "Hypervisor detected: KVM", "⟦kvm-guest: KVM setup pv remote TLB flush⟧", "Booting paravirtualized kernel on KVM"]
     },
+    /* ---- Part VI: devices and I/O (machine B) ---- */
+    'io.iomem': {
+      file: 'io/out/iomem.txt', machine: 'b',
+      what: "iomem.sh: machine B’s physical address space as /proc/iomem shows it to root: RAM, the windows for PCI devices, the ECAM window for configuration space, and one entry per PCI function.",
+      lines: ["$ grep -E \"System RAM|Kernel code|PCI Bus|PCI ECAM|IOAPIC|: 0000:00:\" /proc/iomem", "00001000-0009fbff : ⟦System RAM⟧", "00100000-bfffffff : ⟦System RAM⟧", "  01000000-021350e7 : Kernel code", "c0001000-eebfffff : PCI Bus 0000:00", "  eec00000-eecfffff : ⟦PCI ECAM 0000 [bus 00-00]⟧", "    eec00000-eecfffff : PCI Bus 0000:00", "fec00000-fec003ff : IOAPIC 0", "100000000-43fffffff : ⟦System RAM⟧", "4000000000-7fffffffff : PCI Bus 0000:00", "  4000000000-400007ffff : 0000:00:01.0", "  ⟦4000080000-40000fffff : 0000:00:02.0⟧", "  4000100000-400017ffff : 0000:00:03.0", "  4000180000-40001fffff : 0000:00:04.0", "  4000200000-400027ffff : 0000:00:05.0", "  4000280000-40002fffff : 0000:00:06.0", "  4000300000-400037ffff : 0000:00:07.0", "  4000380000-40003fffff : 0000:00:08.0", "  4000400000-400047ffff : 0000:00:09.0", "  4000480000-40004fffff : 0000:00:0a.0"]
+    },
+    'io.claim': {
+      file: 'io/out/iomem.txt', machine: 'b',
+      what: "iomem.sh: the address range of the disk’s PCI function, and the driver that claimed it.",
+      lines: ["$ grep -A1 \": 0000:00:02.0\" /proc/iomem    # the disk's PCI function, and who claimed its registers", "  4000080000-40000fffff : 0000:00:02.0", "    4000080000-40000fffff : virtio-pci-modern"]
+    },
+    'io.functions': {
+      file: 'io/out/iomem.txt', machine: 'b',
+      what: "iomem.sh: every PCI function on machine B: slot (domain:bus:device.function), vendor and device IDs, class code, driver, and number of MSI-X vectors.",
+      lines: ["$ for each PCI function: slot, vendor:device, class, driver, MSI-X vectors", "0000:00:00.0  0x8086:0x0d57  class 0x060000  driver -           vectors 0", "0000:00:01.0  0x1af4:0x1045  class 0xffff00  driver virtio-pci  vectors 5", "⟦0000:00:02.0  0x1af4:0x1042⟧  class 0x018000  driver virtio-pci  vectors 2", "0000:00:03.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2", "0000:00:04.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2", "0000:00:05.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2", "0000:00:06.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2", "0000:00:07.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2", "0000:00:08.0  0x1af4:0x1041  class 0x020000  driver virtio-pci  vectors 3", "0000:00:09.0  0x1af4:0x1053  class 0xffff00  driver virtio-pci  vectors 4", "0000:00:0a.0  0x1af4:0x1044  class 0xffff00  driver virtio-pci  vectors 2"]
+    },
+    'io.virtio': {
+      file: 'io/out/iomem.txt', machine: 'b',
+      what: "iomem.sh: each virtio device, the PCI function it sits on, its virtio device type, and feature bit 33 (VIRTIO_F_ACCESS_PLATFORM) as negotiated.",
+      lines: ["$ for each virtio device: device type, and feature bit 33 (VIRTIO_F_ACCESS_PLATFORM)", "virtio0  on 0000:00:01.0  type 5  ⟦bit 33 = 0⟧", "virtio1  on 0000:00:02.0  type 2  ⟦bit 33 = 0⟧", "virtio2  on 0000:00:03.0  type 2  ⟦bit 33 = 0⟧", "virtio3  on 0000:00:04.0  type 2  ⟦bit 33 = 0⟧", "virtio4  on 0000:00:05.0  type 2  ⟦bit 33 = 0⟧", "virtio5  on 0000:00:06.0  type 2  ⟦bit 33 = 0⟧", "virtio6  on 0000:00:07.0  type 2  ⟦bit 33 = 0⟧", "virtio7  on 0000:00:08.0  type 1  ⟦bit 33 = 0⟧", "virtio8  on 0000:00:09.0  type 19  ⟦bit 33 = 0⟧", "virtio9  on 0000:00:0a.0  type 4  ⟦bit 33 = 0⟧"]
+    },
+    'io.iommu': {
+      file: 'io/out/iomem.txt', machine: 'b',
+      what: "iomem.sh: IOMMU devices the kernel registered (none: ls prints nothing), and its boot messages about DMA translation and bounce buffers.",
+      lines: ["$ ls /sys/class/iommu    # IOMMU hardware the kernel found", "$ dmesg | grep -E \"iommu: Default domain|TLB invalidation policy|PCI-DMA|software IO TLB\"", "iommu: Default domain type: Translated", "iommu: DMA domain TLB invalidation policy: lazy mode", "PCI-DMA: Using software bounce buffering for IO (SWIOTLB)", "software IO TLB: ⟦No low mem⟧"]
+    },
+    'io.noforce': {
+      file: 'io/out/iomem.txt', machine: 'b',
+      what: "iomem.sh: the bounce-buffer setting on machine B’s kernel command line.",
+      lines: ["$ tr \" \" \"\\n\" < /proc/cmdline | grep \"^swiotlb\"", "swiotlb=noforce"]
+    },
+    'io.cfghex': {
+      file: 'io/out/pcicfg.txt', machine: 'b',
+      what: "pcicfg.py: the first 256 bytes of configuration space of the disk’s PCI function, read from sysfs.",
+      lines: ["config space of 0000:00:02.0: 256 bytes (from /sys/bus/pci/devices/0000:00:02.0/config)", "00: f4 1a 42 10 06 04 10 00 01 00 80 01 00 00 00 00", "10: 04 00 08 00 40 00 00 00 00 00 00 00 00 00 00 00", "20: 00 00 00 00 00 00 00 00 00 00 00 00 f4 1a 42 10", "30: 00 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00", "40: 09 50 10 01 00 00 00 00 00 00 00 00 38 00 00 00", "50: 09 60 10 03 00 00 00 00 00 20 00 00 01 00 00 00", "60: 09 70 10 04 00 00 00 00 00 40 00 00 00 10 00 00", "70: 09 84 14 02 00 00 00 00 00 60 00 00 00 10 00 00", "80: 04 00 00 00 09 98 14 05 00 00 00 00 00 00 00 00", "90: 00 00 00 00 00 00 00 00 11 00 01 80 00 80 00 00", "a0: 00 80 04 00 00 00 00 00 00 00 00 00 00 00 00 00", "(rows b0-f0 are all zero)"]
+    },
+    'io.cfghdr': {
+      file: 'io/out/pcicfg.txt', machine: 'b',
+      what: "pcicfg.py: the header fields of that configuration space, decoded.",
+      lines: ["0x00 vendor ID        0x1af4", "0x02 device ID        0x1042   virtio: 0x1040 + type 2 (block device)", "0x04 command          0x0406   I/O space off, ⟦memory space on, bus master on⟧, INTx disabled yes", "0x06 status           0x0010   capabilities list yes", "0x08 revision         0x01", "0x09 class code       0x018000 mass storage (0x01), subclass 0x80", "0x0e header type      0x00     type 0: an endpoint", "0x10 BAR0             0x00080004   memory, 64-bit (with BAR1), not prefetchable", "0x14 BAR1             0x00000040   upper half of BAR0", "     BAR0 address     ⟦0x4000080000, size 512 KiB⟧ (sysfs resource: 0x4000080000-0x40000fffff)", "0x2c subsystem        0x1af4:0x1042", "0x34 capabilities at  0x40", "0x3d interrupt pin    0        ⟦no INTx pin⟧: interrupts come only as messages (MSI-X)"]
+    },
+    'io.caps': {
+      file: 'io/out/pcicfg.txt', machine: 'b',
+      what: "pcicfg.py: the capability list, a chain of structures starting at offset 0x34’s pointer: five virtio capabilities and MSI-X.",
+      lines: ["capability list:", "  0x40  0x09 vendor (virtio)  common config      BAR0 offset 0x0000  length 56", "  0x50  0x09 vendor (virtio)  ISR status         BAR0 offset 0x2000  length 1", "  0x60  0x09 vendor (virtio)  device config      BAR0 offset 0x4000  length 4096", "  0x70  0x09 vendor (virtio)  notifications      BAR0 offset 0x6000  length 4096, ⟦notify_off_multiplier 4⟧", "  0x84  0x09 vendor (virtio)  PCI config access  BAR0 offset 0x0000  length 0", "  0x98  0x11 MSI-X  2 vectors, enabled; ⟦table in BAR0 at 0x8000⟧; pending bits in BAR0 at 0x48000"]
+    },
+    'io.queue': {
+      file: 'io/out/queue.txt', machine: 'b',
+      what: "queue.sh: the block layer’s settings for vda: I/O scheduler, request limits, sizes, completion affinity and polling.",
+      lines: ["$ cd /sys/block/vda/queue; grep . scheduler nr_requests max_sectors_kb max_segments logical_block_size physical_block_size rq_affinity io_poll", "scheduler:none ⟦[mq-deadline]⟧ kyber bfq ", "nr_requests:256", "max_sectors_kb:4096", "⟦max_segments:254⟧", "logical_block_size:512", "physical_block_size:4096", "rq_affinity:1", "io_poll:0"]
+    },
+    'io.mq': {
+      file: 'io/out/queue.txt', machine: 'b',
+      what: "queue.sh: vda’s hardware queues (blk-mq): their number, the CPUs that feed each one, and its number of tags.",
+      lines: ["$ ls /sys/block/vda/mq; grep . /sys/block/vda/mq/0/cpu_list /sys/block/vda/mq/0/nr_tags", "0", "/sys/block/vda/mq/0/cpu_list:0, 1, 2, 3", "/sys/block/vda/mq/0/nr_tags:128"]
+    },
+    'io.path': {
+      file: 'io/out/queue.txt', machine: 'b',
+      what: "queue.sh: the device behind vda in sysfs: the virtio device, on PCI function 0000:00:02.0.",
+      lines: ["$ readlink -f /sys/block/vda/device    # the virtio device and PCI function behind the disk", "/sys/devices/pci0000:00/0000:00:02.0/virtio1"]
+    },
+    'io.irqs': {
+      file: 'io/out/queue.txt', machine: 'b',
+      what: "queue.sh: vda’s two MSI-X interrupts, with their counts per CPU, and the CPUs allowed and used for the request-queue interrupt.",
+      lines: ["$ grep -E \"CPU|virtio1\" /proc/interrupts", "           CPU0       CPU1       CPU2       CPU3       ", " 36:          0          1          0          0 PCI-MSIX-0000:00:02.0   0-edge      virtio1-config", " 37:          0          0          0      66035 PCI-MSIX-0000:00:02.0   1-edge      ⟦virtio1-req.0⟧", "$ cat /proc/irq/37/smp_affinity_list /proc/irq/37/effective_affinity_list", "0-3", "3"]
+    },
+    'io.irqcount': {
+      file: 'io/out/counts.txt', machine: 'b',
+      what: "run_all.sh: the request-queue interrupt’s count before and after oneread (1 warm-up read, 1 traced read and 1000 timed reads).",
+      lines: ["$ grep -E \"CPU|virtio1-req\" /proc/interrupts    # before", "           CPU0       CPU1       CPU2       CPU3       ", " 37:          0          0          0      ⟦66036⟧ PCI-MSIX-0000:00:02.0   1-edge      virtio1-req.0", "$ grep -E \"CPU|virtio1-req\" /proc/interrupts    # after", "           CPU0       CPU1       CPU2       CPU3       ", " 37:          0          0          0      ⟦67040⟧ PCI-MSIX-0000:00:02.0   1-edge      virtio1-req.0"]
+    },
+    'io.dmacount': {
+      file: 'io/out/counts.txt', machine: 'b',
+      what: "run_all.sh: the number of dma and swiotlb trace events recorded during the traced read.",
+      lines: ["$ grep -c -E \"  (dma_|swiotlb_)\" oneread.trace.txt    # DMA-mapping and bounce-buffer events in the trace", "⟦0⟧"]
+    },
+    'io.features': {
+      file: 'io/out/virtio.txt', machine: 'b',
+      what: "virtio.sh: the feature bits vda and its driver agreed on, one character per bit.",
+      lines: ["$ cat /sys/bus/virtio/devices/virtio1/features    # one character per bit, bit 0 first", "00100010011001000000000000000100100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "⟦bits set: 2 6 9 10 13 29 32⟧"]
+    },
+    'io.pat': {
+      file: 'io/out/memtype.txt', machine: 'b',
+      what: "memtype.sh: the x86 PAT memory types the kernel gave the ECAM window and the five 4 KiB pieces of vda’s BAR0 it mapped.",
+      lines: ["$ cat /sys/kernel/debug/x86/pat_memtype_list    # only the lines for the ECAM window and for BAR0 of 0000:00:02.0", "PAT: [mem 0x00000000eec00000-0x00000000eed00000] ⟦uncached-minus⟧", "PAT: [mem 0x0000004000080000-0x0000004000081000] ⟦uncached-minus⟧", "PAT: [mem 0x0000004000082000-0x0000004000083000] ⟦uncached-minus⟧", "PAT: [mem 0x0000004000084000-0x0000004000085000] ⟦uncached-minus⟧", "PAT: [mem 0x0000004000086000-0x0000004000087000] ⟦uncached-minus⟧", "PAT: [mem 0x0000004000088000-0x0000004000089000] ⟦uncached-minus⟧"]
+    },
+    'io.swiotlb': {
+      file: 'io/out/memtype.txt', machine: 'b',
+      what: "memtype.sh: the bounce-buffer pool’s debugfs directory.",
+      lines: ["$ ls -A /sys/kernel/debug/swiotlb    # the bounce-buffer pool's statistics", "(empty)"]
+    },
+    'io.iommucfg': {
+      file: 'io/out/memtype.txt', machine: 'b',
+      what: "memtype.sh: the IOMMU drivers and bounce-buffer support built into machine B’s kernel.",
+      lines: ["$ zcat /proc/config.gz | grep -E \"^(# )?CONFIG_(INTEL_IOMMU|AMD_IOMMU|VIRTIO_IOMMU|IRQ_REMAP|SWIOTLB)[= ]\"", "# CONFIG_AMD_IOMMU is not set", "# CONFIG_INTEL_IOMMU is not set", "# CONFIG_IRQ_REMAP is not set", "# CONFIG_VIRTIO_IOMMU is not set", "CONFIG_SWIOTLB=y"]
+    },
+    'io.ring': {
+      file: 'io/out/oneread.txt', machine: 'b',
+      what: "oneread.c: io_uring_setup’s answer: ring sizes, the offset of each field inside the shared rings, and where the program mapped them.",
+      lines: ["io_uring_setup(4) = fd 4: 4 submission entries, 8 completion entries", "sq_off: head 0  tail 4  ring_mask 16  ring_entries 24  flags 36  dropped 32  array 192", "cq_off: head 8  tail 12  ring_mask 20  ring_entries 28  overflow 44  cqes 64  flags 40", "rings mapped at 0x7fdb41b4a000 (⟦one mapping: yes⟧), SQEs at 0x7fdb41b49000, 64 bytes each"]
+    },
+    'io.buffer': {
+      file: 'io/out/oneread.txt', machine: 'b',
+      what: "oneread.c: the page-aligned buffer the reads go into, and its frame (pagemap).",
+      lines: ["buffer at 0x7fdb41b48000, ⟦frame 0x124451⟧"]
+    },
+    'io.stats': {
+      file: 'io/out/oneread.txt', machine: 'b',
+      what: "oneread.c: the traced read, then 1000 untraced 4 KiB reads at random offsets, each timed from submission to completion.",
+      lines: ["traced read: result 4096, 94.0 us from submission to completion", "1000 more reads at random 4 KiB offsets of the 4096-KiB file, us per read: min 34.5  ⟦median 40.9⟧  99th percentile 88.8  max 133.5"]
+    },
+    'io.trace': {
+      file: 'io/out/oneread.trace.txt', machine: 'b',
+      what: "run_all.sh and oneread.c: the kernel trace of one 4 KiB read, with time since the first marker and the CPU of each event. Block events are filtered to vda, interrupt events to its request queue.",
+      lines: ["       0.0 us  cpu000  # == io_uring_enter: submit one 4 KiB read at offset 1 MiB, wait for it", "       8.0 us  cpu000  io_uring_submit_req: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, opcode READ, flags 0x400000, sq_thread 0", "      11.0 us  cpu000  block_bio_queue: 254,0 RS 19671040 + 8 [oneread]", "      12.0 us  cpu000  block_getrq: 254,0 RS 19671040 + 8 [oneread]", "      13.0 us  cpu000  block_rq_insert: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]", "      14.0 us  cpu000  block_rq_issue: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]", "      29.0 us  cpu000  sched_switch: prev_comm=oneread prev_pid=18827 prev_prio=120 prev_state=S ==> next_comm=swapper/0 next_pid=0 next_prio=120", "      53.0 us  cpu003  irq_handler_entry: irq=37 name=virtio1-req.0", "      55.0 us  cpu003  irq_handler_exit: irq=37 ret=handled", "      55.0 us  cpu003  block_rq_complete: 254,0 RS () 19671040 + 8 be,0,4 [0]", "      56.0 us  cpu003  ipi_send_cpu: cpu=0 callsite=ttwu_queue_wakelist+0x11c/0x140 callback=generic_smp_call_function_single_interrupt+0x0/0x20", "      98.0 us  cpu000  sched_wakeup: comm=oneread pid=18827 prio=120 target_cpu=000", "      99.0 us  cpu000  sched_switch: prev_comm=swapper/0 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=oneread next_pid=18827 next_prio=120", "     100.0 us  cpu000  io_uring_complete: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, result 4096, cflags 0x0 extra1 0 extra2 0", "     101.0 us  cpu000  io_uring_task_work_run: tctx 0000000088b7722e, count 1", "     102.0 us  cpu000  # == io_uring_enter returned 4096"]
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',
