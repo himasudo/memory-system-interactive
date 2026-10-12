@@ -111,7 +111,7 @@
         L.out('io.iommucfg');
         L.p('The kernel is built without the Intel, AMD and virtio IOMMU drivers, and without interrupt remapping. So machine B’s devices see guest-physical addresses directly, as [[ch:io-dma]] found.');
       } },
-      { id: 'life', title: 'A mapping has a lifetime', body: function (L) {
+      { id: 'life', title: 'Unmapping, in order', body: function (L) {
         L.p('The order of operations matters: stop the device, unmap, wait for the invalidation, and only then let the page go. The lab below steps through it.');
         L.lab(function (el) { App.AdvancedUI.labs.dma(el); });
       } },

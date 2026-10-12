@@ -58,11 +58,11 @@ App.Evidence = {
     },
     {
       kind: 'Specification',
-      means: 'From a published standard, such as PCI Express or NVM Express.'
+      means: 'From a published standard, such as PCI Express, NVM Express or virtio.'
     },
     {
       kind: 'Linux source',
-      means: 'Quoted from the Linux kernel source at the version named.'
+      means: 'Quoted from the Linux kernel source or its documentation, including the manual pages. Kernel source is quoted at the version named.'
     },
     {
       kind: 'Lab run',

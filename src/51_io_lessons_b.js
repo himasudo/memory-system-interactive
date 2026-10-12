@@ -89,7 +89,9 @@
         L.p('A device ring has the same shape, with the driver and the device as the two sides.');
       } },
       { id: 'vq', title: 'A virtqueue', body: function (L) {
-        L.p('virtio’s ring is the virtqueue: three arrays in guest memory. The driver fills two of them, the device the third:', ['virtqueue']);
+        L.p('virtio’s ring is the virtqueue. The virtio specification splits it into parts with one writer each:', ['virtqueue']);
+        L.quote('The split virtqueue format separates the virtqueue into several parts, where each part is write-able by either the driver or the device, but not both.\n…\nEach virtqueue consists of three parts:\n• Descriptor Table - occupies the Descriptor Area\n• Available Ring - occupies the Driver Area\n• Used Ring - occupies the Device Area', { cite: 'OASIS VIRTIO 1.2, §2.7 Split Virtqueues', label: 'Specification', src: ['VIRTIO 1.2', 'https://docs.oasis-open.org/virtio/virtio/v1.2/virtio-v1.2.html'] });
+        L.p('Linux declares the three parts as structures in guest memory. The driver writes the first two, the device the third:');
         L.quote('struct vring_desc {\n\t__virtio64 addr;\n\t__virtio32 len;\n\t__virtio16 flags;\n\t__virtio16 next;\n};\nstruct vring_avail {\n\t__virtio16 flags;\n\t__virtio16 idx;\n\t__virtio16 ring[];\n};\nstruct vring_used {\n\t__virtio16 flags;\n\t__virtio16 idx;\n\tvring_used_elem_t ring[];\n};', { cite: 'include/uapi/linux/virtio_ring.h, Linux v6.18 (excerpt)', label: 'Linux source', code: true });
         L.table(['Part', 'Written by', 'Holds'], [
           ['descriptor table', 'driver', 'buffers: address, length, flags, and the next descriptor of a chain'],

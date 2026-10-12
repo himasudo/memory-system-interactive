@@ -4845,11 +4845,11 @@ App.Evidence = {
     },
     {
       kind: 'Specification',
-      means: 'From a published standard, such as PCI Express or NVM Express.'
+      means: 'From a published standard, such as PCI Express, NVM Express or virtio.'
     },
     {
       kind: 'Linux source',
-      means: 'Quoted from the Linux kernel source at the version named.'
+      means: 'Quoted from the Linux kernel source or its documentation, including the manual pages. Kernel source is quoted at the version named.'
     },
     {
       kind: 'Lab run',
@@ -24103,7 +24103,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         L.p('<code>/proc/self/maps</code> lists two areas of one page each, both at offset 0 of the same file (inode 14):');
         L.out('alias.maps', { wide: true });
         L.p('The <code>s</code> in <code>rw-s</code> marks a shared mapping. “(deleted)” appears because a memfd has no name in any directory.');
-        L.quote('memfd_create() creates an anonymous file and returns a file descriptor that refers to it. The file behaves like a regular file, and so can be modified, truncated, memory-mapped, and so on. However, unlike a regular file, it lives in RAM and has a volatile backing storage.', { cite: 'memfd_create(2), Linux man-pages', label: 'Specification', src: ['memfd_create(2)', 'https://man7.org/linux/man-pages/man2/memfd_create.2.html'] });
+        L.quote('memfd_create() creates an anonymous file and returns a file descriptor that refers to it. The file behaves like a regular file, and so can be modified, truncated, memory-mapped, and so on. However, unlike a regular file, it lives in RAM and has a volatile backing storage.', { cite: 'memfd_create(2), Linux man-pages', label: 'Linux source', src: ['memfd_create(2)', 'https://man7.org/linux/man-pages/man2/memfd_create.2.html'] });
         L.p('A program rarely maps one file twice. Different processes mapping the same file is the common case.');
       } },
       { id: 'libs', title: 'The same code in every process', body: function (L) {
@@ -24686,7 +24686,9 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         L.p('A device ring has the same shape, with the driver and the device as the two sides.');
       } },
       { id: 'vq', title: 'A virtqueue', body: function (L) {
-        L.p('virtio’s ring is the virtqueue: three arrays in guest memory. The driver fills two of them, the device the third:', ['virtqueue']);
+        L.p('virtio’s ring is the virtqueue. The virtio specification splits it into parts with one writer each:', ['virtqueue']);
+        L.quote('The split virtqueue format separates the virtqueue into several parts, where each part is write-able by either the driver or the device, but not both.\n…\nEach virtqueue consists of three parts:\n• Descriptor Table - occupies the Descriptor Area\n• Available Ring - occupies the Driver Area\n• Used Ring - occupies the Device Area', { cite: 'OASIS VIRTIO 1.2, §2.7 Split Virtqueues', label: 'Specification', src: ['VIRTIO 1.2', 'https://docs.oasis-open.org/virtio/virtio/v1.2/virtio-v1.2.html'] });
+        L.p('Linux declares the three parts as structures in guest memory. The driver writes the first two, the device the third:');
         L.quote('struct vring_desc {\n\t__virtio64 addr;\n\t__virtio32 len;\n\t__virtio16 flags;\n\t__virtio16 next;\n};\nstruct vring_avail {\n\t__virtio16 flags;\n\t__virtio16 idx;\n\t__virtio16 ring[];\n};\nstruct vring_used {\n\t__virtio16 flags;\n\t__virtio16 idx;\n\tvring_used_elem_t ring[];\n};', { cite: 'include/uapi/linux/virtio_ring.h, Linux v6.18 (excerpt)', label: 'Linux source', code: true });
         L.table(['Part', 'Written by', 'Holds'], [
           ['descriptor table', 'driver', 'buffers: address, length, flags, and the next descriptor of a chain'],
@@ -24922,7 +24924,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         L.out('io.iommucfg');
         L.p('The kernel is built without the Intel, AMD and virtio IOMMU drivers, and without interrupt remapping. So machine B’s devices see guest-physical addresses directly, as [[ch:io-dma]] found.');
       } },
-      { id: 'life', title: 'A mapping has a lifetime', body: function (L) {
+      { id: 'life', title: 'Unmapping, in order', body: function (L) {
         L.p('The order of operations matters: stop the device, unmap, wait for the invalidation, and only then let the page go. The lab below steps through it.');
         L.lab(function (el) { App.AdvancedUI.labs.dma(el); });
       } },
@@ -25131,9 +25133,9 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       } },
       { id: 'more', title: 'Removing the remaining costs', body: function (L) {
         L.p('One read still cost a system call, an interrupt and a wake-up. io_uring can remove each of them:');
-        L.quote('When this flag is specified, a kernel thread is created to perform submission queue polling. An io_uring instance configured in this way enables an application to issue I/O without ever context switching into the kernel.', { cite: 'io_uring_setup(2), IORING_SETUP_SQPOLL', label: 'Specification', src: ['io_uring_setup(2)', 'https://man7.org/linux/man-pages/man2/io_uring_setup.2.html'] });
-        L.quote('Perform busy-waiting for an I/O completion, as opposed to getting notifications via an asynchronous IRQ (Interrupt Request). The file system (if any) and block device must support polling in order for this to work.', { cite: 'io_uring_setup(2), IORING_SETUP_IOPOLL', label: 'Specification' });
-        L.quote('The buffers associated with the iovecs will be locked in memory and charged against the user\'s RLIMIT_MEMLOCK resource limit.', { cite: 'io_uring_register(2), IORING_REGISTER_BUFFERS', label: 'Specification', src: ['io_uring_register(2)', 'https://man7.org/linux/man-pages/man2/io_uring_register.2.html'] });
+        L.quote('When this flag is specified, a kernel thread is created to perform submission queue polling. An io_uring instance configured in this way enables an application to issue I/O without ever context switching into the kernel.', { cite: 'io_uring_setup(2), IORING_SETUP_SQPOLL', label: 'Linux source', src: ['io_uring_setup(2)', 'https://man7.org/linux/man-pages/man2/io_uring_setup.2.html'] });
+        L.quote('Perform busy-waiting for an I/O completion, as opposed to getting notifications via an asynchronous IRQ (Interrupt Request). The file system (if any) and block device must support polling in order for this to work.', { cite: 'io_uring_setup(2), IORING_SETUP_IOPOLL', label: 'Linux source' });
+        L.quote('The buffers associated with the iovecs will be locked in memory and charged against the user\'s RLIMIT_MEMLOCK resource limit.', { cite: 'io_uring_register(2), IORING_REGISTER_BUFFERS', label: 'Linux source', src: ['io_uring_register(2)', 'https://man7.org/linux/man-pages/man2/io_uring_register.2.html'] });
         L.table(['Option', 'Removes', 'Costs'], [
           ['SQPOLL', 'the system call per submission', 'a kernel thread busy polling the ring'],
           ['IOPOLL', 'the interrupt and the wake-up', 'a CPU polling the device; vda has no poll queues (io_poll = 0)'],

@@ -21,7 +21,7 @@
         L.p('<code>/proc/self/maps</code> lists two areas of one page each, both at offset 0 of the same file (inode 14):');
         L.out('alias.maps', { wide: true });
         L.p('The <code>s</code> in <code>rw-s</code> marks a shared mapping. “(deleted)” appears because a memfd has no name in any directory.');
-        L.quote('memfd_create() creates an anonymous file and returns a file descriptor that refers to it. The file behaves like a regular file, and so can be modified, truncated, memory-mapped, and so on. However, unlike a regular file, it lives in RAM and has a volatile backing storage.', { cite: 'memfd_create(2), Linux man-pages', label: 'Specification', src: ['memfd_create(2)', 'https://man7.org/linux/man-pages/man2/memfd_create.2.html'] });
+        L.quote('memfd_create() creates an anonymous file and returns a file descriptor that refers to it. The file behaves like a regular file, and so can be modified, truncated, memory-mapped, and so on. However, unlike a regular file, it lives in RAM and has a volatile backing storage.', { cite: 'memfd_create(2), Linux man-pages', label: 'Linux source', src: ['memfd_create(2)', 'https://man7.org/linux/man-pages/man2/memfd_create.2.html'] });
         L.p('A program rarely maps one file twice. Different processes mapping the same file is the common case.');
       } },
       { id: 'libs', title: 'The same code in every process', body: function (L) {

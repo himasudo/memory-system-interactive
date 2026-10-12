@@ -113,9 +113,9 @@
       } },
       { id: 'more', title: 'Removing the remaining costs', body: function (L) {
         L.p('One read still cost a system call, an interrupt and a wake-up. io_uring can remove each of them:');
-        L.quote('When this flag is specified, a kernel thread is created to perform submission queue polling. An io_uring instance configured in this way enables an application to issue I/O without ever context switching into the kernel.', { cite: 'io_uring_setup(2), IORING_SETUP_SQPOLL', label: 'Specification', src: ['io_uring_setup(2)', 'https://man7.org/linux/man-pages/man2/io_uring_setup.2.html'] });
-        L.quote('Perform busy-waiting for an I/O completion, as opposed to getting notifications via an asynchronous IRQ (Interrupt Request). The file system (if any) and block device must support polling in order for this to work.', { cite: 'io_uring_setup(2), IORING_SETUP_IOPOLL', label: 'Specification' });
-        L.quote('The buffers associated with the iovecs will be locked in memory and charged against the user\'s RLIMIT_MEMLOCK resource limit.', { cite: 'io_uring_register(2), IORING_REGISTER_BUFFERS', label: 'Specification', src: ['io_uring_register(2)', 'https://man7.org/linux/man-pages/man2/io_uring_register.2.html'] });
+        L.quote('When this flag is specified, a kernel thread is created to perform submission queue polling. An io_uring instance configured in this way enables an application to issue I/O without ever context switching into the kernel.', { cite: 'io_uring_setup(2), IORING_SETUP_SQPOLL', label: 'Linux source', src: ['io_uring_setup(2)', 'https://man7.org/linux/man-pages/man2/io_uring_setup.2.html'] });
+        L.quote('Perform busy-waiting for an I/O completion, as opposed to getting notifications via an asynchronous IRQ (Interrupt Request). The file system (if any) and block device must support polling in order for this to work.', { cite: 'io_uring_setup(2), IORING_SETUP_IOPOLL', label: 'Linux source' });
+        L.quote('The buffers associated with the iovecs will be locked in memory and charged against the user\'s RLIMIT_MEMLOCK resource limit.', { cite: 'io_uring_register(2), IORING_REGISTER_BUFFERS', label: 'Linux source', src: ['io_uring_register(2)', 'https://man7.org/linux/man-pages/man2/io_uring_register.2.html'] });
         L.table(['Option', 'Removes', 'Costs'], [
           ['SQPOLL', 'the system call per submission', 'a kernel thread busy polling the ring'],
           ['IOPOLL', 'the interrupt and the wake-up', 'a CPU polling the device; vda has no poll queues (io_poll = 0)'],
