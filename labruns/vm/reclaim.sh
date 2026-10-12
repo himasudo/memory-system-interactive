@@ -19,7 +19,7 @@ mkdir -p $CG
 echo $((64 << 20)) > $CG/memory.limit_in_bytes
 dd if=/dev/urandom of=$FILE bs=1M count=256 2>/dev/null
 dd if=/dev/urandom of=$SMALL bs=1M count=16 2>/dev/null
-sync; echo 1 > /proc/sys/vm/drop_caches
+python3 "$(dirname "$0")/../common/evict_file_cache.py" "$SMALL" "$FILE" || exit 1
 
 echo '$ grep -E "^(MemTotal|MemFree|Active|Inactive|Unevictable|SwapTotal)" /proc/meminfo'
 grep -E "^(MemTotal|MemFree|Active|Inactive|Unevictable|SwapTotal)" /proc/meminfo
