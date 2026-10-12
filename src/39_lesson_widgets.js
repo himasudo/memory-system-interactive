@@ -92,8 +92,30 @@
     [1, 'R/W', 'writes allowed'],
     [0, 'P', 'present: the entry is valid']
   ];
+  /* Intel 64 4-level paging. MAXPHYADDR comes from the guest's CPUID, not the
+     model name: machine A reports 46 bits; machine B reports 52. Validate only
+     present entries, because the remaining bits of a non-present entry are
+     available to software. See Intel SDM Vol. 3A, 4-level paging entry formats. */
+  function validatePte(e, level, maxphyaddr) {
+    if ((e & 1n) === 0n) return [];
+    if (!Number.isInteger(maxphyaddr) || maxphyaddr < 36 || maxphyaddr > 52)
+      throw new Error('Unsupported MAXPHYADDR');
+    var issues = [];
+    var reservedAddress = ((1n << 52n) - 1n) & ~((1n << BigInt(maxphyaddr)) - 1n);
+    if (e & reservedAddress)
+      issues.push('Physical-address bits 51:' + maxphyaddr + ' must be zero for MAXPHYADDR=' + maxphyaddr + '.');
+    var ps = !!(e & (1n << 7n));
+    if (level === 'pml4' && ps)
+      issues.push('Bit 7 is reserved in a PML4 entry.');
+    if (level === 'pd' && ps && (e & (((1n << 21n) - 1n) & ~((1n << 13n) - 1n))))
+      issues.push('Bits 20:13 must be zero in a PDE mapping a 2 MiB page (bit 12 is PAT).');
+    if (level === 'pdpt' && ps && (e & (((1n << 30n) - 1n) & ~((1n << 13n) - 1n))))
+      issues.push('Bits 29:13 must be zero in a PDPTE mapping a 1 GiB page (bit 12 is PAT).');
+    return issues;
+  }
   function pteDecoder(el, opts) {
     opts = opts || {};
+    var maxphyaddr = opts.maxphyaddr === undefined ? 46 : opts.maxphyaddr; // Machine A's measured configuration
     var form = h('div', { 'class': 'lx-form' }, el);
     var i = field(form, 'Entry (64 bits, hex)', opts.value || '0x8000000129b49067', { grow: true });
     var lvl = select(form, 'Level', [['pt', 'PT (maps a 4 KiB page)'], ['pd', 'PD'], ['pdpt', 'PDPT'], ['pml4', 'PML4']], opts.level || 'pt');
@@ -115,12 +137,15 @@
       h('div', null, out, bitsHTML(fields, true));
       var present = e & 1n;
       var lines = [];
-      if (!present) lines.push('<b>P = 0: not present.</b> The CPU ignores every other bit and the walk stops with a page fault. (Linux may keep its own data in those bits, for example where a swapped-out page went.)');
+      var issues = validatePte(e, lvl.value, maxphyaddr);
+      if (issues.length) {
+        lines.push('<b>Invalid present entry (MAXPHYADDR=' + maxphyaddr + ').</b> A translation using this entry raises #PF with RSVD=1, rather than mapping a page.');
+        issues.forEach(function (issue) { lines.push(issue); });
+      } else if (!present) lines.push('<b>P = 0: not present.</b> The CPU ignores every other bit and the walk stops with a page fault. (Linux may keep its own data in those bits, for example where a swapped-out page went.)');
       else {
         var ps = (e >> 7n) & 1n, isLeaf = lvl.value === 'pt' || ((lvl.value === 'pd' || lvl.value === 'pdpt') && ps);
         var addr = e & 0x000ffffffffff000n;
-        if (lvl.value === 'pml4' && ps) lines.push('<b>Bit 7 must be 0 in a PML4 entry</b> (there are no 512 GiB pages); the CPU reports a reserved-bit page fault.');
-        else if (isLeaf) {
+        if (isLeaf) {
           var size = lvl.value === 'pt' ? '4 KiB' : lvl.value === 'pd' ? '2 MiB' : '1 GiB';
           lines.push('<b>Maps a ' + size + ' page</b> starting at physical address ' + hx(lvl.value === 'pt' ? addr : addr & ~((lvl.value === 'pd' ? 1n << 21n : 1n << 30n) - 1n)) + (lvl.value === 'pt' ? ' (PFN ' + hx(addr >> 12n) + ')' : '') + '.');
           if (lvl.value === 'pt' && ps) lines.push('In a PT entry bit 7 is not PS: it is the PAT bit, part of the memory type.');
@@ -593,5 +618,5 @@
     reset();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim, buddysim: buddysim, lrusim: lrusim, walk2d: walk2d, pcielink: pcielink, barsize: barsize, ringsim: ringsim };
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, validatePte: validatePte, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim, buddysim: buddysim, lrusim: lrusim, walk2d: walk2d, pcielink: pcielink, barsize: barsize, ringsim: ringsim };
 })();
