@@ -20,7 +20,7 @@
   d('gpf', '#GP (general protection)', 'Exception 13: the CPU refused an instruction for breaking a rule, such as using a non-canonical address. It is a different exception from a page fault.');
   d('khalf', 'user half, kernel half', 'The two canonical ranges of a 48-bit address space: 0 to 0x00007fffffffffff for the process, 0xffff800000000000 and up for the kernel, which is the same in every process.');
   d('directmap', 'direct map', 'A range of the kernel half that maps all of RAM at one fixed offset (0xffff888000000000 unless boot-time randomization moves it), so the kernel can reach any frame by adding that offset.');
-  d('vmpte', 'VmPTE', 'A line in /proc/<pid>/status: kilobytes of page tables the process uses, not counting its top-level table.');
+  d('vmpte', 'VmPTE', 'A line in /proc/&lt;pid&gt;/status: kilobytes of page tables the process uses, not counting its top-level table.');
 
   var P = App.P;
 

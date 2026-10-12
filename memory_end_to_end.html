@@ -2729,7 +2729,7 @@ svg .actb {
 .lx-code .ln-cmd{color:var(--tx)}
 .lx-code .ln-prompt{color:var(--act);user-select:none}
 .lx-code.lang-out .ln:not(.ln-cmd):not(.ln-com){color:var(--tx2)}
-.lx-code mark,.lx-quote mark{background:var(--actbg);color:var(--act);border-radius:3px;padding:0 2px}
+.lx-code mark,.lx-quote mark{background:var(--actbg);color:var(--act);border-radius:3px;padding:0;box-shadow:0 0 0 2px var(--actbg)}
 .lx-cap{padding:9px 14px 11px;font-size:13px;line-height:1.5;color:var(--tx2);border-top:1px solid var(--bd)}
 .lx-src{padding:8px 14px 10px;font-size:12px;color:var(--tx3);border-top:1px solid var(--bd)}
 .lx-src a{color:var(--a4)}
@@ -2764,6 +2764,8 @@ svg .actb {
 .lx-bit.tone-mute{opacity:.62}
 .lx-bit.hot{border-color:var(--act);box-shadow:0 0 0 1px var(--act) inset;background:var(--actbg)}
 .lx-bits .lx-cap{margin:12px -14px -14px}
+/* dense strips (a whole 64-bit entry) stay on one row on wide screens; long names wrap inside their box */
+@media (min-width:721px){.lx-bits.dense .lx-bits-strip{flex-wrap:nowrap;overflow-x:auto}.lx-bits.dense .lx-bit{flex-basis:0;min-width:auto}}
 
 /* chains of boxes */
 .lx-chain{padding:14px}
@@ -21412,7 +21414,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
   d('gpf', '#GP (general protection)', 'Exception 13: the CPU refused an instruction for breaking a rule, such as using a non-canonical address. It is a different exception from a page fault.');
   d('khalf', 'user half, kernel half', 'The two canonical ranges of a 48-bit address space: 0 to 0x00007fffffffffff for the process, 0xffff800000000000 and up for the kernel, which is the same in every process.');
   d('directmap', 'direct map', 'A range of the kernel half that maps all of RAM at one fixed offset (0xffff888000000000 unless boot-time randomization moves it), so the kernel can reach any frame by adding that offset.');
-  d('vmpte', 'VmPTE', 'A line in /proc/<pid>/status: kilobytes of page tables the process uses, not counting its top-level table.');
+  d('vmpte', 'VmPTE', 'A line in /proc/&lt;pid&gt;/status: kilobytes of page tables the process uses, not counting its top-level table.');
 
   var P = App.P;
 
