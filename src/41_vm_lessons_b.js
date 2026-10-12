@@ -269,7 +269,7 @@
         L.p('The walker also caches upper-level entries, so a miss often reads only the PT entry instead of all four.', ['pwc']);
         L.p('AMD describes all three for one of its cores:');
         L.quote('The fully-associative L1 data TLB (DTLB) provides 64 entries that hold 4-Kbyte, 2-Mbyte, or 1-Gbyte page entries.\n…\nThe L2 data TLB provides a unified 12-way set-associative L2 data TLB with 1536 entries capable of holding 4-Kbyte pages, 2-Mbyte pages, and page-directory entries (PDEs) used to speed up table walks, and 1-Gbyte are not held in the L2 data TLB; they are only held in the L1 data TLB.\n…\nIn addition to the PDE storage in the L2 data TLB, the table walker includes a 64-entry Page Directory Cache (PDC) which holds page-map-level-4 entries (PML4Es) and page-directory-pointer entries (PDPEs) to speed up table walks.', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723 rev. 3.01, §2.7.1–2.7.3 (excerpt)', label: 'Vendor docs', src: ['AMD documentation portal: pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'] });
-        L.p('Sizes differ between cores and grow with each generation, but the shape is the same everywhere: a small L1 TLB, a larger L2 TLB, and caches of upper-level entries.');
+        L.p('Sizes differ between cores and grow with each generation, but the shape is the same everywhere: a small L1 TLB, a larger L2 TLB, and caches of upper-level entries. <a href="#xlate/depth">The lab</a> lists the sizes in current AMD, Intel and Arm cores.');
       } },
       { id: 'reach', title: 'Reach', body: function (L) {
         L.p('How much memory can a program use without a TLB miss? Entries × page size. That product is the TLB’s reach.', ['reach']);

@@ -243,7 +243,7 @@
       'ASLR moves the starting points at every run; the order of regions stays.',
       'Only canonical addresses are translated. The user half differs per process; the kernel half is shared but kernel-only.'
     ],
-    sources: [['proc_pid_maps(5)', 'https://man7.org/linux/man-pages/man5/proc_pid_maps.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'], ['Intel SDM Vol. 1 (rev. 093), §3.3.7.1 “Canonical addressing”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['proc_pid_maps(5)', 'https://man7.org/linux/man-pages/man5/proc_pid_maps.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'], ['Intel SDM Vol. 1 (rev. 093), §3.3.7.1 “Canonical addressing”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['QEMU: Icelake-Server CPU model, from Intel (5-level paging, server only)', 'https://qemu.googlesource.com/qemu/+/8a11c62da9146dd89aee98947e6bd831e65a970d'], ['QEMU: EPYC-Genoa (Zen 4) CPU model, from AMD (la57)', 'https://qemu.googlesource.com/qemu/+/166b1741884dd4fd7090b753cd7333868457a29b']]
   });
 
   /* ---------- III.04 ---------- */
