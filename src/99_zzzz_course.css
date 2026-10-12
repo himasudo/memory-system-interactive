@@ -158,7 +158,7 @@
 .lx-bit.hot{border-color:var(--act);box-shadow:0 0 0 1px var(--act) inset;background:var(--actbg)}
 .lx-bits .lx-cap{margin:12px -14px -14px}
 /* dense strips (a whole 64-bit entry) stay on one row on wide screens; long names wrap inside their box */
-@media (min-width:721px){.lx-bits.dense .lx-bits-strip{flex-wrap:nowrap;overflow-x:auto}.lx-bits.dense .lx-bit{flex-basis:0;min-width:auto}}
+@media (min-width:721px){.lx-bits.dense .lx-bits-strip{flex-wrap:nowrap;overflow-x:auto;padding:1px}.lx-bits.dense .lx-bit{flex-basis:0;min-width:auto}}
 
 /* chains of boxes */
 .lx-chain{padding:14px}

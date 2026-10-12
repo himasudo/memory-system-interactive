@@ -13,4 +13,6 @@ cd "$bin"
 ./hugetlb > "$here/out-b/hugetlb.txt"
 taskset -c 0 ./chase vipt > "$here/out-b/vipt.txt"
 sh "$here/facts.sh" > "$here/out-b/facts.txt" 2>&1
+{ printf '%s\n' '$ grep -o -w -E "invlpgb|pcid|invpcid|pti" /proc/cpuinfo | sort -u | tr "\n" " "'
+  grep -o -w -E "invlpgb|pcid|invpcid|pti" /proc/cpuinfo | sort -u | tr '\n' ' '; echo; } > "$here/out-b/flags.txt"
 echo done

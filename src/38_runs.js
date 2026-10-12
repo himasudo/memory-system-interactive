@@ -1,7 +1,8 @@
 /* ======================= lab runs: real outputs quoted by the lessons =======================
-   Every excerpt names the file under labruns/ it was taken from. tests/runs.test.cjs checks that
-   each quoted line (⟦highlight⟧ marks removed, lines starting with "#" or "…" skipped) appears in
-   that file, so a lesson can only quote what a program really printed. */
+   Every excerpt names the file under labruns/ it was taken from, and the machine it ran on
+   (machine: 'b'; machine A when absent). tests/runs.test.cjs checks that each quoted line
+   (⟦highlight⟧ marks removed; a line starting with "…" marks lines left out) appears in that
+   file, so a lesson can only quote what a program really printed. */
 var LabRuns = (function () {
   'use strict';
   var R = {
@@ -222,6 +223,92 @@ var LabRuns = (function () {
       file: 'vm/out-b/facts.txt', machine: 'b',
       what: 'The L1 data cache, as machine B’s CPU reports it (facts.sh).',
       lines: ['level:1', 'type:Data', 'size:⟦48K⟧', 'ways_of_associativity:⟦12⟧', 'number_of_sets:64', 'coherency_line_size:64']
+    },
+    /* ---- lesson 11: switching address spaces ---- */
+    'pcid.runs': {
+      file: 'vm/out/pcid.txt',
+      what: 'pcid.c: two processes on CPU 0 pass one byte back and forth 1000 times through two pipes. count_switch.py reads the tlb_flush trace event that follows each switch between the two. Four runs.',
+      lines: [
+        'parent 2229, child 2230: 1000 round trips on CPU 0', 'context switches between the two processes: 2000', '  CR3 loads at those switches that flushed the TLB: ⟦1⟧', '  CR3 loads at those switches that kept the TLB:    ⟦1999⟧',
+        'parent 2232, child 2233: 1000 round trips on CPU 0', 'context switches between the two processes: 2000', '  CR3 loads at those switches that flushed the TLB: 1', '  CR3 loads at those switches that kept the TLB:    1999',
+        'parent 2235, child 2236: 1000 round trips on CPU 0', 'context switches between the two processes: 2002', '  CR3 loads at those switches that flushed the TLB: 1', '  CR3 loads at those switches that kept the TLB:    2001',
+        'parent 2238, child 2239: 1000 round trips on CPU 0', 'context switches between the two processes: 2000', '  CR3 loads at those switches that flushed the TLB: 1', '  CR3 loads at those switches that kept the TLB:    1999'
+      ]
+    },
+    /* ---- lesson 12: TLB shootdowns ---- */
+    'shoot.run1': {
+      file: 'vm/out/shoot.txt',
+      what: 'shoot.c: 1000 times on CPU 0, map one page, store to it, unmap it. First with one thread, then with a second thread of the same process spinning on CPU 1. tlb_flush events are counted by CPU and reason; /proc/interrupts gives the TLB shootdown interrupts each CPU received.',
+      lines: [
+        '### run 1 (taskset -c 0 ./shoot)',
+        'ONE THREAD on CPU0, 1000 x (mmap, store, munmap):', '  CPU0  local MM shootdown     ⟦1000⟧', '  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 ⟦+0⟧',
+        'TWO THREADS (the second spinning on CPU1), 1000 x (mmap, store, munmap) on CPU0:', '  CPU0  flush on task switch   2', '  CPU0  local MM shootdown     1000', '  CPU0  remote IPI send        ⟦1000⟧',
+        '  CPU1  flush on task switch   5', '  CPU1  remote shootdown       999', '  CPU1  local MM shootdown     1', '  CPU1  remote IPI send        1',
+        '  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 ⟦+999⟧'
+      ]
+    },
+    'shoot.runs23': {
+      file: 'vm/out/shoot.txt',
+      what: 'shoot.c, runs 2 and 3: the two-thread half only.',
+      lines: [
+        '### run 2 (taskset -c 0 ./shoot)', '…', '  CPU0  remote IPI send        1000', '  CPU1  flush on task switch   5', '  CPU1  remote shootdown       988', '  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 ⟦+989⟧',
+        '### run 3 (taskset -c 0 ./shoot)', '…', '  CPU0  remote IPI send        1000', '  CPU1  remote shootdown       1000', '  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 ⟦+1000⟧'
+      ]
+    },
+    'abit.v': {
+      file: 'vm/out/abit.txt',
+      what: 'abit.c: 16 pages (64 kB). After each step, smaps reports Referenced: the kB of the region whose accessed bit is set.',
+      lines: [
+        'after mmap                                Referenced  0 kB', 'after one store per page                  Referenced 64 kB', 'after writing 1 to clear_refs             Referenced  0 kB',
+        'after one load per page                   Referenced  ⟦0 kB⟧', 'after mprotect R, then RW (TLB flushed)   Referenced  0 kB', 'after one load per page                   Referenced ⟦64 kB⟧'
+      ]
+    },
+    'abit.20': {
+      file: 'vm/out/abit.txt',
+      what: 'abit.c, 20 more runs: Referenced (kB) after the reload, first after clear_refs, then after the flush.',
+      lines: ['# 20 runs: Referenced after the reload (kB), first after clear_refs, then after the flush', '# after clear_refs: 4 4 4 4 4 0 8 8 8 0 0 0 0 0 0 0 0 0 0 0', '# after the flush:  64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64']
+    },
+    'flags.b': {
+      file: 'vm/out-b/flags.txt', machine: 'b',
+      what: 'Machine B: does the CPU report INVLPGB (broadcast TLB invalidation), PCIDs, INVPCID, and is page-table isolation (pti) on?',
+      lines: ['$ grep -o -w -E "invlpgb|pcid|invpcid|pti" /proc/cpuinfo | sort -u | tr "\\n" " "', 'invpcid pcid']
+    },
+    /* ---- lesson 13: page faults ---- */
+    'story.slot254': {
+      file: 'vm/out/story.txt',
+      what: 'The main run, before the mmap: the program’s own mappings inside the 512 GiB that PML4 entry 254 covers.',
+      lines: ['== mappings in PML4 slot 254 (0x7f0000000000-0x7f7fffffffff)', '  ⟦(none)⟧']
+    },
+    'story.fault1': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace event for the first store (event page_fault_user).',
+      lines: ['# == store to page 0: p[0xd4e] = 1', 'page_fault_user: address=⟦0x7f3a1b2c3d4e⟧ ip=⟦0x55c5ee6c7e97⟧ error_code=⟦0x6⟧']
+    },
+    'story.text': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: the line of /proc/self/maps that holds the program’s code.',
+      lines: ['  ⟦55c5ee6c7000⟧-55c5ee6c9000 r-xp ⟦00001000⟧ fe:00 894845                     /home/lab/story']
+    },
+    'err.codes': {
+      file: 'vm/out/errcodes.txt',
+      what: 'errcodes.c: one access of each kind. A SIGSEGV handler prints the exception number (trap), the error code and si_code; “no signal” means the kernel fixed the fault and the program went on.',
+      lines: [
+        'read  an unmapped user address           trap=14 err=0x4   si_code=SEGV_MAPERR', 'write an unmapped user address           trap=14 err=0x6   si_code=SEGV_MAPERR',
+        'write a PROT_READ page, never touched    trap=14 err=0x6   si_code=SEGV_ACCERR', 'read  a PROT_READ page                   no signal',
+        'write that page after the read           trap=14 err=0x7   si_code=SEGV_ACCERR', 'read  a PROT_NONE page (was written)     trap=14 err=0x4   si_code=SEGV_ACCERR',
+        'call into a PROT_READ|PROT_WRITE page    trap=14 err=0x15  si_code=SEGV_ACCERR', 'read  0xffff888000000000 (kernel half)   trap=14 err=0x5   si_code=SEGV_MAPERR',
+        'write 0xffff888000000000 (kernel half)   trap=14 err=0x7   si_code=SEGV_MAPERR', 'read  0xffffffff81000000 (kernel code)   trap=14 err=0x5   si_code=SEGV_MAPERR',
+        'read  0x0000800000000000 (non-canonical) trap=13 err=0x0   si_code=SI_KERNEL'
+      ]
+    },
+    'err.trace': {
+      file: 'vm/out/errcodes.trace.txt',
+      what: 'errcodes.c: the kernel’s page_fault_user event for each access. It fires before the kernel decides what to do.',
+      lines: [
+        '# == read  a PROT_READ page', 'page_fault_user: address=0x7f18f5209000 ip=0x559cd58d8702 error_code=⟦0x4⟧',
+        '# == write that page after the read', 'page_fault_user: address=0x7f18f5209000 ip=0x559cd58d875b error_code=⟦0x7⟧',
+        '# == call into a PROT_READ|PROT_WRITE page', 'page_fault_user: address=0x7f18f5206000 ip=⟦0x7f18f5206000⟧ error_code=0x15'
+      ]
     },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',

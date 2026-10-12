@@ -267,5 +267,64 @@
     run();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom };
+  /* ---- 7. a small TLB across context switches, with and without PCIDs ----
+     Two processes take turns on one CPU. In each time slice the running process touches its 3
+     pages and one kernel page (a system call). Without PCIDs, every CR3 load drops all non-global
+     entries; with PCIDs, entries are tagged with their process and survive. */
+  function tlbsim(el, opts) {
+    opts = opts || {};
+    var N = 8;
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var chk = h('div', { 'class': 'lx-checks' }, form);
+    function box(label, on) { var l = h('label', null, chk); var c = h('input', { type: 'checkbox', 'aria-label': label }, l); c.checked = on; h('span', null, l, label); return c; }
+    var cP = box('PCIDs on', opts.pcid !== false), cG = box('kernel page global (G = 1)', opts.global !== false);
+    var bar = h('div', { 'class': 'lx-stepbar' }, el);
+    var bNext = h('button', { type: 'button', 'class': 'pri' }, bar, 'next time slice →');
+    var bRun = h('button', { type: 'button' }, bar, 'run 10 slices');
+    var bReset = h('button', { type: 'button' }, bar, 'reset');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    var tlb, slices, clock;
+    function reset() { tlb = []; slices = []; clock = 0; render(); }
+    function slice() {
+      var k = slices.length, proc = k % 2 ? 'B' : 'A', pcid = k % 2 ? 2 : 1, misses = 0, dropped = 0;
+      if (k > 0 && !cP.checked) { var before = tlb.length; tlb = tlb.filter(function (e) { return e.g; }); dropped = before - tlb.length; }
+      [proc + '0', proc + '1', proc + '2', 'K'].forEach(function (pg) {
+        clock++;
+        var g = pg === 'K' && cG.checked;
+        var hit = tlb.filter(function (e) { return e.page === pg && (e.g || !cP.checked || e.pcid === pcid); })[0];
+        if (hit) { hit.used = clock; return; }
+        misses++;
+        if (tlb.length >= N) { tlb.sort(function (a, b) { return a.used - b.used; }); tlb.shift(); }
+        tlb.push({ page: pg, pcid: g ? 0 : (cP.checked ? pcid : 0), g: g, used: clock });
+      });
+      slices.push({ proc: proc, misses: misses, dropped: dropped, first: k === 0 });
+    }
+    function render() {
+      out.innerHTML = '';
+      var slots = tlb.slice().sort(function (a, b) { return a.page < b.page ? -1 : a.page > b.page ? 1 : a.pcid - b.pcid; });
+      var fields = [];
+      for (var i = 0; i < N; i++) {
+        var e = slots[i];
+        if (!e) { fields.push({ bits: 'slot ' + i, val: '—', name: 'empty', tone: 'mute' }); continue; }
+        fields.push({ bits: 'slot ' + i, val: e.page, name: e.g ? 'global' : cP.checked ? 'PCID ' + e.pcid : 'no tag', tone: e.page === 'K' ? 'a2' : e.page.charAt(0) === 'A' ? 'a1' : 'a4' });
+      }
+      h('div', null, out, bitsHTML(fields, true));
+      if (!slices.length) { h('p', { 'class': 'lx-msg' }, out, 'The TLB is empty. Press <b>next time slice</b>: process A runs first.'); return; }
+      var rows = slices.slice(-6).map(function (x, j) {
+        var n = slices.length - Math.min(6, slices.length) + j + 1;
+        var cr3 = x.first ? 'first load' : cP.checked ? 'kept (new PCID)' : x.dropped ? 'dropped ' + x.dropped + ' entries' : 'nothing to drop';
+        return '<tr><td>' + n + '</td><td>' + x.proc + '</td><td>' + cr3 + '</td><td>' + x.misses + ' of 4</td></tr>';
+      }).join('');
+      h('div', { 'class': 'lx-table' }, out, '<div class="lx-table-wrap"><table class="mono-cells"><thead><tr><th>slice</th><th>process</th><th>CR3 load</th><th>TLB misses</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
+      var total = slices.reduce(function (a, x) { return a + x.misses; }, 0), later = slices.slice(2), avg = later.length ? later.reduce(function (a, x) { return a + x.misses; }, 0) / later.length : null;
+      h('p', { 'class': 'lx-msg' }, out, slices.length + ' slices, ' + total + ' misses' + (avg === null ? '.' : '. After both processes have run once: <b>' + (Math.round(avg * 10) / 10) + ' misses per slice</b>.'));
+    }
+    bNext.onclick = function () { slice(); render(); };
+    bRun.onclick = function () { for (var i = 0; i < 10; i++) slice(); render(); };
+    bReset.onclick = reset;
+    cP.addEventListener('change', reset); cG.addEventListener('change', reset);
+    reset();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim };
 })();

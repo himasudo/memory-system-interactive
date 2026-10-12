@@ -11,6 +11,10 @@
   d('khugepaged', 'khugepaged', 'A kernel thread that scans memory and replaces runs of 512 small pages with one huge page when it can.');
   d('cpuid', 'CPUID', 'The x86 instruction that reports the processor’s model, features and cache sizes. In a virtual machine, the hypervisor decides what it returns.');
   d('valias', 'alias', 'Two different virtual addresses that map the same physical frame.');
+  d('ctxsw', 'context switch', 'The kernel stopping one thread on a CPU and starting another. If the two belong to different processes, it also loads the next process’s top table into CR3.');
+  d('ipi', 'interprocessor interrupt (IPI)', 'An interrupt one CPU sends to another, for example to ask it to flush its TLB. Linux counts those it receives for TLB flushes as “TLB shootdowns” in /proc/interrupts.');
+  d('lazytlb', 'lazy TLB mode', 'When a CPU switches to a kernel thread, which has no user half of its own, Linux keeps the previous process’s tables loaded instead of writing CR3. TLB shootdowns skip such a CPU; it flushes when it next switches to a process.');
+  d('kpti', 'KPTI (page-table isolation)', 'Linux’s defence against Meltdown: each process gets a second top table that maps almost none of the kernel, used while user code runs. Every entry into the kernel switches CR3 to the full table and back.');
 
   var P = App.P;
   var SRC_THP = ['Linux: transparent hugepage support', 'https://docs.kernel.org/admin-guide/mm/transhuge.html'];
@@ -239,4 +243,161 @@
     ],
     sources: [SRC_AMD17, ['AMD, Zen 5 at Hot Chips 2024', 'https://www.hc2024.hotchips.org/assets/program/conference/day2/24_HC2024.AMD.Cohen.Subramony.final.pdf'], ['Chips and Cheese, Golden Cove’s caches', 'https://chipsandcheese.com/p/going-armchair-quarterback-on-golden-coves-caches']]
   });
+  /* ---------- III.11 ---------- */
+  App.lesson({
+    id: 'vm-switch', short: 'Switching address spaces', title: 'Switching address spaces: CR3, PCIDs and KPTI',
+    lede: 'A context switch loads a new CR3. Tags on the TLB entries decide whether the next process starts with an empty TLB.',
+    know: ['CR3 holds the physical address of the current top table ([[ch:vm-levels]]).', 'A TLB entry is a finished translation, and it can carry a process tag ([[ch:vm-tlb]]).', 'Bit 8 of an entry, G, marks a translation as global ([[ch:vm-pte]]).'],
+    learn: ['Say what a CR3 write does to the TLB, with and without PCIDs', 'Follow how Linux picks a PCID at every context switch', 'Count TLB flushes at real context switches in a kernel trace', 'Explain what KPTI changed after Meltdown, and why PCIDs keep it affordable'],
+    sections: [
+      { id: 'cr3', title: 'A new process, a new CR3', body: function (L) {
+        L.p('Two processes can use the same virtual address for different frames. When the kernel switches a CPU from one process to the other, it writes the next process’s top-table address into CR3.', ['ctxsw']);
+        L.p('The TLB still holds the previous process’s translations. Unless the CPU can tell them apart from the new process’s, every one of them is now wrong.');
+        L.chain([
+          { k: 'process A runs', v: 'TLB fills', d: 'with A’s translations' },
+          { k: 'context switch', v: 'write CR3', d: 'without tags: every non-global entry is removed', hot: true },
+          { k: 'process B runs', v: 'TLB misses', d: 'every page B touches walks again' }
+        ], { cap: 'A context switch on a CPU without process tags.' });
+        L.p('Entries marked global (G = 1) survive a CR3 write, if CR4.PGE is on. The kernel half is the same in every process, so Linux marks kernel mappings global:', ['pteG', 'cr4']);
+        L.quote('/* Enable PGE if available */\n__supported_pte_mask &= ~_PAGE_GLOBAL;\nif (boot_cpu_has(X86_FEATURE_PGE)) {\n        cr4_set_bits_and_update_boot(X86_CR4_PGE);\n        __supported_pte_mask |= _PAGE_GLOBAL;\n}\n…\n/* Except when with PTI where the kernel is mostly non-Global: */', { cite: 'arch/x86/mm/init.c, probe_page_size_mask(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('So a system call after a switch still finds the kernel’s translations. The user half is the expensive part, and the next section tags it.');
+      } },
+      { id: 'pcid', title: 'Tag the entries: PCIDs', body: function (L) {
+        L.p('A PCID is a 12-bit number stored with every TLB entry: the address space that made it. With CR4.PCIDE = 1, the low 12 bits of CR3 hold the current PCID.', ['pcid']);
+        L.bits([
+          { bits: '63', val: 'keep', name: '1 = do not flush', tone: 'a2' },
+          { bits: '62:52', val: '0', name: 'unused here', tone: 'mute' },
+          { bits: '51:12', val: 'top table', name: 'frame of the PML4', tone: 'a4', w: 2.4 },
+          { bits: '11:0', val: 'PCID', name: 'tag for new TLB entries', tone: 'a1', w: 1.4 }
+        ], { title: 'CR3 with PCIDs on' });
+        L.quote('If CR4.PCIDE is set (64-bit only), then CR3[11:0] is the address space ID.\n…\nCR3[63] is always read as zero.  If CR4.PCIDE is set, then CR3[63] may be\nwritten as 1 to prevent the write to CR3 from flushing the TLB.', { cite: 'arch/x86/include/asm/processor-flags.h, Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('A lookup hits only an entry whose tag equals the current PCID, or a global one. The other processes’ entries stay in the TLB, unused, until their PCID is loaded again.');
+        L.p('Both lab machines report <code>pcid</code> and <code>invpcid</code> ([[ch:vm-walk]] listed machine A’s flags). The model below lets you switch the tags off and on.');
+        L.try('A TLB across context switches', 'Two processes take turns on one CPU. Each time slice, the running process touches its three pages (A0–A2 or B0–B2) and makes one system call, which uses a kernel page, K. The TLB has 8 entries.', function (el) { LW().tlbsim(el, {}); });
+      } },
+      { id: 'linux', title: 'How Linux hands out PCIDs', body: function (L) {
+        L.p('12 bits allow 4096 tags, but Linux does not give each process its own. It keeps a short list, per CPU, of the processes that ran there recently:');
+        L.quote('We don\'t use the traditional ASID implementation, where each process/mm gets\nits own ASID and flush/restart when we run out of ASID space.\n\nInstead we have a small per-cpu array of ASIDs and cache the last few mm\'s\nthat came by on this CPU, allowing cheaper switch_mm between processes on\nthis CPU.', { cite: 'arch/x86/mm/tlb.c, Linux v6.18', label: 'Linux source', code: true });
+        L.p('ASID is the general name for such a tag; PCID is x86’s name. The list has six slots, and the PCID written into CR3 is the slot number plus one, because PCID 0 is reserved:');
+        L.quote('#define TLB_NR_DYN_ASIDS\t6\n…\n\treturn asid + 1;', { cite: 'arch/x86/include/asm/tlbflush.h; arch/x86/mm/tlb.c, kern_pcid(), Linux v6.18 (excerpts)', label: 'Linux source', code: true });
+        L.p('At every switch, <code>choose_new_asid()</code> looks for the next process in the six slots. Found, and nothing changed since: keep its entries. Not found: take the next slot in turn, and flush what that slot held.');
+        L.quote('if (ns.need_flush) {\n        …\n        load_new_mm_cr3(next->pgd, ns.asid, new_lam, true);\n\n        trace_tlb_flush(TLB_FLUSH_ON_TASK_SWITCH, TLB_FLUSH_ALL);\n} else {\n        /* The new ASID is already up to date. */\n        load_new_mm_cr3(next->pgd, ns.asid, new_lam, false);\n\n        trace_tlb_flush(TLB_FLUSH_ON_TASK_SWITCH, 0);\n}', { cite: 'arch/x86/mm/tlb.c, switch_mm_irqs_off(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('The last argument of <code>load_new_mm_cr3</code> sets CR3 bit 63 when the entries may stay. The trace event records the choice: TLB_FLUSH_ALL prints as <code>pages:-1</code>, a kept TLB as <code>pages:0</code>.');
+      } },
+      { id: 'measure', title: 'Count it: 2000 switches, one flush', body: function (L) {
+        L.p('Two processes pinned to one CPU pass a byte back and forth through two pipes, 1000 times. Every pass blocks one process and wakes the other: 2000 switches between two address spaces.');
+        L.code('pid_t pid = fork();\nif (pid == 0) {                       /* child  */\n    for (int i = 0; i < 1000; i++) { read(a[0], &c, 1); write(b[1], &c, 1); }\n    _exit(0);\n}\nfor (int i = 0; i < 1000; i++) {      /* parent */\n    write(a[1], &c, 1); read(b[0], &c, 1);\n}', { title: 'labruns/vm/pcid.c (shortened)' });
+        L.p('A script reads the trace and, for every switch between the two, the flush event that followed it:');
+        L.out('pcid.runs');
+        L.p('In every run, exactly one switch flushed: the first switch into the new child, whose address space had no slot yet. All the others kept the TLB.');
+        L.p('Without PCIDs, each of those 2000 switches would have emptied the TLB, and both processes would have walked their tables again for every page they touched.');
+      } },
+      { id: 'kpti', title: 'Meltdown and KPTI', body: function (L) {
+        L.p('In 2018 the Meltdown attack showed that on affected CPUs, user code could read kernel memory through speculative execution, only because the kernel half was mapped, even though its entries had U/S = 0.', ['spec']);
+        L.p('Linux’s answer was page-table isolation. Each process gets a second top table that maps almost none of the kernel, and CR3 switches between the two at every kernel entry and exit:', ['kpti']);
+        L.quote('When the kernel is entered via syscalls, interrupts or exceptions, the page tables are switched to the full "kernel" copy.  When the system switches back to user mode, the user copy is used again.\n…\nMoves to CR3 are on the order of a hundred cycles, and are required at every entry and exit.', { cite: 'Documentation/arch/x86/pti.rst, Linux v6.18 (excerpt)', label: 'Linux source', src: ['Page Table Isolation (PTI)', 'https://docs.kernel.org/arch/x86/pti.html'] });
+        L.p('Two CR3 writes per system call would be ruinous if each emptied the TLB. PCIDs make them cheap: the two tables of a process get two PCIDs that differ only in bit 11.');
+        L.quote('uPCID - [2048 + 1, 2048 + MAX_ASID_AVAILABLE]\n        for KPTI each mm has two address spaces and thus needs two\n        PCID values, but we can still do with a single ASID denomination\n        for each mm. Corresponds to kPCID + 2048.', { cite: 'arch/x86/mm/tlb.c, Linux v6.18', label: 'Linux source', code: true });
+        L.p('The lab machines do not need it. Their CPUs are not affected, and <code>pti</code> is not among their flags, so each process has one top table, as in every lesson so far:');
+        L.out('facts.meltdown');
+        L.out('flags.b');
+        L.p('PML4 entry 272 is the one [[ch:vm-levels]] set aside: the kernel’s memory map reserves it as the “LDT remap for PTI”.');
+        L.note('arm', 'AArch64 tags TLB entries with an ASID of 8 or 16 bits (the CPU reports which), stored in TTBR0_EL1 or TTBR1_EL1 beside the table address. Descriptors carry an nG (not global) bit: entries with nG = 0 match every ASID, as G = 1 does on x86. Linux on arm64 hands out ASIDs from one machine-wide pool rather than per CPU (arch/arm64/mm/context.c).');
+      } }
+    ],
+    check: [
+      { q: 'Without PCIDs, what does writing CR3 do to the TLB?', options: ['Removes every entry except global ones', 'Nothing: the entries are tagged', 'Removes only the kernel’s entries', 'Removes only the entry of the current page'], answer: 0, why: 'With no tag to tell processes apart, every non-global translation might be wrong after the switch.' },
+      { q: 'How many PCIDs does Linux use per CPU for ordinary processes?', options: ['Six slots, reused in turn', '4096, one per process', 'One: PCID 0', 'Two per process, always'], answer: 0, why: 'TLB_NR_DYN_ASIDS = 6; the PCID is the slot number plus one. (With KPTI each slot has a second, user PCID.)' },
+      { q: 'In the measurement, 2000 switches caused one flush. Which switch was it?', options: ['The first switch into the newly forked child', 'The last switch, at exit', 'A switch caused by a timer interrupt', 'The first switch into the parent'], answer: 0, why: 'The child’s address space had no slot on CPU 0, so choose_new_asid() took a slot and flushed it. After that both processes had slots.' },
+      { q: 'With KPTI, why do PCIDs matter so much?', options: ['Every system call writes CR3 twice; with PCIDs those writes keep the TLB', 'KPTI needs more than 4096 processes', 'PCIDs hide the kernel half', 'KPTI stores the PCID in the page tables'], answer: 0, why: 'The user and kernel tables get PCIDs that differ in bit 11, so switching between them need not empty the TLB.' }
+    ],
+    remember: [
+      'A context switch writes CR3. Without PCIDs, that removes every non-global TLB entry.',
+      'A PCID is a 12-bit tag in CR3 bits 11:0. Writing CR3 with bit 63 set keeps the TLB.',
+      'Linux keeps six PCID slots per CPU (PCID = slot + 1). Measured: 2000 switches, 1 flush.',
+      'KPTI gives each process two top tables and switches CR3 at every kernel entry; PCIDs keep that cheap.'
+    ],
+    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: Page Table Isolation', 'https://docs.kernel.org/arch/x86/pti.html'], ['Intel SDM Vol. 3A, §4.10.1 “Process-context identifiers (PCIDs)”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Lipp et al., Meltdown: Reading Kernel Memory from User Space, USENIX Security 2018', 'https://www.usenix.org/conference/usenixsecurity18/presentation/lipp']]
+  });
+
+  /* ---------- III.12 ---------- */
+  App.lesson({
+    id: 'vm-shootdown', short: 'TLB shootdowns', title: 'TLBs are not coherent: shootdowns',
+    lede: 'Caches keep each other up to date; TLBs do not. When the kernel changes an entry, it removes the stale copies itself, and that can mean interrupting other CPUs.',
+    know: ['Every core keeps its own TLB ([[ch:vm-tlb]]).', 'A CR3 write can keep or drop TLB entries, depending on PCIDs ([[ch:vm-switch]]).', 'The CPU sets the A bit when it uses an entry for a walk ([[ch:vm-pte]]).'],
+    learn: ['Say why a page-table change needs an explicit invalidation', 'Name the x86 tools for it: INVLPG, INVPCID and a CR3 write', 'Predict which CPUs Linux interrupts, and read the counts it reports', 'Explain why clearing A bits needs no flush, and what that costs'],
+    sections: [
+      { id: 'stale', title: 'Nobody tells the TLB', body: function (L) {
+        L.p('When a core writes a byte, the cache coherence protocol updates or removes every other cache’s copy of that line ([[ch:share]]). TLBs are outside that protocol.', ['coh']);
+        L.p('A page-table entry is 8 bytes of ordinary memory. The kernel can rewrite it, but a TLB that cached the old translation keeps using the old one.');
+        L.chain([
+          { k: 'kernel', v: 'clears the PTE', d: 'the page is to be reused' },
+          { k: 'a TLB', v: 'still holds it', d: 'accesses still reach the old frame', hot: true },
+          { k: 'kernel', v: 'invalidates', d: 'the entry is gone from that TLB' },
+          { k: 'next access', v: 'walks', d: 'finds P = 0 and faults' }
+        ]);
+        L.p('So whenever the kernel removes a mapping or takes away a permission, it must also invalidate the translation, in every TLB that might hold it, before the frame is reused.');
+      } },
+      { id: 'tools', title: 'Invalidating on x86', body: function (L) {
+        L.p('x86 has three ways to remove translations. All three act only on the CPU that runs them:');
+        L.table(['Instruction', 'Removes', 'Linux uses it for'], [
+          ['INVLPG address', 'the entries for one page, current PCID', 'a few pages changed in the running process'],
+          ['INVPCID', 'one page or every entry of a given PCID, or everything', 'entries of a PCID that is not loaded right now'],
+          ['MOV to CR3', 'all non-global entries of the new PCID (unless bit 63 is set)', 'context switches, and whole-TLB flushes']
+        ], { mono: false });
+        L.p('Linux flushes page by page up to a limit, then the whole TLB of that process. The limit is 33 pages:');
+        L.quote('/*\n * See Documentation/arch/x86/tlb.rst for details.  We choose 33\n * because it is large enough to cover the vast majority (at\n * least 95%) of allocations, and is small enough that we are\n * confident it will not cause too much overhead.  Each single\n * flush is about 100 ns, so this caps the maximum overhead at\n * _about_ 3,000 ns.\n *\n * This is in units of pages.\n */\nunsigned long tlb_single_page_flush_ceiling __read_mostly = 33;', { cite: 'arch/x86/mm/tlb.c, Linux v6.18', label: 'Linux source', code: true });
+        L.p('To reach another CPU, the kernel must make that CPU run one of these instructions. It sends it an interrupt; Linux calls the result a TLB shootdown.', ['ipi']);
+      } },
+      { id: 'who', title: 'Which CPUs get interrupted', body: function (L) {
+        L.p('A program maps one page, stores to it and unmaps it, 1000 times, on CPU 0. First as a single thread, then with a second thread of the same process spinning on CPU 1.');
+        L.code('for (int i = 0; i < 1000; i++) {\n    volatile char *p = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);\n    p[0] = 1;\n    munmap((void *)p, 4096);\n}', { title: 'labruns/vm/shoot.c, loop()' });
+        L.out('shoot.run1');
+        L.p('One thread: 1000 local flushes, no interrupts. No other CPU runs this address space, so only CPU 0’s TLB can hold the translation.');
+        L.p('Two threads: CPU 0 records a remote flush for every munmap, and CPU 1 received 999 interrupts. Linux interrupts only CPUs that have this address space loaded right now, and are not in lazy mode:', ['lazytlb']);
+        L.quote('/* Lazy TLB will get flushed at the next context switch. */\nif (per_cpu(cpu_tlbstate_shared.is_lazy, cpu))\n        return false;\n…\n/* The target mm is loaded, and the CPU is not lazy. */\nif (loaded_mm == info->mm)\n        return true;', { cite: 'arch/x86/mm/tlb.c, should_flush_tlb(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('CPU 1 switched tasks five times during the loop. While it ran something else, an munmap skipped it, and CPU 1 flushed at its next switch instead. The send event is recorded before that decision:');
+        L.quote('Note that there are (and have always been)\ncases in which a remote TLB flush will be traced, but eventually\nwould not happen.', { cite: 'arch/x86/mm/tlb.c, native_flush_tlb_multi(), Linux v6.18', label: 'Linux source', code: true });
+        L.out('shoot.runs23');
+        L.p('Runs 2 and 3 received 989 and 1000 interrupts. The count depends on how often the spinning thread was off its CPU. Each interrupt also makes CPU 0 wait until CPU 1 has flushed.');
+        L.note('why', 'munmap, mprotect and madvise in a multithreaded program cost an interrupt to every CPU running one of its threads. A benchmark that maps and unmaps memory inside its timed loop measures those interrupts too.');
+        L.lab(function (el) { App.VMUI.labs.shootdowns(el); });
+      } },
+      { id: 'abits', title: 'Accessed bits without a flush', body: function (L) {
+        L.p('There is one deliberate exception to the rule. The kernel clears A bits to learn which pages are still in use, and it does not flush the TLB when it does.');
+        L.p('Writing 1 to <code>/proc/self/clear_refs</code> clears the A bits of a process. Then <code>Referenced</code> in smaps shows which pages had A set again:', ['smaps']);
+        L.out('abit.v');
+        L.p('After clear_refs, the program loads all 16 pages, and Referenced stays 0 kB. The translations were still in the TLB, so the CPU never walked the tables and never set A.');
+        L.p('After an mprotect, which flushes, the same loads set A on all 16 pages again: 64 kB. Twenty more runs:');
+        L.out('abit.20');
+        L.p('After clear_refs, at most 8 kB came back (when a few TLB entries had been evicted); after the flush, always 64 kB. The kernel code says why:');
+        L.quote('walk_page_range(mm, 0, -1, &clear_refs_walk_ops, &cp);\nif (type == CLEAR_REFS_SOFT_DIRTY) {\n        mmu_notifier_invalidate_range_end(&range);\n        flush_tlb_mm(mm);', { cite: 'fs/proc/task_mmu.c, clear_refs_write(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.quote('On x86 CPUs, clearing the accessed bit without a TLB flush\ndoesn\'t cause data corruption. [ It could cause incorrect\npage aging and the (mistaken) reclaim of hot pages, but the\nchance of that should be relatively low. ]\n\nSo as a performance optimization don\'t flush the TLB when\nclearing the accessed bit, it will eventually be flushed by\na context switch or a VM operation anyway.', { cite: 'arch/x86/mm/pgtable.c, ptep_clear_flush_young(), Linux v6.18', label: 'Linux source', code: true });
+        L.p('The price is an occasional wrong answer about which pages are in use, the answer [[ch:vm-reclaim]] relies on. In exchange, aging pages never interrupts another CPU.');
+      } },
+      { id: 'broadcast', title: 'Hardware that broadcasts', body: function (L) {
+        L.p('Interrupts are one way to reach other TLBs. AArch64 has invalidation instructions that reach every CPU, with no interrupt at all:');
+        L.quote('dsb(ishst);\nasid = __TLBI_VADDR(0, ASID(mm));\n__tlbi(aside1is, asid);\n__tlbi_user(aside1is, asid);\ndsb(ish);', { cite: 'arch/arm64/include/asm/tlbflush.h, flush_tlb_mm(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('<code>TLBI ASIDE1IS</code> removes every entry with that ASID; IS, Inner Shareable, sends it to all cores. <code>DSB ISH</code> waits until every core has done it.');
+        L.p('AMD added a similar pair to x86, INVLPGB and TLBSYNC. Linux 6.18 uses them where the CPU has them, for processes active on several CPUs at once:');
+        L.quote('Global ASIDs are allocated for multi-threaded processes that are\nactive on multiple CPUs simultaneously, giving each of those\nprocesses the same PCID on every CPU, for use with hardware-assisted\nTLB shootdown on remote CPUs, like AMD INVLPGB or Intel RAR.', { cite: 'arch/x86/mm/tlb.c, Linux v6.18', label: 'Linux source', code: true });
+        L.p('Machine B reports no <code>invlpgb</code> (the flags in [[ch:vm-switch]]), so on the lab machines every remote flush is an interrupt. The comment also names Intel RAR, remote action request, for which this kernel has no code yet.');
+      } }
+    ],
+    check: [
+      { q: 'The kernel clears a PTE on CPU 0 while another thread of the process runs on CPU 1. What must happen before the frame can be reused?', options: ['CPU 1 must invalidate its copy, usually after an interrupt from CPU 0', 'Nothing: TLBs are coherent like caches', 'CPU 1 must flush its L1 cache', 'CPU 1 must wait for its next timer interrupt'], answer: 0, why: 'TLBs are not coherent. CPU 1 could still reach the old frame through its cached translation.' },
+      { q: 'A single-threaded program unmaps a page. How many shootdown interrupts are sent?', options: ['None: only the local TLB can hold the translation', 'One to every CPU in the machine', 'One to every CPU that ever ran the program', 'Exactly one, to CPU 0'], answer: 0, why: 'In the measurement: 1000 local flushes, 0 interrupts received.' },
+      { q: 'Why did CPU 1 receive 989 interrupts for 1000 unmaps in run 2?', options: ['Linux skips CPUs that are not running this address space at that moment', '11 interrupts were lost', 'CPU 1’s TLB was full', 'CPU 0 merged 11 of them'], answer: 0, why: 'should_flush_tlb() returns false for a CPU in lazy mode or with another address space loaded. That CPU flushes at its next switch.' },
+      { q: 'After clear_refs, a program loads every page, but Referenced stays at 0 kB. Why?', options: ['The translations were still in the TLB, so no walk set A again', 'clear_refs made the pages read-only', 'The loads hit in L1, which is not counted', 'Referenced counts only writes'], answer: 0, why: 'A is set during a walk. Without a flush, the cached translations meant no walks.' }
+    ],
+    remember: [
+      'TLBs are not coherent. After changing an entry, the kernel invalidates it: INVLPG, INVPCID or a CR3 write, each on one CPU.',
+      'Other CPUs are reached by interrupt (a TLB shootdown), and only those that have the address space loaded and are not lazy.',
+      'Above 33 pages, Linux flushes the whole TLB of the process instead of page by page.',
+      'Clearing A bits does not flush, so a cached translation hides later use until the next flush.',
+      'Arm (TLBI …IS) and AMD (INVLPGB) can broadcast invalidations in hardware, with no interrupt.'
+    ],
+    sources: [['Linux v6.18: arch/x86/mm/tlb.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/tlb.c'], ['Linux: The TLB (x86)', 'https://docs.kernel.org/arch/x86/tlb.html'], ['Linux v6.18: arch/x86/mm/pgtable.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/pgtable.c'], ['Linux v6.18: arch/arm64/include/asm/tlbflush.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/include/asm/tlbflush.h'], ['Intel SDM Vol. 3A, §4.10.4 “Invalidation of TLBs and paging-structure caches”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+  });
+
 })();

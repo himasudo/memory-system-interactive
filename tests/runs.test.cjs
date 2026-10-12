@@ -19,7 +19,7 @@ test('every quoted line appears in its lab-run file', () => {
     const text = norm(fs.readFileSync(file, 'utf8'));
     for (const line of r.lines) {
       const l = norm(line);
-      if (!l || l.startsWith('#') || l.startsWith('…')) continue;
+      if (!l || l.startsWith('…')) continue; /* a line starting with … marks lines left out */
       assert.ok(text.includes(l), id + ': not found in ' + r.file + ': ' + l);
     }
   }
