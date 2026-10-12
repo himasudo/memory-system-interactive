@@ -48,7 +48,7 @@
   /* The machines the "Lab run" outputs were captured on. Each output names its machine. */
   var MACHINES = {
     a: {name: 'machine A', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses.'},
-    b: {name: 'machine B', text: 'another cloud virtual machine (KVM) running the same Linux 6.18.44 build on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'}
+    b: {name: 'machine B', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'}
   };
   var RUN_MACHINE = MACHINES.a.text;
   function machineName(id){ return (MACHINES[id || 'a'] || MACHINES.a).name; }

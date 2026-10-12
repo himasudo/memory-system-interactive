@@ -316,3 +316,25 @@ svg .dash{stroke-dasharray:4 3}
 .lx-buddy-b .b-range{font:600 10px var(--mono);color:var(--tx3);white-space:nowrap}
 .lx-buddy-b .b-val{font:650 13px var(--mono)}
 .lx-buddy-b .b-name{font-size:11px;color:var(--tx2);white-space:nowrap}
+/* section menu: an inline lab listed under its lesson section */
+.sec-item.sub{padding-left:26px;font-size:13px}
+.sec-item.sub b{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--act)}
+/* long identifiers and expressions in prose may break anywhere rather than widen the page */
+.lx-text p code,.lx-list code,.lx-olist code,.lx-note code,.lx-q code,.lx td code{white-space:normal;overflow-wrap:anywhere}
+/* start page: the course map */
+.course-map{display:grid;gap:12px;margin:4px 0 8px}
+.cm-next{display:grid;gap:4px;padding:16px 18px;border:1px solid color-mix(in srgb,var(--act) 55%,transparent);border-radius:12px;background:var(--actbg);color:var(--tx);text-decoration:none}
+.cm-next:hover{border-color:var(--act)}
+.cm-next .cm-k{font:650 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--act)}
+.cm-next strong{font-size:18px}
+.cm-next span:last-child{color:var(--tx2);font-size:14px}
+.cm-parts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.cm-part{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--sunk);color:var(--tx);text-decoration:none}
+.cm-part:hover{border-color:var(--act)}
+.cm-num{font:650 13px var(--mono);color:var(--act);min-width:26px}
+.cm-body{display:grid;gap:4px;flex:1;min-width:0}
+.cm-body strong{font-size:14.5px}
+.cm-body small{color:var(--tx3);font-size:12.5px}
+.cm-bar{display:block;height:4px;border-radius:2px;background:var(--bd)}
+.cm-bar i{display:block;height:100%;border-radius:2px;background:var(--act)}
+.cm-also{margin:2px 0 0;color:var(--tx2);font-size:14px}

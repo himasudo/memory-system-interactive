@@ -78,7 +78,17 @@ async function main() {
     }
     await route('start');
     const ids = await page.evaluate(() => App.chapters.map((c) => c.id));
-    assert.equal(ids.length, 24);
+    const kinds = await page.evaluate(() => {
+      const lessons = App.Course.lessons;
+      return {
+        chapters: App.chapters.filter((c) => !lessons[c.id] && !/^part-/.test(c.id)).length,
+        parts: App.chapters.filter((c) => /^part-/.test(c.id)).length,
+        lessons: Object.keys(lessons).length
+      };
+    });
+    assert.equal(kinds.chapters, 24);
+    assert.equal(kinds.parts, 7);
+    assert.equal(ids.length, kinds.chapters + kinds.parts + kinds.lessons);
     for (const id of ids)
       await check('desktop route ' + id, async () => {
         await route(id);
@@ -89,12 +99,12 @@ async function main() {
         );
         assert.equal(await page.locator('.ch.show').count(), 1);
       });
-    await check('original routes retain chapter numbers', async () => {
+    await check('original routes keep their place in the course', async () => {
       assert.deepEqual(
         await page.evaluate(() =>
-          ['start', 'map', 'core', 'l1d', 'e2e', 'perf'].map((id) => App.chNum(id))
+          ['start', 'map', 'core', 'l1d', 'e2e', 'perf', 'xlate', 'dev'].map((id) => App.chNum(id))
         ),
-        ['00', '09', '11', '13', '20', '21']
+        ['00', 'II.01', 'II.03', 'IV.01', 'VII.01', 'VII.02', 'III.09', 'VI.12']
       );
     });
     await check('redirect preserves section hash', async () => {
@@ -405,8 +415,8 @@ async function main() {
     await check(
       'VM lifecycle preserves COW values and history cannot mutate the present',
       async () => {
-        await route('xlate/os');
-        const lab = page.locator('#xlate--os');
+        await route('vm-cow/os');
+        const lab = page.locator('#vm-cow--os');
         await lab.getByRole('button', { name: 'COW story', exact: true }).click();
         assert.deepEqual(
           await lab.evaluate((el) => {
@@ -443,8 +453,8 @@ async function main() {
       }
     );
     await check('page-size outcomes and competing page-walk traffic', async () => {
-      await route('xlate/pages');
-      const pages = page.locator('#xlate--pages');
+      await route('vm-huge/pages');
+      const pages = page.locator('#vm-huge--pages');
       assert.equal(await pages.evaluate((el) => el._pageResult.selected.misses), 1);
       await pages.locator('[data-field="Page access pattern"]').selectOption('sparse');
       assert.equal(await pages.evaluate((el) => el._pageResult.selected.misses), 512);
@@ -452,8 +462,8 @@ async function main() {
       assert.equal(await pages.evaluate((el) => el._pageResult.selected.p.pageBytes), 4096);
       await pages.locator('[data-field="Huge mapping outcome"]').selectOption('unavailable');
       assert.equal(await pages.evaluate((el) => el._pageResult.selected), null);
-      await route('xlate/walk-contention');
-      const walks = page.locator('#xlate--walk-contention');
+      await route('vm-tlb/walk-contention');
+      const walks = page.locator('#vm-tlb--walk-contention');
       await walks.locator('[data-field="Background data requests"]').selectOption('0');
       const idle = await walks.evaluate((el) => el._walkResult.tasks.at(-1).translated);
       await walks.locator('[data-field="Background data requests"]').selectOption('64');
@@ -462,8 +472,8 @@ async function main() {
       assert.match(await walks.locator('.cache-state p').textContent(), /Clock 20/);
     });
     await check('shootdown masks, delayed acknowledgements and NUMA migration', async () => {
-      await route('xlate/shootdown');
-      const lab = page.locator('#xlate--shootdown');
+      await route('vm-shootdown/shootdown');
+      const lab = page.locator('#vm-shootdown--shootdown');
       const base = await lab.evaluate((el) => el._shootdownResult.cycles);
       await lab.locator('[data-field="Last remote handler delay"]').selectOption('64');
       assert.ok(await lab.evaluate((el, t) => el._shootdownResult.cycles > t, base));
@@ -483,7 +493,7 @@ async function main() {
         cwd: root,
         stdio: 'pipe'
       });
-      await route('xlate/os');
+      await route('vm-cost/native');
       const input = page.getByLabel('VM observation JSON', { exact: true });
       await input.setInputFiles(fixture);
       await page.waitForFunction(() =>
@@ -552,8 +562,8 @@ async function main() {
       await lab.getByLabel('Inclusion read trace', { exact: true }).fill('9:A');
       await lab.getByRole('button', { name: 'Apply inclusion trace', exact: true }).click();
       assert.match(await lab.locator('[role=status]').textContent(), /thread 0 or 1/);
-      await route('xlate/granules');
-      const granule = page.locator('#xlate--granules');
+      await route('vm-vipt/granules');
+      const granule = page.locator('#vm-vipt--granules');
       await granule
         .locator('[data-field="L1 data cache size (bytes)"]')
         .selectOption('131072');
@@ -705,16 +715,16 @@ async function main() {
           'stores/forwarding',
           'coh/transactions',
           'dram/controller',
-          'xlate/os',
-          'xlate/pages',
-          'xlate/walk-contention',
-          'xlate/shootdown',
+          'vm-cow/os',
+          'vm-huge/pages',
+          'vm-tlb/walk-contention',
+          'vm-shootdown/shootdown',
           'hier/numa',
           'map/chips',
           'stores/litmus',
           'stores/language',
           'hier/inclusion',
-          'xlate/granules',
+          'vm-vipt/granules',
           'perf/compare',
           'gloss'
         ])
@@ -735,12 +745,12 @@ async function main() {
               await page.screenshot({
                 path: path.join(output, 'coherence-' + theme + '-' + width + '.png')
               });
-            if (id === 'xlate/os') {
+            if (id === 'vm-cow/os') {
               await page
-                .locator('#xlate--os')
+                .locator('#vm-cow--os')
                 .getByRole('button', { name: 'COW story', exact: true })
                 .click();
-              await page.locator('#xlate--os .cache-state').scrollIntoViewIfNeeded();
+              await page.locator('#vm-cow--os .cache-state').scrollIntoViewIfNeeded();
               await page.screenshot({
                 path: path.join(output, 'vm-' + theme + '-' + width + '.png')
               });
@@ -759,6 +769,16 @@ async function main() {
       }
     }
     await check('mobile chapter navigation and section menu', async () => {
+      // The sidebar lists the pages of the current part only: open the part first.
+      const part = await page.evaluate(() => 'part-' + App.Course.info.l1d.part.id);
+      await page.locator('#navToggle').click();
+      await page.locator('#nav a[data-id="' + part + '"]').click();
+      await page.waitForFunction(
+        (part) =>
+          document.querySelector('.ch.show')?.id === 'ch-' + part &&
+          !document.body.classList.contains('nav-open'),
+        part
+      );
       await page.locator('#navToggle').click();
       await page.locator('#nav a[data-id=l1d]').click();
       await page.waitForFunction(

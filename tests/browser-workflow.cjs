@@ -94,7 +94,7 @@ async function main() {
     ['perf/measure', '.measurement-results'],
     ['coh/transactions', '.sharing-results'],
     ['dram/controller', '.loaded-results'],
-    ['xlate/os', '.vm-results'],
+    ['vm-cost/native', '.vm-results'],
     ['pref/resources', '.prefetch-results']
   ];
   try {
@@ -463,7 +463,7 @@ async function main() {
           await page.locator('.your-machine').textContent(),
           /VM unavailable in browser test fixture/
         );
-        await route(page, 'xlate/os');
+        await route(page, 'vm-cost/native');
         assert.equal(
           await page.locator('.vm-results .measurement-run-title').count(),
           reference.suites.vm.runs.length

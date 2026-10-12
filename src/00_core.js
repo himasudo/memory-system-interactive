@@ -254,7 +254,14 @@ var App = (function(){
       if (!menu.hidden){ close(); return; }
       menu.innerHTML = '';
       var inLab = false, partLabel = (built[cur] && built[cur].sec._partLabel) || 'Experiments';
+      var lesson = built[cur] && built[cur].sec.querySelector('.lx');
       list().forEach(function(x, i){
+        if (lesson){ /* lessons: their own section numbers; inline labs listed under their section */
+          var sk = x.el.querySelector('.lx-sec-head .lx-sec-k'), lnum = x.lab ? 'Lab' : (sk ? sk.textContent : String(i + 1));
+          var lb = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (x.lab ? ' sub' : '') + (i === idx ? ' cur' : '')}, menu, '<b>' + lnum + '</b><span>' + x.title + '</span>');
+          lb.onclick = function(){ close(); scrollToSection(x.id, true); };
+          return;
+        }
         if (x.lab && !inLab){ inLab = true; h('div', {'class': 'sec-group', role: 'presentation'}, menu, partLabel); }
         var k = x.el.querySelector('.scene-kicker'), num = (k ? k.textContent : String(i + 1).padStart(2, '0')).replace(/^[^0-9]+/, '');
         var b = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (i === idx ? ' cur' : '')}, menu, '<b>' + num + '</b><span>' + x.title + '</span>');

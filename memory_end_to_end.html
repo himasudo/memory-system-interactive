@@ -2924,6 +2924,28 @@ svg .dash{stroke-dasharray:4 3}
 .lx-buddy-b .b-range{font:600 10px var(--mono);color:var(--tx3);white-space:nowrap}
 .lx-buddy-b .b-val{font:650 13px var(--mono)}
 .lx-buddy-b .b-name{font-size:11px;color:var(--tx2);white-space:nowrap}
+/* section menu: an inline lab listed under its lesson section */
+.sec-item.sub{padding-left:26px;font-size:13px}
+.sec-item.sub b{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--act)}
+/* long identifiers and expressions in prose may break anywhere rather than widen the page */
+.lx-text p code,.lx-list code,.lx-olist code,.lx-note code,.lx-q code,.lx td code{white-space:normal;overflow-wrap:anywhere}
+/* start page: the course map */
+.course-map{display:grid;gap:12px;margin:4px 0 8px}
+.cm-next{display:grid;gap:4px;padding:16px 18px;border:1px solid color-mix(in srgb,var(--act) 55%,transparent);border-radius:12px;background:var(--actbg);color:var(--tx);text-decoration:none}
+.cm-next:hover{border-color:var(--act)}
+.cm-next .cm-k{font:650 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--act)}
+.cm-next strong{font-size:18px}
+.cm-next span:last-child{color:var(--tx2);font-size:14px}
+.cm-parts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.cm-part{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--sunk);color:var(--tx);text-decoration:none}
+.cm-part:hover{border-color:var(--act)}
+.cm-num{font:650 13px var(--mono);color:var(--act);min-width:26px}
+.cm-body{display:grid;gap:4px;flex:1;min-width:0}
+.cm-body strong{font-size:14.5px}
+.cm-body small{color:var(--tx3);font-size:12.5px}
+.cm-bar{display:block;height:4px;border-radius:2px;background:var(--bd)}
+.cm-bar i{display:block;height:100%;border-radius:2px;background:var(--act)}
+.cm-also{margin:2px 0 0;color:var(--tx2);font-size:14px}
 
 </style>
 </head>
@@ -3230,7 +3252,14 @@ var App = (function(){
       if (!menu.hidden){ close(); return; }
       menu.innerHTML = '';
       var inLab = false, partLabel = (built[cur] && built[cur].sec._partLabel) || 'Experiments';
+      var lesson = built[cur] && built[cur].sec.querySelector('.lx');
       list().forEach(function(x, i){
+        if (lesson){ /* lessons: their own section numbers; inline labs listed under their section */
+          var sk = x.el.querySelector('.lx-sec-head .lx-sec-k'), lnum = x.lab ? 'Lab' : (sk ? sk.textContent : String(i + 1));
+          var lb = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (x.lab ? ' sub' : '') + (i === idx ? ' cur' : '')}, menu, '<b>' + lnum + '</b><span>' + x.title + '</span>');
+          lb.onclick = function(){ close(); scrollToSection(x.id, true); };
+          return;
+        }
         if (x.lab && !inLab){ inLab = true; h('div', {'class': 'sec-group', role: 'presentation'}, menu, partLabel); }
         var k = x.el.querySelector('.scene-kicker'), num = (k ? k.textContent : String(i + 1).padStart(2, '0')).replace(/^[^0-9]+/, '');
         var b = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (i === idx ? ' cur' : '')}, menu, '<b>' + num + '</b><span>' + x.title + '</span>');
@@ -4195,7 +4224,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
   /* The machines the "Lab run" outputs were captured on. Each output names its machine. */
   var MACHINES = {
     a: {name: 'machine A', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses.'},
-    b: {name: 'machine B', text: 'another cloud virtual machine (KVM) running the same Linux 6.18.44 build on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'}
+    b: {name: 'machine B', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'}
   };
   var RUN_MACHINE = MACHINES.a.text;
   function machineName(id){ return (MACHINES[id || 'a'] || MACHINES.a).name; }
@@ -5521,8 +5550,8 @@ if (typeof module !== 'undefined') module.exports = ImplementationEvidence;
 /* ======================= start here ======================= */
 App.chapter({id: 'start', short: 'Start here', title: 'Memory Systems Lab',
 lede: 'How one memory access travels through a computer, from a line of C down to the DRAM chips and back. Change the experiments, compare real AMD, Intel and Arm chips, and measure your own machine.',
-points: ['Every chapter follows the same small C function.',
-  'Chapters [[num:bits]]\u2013[[num:share]] build the background. Chapters [[num:map]]\u2013[[num:e2e]] follow one access through the hardware.',
+points: ['Seven parts, in order: foundations, the core, virtual memory, caches and DRAM, ordering, devices, and the whole system.',
+  'Parts III and VI are short lessons built on outputs from real Linux machines; the other parts are chapters with interactive labs.',
   'The lab uses one small example machine, and compares it with real AMD, Intel and Arm designs.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
@@ -5542,12 +5571,27 @@ build: function(root){
     A(sv, 'M110 58 C110 84 61 86 61 108');
   }});
 
-  var b = P.sec(root, 'paths', 'Where to start', 'Start from the basics, go straight to the hardware, or jump to real chips and your own machine.');
-  App.h('div', {'class': 'path-cards path-cards-4'}, b,
-    '<a class="path-card" href="#bits"><span class="path-k">New to hardware</span><strong>Start with [[ch:bits]]</strong><span>Eight short chapters: bits and hex, addresses, instructions, reading assembly, cycles, caches, virtual memory, and sharing memory.</span></a>' +
-    '<a class="path-card" href="#map"><span class="path-k">Know registers, caches and virtual memory</span><strong>Start at [[ch:map]]</strong><span>A map of the whole machine, then one chapter per stage of a memory access.</span></a>' +
-    '<a class="path-card" href="#map/chips"><span class="path-k">Real chips</span><strong>AMD, Intel and Arm compared</strong><span>How three current server designs build the same parts at different sizes.</span></a>' +
-    '<a class="path-card" href="#perf/datasets"><span class="path-k">Your machine</span><strong>Measure your own computer</strong><span>One command on Linux runs the benchmarks and loads the results into every chapter.</span></a>');
+  var b = P.sec(root, 'course', 'The course', 'Seven parts. Each part has an overview page; pages you mark as done are counted here and in the sidebar.');
+  var map = App.h('div', {'class': 'course-map'}, b);
+  function drawMap(){
+    var C = App.Course; if (!C) return;
+    map.innerHTML = '';
+    var parts = C.parts.filter(function(p){ return p.id !== 'start' && p.id !== 'ref'; }), next = null, first = null;
+    parts.forEach(function(p){ C.livePages(p).forEach(function(id){ if (!first) first = id; if (!next && !C.isDone(id)) next = id; }); });
+    var label = function(id){ var c = App.chapters.filter(function(x){ return x.id === id; })[0]; return c ? c.num + ' ' + c.short : id; };
+    var any = parts.some(function(p){ return C.livePages(p).some(C.isDone); });
+    App.h('a', {'class': 'cm-next', href: '#' + (next || first)}, map,
+      '<span class="cm-k">' + (!next ? 'All pages done' : any ? 'Continue' : 'Start') + '</span><strong>' + label(next || first) + '</strong><span>' + (!next ? 'Review any part below.' : any ? 'The first page you have not marked as done.' : 'New to hardware? Begin here. Already know registers, caches and virtual memory? Pick a part below.') + '</span>');
+    var grid = App.h('div', {'class': 'cm-parts'}, map);
+    parts.forEach(function(p){
+      var list = C.livePages(p), n = list.filter(C.isDone).length, lessons = list.filter(function(id){ return C.lessons[id]; }).length;
+      App.h('a', {'class': 'cm-part', href: '#part-' + p.id}, grid,
+        '<span class="cm-num">' + p.n + '</span><span class="cm-body"><strong>' + p.title + '</strong><small>' + list.length + (list.length === 1 ? ' page' : ' pages') + (lessons ? ' · ' + lessons + ' lessons' : '') + (n ? ' · ' + n + ' done' : '') + '</small>' +
+        '<span class="cm-bar"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></span></span>');
+    });
+    App.h('p', {'class': 'cm-also'}, map, 'Also: <a href="#map/chips">AMD, Intel and Arm compared</a> · <a href="#perf/datasets">measure your own computer</a> · <a href="#gloss">glossary</a>');
+  }
+  drawMap();
 
   var c = P.sec(root, 'reading', 'How to read the pages', 'Terms, diagrams, step panels and timings.');
   var legend = ['basics', 'core', 'xlate', 'cache', 'memory', 'order', 'coh', 'pref', 'io'].map(function(k){ return '<span class="legend-chip term-' + k + '">' + App.TERM_LABEL[k] + '</span>'; }).join('');
@@ -5558,6 +5602,7 @@ build: function(root){
     'Step panels walk through a process one step at a time. The \u2190 and \u2192 keys also work.',
     'Each chapter is one long page. The section name in the top bar opens a list of its sections.',
     'Most hardware chapters have two parts: the walkthrough, then an <b>Experiments</b> part with small simulations you can change. Each experiment asks you to predict the result first.',
+    'Lessons, in Parts III and VI, define each new term once, in the margin, and end with questions and a short list of what to remember. Outputs marked <b>Lab run</b> come from real Linux machines and name the machine and file they came from.',
     'Timings come from the latency settings (the ≋ button). They are example values for the lab’s model machine. Your own measurements appear separately, labeled “Your machine”.'
   ])]);
   var labels = App.h('dl', {'class': 'label-legend'}, c);
@@ -5579,6 +5624,7 @@ build: function(root){
       x += l[2] + 12;
     });
   }});
+  return {onShow: drawMap};
 }});
 
 /* ======================= 01 bits, bytes and hex ======================= */
