@@ -1,0 +1,53 @@
+$ grep -E "System RAM|Kernel code|PCI Bus|PCI ECAM|IOAPIC|: 0000:00:" /proc/iomem
+00001000-0009fbff : System RAM
+00100000-bfffffff : System RAM
+  01000000-021350e7 : Kernel code
+c0001000-eebfffff : PCI Bus 0000:00
+  eec00000-eecfffff : PCI ECAM 0000 [bus 00-00]
+    eec00000-eecfffff : PCI Bus 0000:00
+fec00000-fec003ff : IOAPIC 0
+100000000-43fffffff : System RAM
+4000000000-7fffffffff : PCI Bus 0000:00
+  4000000000-400007ffff : 0000:00:01.0
+  4000080000-40000fffff : 0000:00:02.0
+  4000100000-400017ffff : 0000:00:03.0
+  4000180000-40001fffff : 0000:00:04.0
+  4000200000-400027ffff : 0000:00:05.0
+  4000280000-40002fffff : 0000:00:06.0
+  4000300000-400037ffff : 0000:00:07.0
+  4000380000-40003fffff : 0000:00:08.0
+  4000400000-400047ffff : 0000:00:09.0
+  4000480000-40004fffff : 0000:00:0a.0
+$ grep -A1 ": 0000:00:02.0" /proc/iomem    # the disk's PCI function, and who claimed its registers
+  4000080000-40000fffff : 0000:00:02.0
+    4000080000-40000fffff : virtio-pci-modern
+$ for each PCI function: slot, vendor:device, class, driver, MSI-X vectors
+0000:00:00.0  0x8086:0x0d57  class 0x060000  driver -           vectors 0
+0000:00:01.0  0x1af4:0x1045  class 0xffff00  driver virtio-pci  vectors 5
+0000:00:02.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2
+0000:00:03.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2
+0000:00:04.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2
+0000:00:05.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2
+0000:00:06.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2
+0000:00:07.0  0x1af4:0x1042  class 0x018000  driver virtio-pci  vectors 2
+0000:00:08.0  0x1af4:0x1041  class 0x020000  driver virtio-pci  vectors 3
+0000:00:09.0  0x1af4:0x1053  class 0xffff00  driver virtio-pci  vectors 4
+0000:00:0a.0  0x1af4:0x1044  class 0xffff00  driver virtio-pci  vectors 2
+$ for each virtio device: device type, and feature bit 33 (VIRTIO_F_ACCESS_PLATFORM)
+virtio0  on 0000:00:01.0  type 5  bit 33 = 0
+virtio1  on 0000:00:02.0  type 2  bit 33 = 0
+virtio2  on 0000:00:03.0  type 2  bit 33 = 0
+virtio3  on 0000:00:04.0  type 2  bit 33 = 0
+virtio4  on 0000:00:05.0  type 2  bit 33 = 0
+virtio5  on 0000:00:06.0  type 2  bit 33 = 0
+virtio6  on 0000:00:07.0  type 2  bit 33 = 0
+virtio7  on 0000:00:08.0  type 1  bit 33 = 0
+virtio8  on 0000:00:09.0  type 19  bit 33 = 0
+virtio9  on 0000:00:0a.0  type 4  bit 33 = 0
+$ ls /sys/class/iommu    # IOMMU hardware the kernel found
+$ dmesg | grep -E "iommu: Default domain|TLB invalidation policy|PCI-DMA"
+iommu: Default domain type: Translated
+iommu: DMA domain TLB invalidation policy: lazy mode
+PCI-DMA: Using software bounce buffering for IO (SWIOTLB)
+$ tr " " "\n" < /proc/cmdline | grep "^swiotlb"
+swiotlb=noforce
