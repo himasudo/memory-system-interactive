@@ -117,7 +117,7 @@
           { bits: '1', val: 'R/W', name: 'write', tone: 'a2' },
           { bits: '0', val: 'P', name: 'present', tone: 'a2' }
         ], { title: 'An x86-64 page-table entry', dense: true });
-        L.p('The address field is as wide as the CPU’s physical addresses: 46 bits on the lab machine, so bits 12 to 45. Bits above that, up to 51, must be 0.');
+        L.p('The address field is as wide as the CPU’s physical addresses: 46 bits on machine A, so bits 12 to 45. Bits above that, up to 51, must be 0.');
         L.p('Green bits are permissions the kernel sets. Purple bits are status the CPU records. The rest are page size, global, no-execute, two memory-type bits, and bits the CPU ignores.');
       } },
       { id: 'allowed', title: 'P, R/W, U/S: what is allowed', body: function (L) {
@@ -284,7 +284,7 @@
         L.p('Up to 64 pages, both columns stay at about 1.5 ns: every translation hits the L1 TLB.');
         L.p('From 128 pages, the 4 KiB column jumps by about 2 ns. The L1 TLB is full, so translations now come from the L2 TLB. The 2 MiB column does not move: 128 nodes in one huge page need one entry.');
         L.p('Past about 1500 to 2000 pages (6 to 8 MiB), the 4 KiB column climbs again: now the L2 TLB misses too, and hops wait for page walks. By 4096 pages, 2 MiB pages are three times faster.');
-        L.note('careful', 'The thresholds match a 64-entry L1 TLB and an L2 TLB of 1536 to 2048 entries, but the lab machine is a virtual machine, so the CPU’s real TLB sizes are not reported. Treat the sizes as an inference from the measurement. On a virtual machine each walk is also slower than on bare metal ([[ch:vm-virt]]).', 'Reading this carefully');
+        L.note('careful', 'The thresholds match a 64-entry L1 TLB and an L2 TLB of 1536 to 2048 entries, but machine A is a virtual machine, so the CPU’s real TLB sizes are not reported. Treat the sizes as an inference from the measurement. On a virtual machine each walk is also slower than on bare metal ([[ch:vm-virt]]).', 'Reading this carefully');
         L.p('Try it on any page-heavy workload: when the working set passes the TLB’s reach, time per access rises in steps, and huge pages push the steps far to the right.');
         L.p('Walks are not free for the rest of the machine either: every walk read is a memory request that competes with ordinary loads. The lab below models that.');
         L.lab(function (el) { App.VMUI.labs.walks(el); });

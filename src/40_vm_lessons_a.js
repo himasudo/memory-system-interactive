@@ -307,7 +307,7 @@
         L.p('The kernel reaches them, and every other frame, through the direct map: a range of the kernel half that maps all of RAM at one fixed offset.', ['directmap']);
         L.code('kernel address = 0xffff888000000000 + physical address\n\nthe main run’s bottom table, frame 0x1330d4:\n0xffff888000000000 + 0x1330d4000 = 0xffff8881330d4000', { lang: 'text', title: 'the direct map' });
         L.p('[[ch:vm-space]] showed this range in the kernel’s memory map, and our program faulted when it tried to read from 0xffff888000000000.');
-        L.note('linux', 'With boot-time randomization of the kernel’s layout (KASLR), the direct map may start at a random place above 0xffff888000000000. On the lab machine the kernel’s code sits at the unrandomized default 0xffffffff81000000, so randomization is not active and the direct map starts at the default.', 'On this machine');
+        L.note('linux', 'With boot-time randomization of the kernel’s layout (KASLR), the direct map may start at a random place above 0xffff888000000000. On machine A the kernel’s code sits at the unrandomized default 0xffffffff81000000, so randomization is not active and the direct map starts at the default.', 'On this machine');
       } }
     ],
     check: [
