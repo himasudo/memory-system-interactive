@@ -65,6 +65,7 @@
 .lesson-cards li.is-done .lc-done{background:var(--ok);border-color:var(--ok)}
 .lesson-cards li.is-done .lc-num{color:var(--ok)}
 .part-runs p{max-width:760px;color:var(--tx2);font-size:14.5px;line-height:1.65;margin:0 0 10px}
+.part-machines{max-width:760px;margin:0 0 12px;padding-left:20px;color:var(--tx2);font-size:14.5px;line-height:1.65}.part-machines li{margin:0 0 6px}.part-machines b{color:var(--tx)}
 
 /* ---------- lesson layout: a reading column and a margin for definitions ---------- */
 .lx{max-width:1060px;--lx-text:color-mix(in srgb,var(--tx) 90%,var(--bg))}
@@ -202,7 +203,7 @@
 .lx-try-intro{margin:0 0 14px;color:var(--tx2);font-size:14.5px;line-height:1.55;max-width:680px}
 .lx-form{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;margin:0 0 14px}
 .lx-form label{display:flex;flex-direction:column;gap:5px;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--tx3)}
-.lx-form input,.lx-form select{font:14px var(--mono);min-height:38px;min-width:0;width:100%}
+.lx-form input,.lx-form select{font:14px var(--mono);min-height:38px;min-width:0;width:100%;background:var(--bg);border-color:var(--bd2);color:var(--tx)}
 .lx-form .grow{flex:1 1 240px}
 .lx-out{display:grid;gap:10px}
 .lx-out .lx-bits,.lx-out .lx-table,.lx-out .lx-chain{background:var(--bg)}

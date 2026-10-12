@@ -156,6 +156,73 @@ var LabRuns = (function () {
         '    262144 KiB           65536                180.45                102.63'
       ]
     },
+    /* ---- lesson 9: huge pages ---- */
+    'thp.result': {
+      file: 'vm/out/thp.txt',
+      what: 'thp.c: map 2 MiB at 0x7f3a1b200000, ask for a huge page with madvise, then store one byte at 0x7f3a1b2c3d4e.',
+      lines: ['mmap 2 MiB at 0x7f3a1b200000, madvise(MADV_HUGEPAGE) = 0', 'VmPTE before the store: 48 kB', 'faults during the store: ⟦1⟧', 'VmPTE after the store: ⟦60 kB⟧', 'smaps AnonHugePages: ⟦2048 kB⟧, Rss: 2048 kB']
+    },
+    'thp.trace': {
+      file: 'vm/out/thp.trace.txt',
+      what: 'thp.c: the kernel trace during the store. Events: page_fault_user (a fault from user mode) and mm_page_alloc (a block from the page allocator; order 0 = 4 KiB, order 9 = 2 MiB).',
+      lines: [
+        '# == store to 0x7f3a1b2c3d4e',
+        'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55f17b1a55a8 error_code=0x6',
+        'mm_page_alloc: pfn=0x13310d order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1151a3 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=⟦0x158800 order=9⟧ migratetype=1 gfp_flags=GFP_TRANSHUGE|__GFP_NORETRY|__GFP_THISNODE',
+        'mm_page_alloc: pfn=0x115111 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP'
+      ]
+    },
+    'thp.pagemap': {
+      file: 'vm/out/thp.txt',
+      what: 'thp.c: pagemap for three 4 KiB pieces of the 2 MiB region after the store.',
+      lines: [
+        'first 4 KiB of the region      pagemap=0x8100000000158800  present=1 exclusive=1 pfn=⟦0x158800⟧',
+        '4 KiB piece at +0xc3000        pagemap=0x81000000001588c3  present=1 exclusive=1 pfn=⟦0x1588c3⟧',
+        'last 4 KiB piece (+0x1ff000)   pagemap=0x81000000001589ff  present=1 exclusive=1 pfn=⟦0x1589ff⟧',
+        'first pfn % 512 = ⟦0⟧'
+      ]
+    },
+    'hugetlb.pool': {
+      file: 'vm/out-b/hugetlb.txt', machine: 'b',
+      what: 'hugetlb.c: ask for one 2 MiB page with mmap(MAP_HUGETLB), first with the machine’s empty pool, then with a pool of one page. The pool is put back to 0 at the end.',
+      lines: [
+        '$ cat /proc/sys/vm/nr_hugepages', '0',
+        'mmap(2 MiB, MAP_HUGETLB) failed: ⟦Cannot allocate memory⟧',
+        '$ echo 1 > /proc/sys/vm/nr_hugepages',
+        'mmap(2 MiB, MAP_HUGETLB) = 0x7ff829e00000',
+        'faults during one store: 1',
+        'first 4 KiB piece            pagemap=0x8100000000162a00  present=1 exclusive=1 pfn=0x162a00',
+        'first pfn % 512 = 0',
+        '  HugePages_Total:       1', '  HugePages_Free:        0',
+        '$ echo 0 > /proc/sys/vm/nr_hugepages    # restored'
+      ]
+    },
+    'cost.time': {
+      file: 'vm/out/cost.txt',
+      what: 'cost.c: time per page fault. 21 samples, each on a fresh 64 MiB region, one store per 4 KiB page; first small pages (MADV_NOHUGEPAGE), then a region marked MADV_HUGEPAGE.',
+      lines: [
+        'small pages 16384 faults per sample; ns per fault min 1622, median ⟦1738⟧, max 2164; median per MiB 444811 ns',
+        'huge pages     32 faults per sample; ns per fault min 329844, median ⟦351090⟧, max 550476; median per MiB 175545 ns'
+      ]
+    },
+    /* ---- lesson 10: the L1 and translation ---- */
+    'vipt.a': {
+      file: 'vm/out/vipt.txt',
+      what: 'chase.c vipt: one 8-byte node in each of N pages, all at page offset 0x140 (so all in L1 set 5), against the same pages with the nodes at different offsets (different sets). ns per hop, median of 9 runs.',
+      lines: ['  pages   same offset (all in L1 set 5)   spread over line positions', '      8       1.54                             1.60', '      9       1.52                             1.54', '     10       1.53                             1.52', '     11       1.52                             1.52', '     ⟦12⟧       ⟦1.52⟧                             1.52', '     ⟦13⟧       ⟦4.18⟧                             1.52', '     14       4.26                             1.52', '     16       4.25                             1.52', '     24       4.25                             1.52']
+    },
+    'vipt.b': {
+      file: 'vm/out-b/vipt.txt', machine: 'b',
+      what: 'The same chase (chase.c vipt) on machine B.',
+      lines: ['  pages   same offset (all in L1 set 5)   spread over line positions', '      8       1.78                             1.83', '      9       1.83                             1.81', '     10       1.83                             1.82', '     11       1.79                             1.84', '     ⟦12⟧       ⟦1.80⟧                             1.79', '     ⟦13⟧       ⟦5.59⟧                             1.78', '     14       5.75                             1.78', '     16       5.73                             1.79', '     24       5.71                             1.79']
+    },
+    'facts.l1b': {
+      file: 'vm/out-b/facts.txt', machine: 'b',
+      what: 'The L1 data cache, as machine B’s CPU reports it (facts.sh).',
+      lines: ['level:1', 'type:Data', 'size:⟦48K⟧', 'ways_of_associativity:⟦12⟧', 'number_of_sets:64', 'coherency_line_size:64']
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',

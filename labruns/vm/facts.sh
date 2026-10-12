@@ -3,7 +3,7 @@
 set -u
 echo '$ lscpu | grep -E "Model name|Address sizes|Hypervisor"'
 lscpu | grep -E "Model name|Address sizes|Hypervisor"
-echo '$ grep -o -w -E "pcid|invpcid|la57|pdpe1gb|nx|smep|smap|pku|pti" /proc/cpuinfo | sort -u | tr "\n" " "'
+printf '%s\n' '$ grep -o -w -E "pcid|invpcid|la57|pdpe1gb|nx|smep|smap|pku|pti" /proc/cpuinfo | sort -u | tr "\n" " "'
 grep -o -w -E "pcid|invpcid|la57|pdpe1gb|nx|smep|smap|pku|pti" /proc/cpuinfo | sort -u | tr '\n' ' '; echo
 echo '$ cat /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag'
 cat /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag

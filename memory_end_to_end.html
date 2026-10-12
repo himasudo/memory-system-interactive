@@ -2673,6 +2673,7 @@ svg .actb {
 .lesson-cards li.is-done .lc-done{background:var(--ok);border-color:var(--ok)}
 .lesson-cards li.is-done .lc-num{color:var(--ok)}
 .part-runs p{max-width:760px;color:var(--tx2);font-size:14.5px;line-height:1.65;margin:0 0 10px}
+.part-machines{max-width:760px;margin:0 0 12px;padding-left:20px;color:var(--tx2);font-size:14.5px;line-height:1.65}.part-machines li{margin:0 0 6px}.part-machines b{color:var(--tx)}
 
 /* ---------- lesson layout: a reading column and a margin for definitions ---------- */
 .lx{max-width:1060px;--lx-text:color-mix(in srgb,var(--tx) 90%,var(--bg))}
@@ -2810,7 +2811,7 @@ svg .actb {
 .lx-try-intro{margin:0 0 14px;color:var(--tx2);font-size:14.5px;line-height:1.55;max-width:680px}
 .lx-form{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;margin:0 0 14px}
 .lx-form label{display:flex;flex-direction:column;gap:5px;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--tx3)}
-.lx-form input,.lx-form select{font:14px var(--mono);min-height:38px;min-width:0;width:100%}
+.lx-form input,.lx-form select{font:14px var(--mono);min-height:38px;min-width:0;width:100%;background:var(--bg);border-color:var(--bd2);color:var(--tx)}
 .lx-form .grow{flex:1 1 240px}
 .lx-out{display:grid;gap:10px}
 .lx-out .lx-bits,.lx-out .lx-table,.lx-out .lx-chain{background:var(--bg)}
@@ -4142,7 +4143,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
     {id: 'vmem', n: 'III', title: 'Virtual memory',
       lede: 'How every address a program uses is translated: pages, page tables, the TLB, page faults, copy-on-write and huge pages, and what the kernel does behind each one. The outputs shown are from real runs on a Linux machine.',
       outcomes: ['Translate a virtual address by hand through all four levels', 'Read /proc/self/maps, pagemap and smaps', 'Decode any page-fault error code', 'Predict when the TLB is flushed and when other CPUs are interrupted', 'Measure page-fault costs and keep them out of benchmarks'],
-      runs: true,
+      runs: ['a', 'b'],
       pages: ['vm-addresses', 'vm-pages', 'vm-space', 'vm-tree', 'vm-levels', 'vm-pte', 'vm-walk', 'vm-tlb', 'xlate', 'vm-huge', 'vm-vipt', 'vm-switch', 'vm-shootdown',
         'vm-faults', 'vm-demand', 'vm-files', 'vm-cow', 'vm-protect', 'vm-cost', 'vm-buddy', 'vm-reclaim', 'vm-alias', 'vm-virt', 'vm-review']},
     {id: 'cache', n: 'IV', title: 'Caches and DRAM',
@@ -4156,7 +4157,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
     {id: 'io', n: 'VI', title: 'Devices and I/O',
       lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, and the queues behind every disk and network request. The outputs shown are from real runs on a Linux machine.',
       outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt'],
-      runs: true,
+      runs: ['b'],
       pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review']},
     {id: 'system', n: 'VII', title: 'The whole system',
       lede: 'Everything together: one access end to end, then predicting, measuring and explaining performance on your own machine.',
@@ -4166,8 +4167,13 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
   var LAB_PAGES = {xlate: 'Lab', dev: 'Lab'};
-  /* The machine every "Lab run" output in the course was captured on. */
-  var RUN_MACHINE = 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses. Physical addresses are the virtual machine’s own: the host translates them once more. Timings are this machine’s and will differ on yours.';
+  /* The machines the "Lab run" outputs were captured on. Each output names its machine. */
+  var MACHINES = {
+    a: {name: 'machine A', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses.'},
+    b: {name: 'machine B', text: 'another cloud virtual machine (KVM) running the same Linux 6.18.44 build on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on PCI Express.'}
+  };
+  var RUN_MACHINE = MACHINES.a.text;
+  function machineName(id){ return (MACHINES[id || 'a'] || MACHINES.a).name; }
 
   var pageInfo = {};   /* id -> {part, index, count} */
   var lessons = {};
@@ -4329,9 +4335,11 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
       h('a', {href: '#' + id}, li, '<span class="lc-num">' + (LAB_PAGES[id] ? 'Lab' : String(i.index).padStart(2, '0')) + '</span><span class="lc-body"><strong>' + c.short + '</strong>' + (d ? '<small>' + d + '</small>' : '') + '</span><span class="lc-done" aria-label="done"></span>');
     });
     if (p.runs){
-      var r = h('section', {'class': 'part-runs'}, wrap);
+      var r = h('section', {'class': 'part-runs'}, wrap), ms = p.runs;
       h('h2', null, r, 'Where the outputs come from');
-      h('p', null, r, 'Outputs marked <span class="evidence-label evidence-kind" data-evidence-kind="Lab run">Lab run</span> were captured by running small programs on ' + RUN_MACHINE);
+      h('p', null, r, 'Outputs marked <span class="evidence-label evidence-kind" data-evidence-kind="Lab run">Lab run</span> were captured by running small programs on ' + (ms.length === 1 ? MACHINES[ms[0]].text : (['', 'one', 'two', 'three'][ms.length] || ms.length) + ' machines. Each output names the one it came from:'));
+      if (ms.length > 1) h('ul', {'class': 'part-machines'}, r, ms.map(function(m){ return '<li><b>' + MACHINES[m].name.charAt(0).toUpperCase() + MACHINES[m].name.slice(1) + '</b>: ' + MACHINES[m].text + '</li>'; }).join(''));
+      h('p', null, r, 'Physical addresses on a virtual machine are the virtual machine’s own: the host translates them once more. Timings are these machines’ and will differ on yours.');
       h('p', null, r, 'The programs and the raw outputs are in the repository’s <code>labruns/</code> folder, so you can run them on your own Linux machine. Reading physical frame numbers and kernel trace events needs root.');
     }
     refreshMarks();
@@ -4419,7 +4427,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
     var lines = o.lines ? o.lines.map(function(i){ return r.lines[i]; }) : r.lines;
     if (o.what === undefined) o.what = r.what;
     o.title = o.title || 'output';
-    o.labelNote = o.labelNote || 'labruns/' + r.file.replace('/out/', '/out/');
+    o.labelNote = o.labelNote || 'labruns/' + r.file + ' · ' + machineName(r.machine);
     return this.run(lines.join('\n'), o);
   };
   /* a quotation from a source document */
@@ -4660,7 +4668,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
   App.Course = {
     parts: PARTS, info: pageInfo, lessons: lessons, order: order, nav: buildNav, onShow: onShow,
     header: header, footer: footer, isDone: isDone, setDone: setDone, indexTerms: indexTerms,
-    livePages: livePages, labPages: LAB_PAGES, runMachine: RUN_MACHINE, quiz: quiz, chip: chip, esc: esc
+    livePages: livePages, labPages: LAB_PAGES, runMachine: RUN_MACHINE, machines: MACHINES, quiz: quiz, chip: chip, esc: esc
   };
 })();
 
@@ -17198,7 +17206,6 @@ build: function(root){
     U.sources(sec, [
       ['Linux memory-management concepts', 'https://docs.kernel.org/admin-guide/mm/concepts.html']
     ]);
-    measurement(sec);
   }
   function pages(root) {
     var sec = section(
@@ -17929,14 +17936,27 @@ build: function(root){
     });
     return data;
   }
+  /* the native import, as a lab section of its own */
+  function native(root) {
+    var sec = section(
+      root,
+      'native',
+      'Page faults on your machine',
+      'Run a small program on your own machine and import what it measured: faults on first reads, first writes, repeated writes and a child’s copy-on-write writes.'
+    );
+    measurement(sec);
+  }
+  /* The Part III lessons place these labs inline (L.lab in src/02_course.js). Labs whose lesson
+     is not written yet stay on the xlate lab page. */
+  App.VMUI = {
+    validate: validate,
+    labs: { lifecycle: lifecycle, pages: pages, walks: walks, shootdowns: shootdowns, native: native }
+  };
   App.extendChapter('xlate', function (root) {
-    lifecycle(root);
-    pages(root);
-    walks(root);
-    shootdowns(root);
+    if (!App.Course || !App.Course.lessons['vm-cow']) lifecycle(root);
+    if (!App.Course || !App.Course.lessons['vm-cost']) native(root);
   });
   App.extendChapter('hier', numa);
-  App.VMUI = { validate: validate };
 })();
 
 (function () {
@@ -18612,7 +18632,8 @@ build: function(root){
   }
   App.extendChapter('stores', ordering);
   App.extendChapter('hier', inclusion);
-  App.extendChapter('xlate', granules);
+  /* placed inline in Lesson III.10 (vm-vipt) */
+  App.ArchLabs = { granules: granules };
   App.extendChapter('perf', compare);
 })();
 
@@ -21135,6 +21156,73 @@ var LabRuns = (function () {
         '    262144 KiB           65536                180.45                102.63'
       ]
     },
+    /* ---- lesson 9: huge pages ---- */
+    'thp.result': {
+      file: 'vm/out/thp.txt',
+      what: 'thp.c: map 2 MiB at 0x7f3a1b200000, ask for a huge page with madvise, then store one byte at 0x7f3a1b2c3d4e.',
+      lines: ['mmap 2 MiB at 0x7f3a1b200000, madvise(MADV_HUGEPAGE) = 0', 'VmPTE before the store: 48 kB', 'faults during the store: ⟦1⟧', 'VmPTE after the store: ⟦60 kB⟧', 'smaps AnonHugePages: ⟦2048 kB⟧, Rss: 2048 kB']
+    },
+    'thp.trace': {
+      file: 'vm/out/thp.trace.txt',
+      what: 'thp.c: the kernel trace during the store. Events: page_fault_user (a fault from user mode) and mm_page_alloc (a block from the page allocator; order 0 = 4 KiB, order 9 = 2 MiB).',
+      lines: [
+        '# == store to 0x7f3a1b2c3d4e',
+        'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55f17b1a55a8 error_code=0x6',
+        'mm_page_alloc: pfn=0x13310d order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1151a3 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=⟦0x158800 order=9⟧ migratetype=1 gfp_flags=GFP_TRANSHUGE|__GFP_NORETRY|__GFP_THISNODE',
+        'mm_page_alloc: pfn=0x115111 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP'
+      ]
+    },
+    'thp.pagemap': {
+      file: 'vm/out/thp.txt',
+      what: 'thp.c: pagemap for three 4 KiB pieces of the 2 MiB region after the store.',
+      lines: [
+        'first 4 KiB of the region      pagemap=0x8100000000158800  present=1 exclusive=1 pfn=⟦0x158800⟧',
+        '4 KiB piece at +0xc3000        pagemap=0x81000000001588c3  present=1 exclusive=1 pfn=⟦0x1588c3⟧',
+        'last 4 KiB piece (+0x1ff000)   pagemap=0x81000000001589ff  present=1 exclusive=1 pfn=⟦0x1589ff⟧',
+        'first pfn % 512 = ⟦0⟧'
+      ]
+    },
+    'hugetlb.pool': {
+      file: 'vm/out-b/hugetlb.txt', machine: 'b',
+      what: 'hugetlb.c: ask for one 2 MiB page with mmap(MAP_HUGETLB), first with the machine’s empty pool, then with a pool of one page. The pool is put back to 0 at the end.',
+      lines: [
+        '$ cat /proc/sys/vm/nr_hugepages', '0',
+        'mmap(2 MiB, MAP_HUGETLB) failed: ⟦Cannot allocate memory⟧',
+        '$ echo 1 > /proc/sys/vm/nr_hugepages',
+        'mmap(2 MiB, MAP_HUGETLB) = 0x7ff829e00000',
+        'faults during one store: 1',
+        'first 4 KiB piece            pagemap=0x8100000000162a00  present=1 exclusive=1 pfn=0x162a00',
+        'first pfn % 512 = 0',
+        '  HugePages_Total:       1', '  HugePages_Free:        0',
+        '$ echo 0 > /proc/sys/vm/nr_hugepages    # restored'
+      ]
+    },
+    'cost.time': {
+      file: 'vm/out/cost.txt',
+      what: 'cost.c: time per page fault. 21 samples, each on a fresh 64 MiB region, one store per 4 KiB page; first small pages (MADV_NOHUGEPAGE), then a region marked MADV_HUGEPAGE.',
+      lines: [
+        'small pages 16384 faults per sample; ns per fault min 1622, median ⟦1738⟧, max 2164; median per MiB 444811 ns',
+        'huge pages     32 faults per sample; ns per fault min 329844, median ⟦351090⟧, max 550476; median per MiB 175545 ns'
+      ]
+    },
+    /* ---- lesson 10: the L1 and translation ---- */
+    'vipt.a': {
+      file: 'vm/out/vipt.txt',
+      what: 'chase.c vipt: one 8-byte node in each of N pages, all at page offset 0x140 (so all in L1 set 5), against the same pages with the nodes at different offsets (different sets). ns per hop, median of 9 runs.',
+      lines: ['  pages   same offset (all in L1 set 5)   spread over line positions', '      8       1.54                             1.60', '      9       1.52                             1.54', '     10       1.53                             1.52', '     11       1.52                             1.52', '     ⟦12⟧       ⟦1.52⟧                             1.52', '     ⟦13⟧       ⟦4.18⟧                             1.52', '     14       4.26                             1.52', '     16       4.25                             1.52', '     24       4.25                             1.52']
+    },
+    'vipt.b': {
+      file: 'vm/out-b/vipt.txt', machine: 'b',
+      what: 'The same chase (chase.c vipt) on machine B.',
+      lines: ['  pages   same offset (all in L1 set 5)   spread over line positions', '      8       1.78                             1.83', '      9       1.83                             1.81', '     10       1.83                             1.82', '     11       1.79                             1.84', '     ⟦12⟧       ⟦1.80⟧                             1.79', '     ⟦13⟧       ⟦5.59⟧                             1.78', '     14       5.75                             1.78', '     16       5.73                             1.79', '     24       5.71                             1.79']
+    },
+    'facts.l1b': {
+      file: 'vm/out-b/facts.txt', machine: 'b',
+      what: 'The L1 data cache, as machine B’s CPU reports it (facts.sh).',
+      lines: ['level:1', 'type:Data', 'size:⟦48K⟧', 'ways_of_associativity:⟦12⟧', 'number_of_sets:64', 'coherency_line_size:64']
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',
@@ -21198,7 +21286,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
     opts = opts || {};
     var form = h('div', { 'class': 'lx-form' }, el);
     var iVA = field(form, 'Virtual address', opts.va || '0x00007f3a1b2c3d4e', { grow: true });
-    var iSize = opts.sizes === false ? null : select(form, 'Page size', [['12', '4 KiB'], ['21', '2 MiB'], ['30', '1 GiB']], '12');
+    var iSize = opts.sizes === false ? null : select(form, 'Page size', [['12', '4 KiB'], ['21', '2 MiB'], ['30', '1 GiB']], String(opts.size || 12));
     var iPFN = opts.pfn === false ? null : field(form, 'Frame number (PFN) of that page', opts.pfnValue || '0x129b49', { width: '220px' });
     var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
     function run() {
@@ -21336,7 +21424,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
     opts = opts || {};
     var form = h('div', { 'class': 'lx-form' }, el);
     var iE = field(form, 'Entries', String(opts.entries || 1536), { width: '120px' });
-    var iP = select(form, 'Page size', [['4096', '4 KiB'], ['2097152', '2 MiB'], ['1073741824', '1 GiB']], '4096');
+    var iP = select(form, 'Page size', [['4096', '4 KiB'], ['2097152', '2 MiB'], ['1073741824', '1 GiB']], String(opts.page || 4096));
     var iW = field(form, 'Working set (MiB)', String(opts.ws || 8), { width: '160px' });
     var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
     function fmt(b) { return b >= 1073741824 ? (b / 1073741824) + ' GiB' : b >= 1048576 ? (b / 1048576) + ' MiB' : (b / 1024) + ' KiB'; }
@@ -21389,7 +21477,45 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
     render();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows };
+  /* ---- 6. L1 geometry: size, ways and line size give the sets and the address split;
+     does the set index fit inside the page offset? ---- */
+  function l1geom(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var iS = field(form, 'Size (KiB)', String(opts.size || 32), { width: '110px' });
+    var iW = field(form, 'Ways', String(opts.ways || 8), { width: '90px' });
+    var iL = field(form, 'Line (bytes)', String(opts.line || 64), { width: '120px' });
+    var iP = select(form, 'Page size', [['4096', '4 KiB'], ['16384', '16 KiB'], ['65536', '64 KiB']], String(opts.page || 4096));
+    var iA = field(form, 'Address', opts.va || '0x00007f3a1b2c3d4e', { grow: true });
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function pow2(n) { return n > 0 && Number.isInteger(n) && (n & (n - 1)) === 0; }
+    function lg(n) { return Math.round(Math.log2(n)); }
+    function kb(b) { return b >= 1024 ? (b / 1024) + ' KiB' : b + ' B'; }
+    function run() {
+      var kib = Number(iS.value), ways = Number(iW.value), line = Number(iL.value), page = Number(iP.value), va = parseHex(iA.value);
+      out.innerHTML = '';
+      if (!(kib > 0 && kib <= 4096 && Number.isInteger(ways) && ways >= 1 && ways <= 64 && pow2(line) && line >= 16 && line <= 256)) {
+        h('p', { 'class': 'lx-msg bad' }, out, 'Enter a size in KiB, a whole number of ways (1 to 64) and a line size that is a power of two (16 to 256).');
+        return;
+      }
+      var sets = kib * 1024 / (ways * line);
+      if (!pow2(sets)) { h('p', { 'class': 'lx-msg bad' }, out, 'Size ÷ (ways × line) = ' + (Math.round(sets * 100) / 100) + ' sets. Caches use a power of two; try other values.'); return; }
+      if (va === null || va >= (1n << 64n)) { h('p', { 'class': 'lx-msg bad' }, out, 'Enter the address as hex, such as 0x00007f3a1b2c3d4e.'); return; }
+      var ob = lg(line), ib = lg(sets), top = ob + ib - 1, pb = lg(page);
+      var fields = [{ bits: '63:' + (top + 1), val: hx(va >> BigInt(top + 1)), name: 'tag bits (compared after translation)', tone: 'a1', w: 2.2 }];
+      if (ib > 0) fields.push({ bits: top + ':' + ob, val: String((va >> BigInt(ob)) & BigInt(sets - 1)), name: 'set', tone: 'a4' });
+      fields.push({ bits: (ob - 1) + ':0', val: String(va & BigInt(line - 1)), name: 'byte in the line', tone: 'a3' });
+      h('div', null, out, bitsHTML(fields));
+      h('p', { 'class': 'lx-msg' }, out, 'Sets = ' + kib + ' KiB ÷ (' + ways + ' ways × ' + line + ' B) = <b>' + sets + '</b>' + (ib > 0 ? ', chosen by bits ' + top + ':' + ob : '') + '. One way holds sets × line = ' + kb(sets * line) + '.');
+      if (sets * line <= page) h('p', { 'class': 'lx-msg' }, out, '<b>The set bits are inside the page offset</b> (bits ' + (pb - 1) + ':0), which translation copies unchanged. The cache can read the set with virtual-address bits while the TLB translates.');
+      else h('p', { 'class': 'lx-msg' }, out, '<b>Bits ' + top + ':' + pb + ' of the set number lie above the page offset.</b> They can differ between the virtual and the physical address, so one frame could sit in two sets. The cache needs extra hardware to find such aliases, or must wait for the translation.');
+    }
+    [iS, iW, iL, iA].forEach(function (x) { x.addEventListener('input', run); });
+    iP.addEventListener('change', run);
+    run();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom };
 })();
 
 /* ======================= Part III · Virtual memory, lessons 1–4 ======================= */
@@ -21990,7 +22116,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         L.p('Like data caches, TLBs come in levels. A small L1 TLB is checked first, then a larger L2 TLB.', ['stlb']);
         L.p('The walker also caches upper-level entries, so a miss often reads only the PT entry instead of all four.', ['pwc']);
         L.p('AMD describes all three for one of its cores:');
-        L.quote('The fully-associative L1 data TLB (DTLB) provides 64 entries that hold 4-Kbyte, 2-Mbyte, or 1-Gbyte page entries.\nThe L2 data TLB provides a unified 12-way set-associative L2 data TLB with 1536 entries capable of holding 4-Kbyte pages, 2-Mbyte pages, and page-directory entries (PDEs) used to speed up table walks.\n… the table walker includes a 64-entry Page Directory Cache (PDC) which holds page-map-level-4 entries (PML4Es) and page-directory-pointer entries (PDPEs).', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723, §2.7', label: 'Vendor docs' });
+        L.quote('The fully-associative L1 data TLB (DTLB) provides 64 entries that hold 4-Kbyte, 2-Mbyte, or 1-Gbyte page entries.\nThe L2 data TLB provides a unified 12-way set-associative L2 data TLB with 1536 entries capable of holding 4Kbyte pages, 2Mbyte pages, and page-directory entries (PDEs) used to speed up table walks.\n… the table walker includes a 64-entry Page Directory Cache (PDC) which holds page-map-level-4 entries (PML4Es) and page-directory-pointer entries (PDPEs).', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723 rev. 3.00, §2.7', label: 'Vendor docs', src: ['AMD documentation portal: pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'] });
         L.p('Sizes differ between cores and grow with each generation, but the shape is the same everywhere: a small L1 TLB, a larger L2 TLB, and caches of upper-level entries.');
       } },
       { id: 'reach', title: 'Reach', body: function (L) {
@@ -22008,6 +22134,8 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         L.p('Past about 1500 to 2000 pages (6 to 8 MiB), the 4 KiB column climbs again: now the L2 TLB misses too, and hops wait for page walks. By 4096 pages, 2 MiB pages are three times faster.');
         L.note('careful', 'The thresholds match a 64-entry L1 TLB and an L2 TLB of 1536 to 2048 entries, but the lab machine is a virtual machine, so the CPU’s real TLB sizes are not reported. Treat the sizes as an inference from the measurement. On a virtual machine each walk is also slower than on bare metal ([[ch:vm-virt]]).', 'Reading this carefully');
         L.p('Try it on any page-heavy workload: when the working set passes the TLB’s reach, time per access rises in steps, and huge pages push the steps far to the right.');
+        L.p('Walks are not free for the rest of the machine either: every walk read is a memory request that competes with ordinary loads. The lab below models that.');
+        L.lab(function (el) { App.VMUI.labs.walks(el); });
       } },
       { id: 'hardware', title: 'Hardware handles hits and misses', body: function (L) {
         L.p('On x86 and Arm, the whole miss path, lookup, walk and refill, is done by hardware. The kernel hears about a translation only when a walk fails.');
@@ -22027,7 +22155,250 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'Reach = entries × page size. Past it, random accesses start to walk.',
       'Hits and misses are handled entirely in hardware; the kernel only handles failed walks.'
     ],
-    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://www.amd.com/content/dam/amd/en/documents/archived-tech-docs/software-optimization-guides/55723_3_00_ZEN1.pdf'], ['Intel SDM Vol. 3A, §4.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'], ['Intel SDM Vol. 3A, §4.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+  });
+})();
+
+/* ======================= Part III · Virtual memory, lessons 9–12 ======================= */
+(function () {
+  'use strict';
+  var LW = function () { return App.LW; };
+  var d = App.gloss;
+  d('madvise', 'madvise', 'A system call that gives the kernel advice about a range of memory. MADV_HUGEPAGE asks for huge pages, MADV_DONTNEED drops pages, MADV_POPULATE_WRITE fills pages in ahead of time.');
+  d('order', 'order (of a block)', 'The size of a block from the kernel’s page allocator, as a power of two: order 0 is one 4 KiB frame, order 9 is 512 contiguous frames (2 MiB).');
+  d('smaps', '/proc/self/smaps', 'The maps list with memory counters under each region, such as Rss (memory present in RAM) and AnonHugePages (memory backed by transparent huge pages).');
+  d('compaction', 'compaction', 'Moving in-use pages to other frames so that free frames end up next to each other and form large blocks. Only movable pages, such as user memory, can be moved.');
+  d('hugetlb', 'hugetlb pages', 'Huge pages taken from a pool reserved in advance (vm.nr_hugepages) and used only by programs that ask for them, with MAP_HUGETLB or through the hugetlbfs file system. They are never swapped out.');
+  d('khugepaged', 'khugepaged', 'A kernel thread that scans memory and replaces runs of 512 small pages with one huge page when it can.');
+  d('cpuid', 'CPUID', 'The x86 instruction that reports the processor’s model, features and cache sizes. In a virtual machine, the hypervisor decides what it returns.');
+  d('valias', 'alias', 'Two different virtual addresses that map the same physical frame.');
+
+  var P = App.P;
+  var SRC_THP = ['Linux: transparent hugepage support', 'https://docs.kernel.org/admin-guide/mm/transhuge.html'];
+  var SRC_HTLB = ['Linux: HugeTLB pages', 'https://docs.kernel.org/admin-guide/mm/hugetlbpage.html'];
+  var SRC_AMD17 = ['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'];
+
+  /* ---------- III.09 ---------- */
+  App.lesson({
+    id: 'vm-huge', short: 'Huge pages', title: 'Huge pages',
+    lede: 'One entry can map 2 MiB instead of 4 KiB. The walk ends a level early, and one TLB entry covers 512 times more memory.',
+    know: ['Bit 7 of a PD entry, PS, can end the walk there; a PD entry covers 2 MiB ([[ch:vm-pte]]).', 'TLB reach is entries × page size, and the 4 KiB chase slowed down past it ([[ch:vm-tlb]]).'],
+    learn: ['Split an address for a 2 MiB page and build its physical address', 'Read a huge-page fault in a kernel trace', 'Tell transparent huge pages from hugetlb pages', 'Weigh what huge pages cost against the reach they buy'],
+    sections: [
+      { id: 'ps', title: 'PS = 1 ends the walk early', body: function (L) {
+        L.p('[[ch:vm-pte]] showed bit 7 of a PD entry, PS. When it is 1, the entry does not point to a page table. It maps a 2 MiB block of physical memory by itself.', ['ptePS']);
+        L.p('The walk then stops after three reads. The 9 bits that would have picked a PT entry join the offset, which grows from 12 bits to 21.');
+        L.bits([
+          { bits: '63:48', val: '0x0000', name: 'copies of bit 47', tone: 'mute', w: 1.2 },
+          { bits: '47:39', val: '254', name: 'PML4 index', tone: 'a1' },
+          { bits: '38:30', val: '232', name: 'PDPT index', tone: 'a1' },
+          { bits: '29:21', val: '217', name: 'PD index', tone: 'a1' },
+          { bits: '20:0', val: '0x0c3d4e', name: 'offset in the 2 MiB page', tone: 'a3', w: 2 }
+        ], { title: 'The virtual address 0x00007f3a1b2c3d4e with a 2 MiB page' });
+        L.p('The upper three indices are the ones from [[ch:vm-levels]]: 254, 232 and 217. The low 21 bits, 0xc3d4e, are now the offset inside the 2 MiB page.');
+        L.code('2^21 bytes = 2 MiB = 512 × 4 KiB\n\n0x7f3a1b2c3d4e &  0x1fffff = 0x0c3d4e        /* offset in the 2 MiB page */\n0x7f3a1b2c3d4e & ~0x1fffff = 0x7f3a1b200000  /* where the 2 MiB page starts */', { lang: 'text', title: 'arithmetic' });
+        L.chain([
+          { k: 'CR3', v: 'top table', d: 'as before' },
+          { k: 'PML4 entry 254', v: '→ PDPT', d: 'read 1' },
+          { k: 'PDPT entry 232', v: '→ PD', d: 'read 2' },
+          { k: 'PD entry 217', v: 'PS = 1', d: 'read 3: holds the 2 MiB frame’s address', hot: true },
+          { k: 'physical address', v: 'frame + 21-bit offset', d: 'no PT, no fourth read' }
+        ], { cap: 'A walk to a 2 MiB page: three dependent reads instead of four.' });
+        L.p('A PDPT entry with PS = 1 does the same one level higher. It maps a 1 GiB page, and the offset is 30 bits. The next section watches the kernel build a 2 MiB one.');
+      } },
+      { id: 'fault', title: 'One fault, 512 frames', body: function (L) {
+        L.p('A second program maps 2 MiB at 0x7f3a1b200000 and asks for a huge page with <code>madvise</code>. Then it stores one byte at the same address as the main run.', ['madvise']);
+        L.code('char *p = mmap((void *)0x7f3a1b200000, 2 << 20, PROT_READ | PROT_WRITE,\n               MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);\nmadvise(p, 2 << 20, MADV_HUGEPAGE);      /* ask for a huge page   */\np[0xc3d4e] = 1;                          /* 0x7f3a1b2c3d4e        */', { title: 'labruns/vm/thp.c (shortened)' });
+        L.p('The kernel trace shows the fault and every block the fault handler took from the page allocator:');
+        L.out('thp.trace', { wide: true });
+        L.p('Error code 0x6 is a write from user mode to an address with no translation, as in the main run.');
+        L.p('Then two page tables, each one zeroed 4 KiB frame (order 0): a new PDPT and a new PD. There is no PT for this address, because the PD entry will map the page itself.', ['order']);
+        L.p('Then one block of order 9: 2⁹ = 512 contiguous frames starting at PFN 0x158800. That block is the 2 MiB page. The last line is a fourth table; the next section explains it.');
+        L.out('thp.result');
+        L.p('One fault made all 2 MiB resident: <code>Rss</code> and <code>AnonHugePages</code> are both 2048 kB. VmPTE grew by 12 kB, three tables: the PDPT, the PD and that fourth one.', ['smaps']);
+        L.p('pagemap still reports in 4 KiB pieces. Three pieces of the region:');
+        L.out('thp.pagemap');
+        L.p('0x158800, 0x1588c3 and 0x1589ff: one run of consecutive frames. The piece at +0xc3000 has frame 0x158800 + 0xc3.');
+        L.p('The first frame number is a multiple of 512. A 2 MiB page starts on a 2 MiB boundary in physical memory, just as it does in virtual memory.');
+        L.code('NX                      0x8000000000000000\nframe 0x158800 << 12    0x0000000158800000\nflags PS D A U/S R/W P  0x00000000000000e7\n                        ------------------\nPD entry 217            0x80000001588000e7\n\nphysical address = 0x158800000 + 0xc3d4e = 0x1588c3d4e', { lang: 'text', title: 'computed from the measured frame and the flags Linux writes', label: 'Inference' });
+        L.p('0xe7 is the 0x67 of a 4 KiB entry plus bit 7, PS. Linux builds the entry the same way as the small one: from the region’s permissions, then dirty and writable for a write fault.');
+        L.quote('entry = folio_mk_pmd(folio, vma->vm_page_prot);\nentry = maybe_pmd_mkwrite(pmd_mkdirty(entry), vma);', { cite: 'mm/huge_memory.c, map_anon_folio_pmd(), Linux v6.18', label: 'Linux source', code: true });
+        L.try('Split for a 2 MiB page', 'The page size is set to 2 MiB and the frame to the measured 0x158800. Try a frame number that is not a multiple of 512.', function (el) { LW().splitter(el, { size: 21, pfnValue: '0x158800' }); });
+      } },
+      { id: 'deposit', title: 'The spare table', body: function (L) {
+        L.p('Why allocate a page table that nothing points to? Because a huge page may later have to become 512 small ones.');
+        L.p('That happens when a program changes the permissions of part of it with <code>mprotect</code>, or unmaps part of it. Each 4 KiB piece then needs its own entry, in a PT.');
+        L.p('Linux allocates that PT at fault time and parks it beside the PD entry. In the fault handler, the huge page comes first, then the table:');
+        L.quote('folio = vma_alloc_anon_folio_pmd(vma, vmf->address);\n…\npgtable = pte_alloc_one(vma->vm_mm);\n…\npgtable_trans_huge_deposit(vma->vm_mm, vmf->pmd, pgtable);\nmap_anon_folio_pmd(folio, vmf->pmd, vma, haddr);', { cite: 'mm/huge_memory.c, __do_huge_pmd_anonymous_page(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('That is the order of the trace: the order-9 block, then the order-0 table. <code>pgtable_trans_huge_deposit</code> sets the table aside; then the PD entry is written.');
+        L.p('When a split comes, the kernel takes the table back, fills in 512 entries, one per 4 KiB piece, and points the PD entry at it:');
+        L.quote('pgtable = pgtable_trans_huge_withdraw(mm, pmd);\npmd_populate(mm, &_pmd, pgtable);', { cite: 'mm/huge_memory.c, __split_huge_pmd_locked(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('So a split never has to allocate memory and can never fail for lack of it. The spare table is counted in VmPTE from the start.');
+      } },
+      { id: 'kinds', title: 'Two ways to get huge pages', body: function (L) {
+        L.p('Linux offers huge pages in two ways. Transparent huge pages (THP) are automatic: the kernel tries to use a 2 MiB page whenever an aligned 2 MiB range of anonymous memory is first touched.', ['thp']);
+        L.p('Where it tries is a setting. The lab machine tries only in regions marked with <code>MADV_HUGEPAGE</code>:');
+        L.out('facts.thp', { lines: [0, 1, 2] });
+        L.p('The selected word is in brackets. <code>enabled</code> = madvise: only marked regions get huge pages at fault time. <code>defrag</code> = madvise: in marked regions a fault may wait while the kernel makes a free 2 MiB block.');
+        L.quote('madvise: directly stall for MADV_HUGEPAGE, otherwise fail if not immediately available', { cite: 'mm/huge_memory.c, comment above vma_thp_gfp_mask(), Linux v6.18', label: 'Linux source', code: true });
+        L.p('If no block can be found, the fault quietly maps a 4 KiB page instead. THP is best effort. A kernel thread, <code>khugepaged</code>, later tries to replace runs of small pages with huge ones.', ['khugepaged']);
+        L.p('The second way is hugetlb: a pool of huge pages reserved in advance, used only by programs that ask for it. Neither lab machine has a pool, so asking fails:', ['hugetlb']);
+        L.out('hugetlb.pool', { lines: [0, 1, 2] });
+        L.p('With one page in the pool, the same request works. One store, one fault, and a frame number that is a multiple of 512:');
+        L.out('hugetlb.pool', { lines: [3, 4, 5, 6, 7, 8, 9, 10], what: 'The same program, after one page was added to the pool.' });
+        L.table(['', 'Transparent huge pages', 'hugetlb pages'], [
+          ['who asks', 'nobody, or madvise as a hint', 'the program: MAP_HUGETLB or hugetlbfs'],
+          ['where pages come from', 'the normal page allocator, if a free 2 MiB block exists', 'a pool reserved in advance'],
+          ['if none is free', 'falls back to 4 KiB pages', 'mmap fails'],
+          ['sizes on x86-64', '2 MiB', '2 MiB, or 1 GiB if the CPU has pdpe1gb'],
+          ['split or swapped out', 'yes', 'never']
+        ], { mono: false });
+        L.p('Machine A reports <code>pdpe1gb</code> ([[ch:vm-walk]] listed its flags), so 1 GiB hugetlb pages would be possible there, with a pool of 1 GiB pages.');
+        L.note('linux', 'Linux can also give anonymous memory blocks between 4 KiB and 2 MiB, such as 16 KiB or 64 KiB (multi-size THP, one setting per size under /sys/kernel/mm/transparent_hugepage/hugepages-&lt;size&gt;kB/). They are still mapped with 4 KiB entries, so they cut faults, not TLB entries, unless the CPU can merge contiguous entries.', 'Sizes in between');
+        L.note('arm', 'With a 4 KiB granule, an AArch64 block descriptor at level 2 maps 2 MiB and at level 1 maps 1 GiB, as PS does on x86. Arm adds a contiguous bit: a run of adjacent entries that map adjacent frames can be held as one TLB entry. Linux uses both, and lists the sizes it gets for each granule:');
+        L.table(['Granule', 'Contiguous PT entries', 'PMD block', 'Contiguous PMD entries', 'PUD block'], [
+          ['4 KiB', '64 KiB', '2 MiB', '32 MiB', '1 GiB'],
+          ['16 KiB', '2 MiB', '32 MiB', '1 GiB', '–'],
+          ['64 KiB', '2 MiB', '512 MiB', '16 GiB', '–']
+        ], { title: 'Documentation/arch/arm64/hugetlbpage.rst, Linux v6.18', label: 'Linux source', src: ['HugeTLBpage on ARM64', 'https://docs.kernel.org/arch/arm64/hugetlbpage.html'] });
+      } },
+      { id: 'price', title: 'What huge pages cost', body: function (L) {
+        L.p('A huge page needs 512 free frames in a row, starting on a 2 MiB boundary. On a machine that has run for a while, free memory is scattered in small pieces, and such blocks become rare.');
+        L.p('Linux can make one by moving pages out of the way. That is compaction, and with <code>defrag</code> = madvise a fault in a marked region may wait for it.', ['compaction']);
+        L.p('The fault also does more work: it zeroes 2 MiB instead of 4 KiB. The same program that counted page tables timed both kinds of fault:');
+        L.out('cost.time', { wide: true });
+        L.p('A huge-page fault took 351 µs, a small one 1.7 µs. Per MiB, though, huge pages were 2.5 times cheaper. For each 2 MiB they need one fault instead of 512, one entry instead of 512, and one allocation instead of 512. [[ch:vm-cost]] takes these numbers apart.');
+        L.p('Memory can be wasted too. A program that touches one byte of a 2 MiB range gets all 2 MiB, as the single store above did.');
+      } },
+      { id: 'reach', title: 'Reach, again', body: function (L) {
+        L.p('The chase in [[ch:vm-tlb]] ran over 4 KiB and 2 MiB pages. Subtracting one column from the other leaves the time spent on translation:');
+        L.table(['Working set', 'ns/hop, 4 KiB pages', 'ns/hop, 2 MiB pages', 'Difference'], [
+          ['256 KiB (64 pages)', '1.54', '1.53', '0.01'],
+          ['512 KiB (128 pages)', '3.73', '1.55', '2.18'],
+          ['2 MiB (512 pages)', '3.68', '1.53', '2.15'],
+          ['4 MiB (1024 pages)', '6.62', '4.28', '2.34'],
+          ['8 MiB (2048 pages)', '8.78', '4.57', '4.21'],
+          { cells: ['16 MiB (4096 pages)', '15.02', '4.93', '10.09'], hot: true },
+          ['64 MiB (16384 pages)', '32.88', '8.72', '24.16'],
+          ['256 MiB (65536 pages)', '180.45', '102.63', '77.82']
+        ], { label: 'Inference', title: 'computed from tlb.chase (labruns/vm/out/tlb.txt)' });
+        L.p('The 2 MiB column rises too, from 4 MiB on. That rise comes from the data caches: 1024 nodes sit in 1024 different lines, 64 KiB, more than the L1 holds. Both columns pay it, so it cancels out of the difference.');
+        L.p('The difference grows from 2 ns to almost 80 ns per hop. At 256 MiB the 4 KiB pages need 65536 PT entries, 512 KiB of them, so the walks themselves miss in the caches.');
+        L.p('With 2 MiB pages, all 256 MiB need 128 TLB entries, and their PD entries take only 1 KiB.');
+        L.try('Reach with 2 MiB pages', 'Set to 2 MiB pages and a 256 MiB working set. Switch to 4 KiB and compare.', function (el) { LW().reach(el, { entries: 1536, page: 2097152, ws: 256 }); });
+        L.p('Huge pages pay off when a program uses most of each 2 MiB it touches, and touches more memory than the TLB reaches with 4 KiB pages. The lab below shows the other case, where they do not help.');
+        L.lab(function (el) { App.VMUI.labs.pages(el); });
+        L.note('amd', 'TLB levels do not all hold every page size. In AMD’s Family 17h cores, the 64-entry L1 data TLB holds 4 KiB, 2 MiB and 1 GiB entries, but the 1536-entry L2 data TLB holds only 4 KiB and 2 MiB pages: “1-Gbyte pages are not held in the L2 data TLB; they are only held in the L1 data TLB” (pub. 55723 rev. 3.00, §2.7.2).');
+      } }
+    ],
+    check: [
+      { q: 'A PD entry has PS = 1. How many reads does the walk take, and how wide is the page offset?', options: ['Three reads; a 21-bit offset', 'Four reads; a 12-bit offset', 'Two reads; a 30-bit offset', 'Three reads; a 12-bit offset'], answer: 0, why: 'The walk stops at the PD entry, after PML4, PDPT and PD. The 9 PT-index bits join the 12 offset bits: 21 bits.' },
+      { q: 'In the trace of the huge-page fault, which allocation is the huge page itself?', options: ['The order-9 block at pfn 0x158800', 'The first order-0 block', 'The last order-0 block', 'None: huge pages are reserved at boot'], answer: 0, why: 'Order 9 = 512 contiguous frames = 2 MiB. The order-0 blocks are page tables.' },
+      { q: 'Why does the fault also allocate a page table that nothing points to yet?', options: ['So the huge page can later be split into 512 small pages without allocating', 'To hold the entry of the 2 MiB page', 'Because a walk always needs four tables', 'To map the zero page'], answer: 0, why: 'pgtable_trans_huge_deposit parks it; a split withdraws it and fills its 512 entries.' },
+      { q: 'nr_hugepages is 0 and THP is set to madvise. A program calls mmap with MAP_HUGETLB. What happens?', options: ['mmap fails: the hugetlb pool is empty', 'It gets a transparent huge page instead', 'It silently gets 4 KiB pages', 'The kernel grows the pool by itself'], answer: 0, why: 'hugetlb pages come only from the reserved pool. Machine B printed “Cannot allocate memory” until the pool had a page.' }
+    ],
+    remember: [
+      'PS = 1 in a PD entry maps 2 MiB: three reads, a 21-bit offset, a first frame number that is a multiple of 512.',
+      'A THP fault takes one order-9 block and zeroes 2 MiB. It also sets aside one page table for a later split.',
+      'THP: automatic, best effort, falls back to 4 KiB pages. hugetlb: a reserved pool, asked for explicitly, fails when empty.',
+      'Huge pages pay off when most of each 2 MiB is used and the working set is past the 4 KiB TLB reach.'
+    ],
+    sources: [SRC_THP, SRC_HTLB, ['Linux v6.18: mm/huge_memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/huge_memory.c'], ['Linux: HugeTLBpage on ARM64', 'https://docs.kernel.org/arch/arm64/hugetlbpage.html'], SRC_AMD17]
+  });
+
+  /* ---------- III.10 ---------- */
+  function viptFigure(sv) {
+    var T = P.T, R = P.R;
+    R(sv, 110, 8, 220, 46, 'box', 6);
+    T(sv, 220, 26, 'virtual address', 's', 'middle');
+    T(sv, 220, 45, '0x7f3a1b2c3d4e', 'h m', 'middle');
+    P.A(sv, 'M160 54 L110 90');
+    P.A(sv, 'M280 54 L330 90');
+    T(sv, 96, 72, 'bits 47:12', 's m', 'end');
+    T(sv, 344, 72, 'bits 11:6 = 53', 's m', 'start');
+    R(sv, 10, 92, 200, 66, 'a4b', 6);
+    T(sv, 110, 114, 'TLB', 'h', 'middle');
+    T(sv, 110, 133, 'page 0x7f3a1b2c3', 's m', 'middle');
+    T(sv, 110, 150, '→ frame 0x129b49', 's m', 'middle');
+    R(sv, 230, 92, 200, 66, 'a3b', 6);
+    T(sv, 330, 114, 'L1 data cache', 'h', 'middle');
+    T(sv, 330, 133, 'read set 53:', 's', 'middle');
+    T(sv, 330, 150, 'the tags of all 8 ways', 's', 'middle');
+    P.A(sv, 'M110 158 L170 194', true);
+    P.A(sv, 'M330 158 L270 194', true);
+    R(sv, 110, 196, 220, 52, 'box on', 6);
+    T(sv, 220, 216, 'compare each tag with 0x129b49', 's', 'middle');
+    T(sv, 220, 236, 'match: the byte is at offset 14', 's', 'middle');
+  }
+  App.lesson({
+    id: 'vm-vipt', short: 'The L1 and translation', title: 'Reading the L1 while translating',
+    lede: 'The L1 cache picks its set with address bits that translation does not change, so the cache lookup and the translation run side by side.',
+    know: ['The low 12 bits of an address pass through translation unchanged ([[ch:vm-pages]]).', 'Every access looks up the TLB before it can use a physical address ([[ch:vm-tlb]]).'],
+    learn: ['Split an address into the L1’s tag, set and byte bits', 'Explain why the L1 can start a lookup before the translation is done', 'Say why L1 data caches stay at 32 or 48 KiB, and what bigger pages allow', 'Count an L1’s ways with a measurement, and know when a virtual machine’s report can be trusted'],
+    sections: [
+      { id: 'lines', title: 'Lines, sets and ways', body: function (L) {
+        L.p('Caches hold memory in 64-byte lines. Machine A’s CPU reports a 32 KiB L1 data cache, with 64 sets of 8 ways:', ['line', 'set', 'way']);
+        L.out('facts.l1');
+        L.p('64 sets × 8 ways × 64 bytes = 32 KiB. A line may be stored in any of the 8 ways of one set, and its address decides which set.');
+        L.bits([
+          { bits: '63:12', val: '0x7f3a1b2c3', name: 'page number: its frame number becomes the tag', tone: 'a1', w: 2.2 },
+          { bits: '11:6', val: '53', name: 'set', tone: 'a4' },
+          { bits: '5:0', val: '14', name: 'byte in the line', tone: 'a3' }
+        ], { title: 'The address 0x00007f3a1b2c3d4e, split for this L1' });
+        L.code('byte = 0x7f3a1b2c3d4e & 63          = 14\nset  = (0x7f3a1b2c3d4e >> 6) & 63   = 53', { lang: 'text', title: 'arithmetic' });
+        L.p('Six bits pick the byte inside a line and six more pick the set. With each line the cache also stores a tag, the rest of the line’s address, to know which line of memory occupies the slot. Which address, virtual or physical, is the subject of the next section.', ['tag']);
+        L.p('[[ch:l1d]] goes through a lookup in detail. Here only one fact matters: where the set bits sit.');
+      } },
+      { id: 'parallel', title: 'Index with virtual bits, compare physical tags', body: function (L) {
+        L.p('Bits 11 to 0 are the page offset. Translation copies them unchanged, so bits 11:6 are the same in the virtual address and in the physical one.');
+        L.p('So the L1 can start reading set 53 with the virtual address while the TLB is still translating. When the frame number arrives, it is compared with the tags just read.');
+        L.fig(440, 252, viptFigure, { cap: 'The two halves of an L1 lookup run at the same time. The set comes from untranslated bits; the tag compare waits for the TLB.', maxw: 560 });
+        L.p('This design is called virtually indexed, physically tagged, VIPT. The set comes from virtual bits; the identity check uses the physical address.', ['vipt']);
+        L.p('Because the tags are physical, two processes using the same virtual address can never hit each other’s lines, and nothing needs flushing when the kernel switches CR3.');
+      } },
+      { id: 'size', title: 'Why the L1 stays small', body: function (L) {
+        L.p('The trick works only while every set bit lies inside the page offset. Sets × line size must not exceed the page size:');
+        L.code('sets × line size = 64 × 64 B = 4 KiB  = one page\nL1 size          = 4 KiB × ways\n                   8 ways → 32 KiB\n                  12 ways → 48 KiB', { lang: 'text', title: 'arithmetic' });
+        L.p('To grow the cache without leaving the page offset, a designer adds ways, not sets. AMD’s Zen 5 and Intel’s Golden Cove cores have 48 KiB, 12-way L1 data caches: still 4 KiB per way.');
+        L.p('Each extra way costs power and time, because every lookup compares one more tag. Bigger pages lift the limit: with 16 KiB pages, a 4-way cache can hold 64 KiB.');
+        L.try('Size an L1', 'Change the size, the ways, the line size and the page size. The last line says whether the set can be read before translation.', function (el) { LW().l1geom(el, {}); });
+        L.p('Arm lets the operating system choose the page size, and some Arm cores use bigger L1 caches with extra hardware for aliases. The lab below compares the three Arm page sizes.');
+        L.lab(function (el) { App.ArchLabs.granules(el); });
+      } },
+      { id: 'measure', title: 'Count the ways with a measurement', body: function (L) {
+        L.p('A pointer chase can count an L1’s ways. Put one node in each of N pages, all at the same page offset, so that every node falls into the same set.');
+        L.code('static long off_spread(long i) { return (i * 64) % 4096; }\n…\nstatic long off_same(long i) { (void)i; return 0x140; }', { title: 'labruns/vm/chase.c (excerpt)' });
+        L.p('<code>off_same</code> puts every node at offset 0x140, and (0x140 >> 6) & 63 = 5: all in set 5. <code>off_spread</code> moves each page’s node 64 bytes further, into a different set.');
+        L.p('While N is at most the number of ways, every node stays in L1. With one more node than ways, the set overflows and every hop misses L1. Machine A:');
+        L.out('vipt.a');
+        L.p('Up to 12 pages, a hop takes 1.5 ns. From 13 pages it takes about 4.2 ns, an L2 hit. Spread over different sets, the same pages stay at 1.5 ns.');
+        L.p('So machine A’s L1 behaves as 12-way. But its CPU reported 8 ways, in the first section of this lesson.');
+        L.p('Machine A is a virtual machine. <code>CPUID</code>, the instruction programs use to learn cache sizes, returns whatever the hypervisor configures. Here it describes an older CPU model than the one underneath.', ['cpuid']);
+        L.p('Machine B reports its L1 truthfully, 48 KiB and 12 ways, and the same chase breaks at the same place:');
+        L.out('facts.l1b');
+        L.out('vipt.b');
+        L.note('vm', 'On a virtual machine, the CPU model, the cache sizes and even the feature flags are what the hypervisor chooses to show. Read them as a description, and measure when a number matters. [[ch:vm-virt]] covers what else changes inside a virtual machine.');
+      } },
+      { id: 'alias', title: 'Two virtual addresses, one line', body: function (L) {
+        L.p('A frame can be mapped at two virtual addresses at once: an alias. With physical tags, it is still one line in one set, because both addresses share the page offset and so the set bits.', ['valias']);
+        L.p('Some L1 caches add a shortcut that does depend on the virtual address. AMD’s cores guess the way from a hash of the virtual address, a microtag, and read only that way:', ['waypred']);
+        L.quote('The L1 data cache tags contain a linear-address-based microtag (utag) that tags each cacheline with the linear address that was used to access the cacheline initially.\n…\nA load to an address that is valid in the L1 DC but under a different linear alias will see an L1 DC miss, which requires an L2 cache request to be made. The latency will generally be no larger than that of an L2 cache hit.', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723 rev. 3.00, §2.6.2.2', label: 'Vendor docs', src: ['AMD documentation portal: pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'] });
+        L.p('AMD calls virtual addresses linear addresses. So on those cores an alias costs about an L2 hit when the other address was used last; it is never a wrong answer. [[ch:vm-alias]] maps one frame twice on purpose.');
+      } }
+    ],
+    check: [
+      { q: 'An L1 has 64 sets and 64-byte lines. Which address bits pick the set?', options: ['Bits 11:6', 'Bits 5:0', 'Bits 17:12', 'Bits 47:12'], answer: 0, why: 'Bits 5:0 pick the byte in the 64-byte line; the next 6 bits, 11:6, pick one of 64 sets.' },
+      { q: 'Why can the L1 start reading a set before the TLB answers?', options: ['The set bits are inside the page offset, which translation does not change', 'The L1 stores virtual tags', 'The TLB is slower than DRAM', 'The L1 only holds kernel addresses'], answer: 0, why: 'Bits 11:6 are identical in the virtual and the physical address, so they can be used before translation finishes.' },
+      { q: 'A designer wants a 64 KiB L1 with 64-byte lines that still indexes inside a 4 KiB page. How many ways does it need?', options: ['16', '8', '12', '4'], answer: 0, why: 'Each way can hold at most 4 KiB (64 sets × 64 B), so 64 KiB needs 16 ways.' },
+      { q: 'Machine A’s CPUID reports 8 ways, but the chase slows down at 13 pages. What do you conclude?', options: ['The L1 has 12 ways; the virtual machine reports a different CPU', 'The L1 has 8 ways and the chase is wrong', 'The TLB has 12 entries', 'The L2 has 12 ways'], answer: 0, why: 'Up to 12 lines of one set fit; the 13th overflows the set. Machine B, which reports 12 ways, breaks at the same point.' }
+    ],
+    remember: [
+      'For a 32 KiB, 8-way L1 with 64-byte lines: bits 5:0 pick the byte, bits 11:6 the set, and the rest is the tag.',
+      'VIPT: the set is read with virtual bits, which translation does not change; the tag is compared with the frame number.',
+      'Sets × line = 4 KiB keeps the set inside the page offset, so bigger L1s add ways: 32 KiB × 8, 48 KiB × 12.',
+      'A virtual machine reports the CPU the hypervisor describes. Measure when it matters.'
+    ],
+    sources: [SRC_AMD17, ['AMD, Zen 5 at Hot Chips 2024', 'https://www.hc2024.hotchips.org/assets/program/conference/day2/24_HC2024.AMD.Cohen.Subramony.final.pdf'], ['Chips and Cheese, Golden Cove’s caches', 'https://chipsandcheese.com/p/going-armchair-quarterback-on-golden-coves-caches']]
   });
 })();
 

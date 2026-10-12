@@ -38,7 +38,7 @@
     opts = opts || {};
     var form = h('div', { 'class': 'lx-form' }, el);
     var iVA = field(form, 'Virtual address', opts.va || '0x00007f3a1b2c3d4e', { grow: true });
-    var iSize = opts.sizes === false ? null : select(form, 'Page size', [['12', '4 KiB'], ['21', '2 MiB'], ['30', '1 GiB']], '12');
+    var iSize = opts.sizes === false ? null : select(form, 'Page size', [['12', '4 KiB'], ['21', '2 MiB'], ['30', '1 GiB']], String(opts.size || 12));
     var iPFN = opts.pfn === false ? null : field(form, 'Frame number (PFN) of that page', opts.pfnValue || '0x129b49', { width: '220px' });
     var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
     function run() {
@@ -176,7 +176,7 @@
     opts = opts || {};
     var form = h('div', { 'class': 'lx-form' }, el);
     var iE = field(form, 'Entries', String(opts.entries || 1536), { width: '120px' });
-    var iP = select(form, 'Page size', [['4096', '4 KiB'], ['2097152', '2 MiB'], ['1073741824', '1 GiB']], '4096');
+    var iP = select(form, 'Page size', [['4096', '4 KiB'], ['2097152', '2 MiB'], ['1073741824', '1 GiB']], String(opts.page || 4096));
     var iW = field(form, 'Working set (MiB)', String(opts.ws || 8), { width: '160px' });
     var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
     function fmt(b) { return b >= 1073741824 ? (b / 1073741824) + ' GiB' : b >= 1048576 ? (b / 1048576) + ' MiB' : (b / 1024) + ' KiB'; }
@@ -229,5 +229,43 @@
     render();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows };
+  /* ---- 6. L1 geometry: size, ways and line size give the sets and the address split;
+     does the set index fit inside the page offset? ---- */
+  function l1geom(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var iS = field(form, 'Size (KiB)', String(opts.size || 32), { width: '110px' });
+    var iW = field(form, 'Ways', String(opts.ways || 8), { width: '90px' });
+    var iL = field(form, 'Line (bytes)', String(opts.line || 64), { width: '120px' });
+    var iP = select(form, 'Page size', [['4096', '4 KiB'], ['16384', '16 KiB'], ['65536', '64 KiB']], String(opts.page || 4096));
+    var iA = field(form, 'Address', opts.va || '0x00007f3a1b2c3d4e', { grow: true });
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function pow2(n) { return n > 0 && Number.isInteger(n) && (n & (n - 1)) === 0; }
+    function lg(n) { return Math.round(Math.log2(n)); }
+    function kb(b) { return b >= 1024 ? (b / 1024) + ' KiB' : b + ' B'; }
+    function run() {
+      var kib = Number(iS.value), ways = Number(iW.value), line = Number(iL.value), page = Number(iP.value), va = parseHex(iA.value);
+      out.innerHTML = '';
+      if (!(kib > 0 && kib <= 4096 && Number.isInteger(ways) && ways >= 1 && ways <= 64 && pow2(line) && line >= 16 && line <= 256)) {
+        h('p', { 'class': 'lx-msg bad' }, out, 'Enter a size in KiB, a whole number of ways (1 to 64) and a line size that is a power of two (16 to 256).');
+        return;
+      }
+      var sets = kib * 1024 / (ways * line);
+      if (!pow2(sets)) { h('p', { 'class': 'lx-msg bad' }, out, 'Size ÷ (ways × line) = ' + (Math.round(sets * 100) / 100) + ' sets. Caches use a power of two; try other values.'); return; }
+      if (va === null || va >= (1n << 64n)) { h('p', { 'class': 'lx-msg bad' }, out, 'Enter the address as hex, such as 0x00007f3a1b2c3d4e.'); return; }
+      var ob = lg(line), ib = lg(sets), top = ob + ib - 1, pb = lg(page);
+      var fields = [{ bits: '63:' + (top + 1), val: hx(va >> BigInt(top + 1)), name: 'tag bits (compared after translation)', tone: 'a1', w: 2.2 }];
+      if (ib > 0) fields.push({ bits: top + ':' + ob, val: String((va >> BigInt(ob)) & BigInt(sets - 1)), name: 'set', tone: 'a4' });
+      fields.push({ bits: (ob - 1) + ':0', val: String(va & BigInt(line - 1)), name: 'byte in the line', tone: 'a3' });
+      h('div', null, out, bitsHTML(fields));
+      h('p', { 'class': 'lx-msg' }, out, 'Sets = ' + kib + ' KiB ÷ (' + ways + ' ways × ' + line + ' B) = <b>' + sets + '</b>' + (ib > 0 ? ', chosen by bits ' + top + ':' + ob : '') + '. One way holds sets × line = ' + kb(sets * line) + '.');
+      if (sets * line <= page) h('p', { 'class': 'lx-msg' }, out, '<b>The set bits are inside the page offset</b> (bits ' + (pb - 1) + ':0), which translation copies unchanged. The cache can read the set with virtual-address bits while the TLB translates.');
+      else h('p', { 'class': 'lx-msg' }, out, '<b>Bits ' + top + ':' + pb + ' of the set number lie above the page offset.</b> They can differ between the virtual and the physical address, so one frame could sit in two sets. The cache needs extra hardware to find such aliases, or must wait for the translation.');
+    }
+    [iS, iW, iL, iA].forEach(function (x) { x.addEventListener('input', run); });
+    iP.addEventListener('change', run);
+    run();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom };
 })();

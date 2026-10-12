@@ -21,7 +21,7 @@
     {id: 'vmem', n: 'III', title: 'Virtual memory',
       lede: 'How every address a program uses is translated: pages, page tables, the TLB, page faults, copy-on-write and huge pages, and what the kernel does behind each one. The outputs shown are from real runs on a Linux machine.',
       outcomes: ['Translate a virtual address by hand through all four levels', 'Read /proc/self/maps, pagemap and smaps', 'Decode any page-fault error code', 'Predict when the TLB is flushed and when other CPUs are interrupted', 'Measure page-fault costs and keep them out of benchmarks'],
-      runs: true,
+      runs: ['a', 'b'],
       pages: ['vm-addresses', 'vm-pages', 'vm-space', 'vm-tree', 'vm-levels', 'vm-pte', 'vm-walk', 'vm-tlb', 'xlate', 'vm-huge', 'vm-vipt', 'vm-switch', 'vm-shootdown',
         'vm-faults', 'vm-demand', 'vm-files', 'vm-cow', 'vm-protect', 'vm-cost', 'vm-buddy', 'vm-reclaim', 'vm-alias', 'vm-virt', 'vm-review']},
     {id: 'cache', n: 'IV', title: 'Caches and DRAM',
@@ -35,7 +35,7 @@
     {id: 'io', n: 'VI', title: 'Devices and I/O',
       lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, and the queues behind every disk and network request. The outputs shown are from real runs on a Linux machine.',
       outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt'],
-      runs: true,
+      runs: ['b'],
       pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review']},
     {id: 'system', n: 'VII', title: 'The whole system',
       lede: 'Everything together: one access end to end, then predicting, measuring and explaining performance on your own machine.',
@@ -45,8 +45,13 @@
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
   var LAB_PAGES = {xlate: 'Lab', dev: 'Lab'};
-  /* The machine every "Lab run" output in the course was captured on. */
-  var RUN_MACHINE = 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses. Physical addresses are the virtual machine’s own: the host translates them once more. Timings are this machine’s and will differ on yours.';
+  /* The machines the "Lab run" outputs were captured on. Each output names its machine. */
+  var MACHINES = {
+    a: {name: 'machine A', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses.'},
+    b: {name: 'machine B', text: 'another cloud virtual machine (KVM) running the same Linux 6.18.44 build on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on PCI Express.'}
+  };
+  var RUN_MACHINE = MACHINES.a.text;
+  function machineName(id){ return (MACHINES[id || 'a'] || MACHINES.a).name; }
 
   var pageInfo = {};   /* id -> {part, index, count} */
   var lessons = {};
@@ -208,9 +213,11 @@
       h('a', {href: '#' + id}, li, '<span class="lc-num">' + (LAB_PAGES[id] ? 'Lab' : String(i.index).padStart(2, '0')) + '</span><span class="lc-body"><strong>' + c.short + '</strong>' + (d ? '<small>' + d + '</small>' : '') + '</span><span class="lc-done" aria-label="done"></span>');
     });
     if (p.runs){
-      var r = h('section', {'class': 'part-runs'}, wrap);
+      var r = h('section', {'class': 'part-runs'}, wrap), ms = p.runs;
       h('h2', null, r, 'Where the outputs come from');
-      h('p', null, r, 'Outputs marked <span class="evidence-label evidence-kind" data-evidence-kind="Lab run">Lab run</span> were captured by running small programs on ' + RUN_MACHINE);
+      h('p', null, r, 'Outputs marked <span class="evidence-label evidence-kind" data-evidence-kind="Lab run">Lab run</span> were captured by running small programs on ' + (ms.length === 1 ? MACHINES[ms[0]].text : (['', 'one', 'two', 'three'][ms.length] || ms.length) + ' machines. Each output names the one it came from:'));
+      if (ms.length > 1) h('ul', {'class': 'part-machines'}, r, ms.map(function(m){ return '<li><b>' + MACHINES[m].name.charAt(0).toUpperCase() + MACHINES[m].name.slice(1) + '</b>: ' + MACHINES[m].text + '</li>'; }).join(''));
+      h('p', null, r, 'Physical addresses on a virtual machine are the virtual machine’s own: the host translates them once more. Timings are these machines’ and will differ on yours.');
       h('p', null, r, 'The programs and the raw outputs are in the repository’s <code>labruns/</code> folder, so you can run them on your own Linux machine. Reading physical frame numbers and kernel trace events needs root.');
     }
     refreshMarks();
@@ -298,7 +305,7 @@
     var lines = o.lines ? o.lines.map(function(i){ return r.lines[i]; }) : r.lines;
     if (o.what === undefined) o.what = r.what;
     o.title = o.title || 'output';
-    o.labelNote = o.labelNote || 'labruns/' + r.file.replace('/out/', '/out/');
+    o.labelNote = o.labelNote || 'labruns/' + r.file + ' · ' + machineName(r.machine);
     return this.run(lines.join('\n'), o);
   };
   /* a quotation from a source document */
@@ -539,6 +546,6 @@
   App.Course = {
     parts: PARTS, info: pageInfo, lessons: lessons, order: order, nav: buildNav, onShow: onShow,
     header: header, footer: footer, isDone: isDone, setDone: setDone, indexTerms: indexTerms,
-    livePages: livePages, labPages: LAB_PAGES, runMachine: RUN_MACHINE, quiz: quiz, chip: chip, esc: esc
+    livePages: livePages, labPages: LAB_PAGES, runMachine: RUN_MACHINE, machines: MACHINES, quiz: quiz, chip: chip, esc: esc
   };
 })();

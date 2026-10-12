@@ -30,3 +30,11 @@ test('every excerpt says what was run', () => {
     assert.ok(typeof r.what === 'string' && r.what.length > 10, id + ' needs a description');
   }
 });
+
+test('every excerpt names the machine its file came from', () => {
+  /* labruns/vm/out: machine A; labruns/vm/out-b, labruns/io and machine-b.txt: machine B */
+  for (const [id, r] of Object.entries(Runs.runs)) {
+    const isB = /^(vm\/out-b\/|io\/|machine-b\.txt$)/.test(r.file);
+    assert.equal(r.machine || 'a', isB ? 'b' : 'a', id + ': ' + r.file + ' comes from machine ' + (isB ? 'B' : 'A'));
+  }
+});

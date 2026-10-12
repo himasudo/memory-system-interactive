@@ -268,7 +268,7 @@
         L.p('Like data caches, TLBs come in levels. A small L1 TLB is checked first, then a larger L2 TLB.', ['stlb']);
         L.p('The walker also caches upper-level entries, so a miss often reads only the PT entry instead of all four.', ['pwc']);
         L.p('AMD describes all three for one of its cores:');
-        L.quote('The fully-associative L1 data TLB (DTLB) provides 64 entries that hold 4-Kbyte, 2-Mbyte, or 1-Gbyte page entries.\nThe L2 data TLB provides a unified 12-way set-associative L2 data TLB with 1536 entries capable of holding 4-Kbyte pages, 2-Mbyte pages, and page-directory entries (PDEs) used to speed up table walks.\n… the table walker includes a 64-entry Page Directory Cache (PDC) which holds page-map-level-4 entries (PML4Es) and page-directory-pointer entries (PDPEs).', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723, §2.7', label: 'Vendor docs' });
+        L.quote('The fully-associative L1 data TLB (DTLB) provides 64 entries that hold 4-Kbyte, 2-Mbyte, or 1-Gbyte page entries.\nThe L2 data TLB provides a unified 12-way set-associative L2 data TLB with 1536 entries capable of holding 4Kbyte pages, 2Mbyte pages, and page-directory entries (PDEs) used to speed up table walks.\n… the table walker includes a 64-entry Page Directory Cache (PDC) which holds page-map-level-4 entries (PML4Es) and page-directory-pointer entries (PDPEs).', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723 rev. 3.00, §2.7', label: 'Vendor docs', src: ['AMD documentation portal: pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'] });
         L.p('Sizes differ between cores and grow with each generation, but the shape is the same everywhere: a small L1 TLB, a larger L2 TLB, and caches of upper-level entries.');
       } },
       { id: 'reach', title: 'Reach', body: function (L) {
@@ -286,6 +286,8 @@
         L.p('Past about 1500 to 2000 pages (6 to 8 MiB), the 4 KiB column climbs again: now the L2 TLB misses too, and hops wait for page walks. By 4096 pages, 2 MiB pages are three times faster.');
         L.note('careful', 'The thresholds match a 64-entry L1 TLB and an L2 TLB of 1536 to 2048 entries, but the lab machine is a virtual machine, so the CPU’s real TLB sizes are not reported. Treat the sizes as an inference from the measurement. On a virtual machine each walk is also slower than on bare metal ([[ch:vm-virt]]).', 'Reading this carefully');
         L.p('Try it on any page-heavy workload: when the working set passes the TLB’s reach, time per access rises in steps, and huge pages push the steps far to the right.');
+        L.p('Walks are not free for the rest of the machine either: every walk read is a memory request that competes with ordinary loads. The lab below models that.');
+        L.lab(function (el) { App.VMUI.labs.walks(el); });
       } },
       { id: 'hardware', title: 'Hardware handles hits and misses', body: function (L) {
         L.p('On x86 and Arm, the whole miss path, lookup, walk and refill, is done by hardware. The kernel hears about a translation only when a walk fails.');
@@ -305,6 +307,6 @@
       'Reach = entries × page size. Past it, random accesses start to walk.',
       'Hits and misses are handled entirely in hardware; the kernel only handles failed walks.'
     ],
-    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://www.amd.com/content/dam/amd/en/documents/archived-tech-docs/software-optimization-guides/55723_3_00_ZEN1.pdf'], ['Intel SDM Vol. 3A, §4.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'], ['Intel SDM Vol. 3A, §4.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
   });
 })();

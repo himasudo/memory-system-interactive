@@ -671,6 +671,7 @@
   }
   App.extendChapter('stores', ordering);
   App.extendChapter('hier', inclusion);
-  App.extendChapter('xlate', granules);
+  /* placed inline in Lesson III.10 (vm-vipt) */
+  App.ArchLabs = { granules: granules };
   App.extendChapter('perf', compare);
 })();
