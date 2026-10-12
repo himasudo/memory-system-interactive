@@ -295,6 +295,18 @@ svg .dash{stroke-dasharray:4 3}
 /* LRU widget (App.LW.lrusim): one box per frame, 8 frames per row */
 .lx-lru .lx-bits-strip{flex-wrap:nowrap}
 .lx-lru .lx-bits.dense .lx-bit{flex:0 0 calc((100% - 28px) / 8);flex-grow:0!important;min-width:0;padding-left:0;padding-right:0}
+/* two-dimensional walk widget (App.LW.walk2d) */
+.lx-w2d{display:grid;gap:5px;margin:0 0 12px}
+.lx-w2d .w-row{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:10px;align-items:center}
+.lx-w2d .w-k{font:12px var(--mono);color:var(--tx2);text-align:right}
+.lx-w2d .w-cells{display:flex;gap:4px;flex-wrap:wrap}
+.lx-w2d .w-c{flex:0 0 34px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font:600 12px var(--mono);color:var(--tx);border:1px solid var(--bd2)}
+.lx-w2d .w-c.host,.w-key.host{background:var(--a4bg);border-color:color-mix(in srgb,var(--a4) 55%,transparent)}
+.lx-w2d .w-c.guest,.w-key.guest{background:var(--a1bg);border-color:color-mix(in srgb,var(--a1) 60%,transparent)}
+.lx-w2d .w-c.data{border-style:dashed;color:var(--tx3);font-weight:500;font-size:11px}
+.w-key{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid;vertical-align:-1px;margin:0 4px 0 10px}
+.w-key:first-child{margin-left:0}
+@media (max-width:520px){.lx-w2d .w-row{grid-template-columns:1fr;gap:4px}.lx-w2d .w-k{text-align:left}}
 /* buddy allocator widget (App.LW.buddysim) */
 .lx-buddy{display:flex;gap:4px;margin:0 0 12px}
 .lx-buddy-b{flex-basis:0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 9px;border-radius:7px;border:1px solid color-mix(in srgb,var(--a2) 55%,transparent);background:var(--a2bg);color:var(--tx);font:inherit;cursor:default}

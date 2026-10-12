@@ -466,5 +466,34 @@
     reset();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim, buddysim: buddysim, lrusim: lrusim };
+  /* ---- 10. the two-dimensional walk: memory references per TLB miss in a guest ---- */
+  function walk2d(el, opts) {
+    opts = opts || {};
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var sizes = [['0', '4 KiB'], ['1', '2 MiB'], ['2', '1 GiB']];
+    var gp = select(form, 'Guest page', sizes, '0'), hp = select(form, 'Host page', sizes, '0');
+    var gl = select(form, 'Guest tables', [['4', '4 levels'], ['5', '5 levels']], '4'), hl = select(form, 'Host tables', [['4', '4 levels'], ['5', '5 levels']], '4');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    var NAMES = ['PML5', 'PML4', 'PDPT', 'PD', 'PT'];
+    function render() {
+      var g = Number(gl.value) - Number(gp.value), hh = Number(hl.value) - Number(hp.value);
+      var gnames = NAMES.slice(5 - Number(gl.value)).slice(0, g);
+      var html = '<div class="lx-w2d">', n = 0;
+      for (var r = 0; r <= g; r++) {
+        html += '<div class="w-row"><span class="w-k">' + (r < g ? 'find guest ' + gnames[r] : 'find the data') + '</span><span class="w-cells">';
+        for (var c = 0; c < hh; c++) html += '<span class="w-c host">' + (++n) + '</span>';
+        html += r < g ? '<span class="w-c guest">' + (++n) + '</span>' : '<span class="w-c data">data</span>';
+        html += '</span></div>';
+      }
+      html += '</div>';
+      out.innerHTML = html;
+      var total = g * (hh + 1) + hh, small = Math.min(Number(gp.value), Number(hp.value));
+      h('p', { 'class': 'lx-msg' }, out, '<span class="w-key host"></span> host table entry <span class="w-key guest"></span> guest table entry');
+      h('p', { 'class': 'lx-msg' }, out, 'Native walk: <b>' + g + '</b> references. In the guest: ' + g + ' × (' + hh + ' + 1) + ' + hh + ' = <b>' + total + '</b> references. The TLB entry covers <b>' + sizes[small][1] + '</b>, the smaller of the two pages.');
+    }
+    [gp, hp, gl, hl].forEach(function (s) { s.addEventListener('change', render); });
+    render();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows, l1geom: l1geom, tlbsim: tlbsim, buddysim: buddysim, lrusim: lrusim, walk2d: walk2d };
 })();

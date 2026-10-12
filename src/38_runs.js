@@ -554,6 +554,43 @@ var LabRuns = (function () {
       what: "/proc/zoneinfo, Normal zone: the three watermarks, in pages of 4 KiB.",
       lines: ["$ awk ... /proc/zoneinfo    # the Normal zone: free pages, watermarks, CPU 0 list (see zones.sh)", "Node 0, zone   Normal", "…", "        min      ⟦6801⟧", "        low      ⟦8501⟧", "        high     ⟦10201⟧"]
     },
+    /* ---- lesson 21: aliases ---- */
+    'alias.views': {
+      file: 'vm/out/alias.txt',
+      what: "alias.c: one 4 KiB memfd mapped twice with MAP_SHARED; a string written through view A is read through view B.",
+      lines: ["view A 0x7f2f1743b000  view B 0x7f2f1743a000", "read through view B at +0xd4e: \"written through view A\"", "pagemap view A: pfn=⟦0x110b4b⟧   view B: pfn=⟦0x110b4b⟧"]
+    },
+    'alias.maps': {
+      file: 'vm/out/alias.txt',
+      what: "alias.c: the two mappings in /proc/self/maps.",
+      lines: ["7f2f1743a000-7f2f1743b000 rw-s 00000000 00:01 14                         /memfd:one-frame (deleted)", "7f2f1743b000-7f2f1743c000 rw-s 00000000 00:01 14                         /memfd:one-frame (deleted)"]
+    },
+    'alias.libc': {
+      file: 'vm/out/alias.txt',
+      what: "alias.c run twice as separate processes: where getpid’s code is, and which frame holds it.",
+      lines: ["process 2272: getpid at 0x7f6bb54f5b90, pagemap pfn=⟦0x10211b⟧", "process 2273: getpid at 0x7f7c4f0f5b90, pagemap pfn=⟦0x10211b⟧"]
+    },
+    'alias.chase': {
+      file: 'vm/out-b/aliaschase.txt', machine: 'b',
+      what: "aliaschase.c: the same 128-node pointer chase over one frame, once through view A only and once switching views at every visit to a line.",
+      lines: ["view A 0x7faf0b3d2000  view B 0x7faf0b3d1000  pagemap pfn: A 0x12f761  B 0x12f761", "128 nodes in the 64 lines of one frame, ns per hop over 9 runs", "  one view (A only)       median ⟦1.82⟧   min 1.78   max 1.87", "  two views (A and B)     median ⟦1.80⟧   min 1.77   max 1.88"]
+    },
+    /* ---- lesson 22: virtual machines (machine B) ---- */
+    'virt.cpu': {
+      file: 'vm/out-b/virt.txt', machine: 'b',
+      what: "virt.sh: what machine B’s kernel reports about the hypervisor, and the CPU flags for hardware virtualization (vmx, svm) and for running on a hypervisor.",
+      lines: ["$ lscpu | grep -E \"Hypervisor vendor|Virtualization type\"", "Hypervisor vendor:                       KVM", "Virtualization type:                     full", "$ grep -o -w -E \"hypervisor|vmx|svm\" /proc/cpuinfo | sort | uniq -c", "      ⟦4 hypervisor⟧"]
+    },
+    'virt.ram': {
+      file: 'vm/out-b/virt.txt', machine: 'b',
+      what: "virt.sh: the guest-physical address ranges that hold machine B’s RAM.",
+      lines: ["$ grep \"System RAM\" /proc/iomem", "00001000-0009fbff : System RAM", "00100000-bfffffff : System RAM", "100000000-43fffffff : System RAM"]
+    },
+    'virt.dmesg': {
+      file: 'vm/out-b/virt.txt', machine: 'b',
+      what: "virt.sh: boot messages of machine B’s kernel about KVM.",
+      lines: ["$ dmesg | grep -E \"Hypervisor detected|Booting paravirtualized|pv remote TLB flush\"", "Hypervisor detected: KVM", "⟦kvm-guest: KVM setup pv remote TLB flush⟧", "Booting paravirtualized kernel on KVM"]
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',

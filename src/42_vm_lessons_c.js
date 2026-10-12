@@ -359,7 +359,7 @@
         L.p('CPU 1 switched tasks five times during the loop. While it ran something else, an munmap skipped it, and CPU 1 flushed at its next switch instead. The send event is recorded before that decision:');
         L.quote('Note that there are (and have always been)\ncases in which a remote TLB flush will be traced, but eventually\nwould not happen.', { cite: 'arch/x86/mm/tlb.c, native_flush_tlb_multi(), Linux v6.18', label: 'Linux source', code: true });
         L.out('shoot.runs23');
-        L.p('Runs 2 and 3 received 989 and 1000 interrupts. The count depends on how often the spinning thread was off its CPU. Each interrupt also makes CPU 0 wait until CPU 1 has flushed.');
+        L.p('Runs 2 and 3 received 989 and 1000 interrupts: the count depends on how often the spinning thread was off its CPU, and on a virtual machine there can be one more reason ([[ch:vm-virt]]). Each interrupt also makes CPU 0 wait until CPU 1 has flushed.');
         L.note('why', 'munmap, mprotect and madvise in a multithreaded program cost an interrupt to every CPU running one of its threads. A benchmark that maps and unmaps memory inside its timed loop measures those interrupts too.');
         L.lab(function (el) { App.VMUI.labs.shootdowns(el); });
       } },
