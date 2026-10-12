@@ -83,7 +83,7 @@
         L.p('Where it tries is a setting. The lab machine tries only in regions marked with <code>MADV_HUGEPAGE</code>:');
         L.out('facts.thp', { lines: [0, 1, 2] });
         L.p('The selected word is in brackets. <code>enabled</code> = madvise: only marked regions get huge pages at fault time. <code>defrag</code> = madvise: in marked regions a fault may wait while the kernel makes a free 2 MiB block.');
-        L.quote('madvise: directly stall for MADV_HUGEPAGE, otherwise fail if not immediately available', { cite: 'mm/huge_memory.c, comment above vma_thp_gfp_mask(), Linux v6.18', label: 'Linux source', code: true });
+        L.quote(' * madvise: directly stall for MADV_HUGEPAGE, otherwise fail if not immediately\n *          available', { cite: 'mm/huge_memory.c, comment above vma_thp_gfp_mask(), Linux v6.18', label: 'Linux source', code: true });
         L.p('If no block can be found, the fault quietly maps a 4 KiB page instead. THP is best effort. A kernel thread, <code>khugepaged</code>, later tries to replace runs of small pages with huge ones.', ['khugepaged']);
         L.p('The second way is hugetlb: a pool of huge pages reserved in advance, used only by programs that ask for it. Neither lab machine has a pool, so asking fails:', ['hugetlb']);
         L.out('hugetlb.pool', { lines: [0, 1, 2] });
@@ -131,7 +131,7 @@
         L.try('Reach with 2 MiB pages', 'Set to 2 MiB pages and a 256 MiB working set. Switch to 4 KiB and compare.', function (el) { LW().reach(el, { entries: 1536, page: 2097152, ws: 256 }); });
         L.p('Huge pages pay off when a program uses most of each 2 MiB it touches, and touches more memory than the TLB reaches with 4 KiB pages. The lab below shows the other case, where they do not help.');
         L.lab(function (el) { App.VMUI.labs.pages(el); });
-        L.note('amd', 'TLB levels do not all hold every page size. In AMD’s Family 17h cores, the 64-entry L1 data TLB holds 4 KiB, 2 MiB and 1 GiB entries, but the 1536-entry L2 data TLB holds only 4 KiB and 2 MiB pages: “1-Gbyte pages are not held in the L2 data TLB; they are only held in the L1 data TLB” (pub. 55723 rev. 3.00, §2.7.2).');
+        L.note('amd', 'TLB levels do not all hold every page size. In AMD’s Family 17h cores, the 64-entry L1 data TLB holds 4 KiB, 2 MiB and 1 GiB entries, but the 1536-entry L2 data TLB holds only 4 KiB and 2 MiB pages: “1-Gbyte [pages] are not held in the L2 data TLB; they are only held in the L1 data TLB” (pub. 55723 rev. 3.01, §2.7.2).');
       } }
     ],
     check: [
@@ -225,7 +225,7 @@
       { id: 'alias', title: 'Two virtual addresses, one line', body: function (L) {
         L.p('A frame can be mapped at two virtual addresses at once: an alias. With physical tags, it is still one line in one set, because both addresses share the page offset and so the set bits.', ['valias']);
         L.p('Some L1 caches add a shortcut that does depend on the virtual address. AMD’s cores guess the way from a hash of the virtual address, a microtag, and read only that way:', ['waypred']);
-        L.quote('The L1 data cache tags contain a linear-address-based microtag (utag) that tags each cacheline with the linear address that was used to access the cacheline initially.\n…\nA load to an address that is valid in the L1 DC but under a different linear alias will see an L1 DC miss, which requires an L2 cache request to be made. The latency will generally be no larger than that of an L2 cache hit.', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723 rev. 3.00, §2.6.2.2', label: 'Vendor docs', src: ['AMD documentation portal: pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'] });
+        L.quote('The L1 data cache tags contain a linear-address-based microtag (utag) that tags each cacheline with the linear address that was used to access the cacheline initially.\n…\nA load to an address that is valid in the L1 DC but under a different linear alias will see an L1 DC miss, which requires an L2 cache request to be made. The latency will generally be no larger than that of an L2 cache hit.', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723 rev. 3.01, §2.6.2.2', label: 'Vendor docs', src: ['AMD documentation portal: pub. 55723', 'https://docs.amd.com/v/u/en-US/55723_3.01_PUB'] });
         L.p('AMD calls virtual addresses linear addresses. So on those cores an alias costs about an L2 hit when the other address was used last; it is never a wrong answer. [[ch:vm-alias]] maps one frame twice on purpose.');
       } }
     ],
