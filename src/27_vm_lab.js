@@ -52,7 +52,7 @@
     );
     U.model(
       sec,
-      'A simplified Linux-style lifecycle: four 4 KiB pages, two processes, one TLB each. Frames show one word, but zeroing and copying count whole pages. Faults take no time, and TLB invalidations finish at once (the shootdown lab below adds that wait).'
+      'A simplified Linux-style lifecycle: four 4 KiB pages, two processes, one TLB each. Frames show one word, but zeroing and copying count whole pages. Faults take no time, and TLB invalidations finish at once (the shootdown lab in [[ch:vm-shootdown]] adds that wait).'
     );
     U.checkpoint(
       sec,

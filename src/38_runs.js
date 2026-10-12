@@ -310,6 +310,168 @@ var LabRuns = (function () {
         '# == call into a PROT_READ|PROT_WRITE page', 'page_fault_user: address=0x7f18f5206000 ip=⟦0x7f18f5206000⟧ error_code=0x15'
       ]
     },
+    /* ---- lesson 14: demand paging ---- */
+    'story.alloc': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace during the first store. mm_page_alloc lists every block the fault handler took from the page allocator, with the flags it asked for.',
+      lines: [
+        '# == store to page 0: p[0xd4e] = 1',
+        'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c7e97 error_code=0x6',
+        'mm_page_alloc: pfn=⟦0x133c05⟧ order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=⟦0x128e8c⟧ order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=⟦0x1330d4⟧ order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=⟦0x129b49⟧ order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP',
+        '# == second store to page 0',
+        '# == load from page 1'
+      ]
+    },
+    'story.second': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: fault counts (getrusage) around the first and the second store to page 0.',
+      lines: ['faults during the store: 1', 'page 0 after the store         pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=0x129b49', 'VmPTE after the store: 60 kB', 'faults during a second store: ⟦0⟧']
+    },
+    'story.zero': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: a load from page 1, which no store has touched yet, then a store to it.',
+      lines: ['== load from page 1: x = p[0x1d4e]', 'read 0, faults 1', 'page 1 after the load          pagemap=0x8000000000003241  present=1 exclusive=⟦0⟧ pfn=⟦0x3241⟧', 'store to page 1: faults 1', 'page 1 after the store         pagemap=0x8100000000125396  present=1 exclusive=1 pfn=⟦0x125396⟧']
+    },
+    'story.zerotrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace for the load from page 1 and the store that follows.',
+      lines: [
+        '# == load from page 1', 'page_fault_user: address=0x7f3a1b2c4d4e ip=0x55c5ee6c7f57 error_code=⟦0x4⟧',
+        '# == store to page 1', 'page_fault_user: address=0x7f3a1b2c4d4e ip=0x55c5ee6c7fb3 error_code=⟦0x7⟧',
+        'mm_page_alloc: pfn=0x125396 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP',
+        'tlb_flush: ⟦pages:1⟧ reason:local MM shootdown (3)'
+      ]
+    },
+    'zero.b': {
+      file: 'vm/out-b/zeropage.txt', machine: 'b',
+      what: 'zeropage.c: the frame a load from a fresh page gets, and where the kernel’s own code and data sit in physical memory (/proc/iomem).',
+      lines: ['after one load from a fresh page pagemap=0x8000000000003241  present=1 exclusive=0 pfn=⟦0x3241⟧', '/proc/iomem:   01000000-021350e7 : Kernel code', '/proc/iomem:   02200000-02bbafff : Kernel rodata', '/proc/iomem:   02c00000-02e6277f : Kernel data', '/proc/iomem:   ⟦03241000⟧-033fffff : Kernel bss']
+    },
+    'cost.counts': {
+      file: 'vm/out/cost.txt',
+      what: 'cost.c: page faults counted with getrusage over passes of one access per 4 KiB page across a 64 MiB region.',
+      lines: ['== 2. fault counts, 64 MiB, one access per 4 KiB page', 'first store pass   faults 16384', 'second store pass  faults 0', 'load pass (fresh)  faults ⟦16384⟧', 'then a store pass  faults ⟦16384⟧']
+    },
+    /* ---- lesson 15: file mappings ---- */
+    'major.run': {
+      file: 'vm/out/major.txt',
+      what: 'major.c: write a 4 KiB file, drop the page cache, map the file MAP_PRIVATE, then load twice and store once. Major and minor faults from getrusage.',
+      lines: [
+        'file /home/lab/hello.txt, inode 894885, mapped MAP_PRIVATE at 0x7f1ccb8a0000',
+        'first load : reads \'H\', ⟦major +1⟧ minor +0',
+        'after the first load           pagemap=⟦0xa1⟧0000000010fa24  present=1 exclusive=1 pfn=0x10fa24',
+        'second load: major +0 minor +0',
+        'store      : major +0 ⟦minor +1⟧',
+        'after the store                pagemap=0x810000000011da16  present=1 exclusive=1 pfn=⟦0x11da16⟧',
+        'memory now reads "JELLO from the file on disk", the file still reads "HELLO from the file on disk"'
+      ]
+    },
+    'major.trace': {
+      file: 'vm/out/major.trace.txt',
+      what: 'major.c: the kernel trace. mm_filemap_add_to_page_cache marks a frame being added to the page cache for a file (device, inode, offset).',
+      lines: [
+        '# == first load', 'page_fault_user: address=0x7f1ccb8a0000 ip=0x55d5552fd59a error_code=0x4',
+        'mm_page_alloc: pfn=0x10fa24 order=0 migratetype=1 gfp_flags=GFP_NOFS|__GFP_HIGHMEM|__GFP_MOVABLE|__GFP_NOWARN|__GFP_NORETRY|__GFP_COMP|__GFP_HARDWALL',
+        'mm_filemap_add_to_page_cache: dev 254:0 ino da7a5 pfn=⟦0x10fa24⟧ ofs=0 order=0',
+        '# == second load', '# == store p[0] = \'J\'', 'page_fault_user: address=0x7f1ccb8a0000 ip=0x55d5552fd663 error_code=0x7',
+        'mm_page_alloc: pfn=⟦0x11da16⟧ order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP',
+        'tlb_flush: pages:1 reason:local MM shootdown (3)'
+      ]
+    },
+    /* ---- lesson 16: fork and copy-on-write ---- */
+    'story.fork': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: pagemap for page 0 in the parent and in the child around fork, and after each one stores to it.',
+      lines: [
+        '== fork',
+        'parent page 0 before fork      pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=0x129b49',
+        'parent page 0 after fork       pagemap=0x8000000000129b49  present=1 exclusive=⟦0⟧ pfn=⟦0x129b49⟧',
+        'child page 0 after fork        pagemap=0x8000000000129b49  present=1 exclusive=⟦0⟧ pfn=⟦0x129b49⟧',
+        'child: faults during its store 1, reads 9',
+        'child page 0 after its store   pagemap=0x8100000000116f45  present=1 exclusive=1 pfn=⟦0x116f45⟧',
+        'parent: faults during its store 1, reads 7',
+        'parent page 0 after its store  pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=⟦0x129b49⟧'
+      ]
+    },
+    'story.forktrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace inside fork(), up to its TLB flush. Events from the parent and the new child are both recorded.',
+      lines: [
+        '# == fork',
+        'page_fault_user: address=0x7fac8c50e2b0 ip=0x7fac8c50e2b0 error_code=0x14',
+        'page_fault_user: address=0x7fac8c4ee280 ip=0x7fac8c4ee280 error_code=0x14',
+        'mm_page_alloc: pfn=0x10dca0 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x113452 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1134bc order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1040af order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1332e6 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x115112 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x128c39 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x13309e order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x128c73 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x104243 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1137ae order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1151bd order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x10dcfb order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x14dfd0 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'tlb_flush: ⟦pages:-1⟧ reason:local MM shootdown (3)'
+      ]
+    },
+    'story.cowtrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace for the child’s store to page 0, and later the parent’s, after the child has exited.',
+      lines: [
+        '# == child stores 9 to page 0', 'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8095 error_code=⟦0x7⟧',
+        'mm_page_alloc: pfn=⟦0x116f45⟧ order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP',
+        'tlb_flush: pages:1 reason:local MM shootdown (3)', '…',
+        '# == parent stores 7 to page 0 (child has exited)', 'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8137 error_code=⟦0x7⟧',
+        '# == parent stores to page 3 again'
+      ]
+    },
+    'fork64': {
+      file: 'vm/out/fork64.txt',
+      what: 'fork64.c: write 64 MiB, fork, let the child write every page, then, after the child has exited, the parent. Three runs.',
+      lines: [
+        'run 1  fork returned in the child after ⟦2.20 ms⟧', '       child store pass:  16384 faults, 45.3 ms, ⟦2765 ns per fault⟧', '       parent store pass: 16384 faults, 12.5 ms, ⟦762 ns per fault⟧ (after the child exited)',
+        'run 2  fork returned in the child after 1.95 ms', '       child store pass:  16384 faults, 45.5 ms, 2776 ns per fault', '       parent store pass: 16384 faults, 13.1 ms, 802 ns per fault (after the child exited)',
+        'run 3  fork returned in the child after 1.81 ms', '       child store pass:  16384 faults, 44.2 ms, 2696 ns per fault', '       parent store pass: 16384 faults, 12.8 ms, 782 ns per fault (after the child exited)'
+      ]
+    },
+    /* ---- lesson 17: faults on purpose ---- */
+    'story.mprotect': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: page 3 made read-only with mprotect, then a store to it, caught by a SIGSEGV handler.',
+      lines: ['== mprotect(page 3, PROT_READ), then store to it', '/proc/self/maps now:', '  7f3a1b2c3000-⟦7f3a1b2c6000 rw-p⟧ 00000000 00:00 0', '  ⟦7f3a1b2c6000-7f3a1b2c7000 r--p⟧ 00000000 00:00 0', 'SIGSEGV: trap=14 err=⟦0x7⟧ cr2=0x7f3a1b2c6d4e si_code=⟦SEGV_ACCERR⟧']
+    },
+    'story.mprotecttrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace around the mprotect and the refused store. The lines left out are the parent’s own first writes after fork (copy-on-write, all reused).',
+      lines: ['# == parent stores to page 3 again', 'page_fault_user: address=0x7f3a1b2c6d4e ip=0x55c5ee6c8188 error_code=0x7', '# == mprotect page 3 read-only', 'tlb_flush: ⟦pages:1⟧ reason:local MM shootdown (3)', '…', '# == store to read-only page 3', '…', 'page_fault_user: address=0x7f3a1b2c6d4e ip=0x55c5ee6c8213 error_code=0x7']
+    },
+    'story.dontneed': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: madvise(MADV_DONTNEED) on page 0, then a load and a store.',
+      lines: ['== madvise(page 0, MADV_DONTNEED)', 'page 0 after madvise           pagemap=0x0000000000000000  present=⟦0⟧ exclusive=0 pfn=0x0', 'load from page 0 reads ⟦0⟧', 'page 0 after the store         pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=⟦0x129b49⟧']
+    },
+    'story.dontneedtrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace for the madvise, the load and the store.',
+      lines: [
+        '# == madvise DONTNEED page 0', 'tlb_flush: pages:1 reason:local MM shootdown (3)', 'mm_page_free: ⟦pfn=0x129b49⟧ order=0',
+        '# == load from page 0', 'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8284 error_code=0x4',
+        '# == store to page 0', 'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c82b1 error_code=0x7',
+        'mm_page_alloc: ⟦pfn=0x129b49⟧ order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP', 'tlb_flush: pages:1 reason:local MM shootdown (3)'
+      ]
+    },
+    /* ---- lesson 18: what a fault costs ---- */
+    'cost.populate': {
+      file: 'vm/out/cost.txt',
+      what: 'cost.c: a 64 MiB region filled in ahead of time with madvise(MADV_POPULATE_WRITE), then one store per 4 KiB page.',
+      lines: ['== 3. prefaulting with madvise(MADV_POPULATE_WRITE), 64 MiB, small pages', 'faults inside madvise ⟦16384⟧ (28.1 ms)', 'faults during the store pass ⟦0⟧ (0.41 ms)']
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',

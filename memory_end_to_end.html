@@ -16857,7 +16857,7 @@ build: function(root){
     );
     U.model(
       sec,
-      'A simplified Linux-style lifecycle: four 4 KiB pages, two processes, one TLB each. Frames show one word, but zeroing and copying count whole pages. Faults take no time, and TLB invalidations finish at once (the shootdown lab below adds that wait).'
+      'A simplified Linux-style lifecycle: four 4 KiB pages, two processes, one TLB each. Frames show one word, but zeroing and copying count whole pages. Faults take no time, and TLB invalidations finish at once (the shootdown lab in [[ch:vm-shootdown]] adds that wait).'
     );
     U.checkpoint(
       sec,
@@ -21310,6 +21310,168 @@ var LabRuns = (function () {
         '# == call into a PROT_READ|PROT_WRITE page', 'page_fault_user: address=0x7f18f5206000 ip=⟦0x7f18f5206000⟧ error_code=0x15'
       ]
     },
+    /* ---- lesson 14: demand paging ---- */
+    'story.alloc': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace during the first store. mm_page_alloc lists every block the fault handler took from the page allocator, with the flags it asked for.',
+      lines: [
+        '# == store to page 0: p[0xd4e] = 1',
+        'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c7e97 error_code=0x6',
+        'mm_page_alloc: pfn=⟦0x133c05⟧ order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=⟦0x128e8c⟧ order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=⟦0x1330d4⟧ order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=⟦0x129b49⟧ order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP',
+        '# == second store to page 0',
+        '# == load from page 1'
+      ]
+    },
+    'story.second': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: fault counts (getrusage) around the first and the second store to page 0.',
+      lines: ['faults during the store: 1', 'page 0 after the store         pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=0x129b49', 'VmPTE after the store: 60 kB', 'faults during a second store: ⟦0⟧']
+    },
+    'story.zero': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: a load from page 1, which no store has touched yet, then a store to it.',
+      lines: ['== load from page 1: x = p[0x1d4e]', 'read 0, faults 1', 'page 1 after the load          pagemap=0x8000000000003241  present=1 exclusive=⟦0⟧ pfn=⟦0x3241⟧', 'store to page 1: faults 1', 'page 1 after the store         pagemap=0x8100000000125396  present=1 exclusive=1 pfn=⟦0x125396⟧']
+    },
+    'story.zerotrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace for the load from page 1 and the store that follows.',
+      lines: [
+        '# == load from page 1', 'page_fault_user: address=0x7f3a1b2c4d4e ip=0x55c5ee6c7f57 error_code=⟦0x4⟧',
+        '# == store to page 1', 'page_fault_user: address=0x7f3a1b2c4d4e ip=0x55c5ee6c7fb3 error_code=⟦0x7⟧',
+        'mm_page_alloc: pfn=0x125396 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP',
+        'tlb_flush: ⟦pages:1⟧ reason:local MM shootdown (3)'
+      ]
+    },
+    'zero.b': {
+      file: 'vm/out-b/zeropage.txt', machine: 'b',
+      what: 'zeropage.c: the frame a load from a fresh page gets, and where the kernel’s own code and data sit in physical memory (/proc/iomem).',
+      lines: ['after one load from a fresh page pagemap=0x8000000000003241  present=1 exclusive=0 pfn=⟦0x3241⟧', '/proc/iomem:   01000000-021350e7 : Kernel code', '/proc/iomem:   02200000-02bbafff : Kernel rodata', '/proc/iomem:   02c00000-02e6277f : Kernel data', '/proc/iomem:   ⟦03241000⟧-033fffff : Kernel bss']
+    },
+    'cost.counts': {
+      file: 'vm/out/cost.txt',
+      what: 'cost.c: page faults counted with getrusage over passes of one access per 4 KiB page across a 64 MiB region.',
+      lines: ['== 2. fault counts, 64 MiB, one access per 4 KiB page', 'first store pass   faults 16384', 'second store pass  faults 0', 'load pass (fresh)  faults ⟦16384⟧', 'then a store pass  faults ⟦16384⟧']
+    },
+    /* ---- lesson 15: file mappings ---- */
+    'major.run': {
+      file: 'vm/out/major.txt',
+      what: 'major.c: write a 4 KiB file, drop the page cache, map the file MAP_PRIVATE, then load twice and store once. Major and minor faults from getrusage.',
+      lines: [
+        'file /home/lab/hello.txt, inode 894885, mapped MAP_PRIVATE at 0x7f1ccb8a0000',
+        'first load : reads \'H\', ⟦major +1⟧ minor +0',
+        'after the first load           pagemap=⟦0xa1⟧0000000010fa24  present=1 exclusive=1 pfn=0x10fa24',
+        'second load: major +0 minor +0',
+        'store      : major +0 ⟦minor +1⟧',
+        'after the store                pagemap=0x810000000011da16  present=1 exclusive=1 pfn=⟦0x11da16⟧',
+        'memory now reads "JELLO from the file on disk", the file still reads "HELLO from the file on disk"'
+      ]
+    },
+    'major.trace': {
+      file: 'vm/out/major.trace.txt',
+      what: 'major.c: the kernel trace. mm_filemap_add_to_page_cache marks a frame being added to the page cache for a file (device, inode, offset).',
+      lines: [
+        '# == first load', 'page_fault_user: address=0x7f1ccb8a0000 ip=0x55d5552fd59a error_code=0x4',
+        'mm_page_alloc: pfn=0x10fa24 order=0 migratetype=1 gfp_flags=GFP_NOFS|__GFP_HIGHMEM|__GFP_MOVABLE|__GFP_NOWARN|__GFP_NORETRY|__GFP_COMP|__GFP_HARDWALL',
+        'mm_filemap_add_to_page_cache: dev 254:0 ino da7a5 pfn=⟦0x10fa24⟧ ofs=0 order=0',
+        '# == second load', '# == store p[0] = \'J\'', 'page_fault_user: address=0x7f1ccb8a0000 ip=0x55d5552fd663 error_code=0x7',
+        'mm_page_alloc: pfn=⟦0x11da16⟧ order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP',
+        'tlb_flush: pages:1 reason:local MM shootdown (3)'
+      ]
+    },
+    /* ---- lesson 16: fork and copy-on-write ---- */
+    'story.fork': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: pagemap for page 0 in the parent and in the child around fork, and after each one stores to it.',
+      lines: [
+        '== fork',
+        'parent page 0 before fork      pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=0x129b49',
+        'parent page 0 after fork       pagemap=0x8000000000129b49  present=1 exclusive=⟦0⟧ pfn=⟦0x129b49⟧',
+        'child page 0 after fork        pagemap=0x8000000000129b49  present=1 exclusive=⟦0⟧ pfn=⟦0x129b49⟧',
+        'child: faults during its store 1, reads 9',
+        'child page 0 after its store   pagemap=0x8100000000116f45  present=1 exclusive=1 pfn=⟦0x116f45⟧',
+        'parent: faults during its store 1, reads 7',
+        'parent page 0 after its store  pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=⟦0x129b49⟧'
+      ]
+    },
+    'story.forktrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace inside fork(), up to its TLB flush. Events from the parent and the new child are both recorded.',
+      lines: [
+        '# == fork',
+        'page_fault_user: address=0x7fac8c50e2b0 ip=0x7fac8c50e2b0 error_code=0x14',
+        'page_fault_user: address=0x7fac8c4ee280 ip=0x7fac8c4ee280 error_code=0x14',
+        'mm_page_alloc: pfn=0x10dca0 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x113452 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1134bc order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1040af order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1332e6 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x115112 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x128c39 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x13309e order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x128c73 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x104243 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1137ae order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x1151bd order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x10dcfb order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'mm_page_alloc: pfn=0x14dfd0 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP',
+        'tlb_flush: ⟦pages:-1⟧ reason:local MM shootdown (3)'
+      ]
+    },
+    'story.cowtrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace for the child’s store to page 0, and later the parent’s, after the child has exited.',
+      lines: [
+        '# == child stores 9 to page 0', 'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8095 error_code=⟦0x7⟧',
+        'mm_page_alloc: pfn=⟦0x116f45⟧ order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP',
+        'tlb_flush: pages:1 reason:local MM shootdown (3)', '…',
+        '# == parent stores 7 to page 0 (child has exited)', 'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8137 error_code=⟦0x7⟧',
+        '# == parent stores to page 3 again'
+      ]
+    },
+    'fork64': {
+      file: 'vm/out/fork64.txt',
+      what: 'fork64.c: write 64 MiB, fork, let the child write every page, then, after the child has exited, the parent. Three runs.',
+      lines: [
+        'run 1  fork returned in the child after ⟦2.20 ms⟧', '       child store pass:  16384 faults, 45.3 ms, ⟦2765 ns per fault⟧', '       parent store pass: 16384 faults, 12.5 ms, ⟦762 ns per fault⟧ (after the child exited)',
+        'run 2  fork returned in the child after 1.95 ms', '       child store pass:  16384 faults, 45.5 ms, 2776 ns per fault', '       parent store pass: 16384 faults, 13.1 ms, 802 ns per fault (after the child exited)',
+        'run 3  fork returned in the child after 1.81 ms', '       child store pass:  16384 faults, 44.2 ms, 2696 ns per fault', '       parent store pass: 16384 faults, 12.8 ms, 782 ns per fault (after the child exited)'
+      ]
+    },
+    /* ---- lesson 17: faults on purpose ---- */
+    'story.mprotect': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: page 3 made read-only with mprotect, then a store to it, caught by a SIGSEGV handler.',
+      lines: ['== mprotect(page 3, PROT_READ), then store to it', '/proc/self/maps now:', '  7f3a1b2c3000-⟦7f3a1b2c6000 rw-p⟧ 00000000 00:00 0', '  ⟦7f3a1b2c6000-7f3a1b2c7000 r--p⟧ 00000000 00:00 0', 'SIGSEGV: trap=14 err=⟦0x7⟧ cr2=0x7f3a1b2c6d4e si_code=⟦SEGV_ACCERR⟧']
+    },
+    'story.mprotecttrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace around the mprotect and the refused store. The lines left out are the parent’s own first writes after fork (copy-on-write, all reused).',
+      lines: ['# == parent stores to page 3 again', 'page_fault_user: address=0x7f3a1b2c6d4e ip=0x55c5ee6c8188 error_code=0x7', '# == mprotect page 3 read-only', 'tlb_flush: ⟦pages:1⟧ reason:local MM shootdown (3)', '…', '# == store to read-only page 3', '…', 'page_fault_user: address=0x7f3a1b2c6d4e ip=0x55c5ee6c8213 error_code=0x7']
+    },
+    'story.dontneed': {
+      file: 'vm/out/story.txt',
+      what: 'The main run: madvise(MADV_DONTNEED) on page 0, then a load and a store.',
+      lines: ['== madvise(page 0, MADV_DONTNEED)', 'page 0 after madvise           pagemap=0x0000000000000000  present=⟦0⟧ exclusive=0 pfn=0x0', 'load from page 0 reads ⟦0⟧', 'page 0 after the store         pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=⟦0x129b49⟧']
+    },
+    'story.dontneedtrace': {
+      file: 'vm/out/story.trace.txt',
+      what: 'The main run: the kernel trace for the madvise, the load and the store.',
+      lines: [
+        '# == madvise DONTNEED page 0', 'tlb_flush: pages:1 reason:local MM shootdown (3)', 'mm_page_free: ⟦pfn=0x129b49⟧ order=0',
+        '# == load from page 0', 'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8284 error_code=0x4',
+        '# == store to page 0', 'page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c82b1 error_code=0x7',
+        'mm_page_alloc: ⟦pfn=0x129b49⟧ order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP', 'tlb_flush: pages:1 reason:local MM shootdown (3)'
+      ]
+    },
+    /* ---- lesson 18: what a fault costs ---- */
+    'cost.populate': {
+      file: 'vm/out/cost.txt',
+      what: 'cost.c: a 64 MiB region filled in ahead of time with madvise(MADV_POPULATE_WRITE), then one store per 4 KiB page.',
+      lines: ['== 3. prefaulting with madvise(MADV_POPULATE_WRITE), 64 MiB, small pages', 'faults inside madvise ⟦16384⟧ (28.1 ms)', 'faults during the store pass ⟦0⟧ (0.41 ms)']
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',
@@ -22716,6 +22878,11 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
   var d = App.gloss;
   d('cr2', 'CR2', 'The control register into which the CPU writes the faulting address when a page fault occurs. The kernel reads it first thing. (On CPUs with FRED, the address arrives with the event instead.)');
   d('errcode', 'page-fault error code', 'A number the CPU pushes with every page fault. Its bits say whether a translation existed (bit 0), whether the access was a write (1), from user mode (2), an instruction fetch (4), and more.');
+  d('gfp', 'GFP flags', 'Flags passed to the kernel’s page allocator (“get free pages”) saying what the memory is for and what the allocator may do: GFP_KERNEL for kernel data, GFP_HIGHUSER_MOVABLE for user pages the kernel may move later, __GFP_ZERO to fill the block with zeros.');
+  d('zeropage', 'zero page', 'One frame of zeros that Linux maps read-only wherever a program reads anonymous memory it has never written. The kernel keeps it in its own data, as empty_zero_page.');
+  d('pagecache', 'page cache', 'Frames in RAM that hold the contents of files, found by file and offset. read() and write() copy to and from them, mmap maps them into processes, and Linux evicts clean ones when memory runs short.');
+  d('writeback', 'writeback (of files)', 'The kernel writing dirty page-cache frames back to their file in storage. It happens in the background after a delay, or at once when a program calls fsync() or msync().');
+  d('majorfault', 'major page fault', 'A page fault the kernel can fix only by reading from storage, such as a file page that is not in the page cache. The program waits for the disk. getrusage counts them as ru_majflt.');
   d('sigsegv', 'SIGSEGV', 'The signal the kernel sends a program for an access it will not allow. si_code says why: SEGV_MAPERR, no region at that address; SEGV_ACCERR, a region that forbids that access.');
 
   /* ---------- III.13 ---------- */
@@ -22813,6 +22980,363 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'Non-canonical addresses raise #GP, trap 13, never #PF.'
     ],
     sources: [['Linux v6.18: arch/x86/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/mm/fault.c'], ['Linux v6.18: arch/x86/include/asm/trap_pf.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/trap_pf.h'], ['Intel SDM Vol. 3A, §4.7 “Page-fault exceptions”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux v6.18: arch/arm64/mm/fault.c', 'https://github.com/torvalds/linux/blob/v6.18/arch/arm64/mm/fault.c']]
+  });
+  /* ---------- III.14 ---------- */
+  App.lesson({
+    id: 'vm-demand', short: 'Demand paging', title: 'Demand paging and the zero page',
+    lede: 'Memory is handed out on first touch. The fault handler builds the missing tables, takes a zeroed frame and runs the instruction again.',
+    know: ['mmap only adds a region; no tables, no frames ([[ch:vm-space]]).', 'The first store faulted with 0x6: no translation, a write, user mode ([[ch:vm-faults]]).', 'The walk to our page needs a PDPT, a PD and a PT below PML4 entry 254 ([[ch:vm-walk]]).'],
+    learn: ['Read in a kernel trace what one first touch allocates', 'Say why fresh frames are zeroed, and why installing one needs no TLB flush', 'Explain what a first read maps, and what a later write costs', 'Predict the fault counts of read and write passes over a fresh region'],
+    sections: [
+      { id: 'touch', title: 'What one store allocates', body: function (L) {
+        L.p('[[ch:vm-faults]] stopped at the moment the kernel calls <code>handle_mm_fault()</code> for the first store. The trace lists every block it then took from the page allocator:');
+        L.out('story.alloc', { lines: [0, 1, 2, 3, 4, 5], wide: true });
+        L.p('The flags say what each block is for. GFP_KERNEL_ACCOUNT is kernel memory charged to the process; GFP_HIGHUSER_MOVABLE is memory for a user page that the kernel may later move to another frame.', ['gfp']);
+        L.table(['Frame', 'Allocated with', 'Becomes'], [
+          ['0x133c05', 'GFP_KERNEL_ACCOUNT | __GFP_ZERO', 'the PDPT that PML4 entry 254 will point to'],
+          ['0x128e8c', 'GFP_KERNEL_ACCOUNT | __GFP_ZERO', 'the PD below PDPT entry 232'],
+          ['0x1330d4', 'GFP_KERNEL_ACCOUNT | __GFP_ZERO', 'the PT below PD entry 217'],
+          { cells: ['0x129b49', 'GFP_HIGHUSER_MOVABLE | __GFP_ZERO', 'the data page, mapped by PT entry 195'], hot: true }
+        ], { mono: true });
+        L.p('The kernel builds the path top down, so the three tables come in walk order. These are the frames [[ch:vm-walk]] stepped through, and the 12 kB VmPTE grew by in [[ch:vm-tree]].');
+      } },
+      { id: 'zeros', title: 'Every frame starts as zeros', body: function (L) {
+        L.p('All four blocks carry __GFP_ZERO: the allocator fills them with zeros before handing them over.');
+        L.p('For a table, zeros mean 512 empty entries, all with P = 0. For the data page, zeros are a promise: anonymous memory reads as zeros until written, whatever the frame held before.', ['anon']);
+        L.quote('#define vma_alloc_zeroed_movable_folio(vma, vaddr) \\\n\tvma_alloc_folio(GFP_HIGHUSER_MOVABLE | __GFP_ZERO, 0, vma, vaddr)', { cite: 'arch/x86/include/asm/page.h, Linux v6.18', label: 'Linux source', code: true });
+        L.p('The kernel writes those zeros through its direct map ([[ch:vm-tree]]), at the frame’s kernel address:');
+        L.code('0xffff888000000000 + 0x129b49000 = 0xffff888129b49000', { lang: 'text', title: 'the data frame in the direct map', label: 'Inference' });
+        L.p('Zeroing is part of the price of every first touch; [[ch:vm-cost]] measures it.');
+      } },
+      { id: 'restart', title: 'No flush, then the store again', body: function (L) {
+        L.p('The handler writes the new PT entry and returns. It does not flush the TLB:');
+        L.quote('set_ptes(vma->vm_mm, addr, vmf->pte, entry, nr_pages);\n\n/* No need to invalidate - it was non-present before */\nupdate_mmu_cache_range(vmf, vma, addr, vmf->pte, nr_pages);', { cite: 'mm/memory.c, do_anonymous_page(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('A TLB only caches translations that existed. The entry had P = 0, so no TLB on any CPU can hold one for this page.');
+        L.p('The CPU then runs the store again. Now the walk succeeds, the TLB is filled, and the byte is written. A second store to the page costs nothing:');
+        L.out('story.second');
+        L.out('story.alloc', { lines: [6, 7], what: 'The trace from the second store’s marker to the next marker: no event at all.' });
+      } },
+      { id: 'zeropage', title: 'Reads get the zero page', body: function (L) {
+        L.p('A read of a page nobody has written does not need a frame of its own: every byte is zero anyway. The main run loads from page 1:');
+        L.out('story.zero', { lines: [0, 1, 2] });
+        L.p('One fault, and the value 0. pagemap shows frame 0x3241 with exclusive = 0: a frame mapped in many places. It is the zero page, one frame for the whole system, mapped read-only.', ['zeropage']);
+        L.quote('/* Use the zero-page for reads */\nif (!(vmf->flags & FAULT_FLAG_WRITE) &&\n\t\t!mm_forbids_zeropage(vma->vm_mm)) {\n\tentry = pte_mkspecial(pfn_pte(my_zero_pfn(vmf->address),\n\t\t\t\t\tvma->vm_page_prot));', { cite: 'mm/memory.c, do_anonymous_page(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('Machine B shows where that frame lives. A load there maps the same frame number, and 0x3241000 is the first page of the kernel’s bss, its zero-filled data:');
+        L.out('zero.b');
+        L.quote('\t__PAGE_ALIGNED_BSS\nSYM_DATA_START_PAGE_ALIGNED(empty_zero_page)\n\t.skip PAGE_SIZE\nSYM_DATA_END(empty_zero_page)', { cite: 'arch/x86/kernel/head_64.S, Linux v6.18', label: 'Linux source', code: true });
+        L.p('Both machines run the same kernel build, and in the same physical place, so both report 0x3241.');
+      } },
+      { id: 'write', title: 'Writing after reading', body: function (L) {
+        L.p('Page 1 is now mapped read-only, to the zero page. A store has to replace that mapping:');
+        L.out('story.zero', { lines: [3, 4] });
+        L.out('story.zerotrace', { wide: true });
+        L.p('Error code 0x7: a write to a page that has a translation, which forbids writing. The kernel takes a zeroed frame, 0x125396, and points the entry at it.');
+        L.p('This time it flushes one page: the read-only translation to the zero page may sit in the TLB. Nothing is copied from the zero page; the new frame is simply zeroed:');
+        L.quote('pfn_is_zero = is_zero_pfn(pte_pfn(vmf->orig_pte));\nnew_folio = folio_prealloc(mm, vma, vmf->address, pfn_is_zero);\n…\nif (!pfn_is_zero) {\n\t…\n\terr = __wp_page_copy_user(&new_folio->page, vmf->page, vmf);', { cite: 'mm/memory.c, wp_page_copy(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('So a page read first and written later costs two faults instead of one. Over a 64 MiB region:');
+        L.out('cost.counts');
+        L.p('A store pass over a fresh region takes 16384 faults, one per page. A load pass first takes 16384 faults that map the zero page, and the stores then take 16384 more.');
+        L.note('why', 'Reading a large fresh buffer before writing it (checking it, summing it) doubles its page faults. Writing it first, or filling it in ahead of time with MADV_POPULATE_WRITE ([[ch:vm-cost]]), avoids the second round.');
+        L.note('linux', 'On a machine with several memory nodes, the data frame comes from the node of the CPU that first touches the page, not the one that called mmap ([[ch:hier]] has a NUMA lab). Machine B has one node (labruns/machine-b.txt), so there is only one choice.', 'First touch decides the node');
+      } }
+    ],
+    check: [
+      { q: 'The first store into a fresh region allocated four frames. Which one holds the program’s byte?', options: ['The GFP_HIGHUSER_MOVABLE one, 0x129b49', 'The first one, 0x133c05', 'All four, a byte in each', 'None: the byte waits in the store buffer'], answer: 0, why: 'The three GFP_KERNEL_ACCOUNT blocks are page tables; the user page is allocated with GFP_HIGHUSER_MOVABLE.' },
+      { q: 'Why does installing the new entry need no TLB flush?', options: ['The entry was not present, so no TLB can hold a translation for it', 'The kernel flushes at the next context switch anyway', 'TLBs are coherent', 'The new entry is global'], answer: 0, why: 'TLBs cache only valid translations. P was 0.' },
+      { q: 'A program reads a fresh page, then writes it. How many faults, and how many frames are allocated?', options: ['Two faults, one frame', 'One fault, one frame', 'Two faults, two frames', 'One fault, no frame'], answer: 0, why: 'The read maps the shared zero page (no allocation); the write takes one zeroed frame.' },
+      { q: 'pagemap shows pfn 0x3241 with exclusive = 0 for a page the program has only read. What is it?', options: ['The shared zero page', 'A page-cache page', 'A copy-on-write copy', 'A page being swapped out'], answer: 0, why: 'Reads of never-written anonymous memory map the zero page, one frame shared by every such mapping.' }
+    ],
+    remember: [
+      'First touch allocates the missing tables (GFP_KERNEL_ACCOUNT) and a data frame (GFP_HIGHUSER_MOVABLE), all zeroed.',
+      'Installing an entry that was not present needs no TLB flush; the faulting instruction then runs again.',
+      'A first read maps the shared zero page read-only (pfn 0x3241 here). A later write takes a fresh zeroed frame and flushes one page.',
+      'Read-then-write costs two faults per page; write-first costs one.'
+    ],
+    sources: [['Linux v6.18: mm/memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/memory.c'], ['mmap(2): MAP_ANONYMOUS', 'https://man7.org/linux/man-pages/man2/mmap.2.html'], ['Linux v6.18: arch/x86/kernel/head_64.S', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/kernel/head_64.S']]
+  });
+
+  /* ---------- III.15 ---------- */
+  App.lesson({
+    id: 'vm-files', short: 'File mappings', title: 'File mappings, the page cache and major faults',
+    lede: 'A mapped file is read through the page cache. The first touch may wait for the disk; a write to a private mapping makes a copy and leaves the file alone.',
+    know: ['Anonymous memory gets a zeroed frame on first touch ([[ch:vm-demand]]).', 'A region can come from a file: the program’s code does ([[ch:vm-space]]).', 'The kernel’s fault handler chooses its path from the region and the access ([[ch:vm-faults]]).'],
+    learn: ['Say what the page cache is, and who shares it', 'Tell a major fault from a minor one, and count both', 'Follow a write into a MAP_PRIVATE file mapping: a copy, a flush, the file unchanged', 'Say what MAP_SHARED, fault-around and readahead change'],
+    sections: [
+      { id: 'cache', title: 'The page cache', body: function (L) {
+        L.p('Linux keeps the contents of files in RAM, in frames called the page cache. <code>read()</code> copies out of those frames; <code>mmap</code> maps them straight into a process.', ['pagecache']);
+        L.chain([
+          { k: 'storage', v: 'the file', d: 'read once, on the first miss' },
+          { k: 'page cache', v: 'one frame per 4 KiB', d: 'shared by everyone using the file', hot: true },
+          { k: 'processes', v: 'mmap / read()', d: 'mmap maps the frame; read() copies from it' }
+        ]);
+        L.p('So two processes that map the same file, and a third that reads it, all use the same frames. The C library’s code, mapped by every process, is in memory once.');
+      } },
+      { id: 'major', title: 'The first touch waits for the disk', body: function (L) {
+        L.p('A program writes a 4 KiB file, drops the clean page cache so that the file must come from the disk again, and maps it with MAP_PRIVATE:');
+        L.code('int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0644);\nwrite(fd, buf, 4096);                 /* "HELLO from the file on disk" */\nfsync(fd);\n/* write 1 to /proc/sys/vm/drop_caches: forget clean page-cache pages */\nchar *p = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);\nc = p[0];                             /* first load  */\nc = p[1];                             /* second load */\np[0] = \'J\';                           /* store       */', { title: 'labruns/vm/major.c (shortened)' });
+        L.out('major.run', { lines: [0, 1, 2, 3] });
+        L.p('The first load was a major fault: the kernel had to read the file from the disk while the program waited. The second load caused no fault at all.', ['majorfault', 'minor_fault']);
+        L.out('major.trace', { lines: [0, 1, 2, 3] });
+        L.p('The trace shows the kernel taking frame 0x10fa24 and adding it to the page cache for this file: inode 0xda7a5, which is 894885, offset 0.');
+        L.bits([
+          { bits: '63', val: '1', name: 'present', tone: 'a2' },
+          { bits: '62', val: '0', name: 'swapped', tone: 'mute' },
+          { bits: '61', val: '1', name: 'file or shared', tone: 'a2', hot: true },
+          { bits: '57–60', val: '0', name: '', tone: 'mute' },
+          { bits: '56', val: '1', name: 'mapped once', tone: 'a2' },
+          { bits: '55', val: '0', name: 'soft-dirty', tone: 'mute' },
+          { bits: '54:0', val: '0x10fa24', name: 'PFN', tone: 'a4', w: 2.4 }
+        ], { title: 'pagemap entry 0xa10000000010fa24', dense: true });
+        L.p('Bit 61 is set: the page maps a frame of a file. The process is using the page cache’s own frame, not a copy.');
+      } },
+      { id: 'private', title: 'A private write makes a copy', body: function (L) {
+        L.p('The region is <code>rw-p</code>, but the frame belongs to the page cache, which other processes may be reading. So the read fault mapped it read-only.');
+        L.out('major.run', { lines: [4, 5, 6] });
+        L.out('major.trace', { lines: [5, 6, 7, 8], wide: true });
+        L.p('The store faulted with 0x7, a write to a read-only translation. The kernel took frame 0x11da16 without __GFP_ZERO, because it fills it by copying the page-cache page, then flushed the old translation.');
+        L.p('Memory now reads JELLO and the file still reads HELLO. The copy is anonymous memory: pagemap no longer shows bit 61.');
+        L.p('A first touch that is already a write takes a shorter path, chosen when the fault arrives:');
+        L.quote('} else if (!(vmf->flags & FAULT_FLAG_WRITE))\n\tret = do_read_fault(vmf);\nelse if (!(vma->vm_flags & VM_SHARED))\n\tret = do_cow_fault(vmf);\nelse\n\tret = do_shared_fault(vmf);', { cite: 'mm/memory.c, do_fault(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('Here the page was already mapped read-only, so the store went through the write-protect path instead, the same one that copies pages after fork ([[ch:vm-cow]]).');
+      } },
+      { id: 'shared', title: 'MAP_SHARED writes reach the file', body: function (L) {
+        L.p('With MAP_SHARED, a store goes into the page-cache frame itself. Every process that maps the file sees it at once, and read() returns it.');
+        L.p('The frame is now dirty: newer than the file. The kernel writes it back later, by itself, or at once when the program calls <code>msync()</code> or <code>fsync()</code>.', ['writeback']);
+        L.table(['', 'MAP_PRIVATE', 'MAP_SHARED'], [
+          ['reads', 'the page-cache frame, mapped read-only', 'the page-cache frame'],
+          ['the first write', 'faults, and the page gets a private copy', 'writes the page-cache frame'],
+          ['other processes see the write', 'no', 'yes'],
+          ['the file changes', 'never', 'at writeback, or at msync / fsync']
+        ], { mono: false });
+      } },
+      { id: 'around', title: 'Fewer faults: fault-around and readahead', body: function (L) {
+        L.p('Reading a file one page at a time would cost one fault per page. Two mechanisms cut that down.');
+        L.p('Fault-around: on a read fault, Linux also maps the neighbouring pages that are already in the page cache, up to 64 KiB around the address:');
+        L.quote('/*\n * do_fault_around() tries to map few pages around the fault address. The hope\n * is that the pages will be needed soon and this will lower the number of\n * faults to handle.\n …\nstatic unsigned long fault_around_pages __read_mostly =\n\t65536 >> PAGE_SHIFT;', { cite: 'mm/memory.c, Linux v6.18 (excerpts)', label: 'Linux source', code: true });
+        L.p('Readahead: when a fault has to go to the disk, the kernel reads a window of the file around the page, so that later faults find the pages in the cache:');
+        L.quote('/*\n * mmap read-around\n */\nra->start = max_t(long, 0, vmf->pgoff - ra->ra_pages / 2);\nra->size = ra->ra_pages;', { cite: 'mm/filemap.c, do_sync_mmap_readahead(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('Our file was a single page, so neither shows in the run. For a large file, the first major fault brings in a whole window, and fault-around turns the following touches into fewer, minor faults.');
+        L.note('linux', 'getrusage() reports minor and major faults separately (ru_minflt, ru_majflt), as do /proc/&lt;pid&gt;/stat and <code>/usr/bin/time -v</code>. A major-fault count that keeps rising means the program waits for storage.');
+      } }
+    ],
+    check: [
+      { q: 'A program maps a file that is already in the page cache and reads its first byte. What kind of fault is that?', options: ['A minor fault: the frame is already in RAM', 'A major fault', 'No fault at all', 'A protection fault'], answer: 0, why: 'The kernel only has to point an entry at the existing page-cache frame.' },
+      { q: 'After a store into a MAP_PRIVATE file mapping, what does the file contain?', options: ['The old contents: the store went to a private copy', 'The new byte, once written back', 'Zeros', 'It depends on fsync'], answer: 0, why: 'The run: memory reads JELLO, the file still reads HELLO.' },
+      { q: 'Why was the copy’s frame allocated without __GFP_ZERO?', options: ['It is filled by copying the page-cache page, so zeroing first would be wasted', 'File pages are never zeroed', 'GFP_HIGHUSER_MOVABLE zeroes by itself', 'The trace drops that flag'], answer: 0, why: 'folio_prealloc() zeroes only when the old page is the zero page; otherwise the contents are copied.' },
+      { q: 'pagemap bit 61 was set after the first load and clear after the store. Why?', options: ['The page first mapped the file’s page-cache frame, then a private anonymous copy', 'The store set the dirty bit', 'Bit 61 means present', 'The file was deleted'], answer: 0, why: 'Bit 61 marks file-backed (or shared) pages. The private copy is anonymous.' }
+    ],
+    remember: [
+      'File contents live in the page cache: read() copies from it, mmap maps it directly, and everyone shares one copy.',
+      'Major fault: the kernel must read storage. Minor fault: the frame is already in RAM.',
+      'MAP_PRIVATE: the first write faults (0x7) and gets a copy; the file never changes. MAP_SHARED: writes go to the page cache and back to the file.',
+      'Fault-around maps up to 64 KiB of cached neighbours per read fault; readahead reads a window around a missing page.'
+    ],
+    sources: [['Linux v6.18: mm/memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/memory.c'], ['Linux v6.18: mm/filemap.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/filemap.c'], ['mmap(2)', 'https://man7.org/linux/man-pages/man2/mmap.2.html'], ['getrusage(2)', 'https://man7.org/linux/man-pages/man2/getrusage.2.html']]
+  });
+
+})();
+
+/* ======================= Part III · Virtual memory, lessons 16–18 ======================= */
+(function () {
+  'use strict';
+  var d = App.gloss;
+  d('fork', 'fork', 'The system call that creates a new process as a copy of the caller. Linux copies the page tables, not the memory: both processes share the frames, read-only, until one of them writes.');
+  d('guardgap', 'stack guard gap', 'A range below a growing stack where Linux places no other mapping (256 pages, 1 MiB, by default), so that a stack overflow faults instead of running into other memory.');
+  d('uffd', 'userfaultfd', 'A Linux interface that lets a program handle page faults in a region itself: the faulting thread waits while another thread supplies the page.');
+
+  /* ---------- III.16 ---------- */
+  App.lesson({
+    id: 'vm-cow', short: 'fork and copy-on-write', title: 'fork and copy-on-write',
+    lede: 'fork copies a process’s page tables, not its memory. Parent and child share every page, read-only, until one of them writes.',
+    know: ['A write to a read-only translation faults with error code 0x7 ([[ch:vm-faults]]).', 'pagemap shows each page’s frame and whether it is mapped once ([[ch:vm-pages]]).', 'Taking away a permission means flushing the entry from the TLB ([[ch:vm-shootdown]]).'],
+    learn: ['Say what fork copies and what it shares', 'Read a fork in a kernel trace: new tables, write protection, one flush', 'Follow a copy-on-write fault, and the case where no copy is needed', 'Estimate what fork and the writes after it cost'],
+    sections: [
+      { id: 'fork', title: 'fork copies tables, not memory', body: function (L) {
+        L.p('<code>fork()</code> creates a child process with the same address space as its parent: the same regions, the same contents. Copying every page would make fork as slow as the process is large.', ['fork']);
+        L.p('Instead, Linux copies the page tables and points both copies at the same frames. Every private writable page is write-protected, in both processes:', ['cow']);
+        L.quote('/* If it\'s a COW mapping, write protect it both processes. */\nif (is_cow_mapping(src_vma->vm_flags) && pte_write(pte)) {\n\twrprotect_ptes(src_mm, addr, src_pte, nr);\n\tpte = pte_wrprotect(pte);\n}', { cite: 'mm/memory.c, __copy_present_ptes(), Linux v6.18', label: 'Linux source', code: true });
+        L.p('The entries lose R/W; the regions stay <code>rw-p</code>. So the kernel will know, at the first write fault, that the write is allowed and only the sharing stands in its way. pagemap around the main run’s fork:');
+        L.out('story.fork', { lines: [0, 1, 2, 3] });
+        L.p('After fork, parent and child map page 0 to the same frame, 0x129b49, and exclusive is 0 in both: the frame is shared.');
+      } },
+      { id: 'trace', title: 'Inside fork()', body: function (L) {
+        L.p('The trace inside fork() shows the kernel’s work for the whole process:');
+        L.out('story.forktrace', { wide: true });
+        L.p('Fourteen zeroed kernel frames, allocated with the flags page tables use ([[ch:vm-demand]]): the child’s tables for the parts of the parent that hold written pages. No GFP_HIGHUSER_MOVABLE block: not one user page was copied.');
+        L.p('Then a single flush of the parent’s whole TLB (<code>pages:-1</code>): its entries for every write-protected page have just lost R/W.');
+        L.quote('mmap_write_unlock(mm);\nflush_tlb_mm(oldmm);\nmmap_write_unlock(oldmm);', { cite: 'mm/mmap.c, dup_mmap(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('The two faults before the allocations, error code 0x14, are instruction fetches by the parent from parts of the C library it had not run before: calling fork() runs library code too.');
+        L.p('Code from files is not copied at all. The child’s tables have no entries for it, and the child faults each page in from the page cache when it first runs it:');
+        L.quote('/*\n * Don\'t copy ptes where a page fault will fill them correctly.  Fork\n * becomes much lighter when there are big shared or private readonly\n * mappings. The tradeoff is that copy_page_range is more efficient\n * than faulting.\n */\nreturn false;', { cite: 'mm/memory.c, vma_needs_copy(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+      } },
+      { id: 'copy', title: 'The first write copies', body: function (L) {
+        L.p('The child stores 9 into page 0. Its entry is read-only, so the store faults:');
+        L.out('story.cowtrace', { lines: [0, 1, 2, 3], wide: true });
+        L.p('Error code 0x7: a write to a read-only translation. The kernel takes frame 0x116f45, copies the 4 KiB into it (no __GFP_ZERO), points the child’s entry at it with R/W, and flushes the old entry.');
+        L.out('story.fork', { lines: [4, 5] });
+        L.p('The child now has its own frame, mapped once. The parent still maps 0x129b49.');
+        L.quote('/*\n * Clear the pte entry and flush it first, before updating the\n * pte with the new entry, to keep TLBs on different CPUs in\n * sync. This code used to set the new PTE then flush TLBs, but\n * that left a window where the new PTE could be loaded into\n * some TLBs while the old PTE remains in others.\n */\nptep_clear_flush(vma, vmf->address, vmf->pte);', { cite: 'mm/memory.c, wp_page_copy(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('The order matters with threads: another CPU must never see the new frame through one TLB while it still writes the old one through another.');
+      } },
+      { id: 'reuse', title: 'The last one keeps the page', body: function (L) {
+        L.p('The child exits. Then the parent stores 7 into page 0. Its entry is still read-only, so this store faults too:');
+        L.out('story.cowtrace', { lines: [5, 6, 7], wide: true });
+        L.p('No allocation and no flush follow. The parent is now the only one mapping 0x129b49, so a copy would be wasted: the kernel makes the entry writable and dirty, and the store goes through.');
+        L.out('story.fork', { lines: [6, 7] });
+        L.quote('entry = pte_mkyoung(vmf->orig_pte);\nentry = maybe_mkwrite(pte_mkdirty(entry), vma);\nif (ptep_set_access_flags(vma, vmf->address, vmf->pte, entry, 1))', { cite: 'mm/memory.c, wp_page_reuse(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('Adding a permission needs no flush. A CPU still caching the read-only entry would fault once more, find the entry already writable, and go on; on x86 the kernel’s fix-up for such a fault is empty:');
+        L.quote('#define flush_tlb_fix_spurious_fault(vma, address, ptep) do { } while (0)', { cite: 'arch/x86/include/asm/pgtable.h, Linux v6.18', label: 'Linux source', code: true });
+      } },
+      { id: 'cost', title: 'What fork and the copies cost', body: function (L) {
+        L.p('A second program writes 64 MiB, forks, and lets the child write every page. After the child exits, the parent writes every page:');
+        L.out('fork64');
+        L.p('fork itself took about 2 ms: building the child’s tables for 64 MiB, at least 32 bottom tables, and write-protecting 16384 entries.');
+        L.p('Each of the child’s 16384 writes was a copy-on-write fault with a 4 KiB copy: about 2.7 µs each. The parent’s writes afterwards faulted too, but reused the pages: about 0.8 µs each.');
+        L.note('why', 'A large process that forks only to start another program pays for copying page tables the child never uses. vfork() shares the parent’s memory until the child calls execve() or exits, and glibc’s posix_spawn() starts its child with clone(CLONE_VM | CLONE_VFORK), so neither copies any tables.');
+        L.p('The lab below follows one page through mmap, first touch, fork, copy-on-write and reclaim, in a model you can step through.');
+        L.lab(function (el) { App.VMUI.labs.lifecycle(el); });
+      } }
+    ],
+    check: [
+      { q: 'Right after fork, how many frames do parent and child use for page 0?', options: ['One, shared and read-only in both', 'Two, one each', 'None until the next store', 'One, writable in both'], answer: 0, why: 'pagemap: both map 0x129b49, exclusive = 0.' },
+      { q: 'The child writes page 0 first. What happens?', options: ['A 0x7 fault; the kernel copies the page into a new frame for the child', 'The write goes to the shared frame', 'The parent gets the copy', 'The child is killed'], answer: 0, why: 'The trace: fault 0x7, mm_page_alloc without __GFP_ZERO (a copy), then a one-page flush.' },
+      { q: 'After the child exits, the parent writes page 0. What does the kernel do?', options: ['Makes the entry writable: no copy, no flush', 'Copies the page', 'Nothing: no fault happens', 'Flushes the whole TLB'], answer: 0, why: 'The parent is the last user of the frame, so wp_page_reuse() just restores write access.' },
+      { q: 'Why were the child’s write faults about 3.5 times slower than the parent’s?', options: ['Each copied 4 KiB into a new frame; the parent’s only changed the entry', 'The child ran on a slower CPU', 'The child’s TLB was empty', 'The parent used huge pages'], answer: 0, why: '2.7 µs per copying fault against 0.8 µs per reusing fault, for the same 16384 pages.' }
+    ],
+    remember: [
+      'fork copies the page tables and write-protects private writable pages in both processes. The frames are shared.',
+      'The first write by either side faults (0x7) and gets a private copy; the old entry is flushed first.',
+      'The last process mapping a frame reuses it: the entry becomes writable, with no copy and no flush.',
+      'Measured: fork of 64 MiB ≈ 2 ms; a copying fault ≈ 2.7 µs; a reusing fault ≈ 0.8 µs.'
+    ],
+    sources: [['Linux v6.18: mm/memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/memory.c'], ['Linux v6.18: mm/mmap.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/mmap.c'], ['vfork(2)', 'https://man7.org/linux/man-pages/man2/vfork.2.html'], ['posix_spawn(3)', 'https://man7.org/linux/man-pages/man3/posix_spawn.3.html']]
+  });
+
+  /* ---------- III.17 ---------- */
+  App.lesson({
+    id: 'vm-protect', short: 'Faults on purpose', title: 'Faults on purpose: mprotect, PROT_NONE and MADV_DONTNEED',
+    lede: 'Page protection is a tool. Programs and the kernel change permissions, drop pages and leave gaps, and let the faults do the work.',
+    know: ['A region that forbids an access gets SIGSEGV with SEGV_ACCERR ([[ch:vm-faults]]).', 'Taking away a permission needs a TLB flush ([[ch:vm-shootdown]]).', 'A read of a never-written page maps the zero page ([[ch:vm-demand]]).'],
+    learn: ['Follow mprotect: a region split, an entry changed, a flush', 'Say what PROT_NONE does to an entry', 'Predict what MADV_DONTNEED gives back, and what the next access sees', 'Name tools built on faults: guard gaps, MAP_FIXED_NOREPLACE, userfaultfd'],
+    sections: [
+      { id: 'mprotect', title: 'mprotect splits a region', body: function (L) {
+        L.p('The main run makes page 3 of its region read-only, then stores to it:');
+        L.code('mprotect((void *)(p + 0x3000), 4096, PROT_READ);\np[0x3d4e] = 1;', { title: 'labruns/vm/story.c (shortened)' });
+        L.out('story.mprotect');
+        L.p('One region became two: pages 0 to 2 still <code>rw-p</code>, page 3 <code>r--p</code>. A region has one set of permissions, so changing part of one splits it.', ['vmarea']);
+        L.p('The store then faulted with 0x7, a write to a read-only translation. The region forbids writes, so the kernel sent SIGSEGV with SEGV_ACCERR.');
+        L.out('story.mprotecttrace', { wide: true });
+        L.p('mprotect flushed one page: page 3’s entry lost R/W, and a writable copy of it left in a TLB would have let the store through.');
+      } },
+      { id: 'nochange', title: 'A change that changes nothing', body: function (L) {
+        L.p('The program writes page 3 once more just before the mprotect. That line is there because of something found while measuring:');
+        L.code('/* fork left page 3\'s entry read-only too; write it once so mprotect has something to change */\np[0x3d4e] = 2;', { title: 'labruns/vm/story.c' });
+        L.p('After the fork in [[ch:vm-cow]], page 3’s entry was read-only already. An mprotect to read-only would change no entry, and Linux flushes only for entries that change:');
+        L.quote('modify_prot_commit_ptes(vma, addr, ptep, oldpte, ptent, nr_ptes);\nif (pte_needs_flush(oldpte, ptent))\n\ttlb_flush_pte_range(tlb, addr, nr_ptes * PAGE_SIZE);', { cite: 'mm/mprotect.c, prot_commit_flush_ptes(), Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+        L.p('The write before the mprotect faulted (0x7, the first line of the trace above), was reused, and made the entry writable again. Then the mprotect had an entry to change, and a flush to do.');
+        L.note('why', 'When you measure TLB flushes, check what the entries held before the call. The same mprotect can flush or not, depending on history.');
+      } },
+      { id: 'protnone', title: 'PROT_NONE: no access at all', body: function (L) {
+        L.p('PROT_NONE forbids every access. Linux makes the entry non-present, so that any access faults, and marks it so the kernel knows the frame is still there:');
+        L.quote('/* If _PAGE_BIT_PRESENT is clear, we use these: */\n/* - if the user mapped it with PROT_NONE; pte_present gives true */\n#define _PAGE_BIT_PROTNONE\t_PAGE_BIT_GLOBAL\n…\n#define PAGE_NONE\t     __pg(   0|   0|   0|___A|   0|   0|   0|___G)', { cite: 'arch/x86/include/asm/pgtable_types.h, Linux v6.18 (excerpts)', label: 'Linux source', code: true });
+        L.p('Bit 8 means G while P = 1, and “PROT_NONE” while P = 0. The CPU ignores every other bit of a non-present entry, so the kernel may give them its own meanings.');
+        L.p('So a read of a PROT_NONE page faults with 0x4 (no translation), and the kernel answers SEGV_ACCERR (the region forbids it), as in [[ch:vm-faults]].');
+      } },
+      { id: 'dontneed', title: 'Giving pages back: MADV_DONTNEED', body: function (L) {
+        L.p('<code>madvise(MADV_DONTNEED)</code> tells the kernel a program no longer needs the contents of a range. For private anonymous memory, the frames go back at once:', ['madvise']);
+        L.out('story.dontneed');
+        L.out('story.dontneedtrace', { wide: true });
+        L.p('The entry was cleared and flushed, and frame 0x129b49 was freed. A load then read 0 through the zero page, and a store got a fresh zeroed frame.');
+        L.p('It got the same frame, 0x129b49: the one most recently freed on this CPU. [[ch:vm-buddy]] shows why the allocator hands it out first.');
+        L.quote('subsequent accesses of pages in the range will succeed, but will result in either repopulating the memory contents from the up-to-date contents of the underlying mapped file (for shared file mappings, shared anonymous mappings, and shmem-based techniques such as System V shared memory segments) or zero-fill-on-demand pages for anonymous private mappings.', { cite: 'madvise(2), MADV_DONTNEED', label: 'Linux source', src: ['madvise(2)', 'https://man7.org/linux/man-pages/man2/madvise.2.html'] });
+        L.p('Memory allocators use it to return freed memory to the kernel without unmapping the range: the addresses stay valid, and the next use starts from zeros.');
+      } },
+      { id: 'tools', title: 'Tools built on faults', body: function (L) {
+        L.p('Several common mechanisms are faults used on purpose:');
+        L.list([
+          '<b>Stack guard gap.</b> Linux keeps 256 pages (1 MiB) below a growing stack free of other mappings, so that an overflowing stack faults instead of running into other memory: <code>unsigned long stack_guard_gap = 256UL&lt;&lt;PAGE_SHIFT;</code> (mm/mmap.c).',
+          '<b>MAP_FIXED_NOREPLACE.</b> Map at exactly this address, or fail with EEXIST if anything is already there. The main run used it to get 0x7f3a1b2c3000 every time.',
+          '<b>userfaultfd.</b> A program asks to handle the faults of a region itself: the faulting thread waits while a handler supplies the page. Live migration of virtual machines uses it. The lab machines’ kernel has it (CONFIG_USERFAULTFD=y).',
+          '<b>Write tracking.</b> mprotect a range read-only, catch the SEGV_ACCERR faults, note which pages were written, then make them writable again. Some garbage collectors find the pages a program changed this way.'
+        ], ['guardgap', 'uffd']);
+        L.p('Each turns the MMU’s permission check into an event the kernel or the program can act on. [[ch:vm-cost]] shows what each such event costs.');
+      } }
+    ],
+    check: [
+      { q: 'mprotect makes the middle page of a 3-page rw-p region read-only. How many maps lines does the region show afterwards?', options: ['Three: rw-p, r--p, rw-p', 'One, r--p', 'Two', 'One, rw-p'], answer: 0, why: 'A region has one set of permissions, so the middle page becomes a region of its own.' },
+      { q: 'Why did mprotect flush only one page?', options: ['Only page 3’s entry lost R/W', 'mprotect never flushes more than one page', 'The other pages were not present', 'The flush ceiling is one page'], answer: 0, why: 'prot_commit_flush_ptes() flushes only entries whose change needs it.' },
+      { q: 'A PROT_NONE page is read. Which error code, and which si_code?', options: ['0x4 and SEGV_ACCERR', '0x5 and SEGV_ACCERR', '0x4 and SEGV_MAPERR', '0x6 and SEGV_ACCERR'], answer: 0, why: 'The entry is not present (bit 0 = 0), but the region exists and forbids the read.' },
+      { q: 'After MADV_DONTNEED on a private anonymous page, what does a load read?', options: ['Zeros, through the zero page', 'The old contents', 'Nothing: it gets SIGSEGV', 'The contents of a file'], answer: 0, why: 'madvise(2): zero-fill-on-demand pages for anonymous private mappings. The run read 0.' }
+    ],
+    remember: [
+      'mprotect splits regions so that part of one can have new permissions, changes the entries, and flushes those that lost permissions.',
+      'An mprotect that changes no entry flushes nothing.',
+      'PROT_NONE clears P and marks the entry with bit 8: every access faults, and the region forbids it.',
+      'MADV_DONTNEED frees private anonymous pages at once; they come back as zeros.',
+      'Guard gaps, MAP_FIXED_NOREPLACE, userfaultfd and write tracking all use faults on purpose.'
+    ],
+    sources: [['Linux v6.18: mm/mprotect.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/mprotect.c'], ['madvise(2)', 'https://man7.org/linux/man-pages/man2/madvise.2.html'], ['mmap(2)', 'https://man7.org/linux/man-pages/man2/mmap.2.html'], ['Linux: userfaultfd', 'https://docs.kernel.org/admin-guide/mm/userfaultfd.html']]
+  });
+
+  /* ---------- III.18 ---------- */
+  App.lesson({
+    id: 'vm-cost', short: 'What a fault costs', title: 'What a page fault costs',
+    lede: 'A page fault costs microseconds, not nanoseconds. Measure it, then keep it out of the numbers you care about.',
+    know: ['A first touch allocates, zeroes and maps a frame ([[ch:vm-demand]]).', 'A huge-page fault zeroes 2 MiB at once ([[ch:vm-huge]]).', 'A copy-on-write fault copies 4 KiB ([[ch:vm-cow]]).'],
+    learn: ['Read a fault-cost measurement, and say what it includes', 'Compare small-page and huge-page faults, per fault and per MiB', 'Move faults out of the way with MADV_POPULATE_WRITE or MAP_POPULATE', 'Write a benchmark that does not time page faults by accident'],
+    sections: [
+      { id: 'measure', title: 'Timing a fault', body: function (L) {
+        L.p('One store per 4 KiB page into a fresh 64 MiB region makes 16384 faults. Time the pass, divide by the number of faults, and you have the cost of one fault.');
+        L.code('for (int s = 0; s < 21; s++) {\n    p = map64(huge);                  /* fresh region: not timed */\n    f = faults(); t = now_ns();\n    store_pass(p, 1);                 /* one store per 4 KiB page */\n    uint64_t dt = now_ns() - t;\n    nf = faults() - f;\n    perf[s] = (double)dt / nf;        /* ns per fault */\n    munmap(p, SZ);                    /* not timed */\n}', { title: 'labruns/vm/cost.c (shortened)' });
+        L.p('Each sample maps a fresh region, and mmap and munmap stay outside the timed part. 21 samples of each kind:');
+        L.out('cost.time', { wide: true });
+        L.p('A small-page fault took 1.74 µs (median), with little spread: 1.62 to 2.16 µs. At the 2.8 GHz the CPU reports, that is about 4900 cycles.');
+        L.p('Each one includes the entry into the kernel, the region lookup, a frame from the allocator, zeroing 4 KiB, writing the entry, the return, and the store running again.');
+      } },
+      { id: 'huge', title: 'Per fault and per megabyte', body: function (L) {
+        L.p('A huge-page fault took 351 µs, 200 times longer than a small one. But each one covers 512 small pages:');
+        L.table(['Pages', 'Faults per 64 MiB', 'Per fault (median)', 'Per MiB (median)'], [
+          ['4 KiB', '16384', '1.74 µs', '445 µs'],
+          { cells: ['2 MiB', '32', '351 µs', '176 µs'], hot: true }
+        ], { title: 'from cost.time above' });
+        L.p('Per MiB, huge pages cost 2.5 times less: for every 2 MiB, one fault, one allocation and one entry instead of 512 of each. The zeroing per byte is the same for both.');
+        L.note('careful', 'The slowest huge-page sample took 550 µs. A huge-page fault may also wait while the kernel makes a free 2 MiB block ([[ch:vm-huge]]). Medians hide such tails: report the spread too.');
+      } },
+      { id: 'prefault', title: 'Fault ahead of time', body: function (L) {
+        L.p('If the faults cannot be avoided, they can at least happen when the program chooses. <code>madvise(MADV_POPULATE_WRITE)</code> faults in a whole range at once, as if every page had been written:', ['madvise']);
+        L.quote('Populate (prefault) page tables writable, faulting in all pages in the range just as if manually writing to each each page; however, avoid the actual memory access that would have been performed after handling the fault.', { cite: 'madvise(2), MADV_POPULATE_WRITE (since Linux 5.14)', label: 'Linux source', src: ['madvise(2)', 'https://man7.org/linux/man-pages/man2/madvise.2.html'] });
+        L.out('cost.populate');
+        L.p('16384 faults inside madvise, 28.1 ms: the same 1.7 µs each. Then the store pass took 0.41 ms and no faults, about 25 ns per page.');
+        L.p('<code>mmap</code> with MAP_POPULATE does the same when the region is created. Neither makes the faults cheaper; both move them out of the part you care about.');
+      } },
+      { id: 'hygiene', title: 'Keep faults out of a benchmark', body: function (L) {
+        L.p('A timed loop that faults measures the kernel, not the code. The usual causes, and what to do:');
+        L.list([
+          '<b>Untouched buffers.</b> Write every buffer before the timed part, or prefault it. A buffer that is only read first faults twice ([[ch:vm-demand]]).',
+          '<b>Very large malloc and free inside the loop.</b> glibc serves large blocks with mmap and returns them with munmap; blocks above 32 MiB (on 64-bit) always, smaller ones until its threshold adapts. Every round then faults in fresh pages again.',
+          '<b>munmap, mprotect or madvise inside the loop.</b> They flush TLBs and, with threads, interrupt other CPUs ([[ch:vm-shootdown]]).',
+          '<b>Count the faults.</b> Call getrusage before and after, or run <code>perf stat -e page-faults</code>. A count that grows with iterations means faults are in the loop.',
+          '<b>Warm up</b>, and report the median and the spread.'
+        ]);
+        L.p('cost.c follows its own advice. Its first line calls every function it will use, because their first use faults too:');
+        L.code('/* first calls of the clock, madvise and getrusage fault on their own; do them now */\n(void)now_ns(); (void)faults(); madvise(NULL, 0, MADV_NORMAL); (void)status_kb("VmPTE");', { title: 'labruns/vm/cost.c' });
+        L.p('The lab below imports the same kind of measurement from your own machine.');
+        L.lab(function (el) { App.VMUI.labs.native(el); });
+      } }
+    ],
+    check: [
+      { q: 'Small-page faults cost 1.74 µs and huge-page faults 351 µs. Which is cheaper per MiB?', options: ['Huge pages: 176 µs per MiB against 445 µs', 'Small pages: 1.74 µs against 351 µs', 'They cost the same per MiB', 'It cannot be told from these numbers'], answer: 0, why: '256 small faults per MiB × 1.74 µs ≈ 445 µs; half a huge fault per MiB ≈ 176 µs.' },
+      { q: 'After madvise(MADV_POPULATE_WRITE) on 64 MiB, how many faults does a store pass over it take?', options: ['0', '16384', '32', '8192'], answer: 0, why: 'All 16384 faults happened inside madvise.' },
+      { q: 'What does MAP_POPULATE change about the total cost of the faults?', options: ['Nothing: the same faults happen at mmap time', 'It halves it', 'It removes the zeroing', 'It turns them into huge-page faults'], answer: 0, why: 'Prefaulting moves the work; it does not remove it.' },
+      { q: 'A benchmark’s page-fault count grows with the number of iterations. What does that tell you?', options: ['Something in the timed loop faults: new memory each round, or unmapping and remapping', 'The TLB is too small', 'The CPU is throttling', 'Nothing: faults are part of every loop'], answer: 0, why: 'A well-prepared loop faults only during warm-up.' }
+    ],
+    remember: [
+      'Measured here: a small-page fault ≈ 1.7 µs (thousands of cycles); a huge-page fault ≈ 350 µs, but 2.5 times cheaper per MiB.',
+      'MADV_POPULATE_WRITE and MAP_POPULATE take the faults up front; the work does not disappear.',
+      'In benchmarks: touch buffers first, and keep mmap, munmap and very large malloc/free out of timed loops.',
+      'Count faults with getrusage or perf stat: a count that grows with the iterations means faults inside the loop.'
+    ],
+    sources: [['madvise(2)', 'https://man7.org/linux/man-pages/man2/madvise.2.html'], ['mmap(2): MAP_POPULATE', 'https://man7.org/linux/man-pages/man2/mmap.2.html'], ['mallopt(3): M_MMAP_THRESHOLD', 'https://man7.org/linux/man-pages/man3/mallopt.3.html']]
   });
 })();
 
