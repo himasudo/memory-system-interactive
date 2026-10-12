@@ -412,11 +412,15 @@
       h('p', {'class': 'lx-q-p'}, box, q.q);
       var opts = h('div', {'class': 'lx-q-opts', role: 'group', 'aria-label': 'Answers'}, box);
       var fb = h('div', {'class': 'lx-q-fb', 'aria-live': 'polite'}, box);
-      q.options.forEach(function(text, i){
-        var b = h('button', {type: 'button', 'class': 'lx-q-opt'}, opts, '<span class="lx-q-letter">' + 'ABCDEF'.charAt(i) + '</span><span>' + text + '</span>');
+      /* lessons list the right answer first; show the options in an order fixed per question */
+      var seed = 0; for (var c = 0; c < q.q.length; c++) seed = (seed * 31 + q.q.charCodeAt(c)) >>> 0;
+      var order = q.options.map(function(_, i){ return i; }).sort(function(a, b){ return ((a + 1) * 2654435761 ^ seed) % 1009 - ((b + 1) * 2654435761 ^ seed) % 1009; });
+      order.forEach(function(i, pos){
+        var text = q.options[i];
+        var b = h('button', {type: 'button', 'class': 'lx-q-opt'}, opts, '<span class="lx-q-letter">' + 'ABCDEF'.charAt(pos) + '</span><span>' + text + '</span>');
         b.onclick = function(){
           var right = i === q.answer;
-          Array.prototype.forEach.call(opts.children, function(x, j){ x.classList.remove('picked', 'right', 'wrong'); if (j === q.answer && right) x.classList.add('right'); });
+          Array.prototype.forEach.call(opts.children, function(x){ x.classList.remove('picked', 'right', 'wrong'); });
           b.classList.add('picked', right ? 'right' : 'wrong');
           fb.className = 'lx-q-fb ' + (right ? 'ok' : 'no');
           fb.innerHTML = '<b>' + (right ? 'Right.' : 'Not quite.') + '</b> ' + (right ? q.why : (q.hint || 'Try another answer.'));

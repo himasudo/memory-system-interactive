@@ -192,5 +192,42 @@
     run();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach };
+  /* ---- 5. step through a sequence: rows stay on screen, one step at a time is lit and explained ----
+     rows: [{k, v, d}]; steps: [{t: title, d: html, hot: [row indexes], set: {rowIndex: {v, d}}}] */
+  function stepRows(el, rows, steps, o) {
+    o = o || {};
+    var bar = h('div', { 'class': 'lx-stepbar' }, el);
+    var back = h('button', { type: 'button' }, bar, '← back');
+    var cnt = h('span', { 'class': 'lx-stepcnt', 'aria-live': 'polite' }, bar);
+    var next = h('button', { type: 'button', 'class': 'pri' }, bar, 'next →');
+    var list = h('ol', { 'class': 'lx-steprows no-autolink' + (o.compact ? ' compact' : '') }, el);
+    var items = rows.map(function (r) {
+      var li = h('li', null, list);
+      h('span', { 'class': 'c-k' }, li, r.k);
+      var v = h('span', { 'class': 'c-v' }, li, r.v || '');
+      var d = h('span', { 'class': 'c-d' }, li, r.d || '');
+      return { li: li, v: v, d: d, v0: r.v || '', d0: r.d || '' };
+    });
+    var narr = h('div', { 'class': 'lx-stepnarr' }, el);
+    var i = 0;
+    function render() {
+      var s = steps[i];
+      cnt.textContent = 'step ' + (i + 1) + ' of ' + steps.length;
+      back.disabled = i === 0; next.disabled = i === steps.length - 1;
+      items.forEach(function (it, k) {
+        var st = {};
+        for (var j = 0; j <= i; j++) if (steps[j].set && steps[j].set[k]) st = steps[j].set[k];
+        it.v.textContent = st.v !== undefined ? st.v : it.v0;
+        it.d.textContent = st.d !== undefined ? st.d : it.d0;
+        it.li.classList.toggle('hot', (s.hot || []).indexOf(k) >= 0);
+        it.li.classList.toggle('done', (s.done || []).indexOf(k) >= 0);
+      });
+      narr.innerHTML = '<b>' + s.t + '</b>' + (s.d ? '<p>' + s.d + '</p>' : '');
+    }
+    back.onclick = function () { if (i > 0) { i--; render(); } };
+    next.onclick = function () { if (i < steps.length - 1) { i++; render(); } };
+    render();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows };
 })();

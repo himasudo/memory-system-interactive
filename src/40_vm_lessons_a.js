@@ -165,4 +165,163 @@
     ],
     sources: [['Linux: examining process page tables (pagemap)', 'https://docs.kernel.org/admin-guide/mm/pagemap.html']]
   });
+
+  /* ---------- III.03 ---------- */
+  App.lesson({
+    id: 'vm-space', short: 'A process’s address space', title: 'A process’s address space',
+    lede: 'A process could use 128 TiB of addresses but uses a few dozen ranges of them. The kernel keeps the list.',
+    know: ['Translation works on 4 KiB pages, and pagemap shows which frame each page has ([[ch:vm-pages]]).', 'mmap reserved 16 KiB, and the page had no frame until the first store ([[ch:vm-addresses]]).'],
+    learn: ['Read /proc/self/maps line by line', 'Say what mmap adds, and what it does not', 'Explain why addresses change from run to run (ASLR)', 'Tell canonical from non-canonical addresses, and the user half from the kernel half'],
+    sections: [
+      { id: 'regions', title: 'The list of regions', body: function (L) {
+        L.p('For each process the kernel keeps a list of regions: ranges of addresses with one set of permissions and one origin, either a file or nothing.', ['vmarea']);
+        L.p('<code>/proc/self/maps</code> prints that list for whichever process reads it. Here is <code>cat</code> reading its own:', ['maps']);
+        L.out('facts.maps1');
+        L.p('Each line is one region. Take the first line apart:');
+        L.table(['Field', 'Value', 'Meaning'], [
+          ['start–end', '563a1b1cf000-563a1b1d1000', 'the virtual address range (end not included)'],
+          ['permissions', 'r--p', 'read, no write, no execute; <b>p</b>rivate (writes stay in this process) or <b>s</b>hared'],
+          ['offset', '00000000', 'where in the file the region starts'],
+          ['device, inode', 'fe:00 343944', 'which file (0 for anonymous memory)'],
+          ['path', '/usr/bin/cat', 'the file, or a label such as [heap] or [stack]']
+        ], { mono: true });
+        L.p('Now read the list top to bottom. The program file comes first, in five pieces: headers, code (<code>r-xp</code>), constants, a part made read-only after loading, and writable data.');
+        L.p('Then the heap, the C library in five pieces, a few anonymous regions, three regions the kernel itself provides ([vvar] and [vdso]), the dynamic loader, and the stack near the top.');
+      } },
+      { id: 'mmap', title: 'mmap adds a line, and nothing else', body: function (L) {
+        L.p('Our program’s <code>mmap</code> added exactly one line:');
+        L.out('story.mmap', { lines: [1, 2] });
+        L.p('0x7f3a1b2c7000 − 0x7f3a1b2c3000 = 0x4000 bytes = 16 KiB = 4 pages. <code>rw-p</code>: readable, writable, not executable, private. Device and inode are 0: no file behind it.', ['anon']);
+        L.p('That is all <code>mmap</code> did. The page tables did not grow:');
+        L.out('story.vmpte', { lines: [0, 1] });
+        L.p('And, as [[ch:vm-addresses]] showed, the pages had no frames. The region is a promise: these addresses may be used, with these permissions.');
+        L.p('The tables and the frames are filled in later, one page at a time, when the program first touches each page. [[ch:vm-demand]] shows how.');
+      } },
+      { id: 'aslr', title: 'Addresses move: ASLR', body: function (L) {
+        L.p('Run <code>cat /proc/self/maps</code> twice and compare four of the lines:');
+        L.out('facts.aslr');
+        L.p('The program, the heap, the C library and the stack all moved. That is ASLR: the kernel picks new random starting points at every program start.', ['aslr']);
+        L.p('The order stays the same: program low, then the heap, the libraries near the top, the stack at the very top. Only the starting points move.');
+        L.out('facts.aslrmode', { lines: [0, 2], what: 'randomize_va_space: 2 = randomize the stack, the libraries, the vDSO and the heap.' });
+        L.p('Randomized addresses make memory-corruption attacks harder, because an attacker cannot know where code or data is. It is also why our program asks for a fixed address: otherwise every run would print different numbers.');
+      } },
+      { id: 'halves', title: '48 bits, in two halves', body: function (L) {
+        L.p('Pointers are 64 bits wide, but x86-64 CPUs normally translate only the low 48 bits. The lab machine says so:');
+        L.out('facts.sizes', { lines: [0, 1] });
+        L.p('A 64-bit value is a usable address only if bits 63 to 48 are all copies of bit 47. Such an address is called canonical.', ['canon']);
+        L.table(['Range', 'Size', 'What it is'], [
+          ['0x0000000000000000 – 0x00007fffffffffff', '128 TiB', 'user half: the process’s own addresses, different in every process'],
+          ['0x0000800000000000 – 0xffff7fffffffffff', 'almost 2⁶⁴', 'non-canonical: never translated'],
+          ['0xffff800000000000 – 0xffffffffffffffff', '128 TiB', 'kernel half: the same in every process']
+        ], { mono: true });
+        L.p('Using a non-canonical address is not a page fault. The CPU refuses the instruction before any translation, with a general-protection exception:', ['gpf']);
+        L.out('err.kernel', { lines: [2] });
+        L.p('Trap 13 is #GP. A page fault is trap 14, and [[ch:vm-faults]] decodes its error code.');
+        L.try('Is it canonical?', 'Type any 64-bit value. Try 0x0000800000000000, 0x00007fffffffffff and 0xffff888000000000.', function (el) { LW().splitter(el, { va: '0x0000800000000000', pfn: false, sizes: false }); });
+        L.note('other', 'Newer CPUs can translate 57-bit addresses with a fifth level of tables (CPU flag <code>la57</code>; Intel Xeon since Ice Lake, AMD since Zen 4). Then bits 63 to 57 must copy bit 56. The lab machine does not report <code>la57</code>, so every address here is 48 bits.', 'Five-level paging');
+      } },
+      { id: 'khalf', title: 'The kernel half', body: function (L) {
+        L.p('The kernel’s code and data live in the kernel half, and that half is mapped in every process. So a system call or an interrupt can run kernel code without switching tables.', ['khalf']);
+        L.quote('ffff888000000000 | -119.5  TB | ffffc87fffffffff |   64 TB | direct mapping of all physical memory (page_offset_base)\nffffc90000000000 |  -55    TB | ffffe8ffffffffff |   32 TB | vmalloc/ioremap space (vmalloc_base)\nffffea0000000000 |  -22    TB | ffffeaffffffffff |    1 TB | virtual memory map (vmemmap_base)\nffffffff80000000 |   -2    GB | ffffffff9fffffff |  512 MB | kernel text mapping, mapped to physical address 0', { cite: 'Documentation/arch/x86/x86_64/mm.rst, Linux v6.18 (4 of its lines)', label: 'Linux source', code: true, src: ['x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'] });
+        L.p('The kernel’s code starts at the bottom of that last range on this machine:');
+        L.out('facts.text', { lines: [0, 1] });
+        L.p('User code still cannot touch the kernel half: its entries say “kernel mode only”. Our program tried:');
+        L.out('err.kernel', { lines: [0, 1] });
+        L.p('Trap 14 is a page fault, and its error code 0x5 says a translation existed but refused user mode. [[ch:vm-pte]] shows the bit that does the refusing.');
+        L.note('arm', 'AArch64 splits the address space the same way. Addresses whose top bits are all 0 are translated through TTBR0_EL1 (user); all 1, through TTBR1_EL1 (kernel). The size of each half is set in TCR_EL1, commonly 48 bits.');
+      } }
+    ],
+    check: [
+      { q: 'Which maps line holds a program’s machine code?', options: ['The r-xp line of the program file', 'The rw-p line of the program file', 'The [heap] line', 'The [stack] line'], answer: 0, why: 'Code must be readable and executable, and comes from the program file: r-xp.' },
+      { q: 'Right after mmap(16 KiB), which of these has changed?', options: ['/proc/self/maps has one more line', 'VmPTE grew by 4 kB', 'pagemap shows the pages present', 'The process uses 16 KiB more RAM'], answer: 0, why: 'mmap only adds a region. Tables and frames come later, on first touch.' },
+      { q: 'A program loads from 0x0000800000000000. What happens?', options: ['A general-protection exception (#GP, trap 13)', 'A page fault (trap 14)', 'It reads zeros', 'It reads kernel memory'], answer: 0, why: 'Bits 63:48 are not copies of bit 47, so the address is non-canonical and never reaches translation.' },
+      { q: 'Why did libc start at a different address in the second run of cat?', options: ['ASLR picked a new random base', 'The first run’s libc was still in memory', 'The kernel ran out of addresses', 'Page tables were rebuilt'], answer: 0, why: 'With randomize_va_space = 2, the stack, libraries, vDSO and heap get new random bases at every start.' }
+    ],
+    remember: [
+      '/proc/self/maps is the kernel’s list of regions: range, permissions, offset, file.',
+      'mmap adds a region and nothing else: no page-table entries, no frames.',
+      'ASLR moves the starting points at every run; the order of regions stays.',
+      'Only canonical addresses are translated. The user half differs per process; the kernel half is shared but kernel-only.'
+    ],
+    sources: [['proc_pid_maps(5)', 'https://man7.org/linux/man-pages/man5/proc_pid_maps.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'], ['Intel SDM Vol. 1, §3.3.7.1 “Canonical addressing”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+  });
+
+  /* ---------- III.04 ---------- */
+  function treeFigure(sv) {
+    var T = P.T, R = P.R;
+    function table(x, y, w, used, label, cls) {
+      R(sv, x, y, w, 34, cls || 'box', 4);
+      var n = 16, cw = (w - 12) / n;
+      for (var i = 0; i < n; i++) R(sv, x + 6 + i * cw, y + 6, cw - 2, 10, used.indexOf(i) >= 0 ? 'a4b' : 'sunk', 1);
+      T(sv, x + w / 2, y + 29, label, 's', 'middle');
+    }
+    table(170, 8, 140, [3, 12], 'top table');
+    P.Ln(sv, 'M210 42 L95 72'); P.Ln(sv, 'M285 42 L335 72');
+    table(30, 72, 130, [5], 'middle table');
+    table(270, 72, 130, [2, 9], 'middle table');
+    R(sv, 420, 72, 100, 34, 'sunk dash', 4); T(sv, 470, 93, 'empty slots:', 's', 'middle'); T(sv, 470, 104, 'no table at all', 's', 'middle');
+    P.Ln(sv, 'M95 106 L95 136'); P.Ln(sv, 'M300 106 L250 136'); P.Ln(sv, 'M370 106 L400 136');
+    table(30, 136, 130, [1, 2, 3], 'table');
+    table(185, 136, 130, [7], 'table');
+    table(340, 136, 130, [0, 15], 'table');
+    P.Ln(sv, 'M70 170 L50 200'); P.Ln(sv, 'M120 170 L140 200'); P.Ln(sv, 'M250 170 L250 200'); P.Ln(sv, 'M380 170 L370 200'); P.Ln(sv, 'M440 170 L460 200');
+    [10, 100, 205, 320, 410].forEach(function (x) { table(x, 200, 90, [0, 1, 2, 5, 8, 9], 'bottom: PTEs', 'a2b'); });
+    T(sv, 260, 254, 'each table: one 4 KiB frame, 512 entries of 8 bytes (16 slots drawn)', 's', 'middle');
+  }
+  App.lesson({
+    id: 'vm-tree', short: 'A tree of tables', title: 'A tree of tables',
+    lede: 'One flat table for every possible page would take 512 GiB per process. A tree of small tables takes kilobytes.',
+    know: ['Each 4 KiB page needs one translation record, 8 bytes, called a page-table entry ([[ch:vm-pages]]).', 'A process uses a few dozen regions out of 128 TiB of addresses ([[ch:vm-space]]).'],
+    learn: ['Explain why page tables form a tree', 'Estimate how much table memory a program needs', 'Say where page tables live, and who can read and write them'],
+    sections: [
+      { id: 'records', title: 'One record per page', body: function (L) {
+        L.p('For every page in use the MMU needs a record: which frame the page maps to, and what is allowed. That record is a page-table entry (PTE), 8 bytes.', ['pte']);
+        L.p('The kernel writes the entries into page tables in RAM, and the MMU reads them. How should the entries be arranged?', [['page table', 'A table in RAM, written by the kernel, holding page-table entries. The MMU reads it to translate addresses.']]);
+      } },
+      { id: 'flat', title: 'A flat table would not fit', body: function (L) {
+        L.p('The simplest layout is one flat array with an entry for every possible page, indexed by page number. Count its size:');
+        L.code('2^48 bytes of addresses / 2^12 bytes per page = 2^36 pages\n2^36 pages × 8 bytes per entry            = 2^39 bytes = 512 GiB', { lang: 'text', title: 'arithmetic' });
+        L.p('That is 512 GiB for every process, and almost all of it would describe addresses nobody uses. <code>cat</code> used 24 regions.');
+      } },
+      { id: 'tree', title: 'A tree grows with what is mapped', body: function (L) {
+        L.p('So the entries are kept in a tree. The bottom tables hold the PTEs. Each table above holds pointers to tables below it.');
+        L.fig(520, 262, treeFigure, { cap: 'A page-table tree. Blue slots point to a table or a frame; grey slots are empty. Branches with nothing mapped have no table at all.', maxw: 640 });
+        L.p('Where nothing is mapped, the slot is empty and no table exists below it. The tree has tables only along the paths to pages in use.');
+        L.p('Every table is the same size: one 4 KiB frame holding 512 entries of 8 bytes. So one bottom table describes 512 pages, which is 2 MiB of addresses.');
+        L.code('512 entries × 4 KiB per page = 2 MiB per bottom table', { lang: 'text', title: 'arithmetic' });
+      } },
+      { id: 'measure', title: 'Measure it: VmPTE', body: function (L) {
+        L.p('Linux counts each process’s page tables, in kilobytes, as <code>VmPTE</code> in <code>/proc/&lt;pid&gt;/status</code>. The top table is not included.', ['vmpte']);
+        L.out('facts.vmpte');
+        L.p('A small program like <code>grep</code> needs 44 to 52 kB: a dozen tables.');
+        L.p('Now give a program 64 MiB and store one byte into every 4 KiB page:');
+        L.out('cost.vmpte');
+        L.p('168 − 40 = 128 kB of new tables = 32 bottom tables of 4 KiB. And 32 × 2 MiB = 64 MiB: one bottom table per 2 MiB touched, as the arithmetic predicted.');
+        L.p('In the main run, the first store into the fresh region added 12 kB:');
+        L.out('story.vmpte', { lines: [1, 2] });
+        L.p('12 kB is three tables. Nothing else lived in that part of the address space, so the store needed a whole new path through the tree: [[ch:vm-demand]] shows the kernel allocating each table.');
+      } },
+      { id: 'where', title: 'Tables are ordinary memory', body: function (L) {
+        L.p('A page table is an ordinary 4 KiB frame of RAM that the kernel allocated, like any other frame.');
+        L.p('No user-half address maps to those frames, so a program cannot read or change its own tables. The MMU reads them by physical address.');
+        L.p('The kernel reaches them, and every other frame, through the direct map: a range of the kernel half that maps all of RAM at one fixed offset.', ['directmap']);
+        L.code('kernel address = 0xffff888000000000 + physical address\n\nthe main run’s bottom table, frame 0x1330d4:\n0xffff888000000000 + 0x1330d4000 = 0xffff8881330d4000', { lang: 'text', title: 'the direct map' });
+        L.p('[[ch:vm-space]] showed this range in the kernel’s memory map, and our program faulted when it tried to read from 0xffff888000000000.');
+        L.note('linux', 'With boot-time randomization of the kernel’s layout (KASLR), the direct map may start at a random place above 0xffff888000000000. On the lab machine the kernel’s code sits at the unrandomized default 0xffffffff81000000, so randomization is not active and the direct map starts at the default.', 'On this machine');
+      } }
+    ],
+    check: [
+      { q: 'How big would one flat page table be for a 48-bit address space with 4 KiB pages?', options: ['512 GiB', '512 MiB', '4 KiB', '2 MiB'], answer: 0, why: '2³⁶ pages × 8 bytes = 2³⁹ bytes = 512 GiB.' },
+      { q: 'How much memory does one bottom-level table describe?', options: ['2 MiB', '4 KiB', '1 GiB', '512 bytes'], answer: 0, why: '512 entries × 4 KiB pages = 2 MiB.' },
+      { q: 'A program touches 8 MiB of fresh memory, one page at a time. Roughly how much does VmPTE grow?', options: ['16 kB (4 bottom tables)', '8 MiB', '4 kB', '512 GiB'], answer: 0, why: 'One 4 KiB bottom table per 2 MiB: 8 MiB / 2 MiB = 4 tables = 16 kB, plus upper tables if the path is new.' },
+      { q: 'Can a program read its own page tables through a normal pointer?', options: ['No: no user-half address maps their frames', 'Yes, at /proc/self/pagemap', 'Yes, they are in the heap', 'Only after mprotect'], answer: 0, why: 'Tables are reached by physical address (the MMU) or through the kernel’s direct map. pagemap is a kernel-generated report, not the tables themselves.' }
+    ],
+    remember: [
+      'A flat table would cost 512 GiB per process; a tree only has tables where something is mapped.',
+      'Every table is one 4 KiB frame of 512 eight-byte entries; a bottom table covers 2 MiB.',
+      'VmPTE in /proc/<pid>/status shows a process’s table memory: about 4 kB per 2 MiB touched.',
+      'Tables are ordinary frames. Programs cannot reach them; the kernel uses the direct map.'
+    ],
+    sources: [['proc_pid_status(5): VmPTE', 'https://man7.org/linux/man-pages/man5/proc_pid_status.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html']]
+  });
 })();

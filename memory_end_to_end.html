@@ -2881,6 +2881,22 @@ svg .actb {
 .evidence-kind[data-evidence-kind='Linux source']{border-color:var(--a3);color:var(--a3)}
 .evidence-kind[data-evidence-kind='Specification']{border-color:var(--a4);color:var(--a4);border-style:dashed}
 
+/* step-through widget (App.LW.stepRows) */
+.lx-stepbar{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.lx-stepcnt{font:600 11.5px var(--mono);color:var(--tx3);min-width:84px;text-align:center}
+.lx-steprows{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.lx-steprows li{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,190px) minmax(0,1fr);gap:4px 14px;align-items:baseline;padding:9px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--sunk);transition:border-color .15s,background .15s}
+.lx-steprows li.hot{border-color:var(--act);background:var(--actbg)}
+.lx-steprows li.done{opacity:.85}
+.lx-steprows .c-k{font:650 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--tx3)}
+.lx-steprows .c-v{font:600 13.5px var(--mono);color:var(--tx);overflow-wrap:anywhere}
+.lx-steprows .c-d{font:13px var(--mono);color:var(--tx2);overflow-wrap:anywhere}
+.lx-stepnarr{margin-top:12px;padding:12px 14px;border-left:3px solid var(--act);background:var(--sunk);border-radius:0 9px 9px 0;font-size:14.5px;line-height:1.55}
+.lx-stepnarr p{margin:4px 0 0;color:var(--tx2)}
+.lx-svg svg text{font-size:13px}.lx-svg svg text.s{font-size:11.5px}
+svg .dash{stroke-dasharray:4 3}
+@media (max-width:720px){.lx-steprows li{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -4515,11 +4531,15 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
       h('p', {'class': 'lx-q-p'}, box, q.q);
       var opts = h('div', {'class': 'lx-q-opts', role: 'group', 'aria-label': 'Answers'}, box);
       var fb = h('div', {'class': 'lx-q-fb', 'aria-live': 'polite'}, box);
-      q.options.forEach(function(text, i){
-        var b = h('button', {type: 'button', 'class': 'lx-q-opt'}, opts, '<span class="lx-q-letter">' + 'ABCDEF'.charAt(i) + '</span><span>' + text + '</span>');
+      /* lessons list the right answer first; show the options in an order fixed per question */
+      var seed = 0; for (var c = 0; c < q.q.length; c++) seed = (seed * 31 + q.q.charCodeAt(c)) >>> 0;
+      var order = q.options.map(function(_, i){ return i; }).sort(function(a, b){ return ((a + 1) * 2654435761 ^ seed) % 1009 - ((b + 1) * 2654435761 ^ seed) % 1009; });
+      order.forEach(function(i, pos){
+        var text = q.options[i];
+        var b = h('button', {type: 'button', 'class': 'lx-q-opt'}, opts, '<span class="lx-q-letter">' + 'ABCDEF'.charAt(pos) + '</span><span>' + text + '</span>');
         b.onclick = function(){
           var right = i === q.answer;
-          Array.prototype.forEach.call(opts.children, function(x, j){ x.classList.remove('picked', 'right', 'wrong'); if (j === q.answer && right) x.classList.add('right'); });
+          Array.prototype.forEach.call(opts.children, function(x){ x.classList.remove('picked', 'right', 'wrong'); });
           b.classList.add('picked', right ? 'right' : 'wrong');
           fb.className = 'lx-q-fb ' + (right ? 'ok' : 'no');
           fb.innerHTML = '<b>' + (right ? 'Right.' : 'Not quite.') + '</b> ' + (right ? q.why : (q.hint || 'Try another answer.'));
@@ -20995,10 +21015,132 @@ var LabRuns = (function () {
       what: 'objdump -d story: the instruction the compiler made from p[0xd4e] = 1. %r12 holds p.',
       lines: ['    1e97:\tmovb   $0x1,0xd4e(%r12)']
     },
-    'story.maps': {
+    'story.vmpte': {
       file: 'vm/out/story.txt',
-      what: 'The main run: /proc/self/maps at start (file paths shortened to …/name).',
-      lines: []
+      what: 'The main run: VmPTE from /proc/self/status at three moments.',
+      lines: ['VmPTE at start: 48 kB', 'VmPTE after mmap: 48 kB', 'VmPTE after the store: ⟦60 kB⟧']
+    },
+    'facts.maps1': {
+      file: 'vm/out/facts.txt',
+      what: 'cat reading its own /proc/self/maps (facts.sh).',
+      lines: [
+        '$ cat /proc/self/maps',
+        '563a1b1cf000-563a1b1d1000 r--p 00000000 fe:00 343944                     /usr/bin/cat',
+        '563a1b1d1000-563a1b1d6000 r-xp 00002000 fe:00 343944                     /usr/bin/cat',
+        '563a1b1d6000-563a1b1d8000 r--p 00007000 fe:00 343944                     /usr/bin/cat',
+        '563a1b1d8000-563a1b1d9000 r--p 00008000 fe:00 343944                     /usr/bin/cat',
+        '563a1b1d9000-563a1b1da000 rw-p 00009000 fe:00 343944                     /usr/bin/cat',
+        '563a4654a000-563a4656b000 rw-p 00000000 00:00 0                          [heap]',
+        '7f128d400000-7f128d428000 r--p 00000000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6',
+        '7f128d428000-7f128d5b1000 r-xp 00028000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6',
+        '7f128d5b1000-7f128d600000 r--p 001b1000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6',
+        '7f128d600000-7f128d604000 r--p 001ff000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6',
+        '7f128d604000-7f128d606000 rw-p 00203000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6',
+        '7f128d606000-7f128d613000 rw-p 00000000 00:00 0',
+        '7f128d7a0000-7f128d7c5000 rw-p 00000000 00:00 0',
+        '7f128d7d3000-7f128d7d5000 rw-p 00000000 00:00 0',
+        '7f128d7d5000-7f128d7d9000 r--p 00000000 00:00 0                          [vvar]',
+        '7f128d7d9000-7f128d7db000 r--p 00000000 00:00 0                          [vvar_vclock]',
+        '7f128d7db000-7f128d7dd000 r-xp 00000000 00:00 0                          [vdso]',
+        '7f128d7dd000-7f128d7de000 r--p 00000000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2',
+        '7f128d7de000-7f128d809000 r-xp 00001000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2',
+        '7f128d809000-7f128d813000 r--p 0002c000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2',
+        '7f128d813000-7f128d815000 r--p 00036000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2',
+        '7f128d815000-7f128d817000 rw-p 00038000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2',
+        '7fff883db000-7fff88401000 rw-p 00000000 00:00 0                          [stack]',
+        'ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]'
+      ]
+    },
+    'facts.aslr': {
+      file: 'vm/out/facts.txt',
+      what: 'Two runs of cat /proc/self/maps, four lines of each (facts.sh).',
+      lines: [
+        '$ cat /proc/self/maps    # run 1',
+        '⟦563a1b1cf000⟧-563a1b1d1000 r--p 00000000 fe:00 343944                     /usr/bin/cat',
+        '⟦563a4654a000⟧-563a4656b000 rw-p 00000000 00:00 0                          [heap]',
+        '⟦7f128d400000⟧-7f128d428000 r--p 00000000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6',
+        '⟦7fff883db000⟧-7fff88401000 rw-p 00000000 00:00 0                          [stack]',
+        '$ cat /proc/self/maps    # run 2',
+        '⟦557dd07da000⟧-557dd07dc000 r--p 00000000 fe:00 343944                     /usr/bin/cat',
+        '⟦557dd4ea8000⟧-557dd4ec9000 rw-p 00000000 00:00 0                          [heap]',
+        '⟦7f63ae600000⟧-7f63ae628000 r--p 00000000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6',
+        '⟦7ffc07799000⟧-7ffc077bf000 rw-p 00000000 00:00 0                          [stack]'
+      ]
+    },
+    'facts.aslrmode': {
+      file: 'vm/out/facts.txt',
+      what: 'The randomization setting (facts.sh).',
+      lines: ['$ cat /proc/sys/vm/nr_hugepages /proc/sys/kernel/randomize_va_space', '0', '2']
+    },
+    'facts.sizes': {
+      file: 'vm/out/facts.txt',
+      what: 'lscpu on the lab machine (facts.sh).',
+      lines: ['$ lscpu | grep -E "Model name|Address sizes|Hypervisor"', 'Address sizes:                           46 bits physical, ⟦48 bits virtual⟧', 'Model name:                              Intel(R) Xeon(R) Processor @ 2.80GHz', 'Hypervisor vendor:                       KVM']
+    },
+    'facts.text': {
+      file: 'vm/out/facts.txt',
+      what: 'Where the kernel’s code starts, from the kernel’s symbol table (root only).',
+      lines: ['$ grep -w -E "_text|_etext" /proc/kallsyms', '⟦ffffffff81000000⟧ T _text', 'ffffffff821350e8 T _etext']
+    },
+    'facts.vmpte': {
+      file: 'vm/out/facts.txt',
+      what: 'VmPTE of grep reading its own status file, 5 runs (facts.sh).',
+      lines: ['$ grep VmPTE /proc/self/status    # 5 runs', 'VmPTE:	      44 kB', 'VmPTE:	      48 kB', 'VmPTE:	      52 kB', 'VmPTE:	      48 kB', 'VmPTE:	      52 kB']
+    },
+    'cost.vmpte': {
+      file: 'vm/out/cost.txt',
+      what: 'cost.c: map 64 MiB, store one byte into every 4 KiB page, unmap.',
+      lines: ['VmPTE before 40 kB, after one store per 4 KiB page ⟦168 kB⟧, after munmap 40 kB']
+    },
+    'facts.flags': {
+      file: 'vm/out/facts.txt',
+      what: 'Which paging features the lab machine’s CPU reports: grep -o -w -E "pcid|invpcid|la57|pdpe1gb|nx|smep|smap|pku|pti" /proc/cpuinfo | sort -u',
+      lines: ['invpcid nx pcid pdpe1gb smap smep']
+    },
+    'facts.meltdown': {
+      file: 'vm/out/facts.txt',
+      what: 'The kernel’s verdict on Meltdown for this CPU (facts.sh).',
+      lines: ['$ cat /sys/devices/system/cpu/vulnerabilities/meltdown', 'Not affected']
+    },
+    'facts.thp': {
+      file: 'vm/out/facts.txt',
+      what: 'The lab machine’s huge-page settings (facts.sh).',
+      lines: ['$ cat /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag', 'always [madvise] never', 'always defer defer+madvise [madvise] never', '$ cat /proc/sys/vm/nr_hugepages /proc/sys/kernel/randomize_va_space', '0']
+    },
+    'facts.l1': {
+      file: 'vm/out/facts.txt',
+      what: 'The L1 data cache, as the lab machine’s CPU reports it (facts.sh).',
+      lines: ['level:1', 'type:Data', 'size:32K', 'ways_of_associativity:8', 'number_of_sets:64', 'coherency_line_size:64']
+    },
+    'tlb.chase': {
+      file: 'vm/out/tlb.txt',
+      what: 'chase.c tlb: a pointer chase with one 8-byte node in each 4 KiB page, visited in random order. The same chase over 4 KiB pages and over 2 MiB pages. ns per hop: median of 9 runs of 4,000,000 hops.',
+      lines: [
+        '  working set   pages (4 KiB)   ns/hop, 4 KiB pages   ns/hop, 2 MiB pages',
+        '        64 KiB              16                  1.58                  1.55',
+        '       128 KiB              32                  1.53                  1.53',
+        '       256 KiB              ⟦64⟧                  1.54                  1.53',
+        '       512 KiB             ⟦128⟧                  ⟦3.73⟧                  1.55',
+        '      1024 KiB             256                  3.68                  1.52',
+        '      2048 KiB             512                  3.68                  1.53',
+        '      4096 KiB            1024                  6.62                  4.28',
+        '      6144 KiB            1536                  6.83                  4.44',
+        '      8192 KiB            ⟦2048⟧                  ⟦8.78⟧                  4.57',
+        '     16384 KiB            4096                 15.02                  4.93',
+        '     32768 KiB            8192                 16.77                  4.68',
+        '     65536 KiB           16384                 32.88                  8.72',
+        '    131072 KiB           32768                 47.29                 25.59',
+        '    262144 KiB           65536                180.45                102.63'
+      ]
+    },
+    'err.kernel': {
+      file: 'vm/out/errcodes.txt',
+      what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',
+      lines: [
+        'read  0xffff888000000000 (kernel half)   trap=14 err=0x5   si_code=SEGV_MAPERR',
+        'read  0xffffffff81000000 (kernel code)   trap=14 err=0x5   si_code=SEGV_MAPERR',
+        'read  0x0000800000000000 (non-canonical) trap=⟦13⟧ err=0x0   si_code=SI_KERNEL'
+      ]
     }
   };
   function get(id) {
@@ -21208,7 +21350,44 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
     run();
   }
 
-  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach };
+  /* ---- 5. step through a sequence: rows stay on screen, one step at a time is lit and explained ----
+     rows: [{k, v, d}]; steps: [{t: title, d: html, hot: [row indexes], set: {rowIndex: {v, d}}}] */
+  function stepRows(el, rows, steps, o) {
+    o = o || {};
+    var bar = h('div', { 'class': 'lx-stepbar' }, el);
+    var back = h('button', { type: 'button' }, bar, '← back');
+    var cnt = h('span', { 'class': 'lx-stepcnt', 'aria-live': 'polite' }, bar);
+    var next = h('button', { type: 'button', 'class': 'pri' }, bar, 'next →');
+    var list = h('ol', { 'class': 'lx-steprows no-autolink' + (o.compact ? ' compact' : '') }, el);
+    var items = rows.map(function (r) {
+      var li = h('li', null, list);
+      h('span', { 'class': 'c-k' }, li, r.k);
+      var v = h('span', { 'class': 'c-v' }, li, r.v || '');
+      var d = h('span', { 'class': 'c-d' }, li, r.d || '');
+      return { li: li, v: v, d: d, v0: r.v || '', d0: r.d || '' };
+    });
+    var narr = h('div', { 'class': 'lx-stepnarr' }, el);
+    var i = 0;
+    function render() {
+      var s = steps[i];
+      cnt.textContent = 'step ' + (i + 1) + ' of ' + steps.length;
+      back.disabled = i === 0; next.disabled = i === steps.length - 1;
+      items.forEach(function (it, k) {
+        var st = {};
+        for (var j = 0; j <= i; j++) if (steps[j].set && steps[j].set[k]) st = steps[j].set[k];
+        it.v.textContent = st.v !== undefined ? st.v : it.v0;
+        it.d.textContent = st.d !== undefined ? st.d : it.d0;
+        it.li.classList.toggle('hot', (s.hot || []).indexOf(k) >= 0);
+        it.li.classList.toggle('done', (s.done || []).indexOf(k) >= 0);
+      });
+      narr.innerHTML = '<b>' + s.t + '</b>' + (s.d ? '<p>' + s.d + '</p>' : '');
+    }
+    back.onclick = function () { if (i > 0) { i--; render(); } };
+    next.onclick = function () { if (i < steps.length - 1) { i++; render(); } };
+    render();
+  }
+
+  App.LW = { parseHex: parseHex, hx: hx, bitsHTML: bitsHTML, field: field, select: select, splitter: splitter, pteDecoder: pteDecoder, errDecoder: errDecoder, reach: reach, stepRows: stepRows };
 })();
 
 /* ======================= Part III · Virtual memory, lessons 1–4 ======================= */
@@ -21377,6 +21556,476 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'pagemap: bit 63 present, bit 56 mapped exactly once, bits 54:0 the PFN (root only).'
     ],
     sources: [['Linux: examining process page tables (pagemap)', 'https://docs.kernel.org/admin-guide/mm/pagemap.html']]
+  });
+
+  /* ---------- III.03 ---------- */
+  App.lesson({
+    id: 'vm-space', short: 'A process’s address space', title: 'A process’s address space',
+    lede: 'A process could use 128 TiB of addresses but uses a few dozen ranges of them. The kernel keeps the list.',
+    know: ['Translation works on 4 KiB pages, and pagemap shows which frame each page has ([[ch:vm-pages]]).', 'mmap reserved 16 KiB, and the page had no frame until the first store ([[ch:vm-addresses]]).'],
+    learn: ['Read /proc/self/maps line by line', 'Say what mmap adds, and what it does not', 'Explain why addresses change from run to run (ASLR)', 'Tell canonical from non-canonical addresses, and the user half from the kernel half'],
+    sections: [
+      { id: 'regions', title: 'The list of regions', body: function (L) {
+        L.p('For each process the kernel keeps a list of regions: ranges of addresses with one set of permissions and one origin, either a file or nothing.', ['vmarea']);
+        L.p('<code>/proc/self/maps</code> prints that list for whichever process reads it. Here is <code>cat</code> reading its own:', ['maps']);
+        L.out('facts.maps1');
+        L.p('Each line is one region. Take the first line apart:');
+        L.table(['Field', 'Value', 'Meaning'], [
+          ['start–end', '563a1b1cf000-563a1b1d1000', 'the virtual address range (end not included)'],
+          ['permissions', 'r--p', 'read, no write, no execute; <b>p</b>rivate (writes stay in this process) or <b>s</b>hared'],
+          ['offset', '00000000', 'where in the file the region starts'],
+          ['device, inode', 'fe:00 343944', 'which file (0 for anonymous memory)'],
+          ['path', '/usr/bin/cat', 'the file, or a label such as [heap] or [stack]']
+        ], { mono: true });
+        L.p('Now read the list top to bottom. The program file comes first, in five pieces: headers, code (<code>r-xp</code>), constants, a part made read-only after loading, and writable data.');
+        L.p('Then the heap, the C library in five pieces, a few anonymous regions, three regions the kernel itself provides ([vvar] and [vdso]), the dynamic loader, and the stack near the top.');
+      } },
+      { id: 'mmap', title: 'mmap adds a line, and nothing else', body: function (L) {
+        L.p('Our program’s <code>mmap</code> added exactly one line:');
+        L.out('story.mmap', { lines: [1, 2] });
+        L.p('0x7f3a1b2c7000 − 0x7f3a1b2c3000 = 0x4000 bytes = 16 KiB = 4 pages. <code>rw-p</code>: readable, writable, not executable, private. Device and inode are 0: no file behind it.', ['anon']);
+        L.p('That is all <code>mmap</code> did. The page tables did not grow:');
+        L.out('story.vmpte', { lines: [0, 1] });
+        L.p('And, as [[ch:vm-addresses]] showed, the pages had no frames. The region is a promise: these addresses may be used, with these permissions.');
+        L.p('The tables and the frames are filled in later, one page at a time, when the program first touches each page. [[ch:vm-demand]] shows how.');
+      } },
+      { id: 'aslr', title: 'Addresses move: ASLR', body: function (L) {
+        L.p('Run <code>cat /proc/self/maps</code> twice and compare four of the lines:');
+        L.out('facts.aslr');
+        L.p('The program, the heap, the C library and the stack all moved. That is ASLR: the kernel picks new random starting points at every program start.', ['aslr']);
+        L.p('The order stays the same: program low, then the heap, the libraries near the top, the stack at the very top. Only the starting points move.');
+        L.out('facts.aslrmode', { lines: [0, 2], what: 'randomize_va_space: 2 = randomize the stack, the libraries, the vDSO and the heap.' });
+        L.p('Randomized addresses make memory-corruption attacks harder, because an attacker cannot know where code or data is. It is also why our program asks for a fixed address: otherwise every run would print different numbers.');
+      } },
+      { id: 'halves', title: '48 bits, in two halves', body: function (L) {
+        L.p('Pointers are 64 bits wide, but x86-64 CPUs normally translate only the low 48 bits. The lab machine says so:');
+        L.out('facts.sizes', { lines: [0, 1] });
+        L.p('A 64-bit value is a usable address only if bits 63 to 48 are all copies of bit 47. Such an address is called canonical.', ['canon']);
+        L.table(['Range', 'Size', 'What it is'], [
+          ['0x0000000000000000 – 0x00007fffffffffff', '128 TiB', 'user half: the process’s own addresses, different in every process'],
+          ['0x0000800000000000 – 0xffff7fffffffffff', 'almost 2⁶⁴', 'non-canonical: never translated'],
+          ['0xffff800000000000 – 0xffffffffffffffff', '128 TiB', 'kernel half: the same in every process']
+        ], { mono: true });
+        L.p('Using a non-canonical address is not a page fault. The CPU refuses the instruction before any translation, with a general-protection exception:', ['gpf']);
+        L.out('err.kernel', { lines: [2] });
+        L.p('Trap 13 is #GP. A page fault is trap 14, and [[ch:vm-faults]] decodes its error code.');
+        L.try('Is it canonical?', 'Type any 64-bit value. Try 0x0000800000000000, 0x00007fffffffffff and 0xffff888000000000.', function (el) { LW().splitter(el, { va: '0x0000800000000000', pfn: false, sizes: false }); });
+        L.note('other', 'Newer CPUs can translate 57-bit addresses with a fifth level of tables (CPU flag <code>la57</code>; Intel Xeon since Ice Lake, AMD since Zen 4). Then bits 63 to 57 must copy bit 56. The lab machine does not report <code>la57</code>, so every address here is 48 bits.', 'Five-level paging');
+      } },
+      { id: 'khalf', title: 'The kernel half', body: function (L) {
+        L.p('The kernel’s code and data live in the kernel half, and that half is mapped in every process. So a system call or an interrupt can run kernel code without switching tables.', ['khalf']);
+        L.quote('ffff888000000000 | -119.5  TB | ffffc87fffffffff |   64 TB | direct mapping of all physical memory (page_offset_base)\nffffc90000000000 |  -55    TB | ffffe8ffffffffff |   32 TB | vmalloc/ioremap space (vmalloc_base)\nffffea0000000000 |  -22    TB | ffffeaffffffffff |    1 TB | virtual memory map (vmemmap_base)\nffffffff80000000 |   -2    GB | ffffffff9fffffff |  512 MB | kernel text mapping, mapped to physical address 0', { cite: 'Documentation/arch/x86/x86_64/mm.rst, Linux v6.18 (4 of its lines)', label: 'Linux source', code: true, src: ['x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'] });
+        L.p('The kernel’s code starts at the bottom of that last range on this machine:');
+        L.out('facts.text', { lines: [0, 1] });
+        L.p('User code still cannot touch the kernel half: its entries say “kernel mode only”. Our program tried:');
+        L.out('err.kernel', { lines: [0, 1] });
+        L.p('Trap 14 is a page fault, and its error code 0x5 says a translation existed but refused user mode. [[ch:vm-pte]] shows the bit that does the refusing.');
+        L.note('arm', 'AArch64 splits the address space the same way. Addresses whose top bits are all 0 are translated through TTBR0_EL1 (user); all 1, through TTBR1_EL1 (kernel). The size of each half is set in TCR_EL1, commonly 48 bits.');
+      } }
+    ],
+    check: [
+      { q: 'Which maps line holds a program’s machine code?', options: ['The r-xp line of the program file', 'The rw-p line of the program file', 'The [heap] line', 'The [stack] line'], answer: 0, why: 'Code must be readable and executable, and comes from the program file: r-xp.' },
+      { q: 'Right after mmap(16 KiB), which of these has changed?', options: ['/proc/self/maps has one more line', 'VmPTE grew by 4 kB', 'pagemap shows the pages present', 'The process uses 16 KiB more RAM'], answer: 0, why: 'mmap only adds a region. Tables and frames come later, on first touch.' },
+      { q: 'A program loads from 0x0000800000000000. What happens?', options: ['A general-protection exception (#GP, trap 13)', 'A page fault (trap 14)', 'It reads zeros', 'It reads kernel memory'], answer: 0, why: 'Bits 63:48 are not copies of bit 47, so the address is non-canonical and never reaches translation.' },
+      { q: 'Why did libc start at a different address in the second run of cat?', options: ['ASLR picked a new random base', 'The first run’s libc was still in memory', 'The kernel ran out of addresses', 'Page tables were rebuilt'], answer: 0, why: 'With randomize_va_space = 2, the stack, libraries, vDSO and heap get new random bases at every start.' }
+    ],
+    remember: [
+      '/proc/self/maps is the kernel’s list of regions: range, permissions, offset, file.',
+      'mmap adds a region and nothing else: no page-table entries, no frames.',
+      'ASLR moves the starting points at every run; the order of regions stays.',
+      'Only canonical addresses are translated. The user half differs per process; the kernel half is shared but kernel-only.'
+    ],
+    sources: [['proc_pid_maps(5)', 'https://man7.org/linux/man-pages/man5/proc_pid_maps.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html'], ['Intel SDM Vol. 1, §3.3.7.1 “Canonical addressing”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
+  });
+
+  /* ---------- III.04 ---------- */
+  function treeFigure(sv) {
+    var T = P.T, R = P.R;
+    function table(x, y, w, used, label, cls) {
+      R(sv, x, y, w, 34, cls || 'box', 4);
+      var n = 16, cw = (w - 12) / n;
+      for (var i = 0; i < n; i++) R(sv, x + 6 + i * cw, y + 6, cw - 2, 10, used.indexOf(i) >= 0 ? 'a4b' : 'sunk', 1);
+      T(sv, x + w / 2, y + 29, label, 's', 'middle');
+    }
+    table(170, 8, 140, [3, 12], 'top table');
+    P.Ln(sv, 'M210 42 L95 72'); P.Ln(sv, 'M285 42 L335 72');
+    table(30, 72, 130, [5], 'middle table');
+    table(270, 72, 130, [2, 9], 'middle table');
+    R(sv, 420, 72, 100, 34, 'sunk dash', 4); T(sv, 470, 93, 'empty slots:', 's', 'middle'); T(sv, 470, 104, 'no table at all', 's', 'middle');
+    P.Ln(sv, 'M95 106 L95 136'); P.Ln(sv, 'M300 106 L250 136'); P.Ln(sv, 'M370 106 L400 136');
+    table(30, 136, 130, [1, 2, 3], 'table');
+    table(185, 136, 130, [7], 'table');
+    table(340, 136, 130, [0, 15], 'table');
+    P.Ln(sv, 'M70 170 L50 200'); P.Ln(sv, 'M120 170 L140 200'); P.Ln(sv, 'M250 170 L250 200'); P.Ln(sv, 'M380 170 L370 200'); P.Ln(sv, 'M440 170 L460 200');
+    [10, 100, 205, 320, 410].forEach(function (x) { table(x, 200, 90, [0, 1, 2, 5, 8, 9], 'bottom: PTEs', 'a2b'); });
+    T(sv, 260, 254, 'each table: one 4 KiB frame, 512 entries of 8 bytes (16 slots drawn)', 's', 'middle');
+  }
+  App.lesson({
+    id: 'vm-tree', short: 'A tree of tables', title: 'A tree of tables',
+    lede: 'One flat table for every possible page would take 512 GiB per process. A tree of small tables takes kilobytes.',
+    know: ['Each 4 KiB page needs one translation record, 8 bytes, called a page-table entry ([[ch:vm-pages]]).', 'A process uses a few dozen regions out of 128 TiB of addresses ([[ch:vm-space]]).'],
+    learn: ['Explain why page tables form a tree', 'Estimate how much table memory a program needs', 'Say where page tables live, and who can read and write them'],
+    sections: [
+      { id: 'records', title: 'One record per page', body: function (L) {
+        L.p('For every page in use the MMU needs a record: which frame the page maps to, and what is allowed. That record is a page-table entry (PTE), 8 bytes.', ['pte']);
+        L.p('The kernel writes the entries into page tables in RAM, and the MMU reads them. How should the entries be arranged?', [['page table', 'A table in RAM, written by the kernel, holding page-table entries. The MMU reads it to translate addresses.']]);
+      } },
+      { id: 'flat', title: 'A flat table would not fit', body: function (L) {
+        L.p('The simplest layout is one flat array with an entry for every possible page, indexed by page number. Count its size:');
+        L.code('2^48 bytes of addresses / 2^12 bytes per page = 2^36 pages\n2^36 pages × 8 bytes per entry            = 2^39 bytes = 512 GiB', { lang: 'text', title: 'arithmetic' });
+        L.p('That is 512 GiB for every process, and almost all of it would describe addresses nobody uses. <code>cat</code> used 24 regions.');
+      } },
+      { id: 'tree', title: 'A tree grows with what is mapped', body: function (L) {
+        L.p('So the entries are kept in a tree. The bottom tables hold the PTEs. Each table above holds pointers to tables below it.');
+        L.fig(520, 262, treeFigure, { cap: 'A page-table tree. Blue slots point to a table or a frame; grey slots are empty. Branches with nothing mapped have no table at all.', maxw: 640 });
+        L.p('Where nothing is mapped, the slot is empty and no table exists below it. The tree has tables only along the paths to pages in use.');
+        L.p('Every table is the same size: one 4 KiB frame holding 512 entries of 8 bytes. So one bottom table describes 512 pages, which is 2 MiB of addresses.');
+        L.code('512 entries × 4 KiB per page = 2 MiB per bottom table', { lang: 'text', title: 'arithmetic' });
+      } },
+      { id: 'measure', title: 'Measure it: VmPTE', body: function (L) {
+        L.p('Linux counts each process’s page tables, in kilobytes, as <code>VmPTE</code> in <code>/proc/&lt;pid&gt;/status</code>. The top table is not included.', ['vmpte']);
+        L.out('facts.vmpte');
+        L.p('A small program like <code>grep</code> needs 44 to 52 kB: a dozen tables.');
+        L.p('Now give a program 64 MiB and store one byte into every 4 KiB page:');
+        L.out('cost.vmpte');
+        L.p('168 − 40 = 128 kB of new tables = 32 bottom tables of 4 KiB. And 32 × 2 MiB = 64 MiB: one bottom table per 2 MiB touched, as the arithmetic predicted.');
+        L.p('In the main run, the first store into the fresh region added 12 kB:');
+        L.out('story.vmpte', { lines: [1, 2] });
+        L.p('12 kB is three tables. Nothing else lived in that part of the address space, so the store needed a whole new path through the tree: [[ch:vm-demand]] shows the kernel allocating each table.');
+      } },
+      { id: 'where', title: 'Tables are ordinary memory', body: function (L) {
+        L.p('A page table is an ordinary 4 KiB frame of RAM that the kernel allocated, like any other frame.');
+        L.p('No user-half address maps to those frames, so a program cannot read or change its own tables. The MMU reads them by physical address.');
+        L.p('The kernel reaches them, and every other frame, through the direct map: a range of the kernel half that maps all of RAM at one fixed offset.', ['directmap']);
+        L.code('kernel address = 0xffff888000000000 + physical address\n\nthe main run’s bottom table, frame 0x1330d4:\n0xffff888000000000 + 0x1330d4000 = 0xffff8881330d4000', { lang: 'text', title: 'the direct map' });
+        L.p('[[ch:vm-space]] showed this range in the kernel’s memory map, and our program faulted when it tried to read from 0xffff888000000000.');
+        L.note('linux', 'With boot-time randomization of the kernel’s layout (KASLR), the direct map may start at a random place above 0xffff888000000000. On the lab machine the kernel’s code sits at the unrandomized default 0xffffffff81000000, so randomization is not active and the direct map starts at the default.', 'On this machine');
+      } }
+    ],
+    check: [
+      { q: 'How big would one flat page table be for a 48-bit address space with 4 KiB pages?', options: ['512 GiB', '512 MiB', '4 KiB', '2 MiB'], answer: 0, why: '2³⁶ pages × 8 bytes = 2³⁹ bytes = 512 GiB.' },
+      { q: 'How much memory does one bottom-level table describe?', options: ['2 MiB', '4 KiB', '1 GiB', '512 bytes'], answer: 0, why: '512 entries × 4 KiB pages = 2 MiB.' },
+      { q: 'A program touches 8 MiB of fresh memory, one page at a time. Roughly how much does VmPTE grow?', options: ['16 kB (4 bottom tables)', '8 MiB', '4 kB', '512 GiB'], answer: 0, why: 'One 4 KiB bottom table per 2 MiB: 8 MiB / 2 MiB = 4 tables = 16 kB, plus upper tables if the path is new.' },
+      { q: 'Can a program read its own page tables through a normal pointer?', options: ['No: no user-half address maps their frames', 'Yes, at /proc/self/pagemap', 'Yes, they are in the heap', 'Only after mprotect'], answer: 0, why: 'Tables are reached by physical address (the MMU) or through the kernel’s direct map. pagemap is a kernel-generated report, not the tables themselves.' }
+    ],
+    remember: [
+      'A flat table would cost 512 GiB per process; a tree only has tables where something is mapped.',
+      'Every table is one 4 KiB frame of 512 eight-byte entries; a bottom table covers 2 MiB.',
+      'VmPTE in /proc/<pid>/status shows a process’s table memory: about 4 kB per 2 MiB touched.',
+      'Tables are ordinary frames. Programs cannot reach them; the kernel uses the direct map.'
+    ],
+    sources: [['proc_pid_status(5): VmPTE', 'https://man7.org/linux/man-pages/man5/proc_pid_status.5.html'], ['Linux x86-64 memory map', 'https://docs.kernel.org/arch/x86/x86_64/mm.html']]
+  });
+})();
+
+/* ======================= Part III · Virtual memory, lessons 5–8 ======================= */
+(function () {
+  'use strict';
+  var g = App.g, LW = function () { return App.LW; };
+  var d = App.gloss;
+  d('cr3', 'CR3', 'A CPU control register holding the physical address of the current process’s top-level page table (and, with PCIDs on, a tag for its TLB entries). The kernel writes it when it switches a core to another process. Arm’s equivalents are TTBR0_EL1 and TTBR1_EL1.');
+  d('pteP', 'P (present), bit 0', '1 = the entry is valid. 0 = there is no translation: the CPU ignores every other bit, and the kernel may keep its own data in them.');
+  d('pteRW', 'R/W, bit 1', '1 = writes are allowed through this entry.');
+  d('pteUS', 'U/S, bit 2', '1 = user-mode code may use this entry; 0 = kernel mode only.');
+  d('pteA', 'A (accessed), bit 5', 'Set by the CPU when it uses the entry for a translation. Only software clears it.');
+  d('pteD', 'D (dirty), bit 6', 'Set by the CPU when a write goes through the entry that maps the page. Only software clears it.');
+  d('ptePS', 'PS (page size), bit 7', 'In a PDPT or PD entry: 1 = this entry maps a 1 GiB or 2 MiB page itself, and the walk stops here.');
+  d('pteG', 'G (global), bit 8', 'The translation stays in the TLB when CR3 is reloaded (needs CR4.PGE). Used for the kernel half.');
+  d('pteNX', 'NX (no-execute), bit 63', 'Instruction fetches through this entry are refused. Intel calls it XD.');
+  d('walker', 'page walker', 'The hardware in the MMU that reads the page tables, level by level, after a TLB miss. One pass is a page walk.');
+  d('cr4', 'CR4', 'A CPU control register whose bits switch processor features on, such as global pages (PGE), PCIDs (PCIDE), SMEP and SMAP.');
+  d('smep', 'SMEP', 'Supervisor-mode execution prevention: the CPU refuses to run code from a user page while in kernel mode.');
+  d('smap', 'SMAP', 'Supervisor-mode access prevention: the CPU refuses kernel-mode reads and writes of user pages, except inside the kernel’s routines that copy to and from user memory.');
+  d('stlb', 'L2 TLB (STLB)', 'The second, larger level of TLB, checked when the L1 TLB misses. Intel calls it the STLB (shared TLB).');
+  d('pwc', 'page-walk cache', 'A cache of upper-level page-table entries kept by the page walker, so a walk can skip levels. AMD calls it the page directory cache; Intel, paging-structure caches.');
+  d('reach', 'TLB reach', 'Entries × page size: how much memory can be used without a TLB miss.');
+
+  var P = App.P;
+  var CR3 = '0x107a24000';
+
+  /* ---------- III.05 ---------- */
+  App.lesson({
+    id: 'vm-levels', short: 'Four levels and CR3', title: 'Four levels of tables, and CR3',
+    lede: 'Four levels of 512-entry tables, each chosen by 9 bits of the address. A register says where the top one is.',
+    know: ['Page tables form a tree of 4 KiB tables with 512 entries each ([[ch:vm-tree]]).', 'The low 12 bits of an address are the page offset ([[ch:vm-pages]]).'],
+    learn: ['Split an address into four 9-bit indices and a 12-bit offset', 'Name the levels in Intel, AMD, Arm and Linux terms', 'Say what CR3 holds and when it changes', 'Explain why the kernel half costs each process almost nothing'],
+    sections: [
+      { id: 'nine', title: 'Nine bits per level', body: function (L) {
+        L.p('Each table has 512 entries, and 512 = 2⁹. So 9 bits of the address pick one entry in a table.');
+        L.p('Four levels of 9 bits, plus the 12-bit page offset, use exactly 48 bits: the width the CPU translates.');
+        L.code('9 + 9 + 9 + 9 + 12 = 48', { lang: 'text', title: 'arithmetic' });
+      } },
+      { id: 'names', title: 'The four levels', body: function (L) {
+        L.p('Top to bottom, Intel and AMD call the levels PML4, PDPT, PD and PT. Linux and Arm use other names for the same tree.', ['pml4']);
+        L.table(['Level', 'Intel and AMD', 'Linux', 'Arm (4 KiB pages)', 'Address bits', 'One entry covers'], [
+          ['1 (top)', 'PML4: page-map level 4', 'PGD', 'level 0', '47:39', '512 GiB'],
+          ['2', 'PDPT: page-directory-pointer table', 'PUD', 'level 1', '38:30', '1 GiB'],
+          ['3', 'PD: page directory', 'PMD', 'level 2', '29:21', '2 MiB'],
+          ['4 (bottom)', 'PT: page table', 'PTE', 'level 3', '20:12', '4 KiB']
+        ], { mono: false });
+        L.p('Read the last column from the bottom: a PT entry covers one 4 KiB page; a PD entry covers a whole PT, 512 × 4 KiB = 2 MiB; and so on up, ×512 each level.');
+        L.note('linux', 'Linux names five levels, PGD, P4D, PUD, PMD and PTE, so the same code handles five-level paging. With four levels, as here, the P4D level is folded away and has no table of its own.');
+      } },
+      { id: 'split', title: 'Split the address', body: function (L) {
+        L.p('To find the index at each level, shift the address right and keep the low 9 bits:');
+        L.code('unsigned long va = 0x00007f3a1b2c3d4e;\n\npml4 = (va >> 39) & 0x1ff;   /* 254   */\npdpt = (va >> 30) & 0x1ff;   /* 232   */\npd   = (va >> 21) & 0x1ff;   /* 217   */\npt   = (va >> 12) & 0x1ff;   /* 195   */\noff  =  va        & 0xfff;   /* 0xd4e */', { title: 'C' });
+        L.bits([
+          { bits: '63:48', val: '0x0000', name: 'copies of bit 47', tone: 'mute', w: 1.2 },
+          { bits: '47:39', val: '254', name: 'PML4 index', tone: 'a1' },
+          { bits: '38:30', val: '232', name: 'PDPT index', tone: 'a1' },
+          { bits: '29:21', val: '217', name: 'PD index', tone: 'a1' },
+          { bits: '20:12', val: '195', name: 'PT index', tone: 'a1' },
+          { bits: '11:0', val: '0xd4e', name: 'offset', tone: 'a3' }
+        ], { title: 'The virtual address 0x00007f3a1b2c3d4e' });
+        L.p('Check the first one by hand: 0x7f3a1b2c3d4e shifted right by 39 is 0xfe, which is 254.');
+        L.try('Split any address into its four indices', 'Change the address or the page size. With a 2 MiB page the PT index disappears into a 21-bit offset; with 1 GiB, the PD index too.', function (el) { LW().splitter(el, { mode: 'levels', pfn: false }); });
+      } },
+      { id: 'cr3', title: 'CR3: where the top table is', body: function (L) {
+        L.p('The walk has to start somewhere. A control register, CR3, holds the physical address of the current process’s top table.', ['cr3']);
+        L.p('Each process has its own top table. When the kernel switches a core to another process, it loads that process’s top-table address into CR3; [[ch:vm-switch]] covers that moment.');
+        L.p('No user program can read CR3. So these lessons use an example value for it, ' + CR3 + '. Every other frame number in the main run is measured.');
+        L.code('CR3 = ' + CR3 + '        /* example: physical address of the PML4 */\n\nPML4 entry 254 is at  ' + CR3 + ' + 254 × 8\n                    = 0x107a247f0', { lang: 'text', title: 'the first read of a walk' });
+        L.p('An entry’s address is the table’s address plus 8 bytes per index. The next lesson opens up what the entry holds.');
+        L.note('arm', 'An AArch64 core has two such registers: TTBR0_EL1 points to the user half’s top table and TTBR1_EL1 to the kernel half’s. A switch between processes changes only TTBR0_EL1.');
+      } },
+      { id: 'shared', title: 'The kernel half costs almost nothing', body: function (L) {
+        L.p('Kernel addresses split the same way. The start of the direct map, 0xffff888000000000, has PML4 index 273; kernel code, 0xffffffff81000000, has indices 511, 510, 8 and 0.');
+        L.code('(0xffff888000000000 >> 39) & 0x1ff = 273\n(0xffffffff81000000 >> 39) & 0x1ff = 511   >> 30: 510   >> 21: 8   >> 12: 0', { lang: 'text', title: 'arithmetic' });
+        L.p('PML4 entries 0 to 255 cover the user half and 256 to 511 the kernel half.');
+        L.p('When Linux creates a process’s top table, it copies the kernel’s own entries into it, from 273 up to 511:');
+        L.quote('clone_pgd_range(pgd + KERNEL_PGD_BOUNDARY,\n                swapper_pg_dir + KERNEL_PGD_BOUNDARY,\n                KERNEL_PGD_PTRS);\n\n#define KERNEL_PGD_BOUNDARY  pgd_index(PAGE_OFFSET)      /* 273 */', { cite: 'arch/x86/mm/pgtable.c, pgd_ctor(); arch/x86/include/asm/pgtable.h — Linux v6.18', label: 'Linux source', code: true });
+        L.p('Those copied entries point to the same lower tables in every process. So each process pays for its own top table and nothing more; the kernel’s lower tables exist once.');
+        L.p('Entries 256 to 272 are deliberately left out: the kernel’s memory map reserves that range for a hypervisor and for a remapping used with page-table isolation ([[ch:vm-switch]]).');
+      } }
+    ],
+    check: [
+      { q: 'What is the PT index of 0x00007f3a1b2c4d4e?', options: ['196', '195', '217', '0x4d4'], answer: 0, why: '(0x7f3a1b2c4d4e >> 12) & 0x1ff = 0x7f3a1b2c4 & 0x1ff = 0x0c4 = 196. One page further than 195.' },
+      { q: 'How much memory does one PDPT entry cover?', options: ['1 GiB', '2 MiB', '512 GiB', '4 KiB'], answer: 0, why: 'A PT entry covers 4 KiB; ×512 for a PD entry (2 MiB); ×512 again for a PDPT entry (1 GiB).' },
+      { q: 'Which register tells the page walker where to start?', options: ['CR3', 'CR2', 'CR4', 'RIP'], answer: 0, why: 'CR3 holds the physical address of the current top table. CR2 receives the faulting address on a page fault, and CR4 switches features on.' },
+      { q: 'Why does the kernel half cost a new process so little?', options: ['Its top table copies the kernel’s entries, which point to shared lower tables', 'The kernel half is not translated', 'The kernel half uses huge pages', 'Each process gets a copy of the kernel tables'], answer: 0, why: 'pgd_ctor() copies entries 273–511; they point to the lower tables every process shares.' }
+    ],
+    remember: [
+      'Four levels × 9 bits + a 12-bit offset = 48 bits. Index = (va >> shift) & 0x1ff, with shifts 39, 30, 21, 12.',
+      'PML4 / PDPT / PD / PT (Intel, AMD) = PGD / PUD / PMD / PTE (Linux) = levels 0–3 (Arm). Entries cover 512 GiB / 1 GiB / 2 MiB / 4 KiB.',
+      'CR3 holds the physical address of the current top table; the kernel loads it when it switches processes.',
+      'Every process’s top table shares the kernel’s entries 273–511, so the kernel half is nearly free.'
+    ],
+    sources: [['Intel SDM Vol. 3A, §4.5 “4-level paging”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['Linux: page table levels', 'https://docs.kernel.org/mm/page_tables.html'], ['Arm, AArch64 memory management guide', 'https://developer.arm.com/documentation/101811/latest']]
+  });
+
+  /* ---------- III.06 ---------- */
+  App.lesson({
+    id: 'vm-pte', short: 'The entry, bit by bit', title: 'The page-table entry, bit by bit',
+    lede: 'Eight bytes: a frame address, plus a dozen bits that say what is allowed and record what happened.',
+    know: ['A walk picks one 8-byte entry per level, starting at CR3 ([[ch:vm-levels]]).', 'Translation maps a page to a frame number ([[ch:vm-pages]]).'],
+    learn: ['Decode any x86-64 page-table entry', 'Tell the bits the kernel sets from the bits the CPU sets', 'Build our page’s entry from its frame number and its region’s permissions'],
+    sections: [
+      { id: 'room', title: 'Room for flags', body: function (L) {
+        L.p('A frame’s address is a multiple of 4096, so its low 12 bits are always 0. An entry stores the address from bit 12 up and uses the free low bits for flags.');
+        L.bits([
+          { bits: '63', val: 'NX', name: 'no execute', tone: 'a1' },
+          { bits: '62:52', val: '—', name: 'ignored', tone: 'mute' },
+          { bits: '51:12', val: 'address', name: 'frame or next table', tone: 'a4', w: 3 },
+          { bits: '11:9', val: '—', name: 'ignored', tone: 'mute' },
+          { bits: '8', val: 'G', name: 'global', tone: 'a2' },
+          { bits: '7', val: 'PS', name: 'page size', tone: 'a2' },
+          { bits: '6', val: 'D', name: 'dirty', tone: 'a3' },
+          { bits: '5', val: 'A', name: 'accessed', tone: 'a3' },
+          { bits: '4', val: 'PCD', name: 'cache', tone: 'mute' },
+          { bits: '3', val: 'PWT', name: 'cache', tone: 'mute' },
+          { bits: '2', val: 'U/S', name: 'user', tone: 'a2' },
+          { bits: '1', val: 'R/W', name: 'write', tone: 'a2' },
+          { bits: '0', val: 'P', name: 'present', tone: 'a2' }
+        ], { title: 'An x86-64 page-table entry', dense: true });
+        L.p('The address field is as wide as the CPU’s physical addresses: 46 bits on the lab machine, so bits 12 to 45. Bits above that, up to 51, must be 0.');
+        L.p('Green bits are permissions the kernel sets. Purple bits are status the CPU records. The rest are page size, global, no-execute, two memory-type bits, and bits the CPU ignores.');
+      } },
+      { id: 'allowed', title: 'P, R/W, U/S: what is allowed', body: function (L) {
+        L.p('Bit 0, P, says the entry is valid. When P is 0 the CPU ignores every other bit, and the walk stops.', ['pteP']);
+        L.p('Bit 1, R/W, allows writes. Bit 2, U/S, allows user-mode code to use the entry; with U/S = 0 only the kernel may.', ['pteRW', 'pteUS']);
+        L.p('The kernel decides all three. That is how the kernel half from [[ch:vm-space]] stays out of reach: its entries have U/S = 0.');
+      } },
+      { id: 'ad', title: 'A and D: what happened', body: function (L) {
+        L.p('Bits 5 and 6 are written by the CPU itself. It sets A when it uses an entry for a translation, and D when a write goes through the entry that maps the page.', ['pteA', 'pteD']);
+        L.p('The CPU never clears them. The kernel clears and reads them: A tells it which pages are still in use, and D which pages changed and must be written back to a file or to swap.');
+        L.p('Those two bits are the only thing the MMU ever writes into page tables. Linux also presets them itself when it installs an entry, as the next section shows.');
+      } },
+      { id: 'more', title: 'PS, G and NX', body: function (L) {
+        L.p('Bit 7, PS, in a PDPT or PD entry ends the walk early: the entry maps a 1 GiB or 2 MiB page itself. That is a huge page, [[ch:vm-huge]].', ['ptePS']);
+        L.p('Bit 8, G, keeps a translation in the TLB when CR3 changes; [[ch:vm-switch]] shows why the kernel wants that. Bit 63, NX, forbids instruction fetches.', ['pteG', 'pteNX']);
+        L.p('The CPU ignores bits 9–11 and 52–58, so Linux keeps its own markers there:');
+        L.quote('#define _PAGE_BIT_SOFTW1   9   /* available for programmer */\n#define _PAGE_BIT_SPECIAL  _PAGE_BIT_SOFTW1\n#define _PAGE_BIT_UFFD_WP  _PAGE_BIT_SOFTW2 /* userfaultfd wrprotected */\n#define _PAGE_BIT_SOFT_DIRTY _PAGE_BIT_SOFTW3 /* software dirty tracking */', { cite: 'arch/x86/include/asm/pgtable_types.h, Linux v6.18 (excerpt)', label: 'Linux source', code: true });
+      } },
+      { id: 'ours', title: 'Our page’s entry', body: function (L) {
+        L.p('Now build the entry the kernel wrote for our page. The frame number is measured: pagemap said 0x129b49.');
+        L.p('The flags come from the region, <code>rw-p</code>. For a private region Linux starts from “present, user, accessed, no-execute”, without write permission:');
+        L.quote('#define PAGE_COPY   __pg(__PP|   0|_USR|___A|__NX|   0|   0|   0)', { cite: 'arch/x86/include/asm/pgtable_types.h, Linux v6.18', label: 'Linux source', code: true });
+        L.p('Our first touch was a store, so the fault handler also made the entry writable and dirty:');
+        L.quote('entry = folio_mk_pte(folio, vma->vm_page_prot);\nentry = pte_sw_mkyoung(entry);\nif (vma->vm_flags & VM_WRITE)\n        entry = pte_mkwrite(pte_mkdirty(entry), vma);', { cite: 'mm/memory.c, do_anonymous_page(), Linux v6.18', label: 'Linux source', code: true });
+        L.code('NX                    0x8000000000000000\nframe 0x129b49 << 12  0x0000000129b49000\nflags D A U/S R/W P   0x0000000000000067\n                      ------------------\nentry                 0x8000000129b49067', { lang: 'text', title: 'computed from the measured frame and the flags Linux writes', label: 'Inference' });
+        L.p('0x067 is binary 0110 0111: bits 0, 1, 2, 5 and 6, that is P, R/W, U/S, A and D.');
+        L.try('Decode an entry', 'Paste any entry. Try 0x8000000129b49067, then 0x0000000133c05067 at level PML4, then 0x80000001588000e7 at level PD.', function (el) { LW().pteDecoder(el, {}); });
+      } },
+      { id: 'upper', title: 'The entries above it', body: function (L) {
+        L.p('The three entries on the path above our PT entry point to tables, not to pages. Linux gives every such entry of user memory the same flags:');
+        L.quote('#define _PAGE_TABLE   (__PP|__RW|_USR|___A|   0|___D|   0|   0| _ENC)', { cite: 'arch/x86/include/asm/pgtable_types.h, Linux v6.18', label: 'Linux source', code: true });
+        L.p('That is 0x067 again: present, writable, user, accessed and dirty (the CPU ignores D in an entry that points to a table).');
+        L.p('Why allow everything up there? Because permissions combine across all four levels, and the strictest entry wins. The upper entries stay open, and each PT entry decides for its own page.');
+        L.note('intel', 'Bits 3 and 4 (PWT, PCD), and bit 7 in a PT entry (PAT), select a memory type through the page attribute table: write-back for normal RAM, uncacheable or write-combining for device memory. [[ch:stores]] and [[ch:io-mmio]] use them.', 'On Intel and AMD');
+        L.note('arm', 'Arm’s entries are called descriptors and lay out the same information differently: AP bits for read-only and user access, UXN and PXN for no-execute, AF for accessed, nG for not-global, and an index into MAIR_EL1 for the memory type. Older Arm cores fault on the first access to set AF in software; with FEAT_HAFDBS the hardware updates the access and dirty state itself, as x86 does.');
+      } }
+    ],
+    check: [
+      { q: 'An entry reads 0x0000000125396005. What does it allow?', options: ['User-mode reads only (P, U/S; no R/W)', 'Kernel-mode writes', 'Nothing: it is not present', 'User-mode reads and writes'], answer: 0, why: '0x005 = bits 0 and 2: present and user. R/W (bit 1) is 0, and NX is 0, so reads and fetches are allowed but not writes.' },
+      { q: 'Which bits does the CPU set by itself?', options: ['A and D', 'P and R/W', 'U/S and NX', 'G and PS'], answer: 0, why: 'The MMU only records use (A) and writes (D). Every other bit is the kernel’s decision.' },
+      { q: 'Linux gives upper-level entries R/W = 1 and U/S = 1. Does that make every page writable?', options: ['No: permissions combine, and the PT entry can still refuse', 'Yes, upper entries override', 'Only for the kernel half', 'Only with huge pages'], answer: 0, why: 'An access must be allowed at every level, so the leaf entry has the final say.' }
+    ],
+    remember: [
+      'An entry = frame address (bits 12 and up) + flags in the low bits and bit 63.',
+      'P valid, R/W writable, U/S user may use it, NX no fetch: the kernel sets these.',
+      'A (used) and D (written) are set by the CPU, cleared only by software.',
+      'Our page: NX | 0x129b49 << 12 | 0x067 = 0x8000000129b49067. Upper entries: next table | 0x067.'
+    ],
+    sources: [['Intel SDM Vol. 3A, §4.5, tables 4-15 to 4-20', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, §5.4', 'https://docs.amd.com/v/u/en-US/24593_3.43'], ['Linux v6.18: pgtable_types.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/pgtable_types.h'], ['Linux v6.18: mm/memory.c', 'https://github.com/torvalds/linux/blob/v6.18/mm/memory.c']]
+  });
+
+  /* ---------- III.07 ---------- */
+  var WALK_ROWS = [
+    { k: 'CR3', v: CR3, d: 'top table (example value)' },
+    { k: 'PML4 entry 254', v: '@ 0x107a247f0', d: '' },
+    { k: 'PDPT entry 232', v: '@ 0x133c05740', d: '' },
+    { k: 'PD entry 217', v: '@ 0x128e8c6c8', d: '' },
+    { k: 'PT entry 195', v: '@ 0x1330d4618', d: '' },
+    { k: 'physical address', v: '', d: '' }
+  ];
+  var WALK_STEPS = [
+    { t: 'Start from CR3', d: 'The TLBs missed, so the walker starts from the top table whose address is in CR3.', hot: [0] },
+    { t: 'Read PML4 entry 254', d: 'Its address is 0x107a24000 + 254 × 8 = 0x107a247f0. It holds 0x0000000133c05067: present, and the next table is at 0x133c05000.', hot: [1], done: [0], set: { 1: { d: '= 0x0000000133c05067 → PDPT at 0x133c05000' } } },
+    { t: 'Read PDPT entry 232', d: '0x133c05000 + 232 × 8 = 0x133c05740. It holds 0x0000000128e8c067: the PD is at 0x128e8c000.', hot: [2], done: [0, 1], set: { 2: { d: '= 0x0000000128e8c067 → PD at 0x128e8c000' } } },
+    { t: 'Read PD entry 217', d: '0x128e8c000 + 217 × 8 = 0x128e8c6c8. It holds 0x00000001330d4067: the PT is at 0x1330d4000.', hot: [3], done: [0, 1, 2], set: { 3: { d: '= 0x00000001330d4067 → PT at 0x1330d4000' } } },
+    { t: 'Read PT entry 195', d: '0x1330d4000 + 195 × 8 = 0x1330d4618. It holds 0x8000000129b49067: present, writable, user, and the frame is 0x129b49.', hot: [4], done: [0, 1, 2, 3], set: { 4: { d: '= 0x8000000129b49067 → frame 0x129b49' } } },
+    { t: 'Add the offset', d: 'Frame address 0x129b49000 + offset 0xd4e = 0x129b49d4e. The store goes to the caches with that address.', hot: [5], done: [0, 1, 2, 3, 4], set: { 5: { v: '0x129b49d4e', d: 'frame 0x129b49000 + offset 0xd4e' } } }
+  ];
+  App.lesson({
+    id: 'vm-walk', short: 'The page walk', title: 'The page walk',
+    lede: 'When the TLB has no answer, hardware reads one entry per level, and each read needs the one before it.',
+    know: ['CR3 points to the top table; each level is chosen by 9 bits ([[ch:vm-levels]]).', 'An entry holds the next table’s or the frame’s address, plus permission bits ([[ch:vm-pte]]).'],
+    learn: ['Compute the address of every entry a walk reads', 'Explain why a walk costs four dependent memory reads', 'Say how permissions combine across levels, and what SMEP and SMAP add', 'Say what happens when a walk fails'],
+    sections: [
+      { id: 'walk', title: 'Four reads, one per level', body: function (L) {
+        L.p('Take the store to 0x7f3a1b2c3d4e once its tables exist ([[ch:vm-demand]] shows how they got there). Suppose the TLB has no translation for the page.');
+        L.p('Then the page walker in the MMU reads the tables, starting from CR3. Each entry’s address is the table’s address plus 8 × the index.', ['walker']);
+        L.try('Step through the walk', 'The table frames and the data frame are the main run’s measured ones; CR3 is an example value. Entry values are computed from those frames and the flags Linux writes.', function (el) { LW().stepRows(el, WALK_ROWS, WALK_STEPS); });
+        L.p('So four reads turn 0x7f3a1b2c3d4e into 0x129b49d4e. The offset 0xd4e is never looked up: it is copied.');
+      } },
+      { id: 'cost', title: 'Four dependent reads', body: function (L) {
+        L.p('The four reads cannot overlap. Each one needs the address that the previous one returned.');
+        L.chain([
+          { k: 'read 1', v: 'PML4', d: 'needs CR3' },
+          { k: 'read 2', v: 'PDPT', d: 'needs read 1' },
+          { k: 'read 3', v: 'PD', d: 'needs read 2' },
+          { k: 'read 4', v: 'PT', d: 'needs read 3' },
+          { k: 'then', v: 'the access', d: 'needs read 4', hot: true }
+        ]);
+        L.p('The walker’s reads are ordinary cacheable reads. If all four entries are in the L1 cache, a walk costs a few cycles each; if all four come from DRAM, it costs four DRAM round trips before the access itself even starts.');
+        L.note('vm', 'On a virtual machine, like the lab machine, each of those reads uses a guest-physical address that the host must translate too. [[ch:vm-virt]] counts the cost: up to 24 reads instead of 4.');
+      } },
+      { id: 'perm', title: 'Permissions combine', body: function (L) {
+        L.p('The walker checks permissions at every level, and the strictest entry wins:');
+        L.list(['A user-mode access needs U/S = 1 in all four entries.', 'A write needs R/W = 1 in all four entries.', 'An instruction fetch is refused if NX = 1 in any of them.']);
+        L.p('So clearing R/W in a single PDPT entry would make a whole gigabyte read-only at once. Linux leaves the upper entries open (0x067) and decides in the PT entry.');
+      } },
+      { id: 'smep', title: 'SMEP and SMAP: protecting the kernel from user memory', body: function (L) {
+        L.p('U/S keeps user code out of kernel pages. Two CR4 bits add the reverse check, so the kernel cannot be tricked into using user pages by mistake.', ['cr4']);
+        L.p('SMEP makes the CPU refuse to execute a user page in kernel mode. SMAP makes it refuse kernel-mode reads and writes of user pages, except inside the kernel’s routines that copy to and from user memory.', ['smep', 'smap']);
+        L.out('facts.flags');
+        L.p('The lab machine’s CPU reports both, <code>smep</code> and <code>smap</code>. Linux turns them on whenever the CPU has them.');
+      } },
+      { id: 'fail', title: 'When the walk fails', body: function (L) {
+        L.p('If an entry on the path has P = 0, or the permissions refuse the access, the walk stops. The CPU raises a page fault instead of finishing the instruction; nothing is loaded or stored.', ['pf']);
+        L.p('The kernel then decides what to do: fill the tables in, copy a page, or end the program. That is the subject of [[ch:vm-faults]].');
+        L.note('arm', 'An AArch64 walk works the same way, starting from TTBR0_EL1 or TTBR1_EL1. A failed walk raises a data or instruction abort, and the syndrome register ESR_EL1 says which level failed and why.');
+      } }
+    ],
+    check: [
+      { q: 'The PD of a walk is at 0x128e8c000 and the PD index is 217. Where is the entry the walker reads?', options: ['0x128e8c6c8', '0x128e8c0d9', '0x128e8c217', '0x128e8cd4e'], answer: 0, why: '217 × 8 = 1736 = 0x6c8, so the entry is at 0x128e8c000 + 0x6c8.' },
+      { q: 'Why can’t the four reads of a walk run in parallel?', options: ['Each read needs the address the previous read returned', 'The walker has only one port', 'Page tables are uncacheable', 'The TLB is locked during a walk'], answer: 0, why: 'They form a chain: CR3 → PML4 entry → PDPT entry → PD entry → PT entry.' },
+      { q: 'User code writes to a page whose PT entry has R/W = 1, but the PD entry above has R/W = 0. What happens?', options: ['A page fault: the write is refused', 'The write succeeds: the PT entry decides', 'The write goes to a copy', 'The CPU sets R/W in the PD entry'], answer: 0, why: 'Permissions must allow the access at every level; one R/W = 0 anywhere on the path refuses the write.' }
+    ],
+    remember: [
+      'Entry address = table address + 8 × index, at every level.',
+      'A walk is four dependent reads through the caches, then the access itself.',
+      'Permissions combine over all levels: the strictest entry wins.',
+      'SMEP and SMAP stop the kernel from executing or touching user pages by accident.',
+      'P = 0 or a refused access anywhere on the path → page fault; nothing happens to memory.'
+    ],
+    sources: [['Intel SDM Vol. 3A, §4.5 and §4.6 “Access rights”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html'], ['AMD64 APM Vol. 2, §5.6 “Page-protection checks”', 'https://docs.amd.com/v/u/en-US/24593_3.43']]
+  });
+
+  /* ---------- III.08 ---------- */
+  App.lesson({
+    id: 'vm-tlb', short: 'The TLB', title: 'The TLB: a cache of translations',
+    lede: 'A small cache of recent translations, checked before any walk. Its size decides how much memory a program can use without walking.',
+    know: ['A page walk is four dependent reads ([[ch:vm-walk]]).', 'Caches keep recently used data close to the core ([[ch:whycache]]).'],
+    learn: ['Say what a TLB entry holds and what a hit saves', 'Name the two TLB levels and the page-walk caches', 'Compute TLB reach and predict when misses start', 'Read a measurement that shows TLB misses'],
+    sections: [
+      { id: 'why', title: 'Why cache translations', body: function (L) {
+        L.p('If every load and store needed a four-read walk first, each memory access would cost about five. So every core keeps its recent translations in a TLB.', ['tlb']);
+        L.p('The TLB is checked on every access, before any walk. A hit returns the frame number at once.');
+      } },
+      { id: 'entry', title: 'What an entry holds', body: function (L) {
+        L.p('A TLB entry is a finished translation: the page number, the frame number, the permission bits and the page size.');
+        L.table(['Field', 'Main run’s entry', 'Why it is there'], [
+          ['virtual page number', '0x7f3a1b2c3', 'the lookup key'],
+          ['frame number', '0x129b49', 'the answer'],
+          ['permissions', 'R/W, U/S, NX', 'checked on every hit, without reading the tables'],
+          ['page size', '4 KiB', 'one entry can also hold a 2 MiB or 1 GiB page'],
+          ['address-space tag', 'PCID', 'which process the entry belongs to ([[ch:vm-switch]])']
+        ], { mono: false });
+        L.p('The first access to the page after its tables exist misses, walks, and writes the result into the TLB. The next access to the page hits.');
+      } },
+      { id: 'levels', title: 'Two levels, and caches for the walk', body: function (L) {
+        L.p('Like data caches, TLBs come in levels. A small L1 TLB is checked first, then a larger L2 TLB.', ['stlb']);
+        L.p('The walker also caches upper-level entries, so a miss often reads only the PT entry instead of all four.', ['pwc']);
+        L.p('AMD describes all three for one of its cores:');
+        L.quote('The fully-associative L1 data TLB (DTLB) provides 64 entries that hold 4-Kbyte, 2-Mbyte, or 1-Gbyte page entries.\nThe L2 data TLB provides a unified 12-way set-associative L2 data TLB with 1536 entries capable of holding 4-Kbyte pages, 2-Mbyte pages, and page-directory entries (PDEs) used to speed up table walks.\n… the table walker includes a 64-entry Page Directory Cache (PDC) which holds page-map-level-4 entries (PML4Es) and page-directory-pointer entries (PDPEs).', { cite: 'Software Optimization Guide for AMD Family 17h Processors, pub. 55723, §2.7', label: 'Vendor docs' });
+        L.p('Sizes differ between cores and grow with each generation, but the shape is the same everywhere: a small L1 TLB, a larger L2 TLB, and caches of upper-level entries.');
+      } },
+      { id: 'reach', title: 'Reach', body: function (L) {
+        L.p('How much memory can a program use without a TLB miss? Entries × page size. That product is the TLB’s reach.', ['reach']);
+        L.code('64 entries   × 4 KiB = 256 KiB     (an L1 TLB)\n1536 entries × 4 KiB = 6 MiB       (an L2 TLB)\n1536 entries × 2 MiB = 3 GiB       (the same L2 TLB, with huge pages)', { lang: 'text', title: 'arithmetic' });
+        L.p('Past the reach, accesses spread over many pages start to miss and walk. Huge pages multiply the reach by 512, which is most of why they exist ([[ch:vm-huge]]).');
+        L.try('Reach and misses', 'Set the TLB size, the page size and the working set. The miss estimate assumes accesses spread at random.', function (el) { LW().reach(el, {}); });
+      } },
+      { id: 'measure', title: 'See TLB misses in a measurement', body: function (L) {
+        L.p('A pointer chase makes misses visible. Each 8-byte node sits in its own 4 KiB page, and the program follows the pointers in random order, so every hop is a new page.');
+        L.p('Run the same chase over 4 KiB pages and over 2 MiB pages. The data touched is identical; only the number of translations differs.');
+        L.out('tlb.chase');
+        L.p('Up to 64 pages, both columns stay at about 1.5 ns: every translation hits the L1 TLB.');
+        L.p('From 128 pages, the 4 KiB column jumps by about 2 ns. The L1 TLB is full, so translations now come from the L2 TLB. The 2 MiB column does not move: 128 nodes in one huge page need one entry.');
+        L.p('Past about 1500 to 2000 pages (6 to 8 MiB), the 4 KiB column climbs again: now the L2 TLB misses too, and hops wait for page walks. By 4096 pages, 2 MiB pages are three times faster.');
+        L.note('careful', 'The thresholds match a 64-entry L1 TLB and an L2 TLB of 1536 to 2048 entries, but the lab machine is a virtual machine, so the CPU’s real TLB sizes are not reported. Treat the sizes as an inference from the measurement. On a virtual machine each walk is also slower than on bare metal ([[ch:vm-virt]]).', 'Reading this carefully');
+        L.p('Try it on any page-heavy workload: when the working set passes the TLB’s reach, time per access rises in steps, and huge pages push the steps far to the right.');
+      } },
+      { id: 'hardware', title: 'Hardware handles hits and misses', body: function (L) {
+        L.p('On x86 and Arm, the whole miss path, lookup, walk and refill, is done by hardware. The kernel hears about a translation only when a walk fails.');
+        L.p('The kernel’s job is the other direction: when it changes an entry, a stale copy may still sit in some TLB. [[ch:vm-shootdown]] covers how it removes them.');
+        L.note('other', 'Some older designs (MIPS, early SPARC) refilled the TLB in software: every miss trapped to the kernel, which walked its own tables. x86-64, AArch64 and RISC-V walk in hardware.', 'Elsewhere');
+        L.p('Now see it all move in the interactive lab: [[ch:xlate]] steps the example machine’s address through the TLBs, a full walk, a page fault and a 2 MiB page.');
+      } }
+    ],
+    check: [
+      { q: 'An L1 TLB has 64 entries for 4 KiB pages. What is its reach?', options: ['256 KiB', '64 KiB', '4 MiB', '2 MiB'], answer: 0, why: '64 × 4 KiB = 256 KiB.' },
+      { q: 'In the measurement, why does the 2 MiB column stay flat at 512 KiB while the 4 KiB column jumps?', options: ['128 nodes in 4 KiB pages need 128 translations; in a 2 MiB page they need one', 'The data no longer fits in L1', 'Huge pages are cached differently', 'The prefetcher helps huge pages'], answer: 0, why: 'The data touched is the same in both columns; only the number of distinct pages, and so of TLB entries needed, differs.' },
+      { q: 'What does a TLB hit save?', options: ['The page walk: up to four dependent reads', 'The L1 data cache lookup', 'The permission check', 'The page fault handler'], answer: 0, why: 'The entry already holds the frame number and permissions; the data access itself still happens.' }
+    ],
+    remember: [
+      'The TLB caches finished translations: page → frame, permissions, size, process tag.',
+      'L1 TLB (tens of entries), L2 TLB (one to a few thousand), plus caches of upper-level entries.',
+      'Reach = entries × page size. Past it, random accesses start to walk.',
+      'Hits and misses are handled entirely in hardware; the kernel only handles failed walks.'
+    ],
+    sources: [['AMD, Software Optimization Guide for Family 17h, pub. 55723', 'https://www.amd.com/content/dam/amd/en/documents/archived-tech-docs/software-optimization-guides/55723_3_00_ZEN1.pdf'], ['Intel SDM Vol. 3A, §4.10 “Caching translation information”', 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html']]
   });
 })();
 

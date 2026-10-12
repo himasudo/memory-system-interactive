@@ -27,7 +27,11 @@ clean > "$here/out/story.trace.txt"
 objdump -d --no-show-raw-insn ./story > "$here/out/story.objdump.txt"
 
 taskset -c 0 ./errcodes > "$here/out/errcodes.txt";      clean > "$here/out/errcodes.trace.txt"
-taskset -c 0 ./thp > "$here/out/thp.txt";                clean > "$here/out/thp.trace.txt"
+# huge pages: as for the main run, keep a run where the PDPT for slot 254 had to be created too
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  taskset -c 0 ./thp > "$here/out/thp.txt"; clean > "$here/out/thp.trace.txt"
+  [ "$(grep -c GFP_KERNEL_ACCOUNT "$here/out/thp.trace.txt")" -eq 3 ] && break
+done
 taskset -c 0 ./major "$bin/hello.txt" > "$here/out/major.txt"; clean > "$here/out/major.trace.txt"
 taskset -c 0 ./cost > "$here/out/cost.txt"
 taskset -c 0 ./fork64 > "$here/out/fork64.txt"
