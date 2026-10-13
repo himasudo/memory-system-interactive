@@ -4,9 +4,11 @@
 # Usage: sudo sh run_all.sh [bin-dir]      Outputs go to ./out/
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
+. "$here/../common/trace_instance.sh"
+memlab_trace_setup
 bin=${1:-/home/lab}
 mkdir -p "$bin" "$here/out"
-mountpoint -q /sys/kernel/tracing || mount -t tracefs nodev /sys/kernel/tracing
+
 clean() { python3 "$here/../common/trace_clean.py" | sed 's/page=[0-9a-f]* //'; }
 
 # story is built with -O1 so the store stays one readable instruction: movb $0x1,0xd4e(%reg)

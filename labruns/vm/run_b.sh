@@ -4,6 +4,8 @@
 # Usage: sudo sh run_b.sh [bin-dir]
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
+. "$here/../common/trace_instance.sh"
+memlab_trace_setup
 bin=${1:-/home/lab}
 mkdir -p "$bin" "$here/out-b"
 for p in hugetlb chase zeropage buddy eat aliaschase; do
@@ -14,7 +16,7 @@ cd "$bin"
 taskset -c 0 ./chase vipt > "$here/out-b/vipt.txt"
 taskset -c 0 ./aliaschase > "$here/out-b/aliaschase.txt"
 ./zeropage > "$here/out-b/zeropage.txt"
-mountpoint -q /sys/kernel/tracing || mount -t tracefs nodev /sys/kernel/tracing
+
 taskset -c 0 ./buddy > "$here/out-b/buddy.txt"
 sh "$here/zones.sh" > "$here/out-b/zones.txt" 2>&1
 sh "$here/reclaim.sh" "$bin" > "$here/out-b/reclaim.txt" 2>&1

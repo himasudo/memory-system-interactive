@@ -5,6 +5,7 @@
    trace_clean.py --time     -> keep the timestamp (microseconds since the first line) and CPU
 Markers written by the programs (tracing_mark_write) are kept as "# == ..." lines.
 """
+import os
 import re
 import sys
 
@@ -13,7 +14,7 @@ LINE = re.compile(r'^\s*(?P<task>.+?)-(?P<pid>\d+)\s+\[(?P<cpu>\d+)\]\s+(?P<flag
 
 def main():
     keep_time = '--time' in sys.argv
-    path = '/sys/kernel/tracing/trace'
+    path = os.path.join(os.environ.get('MEMLAB_TRACEFS', '/sys/kernel/tracing'), 'trace')
     t0 = None
     for raw in open(path):
         if raw.startswith('#'):

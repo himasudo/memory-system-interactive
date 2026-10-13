@@ -8,8 +8,9 @@ here=$(cd "$(dirname "$0")" && pwd)
 bin=${1:-/home/lab}
 mkdir -p "$bin" "$here/out"
 gcc -O2 -Wall -o "$bin/oneread" "$here/oneread.c"
-mountpoint -q /sys/kernel/tracing || mount -t tracefs nodev /sys/kernel/tracing
-T=/sys/kernel/tracing
+. "$here/../common/trace_instance.sh"
+memlab_trace_setup
+T=$MEMLAB_TRACEFS
 file=$bin/disk.bin
 dd if=/dev/urandom of="$file" bs=1M count=4 2>/dev/null
 sync
@@ -56,6 +57,5 @@ for f in $T/events/block/*/filter $T/events/irq/*/filter $T/events/sched/*/filte
 python3 "$here/../common/trace_clean.py" --time > "$here/out/oneread.trace.txt"
 { printf '%s\n' '$ grep -c -E "  (dma_|swiotlb_)" oneread.trace.txt    # DMA-mapping and bounce-buffer events in the trace'
   grep -c -E "  (dma_|swiotlb_)" "$here/out/oneread.trace.txt" || true; } >> "$here/out/counts.txt"
-echo local > $T/trace_clock
 rm -f "$file"
 echo done

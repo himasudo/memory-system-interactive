@@ -17,10 +17,12 @@ int main(int argc, char **argv)
     if (fd < 0 || write(fd, buf, sizeof buf) != sizeof buf) { perror(path); return 1; }
     fsync(fd);
     fstat(fd, &st);
-    /* drop clean page-cache pages so the file must be read from disk again */
-    sync();
-    int dc = open("/proc/sys/vm/drop_caches", O_WRONLY);
-    if (dc < 0 || write(dc, "1", 1) != 1) lg("(could not drop caches: run as root)\n");
+    /* Evict only the file's clean cache pages, not the host-wide page cache. */
+    int advice = posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED);
+    if (advice) {
+        fprintf(stderr, "file-specific page-cache eviction failed: %s\\n", strerror(advice));
+        return 1;
+    }
     char *p = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     lg("file %s, inode %lu, mapped MAP_PRIVATE at %p\n", path, (unsigned long)st.st_ino, (void *)p);
     (void)pagemap(p); faults2(&mi, &ma); tr_mark("warm-up");

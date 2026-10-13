@@ -21,7 +21,17 @@
 #include <time.h>
 #include <unistd.h>
 
-#define TRACEFS "/sys/kernel/tracing/"
+/* The harness sets MEMLAB_TRACEFS to an isolated tracefs instance.
+   Never silently fall back to the global instance during a lab run. */
+static inline const char *trace_dir(void)
+{
+    const char *d = getenv("MEMLAB_TRACEFS");
+    return d && *d ? d : "/sys/kernel/tracing";
+}
+static inline void trace_path(char *buf, size_t n, const char *file)
+{
+    snprintf(buf, n, "%s/%s", trace_dir(), file);
+}
 
 /* The file is reopened after fork: an inherited descriptor would still show the parent's pages. */
 static inline uint64_t pagemap(void *va)
@@ -84,7 +94,7 @@ static inline uint64_t now_ns(void)
 static inline int tr_write(const char *file, const char *val)
 {
     char path[256];
-    snprintf(path, sizeof path, TRACEFS "%s", file);
+    trace_path(path, sizeof path, file);
     int fd = open(path, O_WRONLY | O_TRUNC);
     if (fd < 0) return -1;
     int r = write(fd, val, strlen(val));
@@ -113,7 +123,7 @@ static inline void tr_mark(const char *fmt, ...)
     static int fd = -1;
     char buf[256];
     va_list ap;
-    if (fd < 0) fd = open(TRACEFS "trace_marker", O_WRONLY);
+    if (fd < 0) { char path[512]; trace_path(path, sizeof path, "trace_marker"); fd = open(path, O_WRONLY); }
     if (fd < 0) return;
     va_start(ap, fmt);
     int n = vsnprintf(buf, sizeof buf, fmt, ap);
