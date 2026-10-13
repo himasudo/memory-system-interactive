@@ -1,0 +1,4 @@
+view A 0x7faf0b3d2000  view B 0x7faf0b3d1000  pagemap pfn: A 0x12f761  B 0x12f761
+128 nodes in the 64 lines of one frame, ns per hop over 9 runs
+  one view (A only)       median 1.82   min 1.78   max 1.87
+  two views (A and B)     median 1.80   min 1.77   max 1.88

@@ -1,29 +1,29 @@
 /* ======================= chapter: the machine ======================= */
 App.chapter({id: 'map', short: 'The machine', title: 'The machine, all of it',
-lede: 'Every structure a memory access can touch, from the core\u2019s load/store unit out to the DRAM chips and the SSD.',
-points: ['Click a block to see what it does and its published size.', 'Each block links to the chapter that takes it apart.', 'All sizes come from one real processor, an AMD Ryzen 7 3750H (Zen+). Other x86-64 CPUs use the same kinds of structures with different sizes.'],
+lede: 'Every structure a memory access can touch, from the core’s load/store unit out to the DRAM chips and the SSD.',
+points: ['Click a block to see what it does and which chapter takes it apart.', 'The sizes are the lab’s example machine, a small four-core design the simulations use. It is not any one product.', 'The second half of the chapter shows how AMD, Intel and Arm build the same parts today.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, HW = App.HW;
   var work = h('div', {'class': 'map-workbench'}, root);
   var wrap = h('div', {'class': 'scroller map-canvas'}, work);
-  var sv = s('svg', {viewBox: '0 0 1200 760', style: 'min-width:880px'}, wrap);
+  var sv = s('svg', {role: 'img', 'aria-label': 'The lab’s example machine: four cores, caches, interconnect, memory controllers, DRAM and devices', viewBox: '0 0 1200 760', style: 'min-width:880px'}, wrap);
   var info = h('aside', {'class': 'card map-inspector'}, work);
   var parts = {}, selId = null;
   var D = {
-    core0: ['Core 0 (and cores 1\u20133)', 'An out-of-order Zen+ core with 2 SMT threads. Front end: branch predictor, 64 KB L1i, op cache, 4-wide decode. Back end: 192-entry retire queue, 168 physical registers, 4 ALUs + 2 AGUs, 44-entry load and store queues.', 'core', '[[ch:core]] runs the histogram loop through it cycle by cycle.'],
-    fe: ['Front end', 'Branch predictor + BTB, L1i (64 KB, 4-way) with iTLB, predecode, 4 decoders, 2K-entry op cache, \u00b5op queue.', 'code', '[[ch:code]] shows what it decodes; [[ch:core]] shows it running.'],
-    ooo: ['Rename + out-of-order engine', 'RAT and free list, 168-entry PRF, 192-entry ROB, six 14-entry schedulers, 4 ALU and 2 AGU ports.', 'core', ''],
-    lsu: ['Load/store unit + L1d', '44-entry load queue, 44-entry store queue, 64-entry L1 DTLB, 1536-entry L2 TLB, 2 page walkers, 32 KB 8-way L1d. 2 loads + 1 store per cycle, 16 bytes each.', 'l1d', '[[ch:xlate]] covers translation, [[ch:l1d]] the L1d lookup, [[ch:stores]] the store path.'],
-    tlb: ['TLBs + page walkers', 'L1 DTLB: 64 entries, fully associative, all page sizes. L2 TLB: 1536 entries, no 1 GB pages. Two hardware walkers read page tables through the data caches.', 'xlate', ''],
-    l2: ['L2 cache (per core)', '512 KB, 8-way, write-back, inclusive of the L1s. 32 bytes/cycle to L1. \u226512 cycles load-to-use (published). Up to 50 outstanding misses to L3 per core.', 'hier', ''],
-    l3: ['L3 cache (shared by the CCX)', '4 MB, 16-way on the Ryzen 7 3750H. A victim cache: filled with lines evicted from the L2s, mostly exclusive of them. Holds shadow tags of every L2 so it acts as a probe filter. ~35 cycles average (published Zen/Zen+).', 'hier', '[[ch:hier]] follows a miss through it; [[ch:coh]] uses its shadow tags for coherence.'],
-    df: ['Infinity Fabric (data fabric)', 'The on-die interconnect joining the CCX, the memory controllers, the GPU and the I/O hub. Routes requests and coherence probes; up to 96 outstanding misses from L3 to memory (published Zen/Zen+).', 'hier', ''],
-    umc: ['Memory controllers (UMC \u00d72)', 'One per channel. Queue requests, map physical addresses to channel/bank/row/column, reorder to hit open rows, issue ACT/RD/WR/PRE/REF, enforce DRAM timings.', 'dram', '[[ch:dram]].'],
-    dram: ['DDR4 DRAM, 2 channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst = 8 beats \u00d7 8 bytes = 64 bytes, one cache line. Cells are capacitors that must be refreshed.', 'dram', ''],
-    gpu: ['Integrated GPU (Radeon RX Vega 10)', '10 compute units (640 shaders) sharing a GPU L2. Another client of the same fabric and the same DRAM: it competes with the cores for memory bandwidth.', 'hier', ''],
-    io: ['I/O hub: PCIe root complex + IOMMU', 'Turns device PCIe packets into memory requests and core MMIO accesses into PCIe packets. The IOMMU translates device addresses and blocks DMA outside what the OS mapped. Device DMA is snooped against CPU caches.', 'dev', '[[ch:dev]] walks an NVMe read through it.'],
-    nvme: ['NVMe SSD', 'Talks to the CPU through submission/completion rings in RAM, doorbell registers (MMIO), DMA, and MSI-X interrupts.', 'dev', ''],
-    nic: ['Wi-Fi / Ethernet', 'Same pattern as NVMe: TX and RX descriptor rings in host RAM, doorbell registers the driver writes over MMIO, a DMA engine that reads the rings and packet buffers, and MSI-X interrupts.', 'dev', '']
+    core0: ['Core 0 (and cores 1–3)', 'An out-of-order core. The model keeps 24 instructions in flight in its ROB, with 48 physical registers, 10 load-queue and 8 store-queue entries and 4 miss buffers: small enough to watch every entry. Real cores are far bigger: AMD Zen 5’s ROB holds 448 instructions. Many x86 cores also run two hardware threads (SMT); Arm’s Neoverse V3 runs one.', 'core', '[[ch:core]] runs the histogram loop through it cycle by cycle.'],
+    fe: ['Front end', 'Predicts the path, fetches instruction bytes from the L1i, finds where each instruction starts and decodes it into µops. The model fetches and decodes up to four instructions per cycle. Most x86 cores also keep recently decoded µops in an op cache, so a hot loop skips fetch and decode.', 'code', '[[ch:code]] shows what it decodes; [[ch:core]] shows it running.'],
+    ooo: ['Rename + out-of-order engine', 'Renames registers (RAT and free list), keeps instructions in program order in the ROB, and sends each µop to an execution port once its inputs are ready. The model has 48 physical registers, a 24-entry ROB, 16- and 12-entry schedulers, four ALUs and two address units.', 'core', ''],
+    lsu: ['Load/store unit + L1d', 'A load queue (10 entries in the model), a store queue (8) and 4 miss buffers in front of a 32 KiB, 8-way L1d with 64-byte lines. A load that matches an older queued store takes the data straight from the store queue (forwarding). Current L1d caches are 48 KiB (AMD Zen 5, Intel Redwood Cove) or 64 KiB (Arm Neoverse V3).', 'l1d', '[[ch:xlate]] covers translation, [[ch:l1d]] the L1d lookup, [[ch:stores]] the store path.'],
+    tlb: ['TLBs + page walker', 'Cache recent virtual-to-physical translations. On a miss, a hardware page walker reads the page tables through the data caches. The model has a 64-entry L1 DTLB and a 512-entry L2 TLB and uses x86-64 four-level page tables with 4 KiB pages. Real L2 TLBs hold a few thousand entries.', 'xlate', ''],
+    l2: ['L2 cache (one per core)', '512 KiB, 8-way, write-back and inclusive of the L1d in the model, sending 32 bytes per cycle to the L1. Current cores have 1 MiB (AMD Zen 5), 2 MiB (Intel Redwood Cove) or 2–3 MiB (Arm Neoverse V3).', 'hier', ''],
+    l3: ['L3 cache (shared by the four cores)', '4 MiB, 16-way in the model. It is a victim cache: a line enters it when an L2 evicts it, so the L3 holds mostly different lines from the L2s. It also keeps a copy of every L2’s tags (shadow tags), so it knows which core to ask for a line. AMD Zen 5’s L3 is also filled from L2 evictions, 32 MiB per 8 cores; Intel’s Xeon L3 is non-inclusive and split into slices across a mesh.', 'hier', '[[ch:hier]] follows a miss through it; [[ch:coh]] uses its shadow tags for coherence.'],
+    df: ['Coherent interconnect', 'Carries requests, data and coherence probes between the caches, the memory controllers, the GPU and the I/O hub. AMD calls its version Infinity Fabric; Intel’s Xeons use a mesh; Arm licenses its CMN mesh to chip makers.', 'hier', ''],
+    umc: ['Memory controllers', 'One per channel. Each maps physical addresses to channel, bank, row and column, queues requests, reorders them to hit open rows, and issues ACT/RD/WR/PRE/REF commands within the DRAM timing rules. Servers have many: AMD EPYC 9005 and Intel Xeon 6900P each drive 12 DDR5 channels per socket.', 'dram', '[[ch:dram]] takes one apart.'],
+    dram: ['DDR4 DRAM, two channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst is 8 beats × 8 bytes = 64 bytes, one cache line. The cells are capacitors that must be refreshed. DDR5 splits each DIMM into two 32-bit subchannels with 16-beat bursts, which also deliver 64 bytes.', 'dram', ''],
+    gpu: ['Integrated GPU', 'Ten compute units (CUs) sharing a GPU L2. It is another client of the same interconnect and the same DRAM, so it competes with the cores for memory bandwidth. Laptop and phone chips have one; most server CPUs don’t.', 'hier', ''],
+    io: ['I/O hub: PCIe root complex + IOMMU', 'Turns core MMIO accesses into PCIe packets and device DMA into memory requests. The IOMMU translates device addresses and blocks DMA to memory the OS didn’t map for that device. On x86, hardware keeps device DMA coherent with the CPU caches; on some Arm systems the OS cleans or invalidates the cache lines around each transfer instead.', 'dev', '[[ch:dev]] walks an NVMe read through it.'],
+    nvme: ['NVMe SSD', 'Talks to the CPU through submission and completion rings in host RAM, doorbell registers written over MMIO, DMA, and MSI-X interrupts.', 'dev', ''],
+    nic: ['Network card', 'Same pattern as NVMe: TX and RX descriptor rings in host RAM, doorbell registers the driver writes over MMIO, a DMA engine that reads the rings and packet buffers, and MSI-X interrupts.', 'dev', '']
   };
   function blk(id, x, y, w, ht, title, lines, cls){
     var gr = s('g', {'class': 'click'}, sv);
@@ -37,17 +37,17 @@ build: function(root){
   function busL(d, width){ var p = s('path', {d: d, 'class': 'bus'}, sv); return p; }
   /* package */
   s('rect', {x: 10, y: 10, width: 1180, height: 560, rx: 14, 'class': 'sunk'}, sv);
-  lbl(24, 32, 'Ryzen 7 3750H package \u2014 "Picasso" APU, one die', 'h');
-  /* CCX */
+  lbl(24, 32, 'The lab\u2019s example machine \u00b7 one package', 'h');
+  /* core cluster */
   s('rect', {x: 24, y: 44, width: 760, height: 380, rx: 12, fill: 'none', stroke: 'var(--bd2)', 'stroke-dasharray': '5 4'}, sv);
-  lbl(36, 62, 'CCX (core complex): 4 cores share the L3', 's');
+  lbl(36, 62, 'Core cluster: four cores share the L3', 's');
   /* core 0 detailed */
   s('rect', {x: 36, y: 72, width: 420, height: 206, rx: 10, fill: 'none', stroke: 'var(--bd2)'}, sv);
-  blk('core0', 44, 80, 404, 26, 'Core 0 \u00b7 2 SMT threads', []);
-  blk('fe', 44, 112, 196, 70, 'Front end', ['BP/BTB \u00b7 L1i 64 KB 4-way', 'op cache \u00b7 decode \u00d74'], 'a3b');
-  blk('ooo', 250, 112, 198, 70, 'Out-of-order engine', ['ROB 192 \u00b7 PRF 168', 'sched 6\u00d714 \u00b7 4 ALU + 2 AGU'], 'a3b');
-  blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ 44 \u00b7 SQ 44', 'L1d 32 KB 8-way', '2 loads + 1 store / cycle'], 'a4b');
-  blk('tlb', 302, 188, 146, 82, 'TLBs + walkers', ['L1 DTLB 64', 'L2 TLB 1536', '2 walkers'], 'a4b');
+  blk('core0', 44, 80, 404, 26, 'Core 0 \u00b7 out of order', []);
+  blk('fe', 44, 112, 196, 70, 'Front end', ['branch predictor \u00b7 L1i', 'decode 4 per cycle'], 'a3b');
+  blk('ooo', 250, 112, 198, 70, 'Out-of-order engine', ['ROB 24 \u00b7 48 registers', '4 ALU + 2 AGU ports'], 'a3b');
+  blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ 10 \u00b7 SQ 8 \u00b7 4 miss buffers', 'L1d 32 KB \u00b7 8-way', 'store-to-load forwarding'], 'a4b');
+  blk('tlb', 302, 188, 146, 82, 'TLBs + walker', ['L1 DTLB 64', 'L2 TLB 512', 'page walker'], 'a4b');
   blk('l2', 44, 300, 404, 50, 'L2 \u00b7 512 KB \u00b7 8-way \u00b7 inclusive of L1', ['private to this core'], 'a2b');
   HW.assoc(parts.l2, 356, 307, 84, 36, {ways: 8, rows: 4});
   busL('M 170 270 L 170 300'); lbl(176, 290, '32 B/cycle');
@@ -60,7 +60,7 @@ build: function(root){
       {t: 'Front end', sub: 'L1i \u00b7 decode', cls: 'a3b'},
       {t: 'OoO engine', sub: 'ROB \u00b7 PRF', cls: 'a3b'},
       {t: 'LSU + L1d', sub: 'LQ \u00b7 SQ', cls: 'a4b'},
-      {t: 'TLBs', sub: '+ 2 walkers', cls: 'a4b'}
+      {t: 'TLBs', sub: '+ walker', cls: 'a4b'}
     ], {gap: 5});
     gr.onclick = function(e){ e.stopPropagation(); pick('core0'); };
     s('rect', {x: x + 6, y: 300, width: 82, height: 50, rx: 8, 'class': 'box a2b'}, sv);
@@ -74,9 +74,9 @@ build: function(root){
   /* PCIe links: I/O hub straight down to the devices (drawn first, so they pass under the fabric) */
   busL('M 890 280 L 890 600'); busL('M 1086 280 L 1086 600');
   /* fabric */
-  blk('df', 24, 440, 1152, 36, 'Infinity Fabric \u2014 data fabric (coherent interconnect)', [], 'a3b');
+  blk('df', 24, 440, 1152, 36, 'Coherent interconnect \u00b7 requests, data and probes', [], 'a3b');
   busL('M 400 416 L 400 440');
-  var gpu = blk('gpu', 800, 44, 376, 110, 'Integrated GPU \u2014 Radeon RX Vega 10', []);
+  var gpu = blk('gpu', 800, 44, 376, 110, 'Integrated GPU (optional)', []);
   for (var cu = 0; cu < 10; cu++){
     var cux = 810 + (cu % 5) * 50, cuy = 70 + Math.floor(cu / 5) * 26;
     HW.rect(gpu, cux, cuy, 46, 22, 'a3b', 3); HW.txt(gpu, cux + 23, cuy + 15, 'CU ' + cu, {size: 9, anchor: 'middle', fill: 'var(--tx)'});
@@ -87,13 +87,13 @@ build: function(root){
   busL('M 800 130 L 792 130 L 792 440');
   blk('io', 800, 170, 376, 110, 'I/O hub', ['PCIe root complex \u00b7 IOMMU + IOTLB', 'turns MMIO into PCIe packets and', 'device DMA into memory requests']);
   busL('M 1000 280 L 1000 440');
-  blk('umc', 24, 490, 560, 64, 'Memory controllers: UMC 0 \u00b7 UMC 1', ['address mapping \u00b7 request queues \u00b7 DRAM command scheduling \u00b7 refresh']);
+  blk('umc', 24, 490, 560, 64, 'Memory controllers \u00b7 one per channel', ['address mapping \u00b7 request queues \u00b7 DRAM command scheduling \u00b7 refresh']);
   busL('M 300 476 L 300 490');
   /* off-package */
   blk('dram', 24, 600, 560, 140, 'DDR4 \u2014 channel A and channel B', ['each: 64-bit data bus + command/address bus', 'DIMM \u2192 rank \u2192 8 chips \u2192 16 banks each \u2192 rows \u00d7 columns', 'one 64-byte line = 8 beats of 8 bytes (burst length 8)', 'DDR4-2400: 2400 MT/s \u00d7 8 B = 19.2 GB/s per channel (peak)']);
   busL('M 160 554 L 160 600'); busL('M 450 554 L 450 600'); lbl(166, 584, 'channel A, 64 bits'); lbl(456, 584, 'channel B, 64 bits');
   blk('nvme', 800, 600, 180, 140, 'NVMe SSD', ['queues in host RAM', 'doorbells via MMIO', 'DMA + MSI-X']);
-  var nic = blk('nic', 996, 600, 180, 140, 'Wi-Fi / NIC', []);
+  var nic = blk('nic', 996, 600, 180, 140, 'Network card', []);
   HW.blocks(nic, 1004, 628, 164, 24, [{t: 'doorbells', cls: 'a3b'}, {t: 'DMA', cls: 'a3b'}, {t: 'MSI-X', cls: 'a3b'}], {cols: 3, gap: 4, size: 9});
   ['TX', 'RX'].forEach(function(nm, r){
     var ry = 664 + r * 24;
@@ -110,7 +110,7 @@ build: function(root){
   function pick(id){
     selId = id;
     for (var k in parts) parts[k].setAttribute('class', 'click' + (k === id ? ' on' : ''));
-    if (!id){ info.innerHTML = '<div class="inspector-kicker">hardware atlas</div><h3>Select a block</h3><p>Inspect any structure to see what it does, its published size, and the chapter that takes it apart. The diagram itself is the table of contents.</p><p class="note">Wire labels are published peak transfer sizes, not measured throughput.</p>'; return; }
+    if (!id){ info.innerHTML = '<div class="inspector-kicker">The machine</div><h3>Pick a block</h3><p>Click any part to see what it does and which chapter takes it apart. The diagram is the table of contents.</p><p class="note">The sizes are the lab\u2019s example machine. For real AMD, Intel and Arm sizes, see <a href="#map/chips">Same parts, different choices</a> below.</p>'; return; }
     var d = D[id];
     info.innerHTML = '<h3>' + d[0] + '</h3><p>' + d[1] + '</p>' + (d[3] ? '<p>' + d[3] + '</p>' : '') + '<button class="pri" data-go="' + d[2] + '">open the chapter \u2192</button>';
     info.querySelector('button').onclick = function(){ App.go(d[2]); };
@@ -132,5 +132,5 @@ build: function(root){
     '<li><b>[[num:dev]]</b> Devices: ' + g('mmio') + ', ' + g('dma') + ', the ' + g('iommu') + ', interrupts \u2014 an NVMe read end to end.</li>' +
     '<li><b>[[num:e2e]]</b> One <code>hist[123]++</code> with every stage on a single timeline.</li>' +
     '<li><b>[[num:gloss]]</b> Glossary: every term, searchable.</li></ol>' +
-    '<p class="note">Colored terms open a definition. The <b>latency model</b> in the sidebar starts with published figures and can be replaced with your own measurements.</p>';
+    '<p class="note">Colored terms open a definition. The <b>latencies</b> button sets the cycle counts every simulation uses.</p>';
 }});

@@ -2,11 +2,10 @@
 var PipeSim = (function(){
 var W = {fetch: 4, rename: 4, retire: 4, alu: 4, agu: 2};
 var CAP = {rob: 24, uq: 8, alu: 16, agu: 12, lq: 10, sq: 8, prf: 48, mab: 4};
-var REAL = {rob: '192 (96 per thread)', uq: '72 µops', alu: '4 × 14', agu: '2 × 14', lq: '44', sq: '44', prf: '168', mab: 'not published for L1; 50 L2→L3', fetch: '4 x86 instr/cycle', rename: '6 macro-ops/cycle', retire: '8/cycle'};
 
 function simulate(P){
   var EX = P.ex, L = EX.loop, hx = function(v){ return '0x' + v.toString(16); };
-  var level = P.level || 'L1', missLat = P.missLat || 0;
+  var level = P.level || 'L1', missLat = Math.max(1, Math.ceil(P.missLat || 0));
   /* ---------- static code ---------- */
   var ST = {
     A: {pc: L,        len: 3, asm: 'movzbl (%rdi),%eax',     uops: [{k: 'LD', d: 'rax', s: ['rdi'], sz: 1, tag: 'ld'}]},
@@ -115,7 +114,8 @@ function simulate(P){
     }
     var m = MAB.filter(function(x){ return x.line === ln; })[0];
     if (!m){
-      m = {line: ln, lineHex: hx(lineOf(u.addr)), fillAt: u.issueAt + missLat, waiters: [], lvl: level};
+      if(MAB.length>=CAP.mab){u.outcome='mabwait';return false;}
+      m = {line: ln, lineHex: hx(lineOf(u.addr)), fillAt: Math.max(c+1,u.issueAt+missLat), waiters: [], lvl: level};
       MAB.push(m);
       ev.push('<b>' + u.lbl + '</b> misses L1d (line ' + m.lineHex + '): MAB entry allocated, request sent to ' + level + ', data expected in cycle ' + m.fillAt);
     } else if (m.waiters.indexOf(u) < 0){
@@ -126,7 +126,7 @@ function simulate(P){
     return false;
   }
 
-  var MAXC = 1200;
+  var MAXC = Math.max(1200,missLat+2000);
   for (var c = 0; c < MAXC; c++){
     var ev = [], stall = null, rnNow = [], issued = {};
     /* 1. retire */
@@ -312,9 +312,9 @@ function simulate(P){
     snaps: snaps, uops: uops.map(function(u){ return {lbl: u.lbl, inst: u.inst.lbl, k: u.k, wrong: u.inst.wrong, squashedAt: u.inst.squashedAt, g: u.g, port: u.port, outcome: u.outcome, val: u.val === null ? null : u.val.toString(), addr: u.addr === null ? null : hx(u.addr), first: u.inst.uops[0] === u, asm: u.inst.asm}; }),
     cycles: snaps.length, violations: violations, mispredicts: mispredicts, retired: retiredN,
     freeStart: FREE0, freeEnd: FREE.length, mem: {h123: MEM8[EX.histAddr(123).toString()], h7: MEM8[EX.histAddr(7).toString()], h46: MEM8[EX.histAddr(46).toString()], h200: MEM8[EX.histAddr(200).toString()]},
-    CAP: CAP, REAL: REAL, W: W
+    CAP: CAP, W: W
   };
 }
-return {simulate: simulate, CAP: CAP, REAL: REAL, W: W};
+return {simulate: simulate, CAP: CAP, W: W};
 })();
 if (typeof module !== 'undefined') module.exports = PipeSim;

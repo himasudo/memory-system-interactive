@@ -1,0 +1,5 @@
+after one load from a fresh page pagemap=0x8000000000003241  present=1 exclusive=0 pfn=0x3241
+/proc/iomem:   01000000-021350e7 : Kernel code
+/proc/iomem:   02200000-02bbafff : Kernel rodata
+/proc/iomem:   02c00000-02e6277f : Kernel data
+/proc/iomem:   03241000-033fffff : Kernel bss
