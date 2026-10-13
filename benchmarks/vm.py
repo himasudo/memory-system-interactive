@@ -10,7 +10,7 @@ import platform
 import random
 import subprocess
 import sys
-from run import read, command
+from run import read, command, cpu_details
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
     subprocess.run(compile_cmd, check=True)
     context = {
         'time_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        'cpu_model': next((line.split(':', 1)[1].strip() for line in (read('/proc/cpuinfo') or '').splitlines() if line.startswith('model name')), 'unknown'),
+        'cpu_model': cpu_details(cpu).get('model name', 'unknown'), 'cpu_details': cpu_details(cpu),
         'cpuinfo': read('/proc/cpuinfo'), 'kernel': platform.release(), 'architecture': platform.machine(),
         'cpu': cpu, 'allowed_cpus': allowed, 'lscpu': command(['lscpu']),
         'compiler': command([args.cc, '--version']), 'compile_command': compile_cmd,

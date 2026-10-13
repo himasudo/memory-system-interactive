@@ -1,0 +1,7 @@
+view A 0x7f2f1743b000  view B 0x7f2f1743a000
+read through view B at +0xd4e: "written through view A"
+pagemap view A: pfn=0x110b4b   view B: pfn=0x110b4b
+7f2f1743a000-7f2f1743b000 rw-s 00000000 00:01 14                         /memfd:one-frame (deleted)
+7f2f1743b000-7f2f1743c000 rw-s 00000000 00:01 14                         /memfd:one-frame (deleted)
+process 2272: getpid at 0x7f6bb54f5b90, pagemap pfn=0x10211b
+process 2273: getpid at 0x7f7c4f0f5b90, pagemap pfn=0x10211b

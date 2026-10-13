@@ -1,0 +1,22 @@
+$ cd /sys/block/vda/queue; grep . scheduler nr_requests max_sectors_kb max_segments logical_block_size physical_block_size rq_affinity io_poll
+scheduler:none [mq-deadline] kyber bfq 
+nr_requests:256
+max_sectors_kb:4096
+max_segments:254
+logical_block_size:512
+physical_block_size:4096
+rq_affinity:1
+io_poll:0
+$ ls /sys/block/vda/mq; grep . /sys/block/vda/mq/0/cpu_list /sys/block/vda/mq/0/nr_tags
+0
+/sys/block/vda/mq/0/cpu_list:0, 1, 2, 3
+/sys/block/vda/mq/0/nr_tags:128
+$ readlink -f /sys/block/vda/device    # the virtio device and PCI function behind the disk
+/sys/devices/pci0000:00/0000:00:02.0/virtio1
+$ grep -E "CPU|virtio1" /proc/interrupts
+           CPU0       CPU1       CPU2       CPU3       
+ 36:          0          1          0          0 PCI-MSIX-0000:00:02.0   0-edge      virtio1-config
+ 37:          0          0          0      66035 PCI-MSIX-0000:00:02.0   1-edge      virtio1-req.0
+$ cat /proc/irq/37/smp_affinity_list /proc/irq/37/effective_affinity_list
+0-3
+3

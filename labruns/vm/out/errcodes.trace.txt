@@ -1,0 +1,21 @@
+# == read  an unmapped user address
+page_fault_user: address=0x7f18f5205000 ip=0x559cd58d8a04 error_code=0x4
+# == write an unmapped user address
+page_fault_user: address=0x7f18f5205000 ip=0x559cd58d8660 error_code=0x6
+# == write a PROT_READ page, never touched
+page_fault_user: address=0x7f18f5208000 ip=0x559cd58d86b1 error_code=0x6
+# == read  a PROT_READ page
+page_fault_user: address=0x7f18f5209000 ip=0x559cd58d8702 error_code=0x4
+# == write that page after the read
+page_fault_user: address=0x7f18f5209000 ip=0x559cd58d875b error_code=0x7
+# == read  a PROT_NONE page (was written)
+page_fault_user: address=0x7f18f5207000 ip=0x559cd58d87b1 error_code=0x4
+# == call into a PROT_READ|PROT_WRITE page
+page_fault_user: address=0x7f18f5206000 ip=0x7f18f5206000 error_code=0x15
+# == read  0xffff888000000000 (kernel half)
+page_fault_user: address=0xffff888000000000 ip=0x559cd58d884c error_code=0x5
+# == write 0xffff888000000000 (kernel half)
+page_fault_user: address=0xffff888000000000 ip=0x559cd58d88b4 error_code=0x7
+# == read  0xffffffff81000000 (kernel code)
+page_fault_user: address=srso_alias_untrain_ret ip=0x559cd58d88fa error_code=0x5
+# == read  0x0000800000000000 (non-canonical)
