@@ -1,0 +1,20 @@
+== 1. one 2 MiB transparent huge page (Normal zone; free blocks of order 0 1 2 ... 10)
+before the fault          2197   5969   4168   1798    937    372    355    138     55     22     84 
+after the fault           2197   5969   4168   1798    937    372    355    138     55     20     84 
+huge page: pfn=0x162c00, pfn % 512 = 0: one block of order 9
+after munmap              2197   5969   4168   1798    937    372    355    138     55     22     84 
+
+== 2. 256 fresh 4 KiB pages, one store each
+CPU 0's list before: count 2237 high 2755 batch 63
+mm_page_alloc: 256 blocks for user pages, 1 for page tables
+taken from the zone's free lists to refill CPU 0's list: 0 pages
+frames of the first 8 pages: 0x1504ba 0x13197b 0x14d7d4 0x112aad 0x153c15 0x12fdf2 0x149a2b 0x149a2c
+
+== 3. 16384 more fresh pages (64 MiB), one store each
+mm_page_alloc: 16384 blocks for user pages, 32 for page tables
+taken from the zone's free lists to refill CPU 0's list: 16065 pages
+refills, in order: 63 126 252 504 1008 2016 2016 2016 2016 2016 2016 2016
+CPU 0's list after: count 1675 high 16384 batch 63
+
+== 4. free one page, then write it again
+page 0: pfn=0x1504ba before MADV_DONTNEED, pfn=0x1504ba after the next store

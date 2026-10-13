@@ -1,0 +1,11 @@
+$ cat /proc/sys/vm/nr_hugepages
+0
+mmap(2 MiB, MAP_HUGETLB) failed: Cannot allocate memory
+$ echo 1 > /proc/sys/vm/nr_hugepages
+mmap(2 MiB, MAP_HUGETLB) = 0x7ff829e00000
+faults during one store: 1
+first 4 KiB piece            pagemap=0x8100000000162a00  present=1 exclusive=1 pfn=0x162a00
+first pfn % 512 = 0
+  HugePages_Total:       1
+  HugePages_Free:        0
+$ echo 0 > /proc/sys/vm/nr_hugepages    # restored

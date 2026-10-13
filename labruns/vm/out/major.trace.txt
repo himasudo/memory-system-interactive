@@ -1,0 +1,9 @@
+# == first load
+page_fault_user: address=0x7f1ccb8a0000 ip=0x55d5552fd59a error_code=0x4
+mm_page_alloc: pfn=0x10fa24 order=0 migratetype=1 gfp_flags=GFP_NOFS|__GFP_HIGHMEM|__GFP_MOVABLE|__GFP_NOWARN|__GFP_NORETRY|__GFP_COMP|__GFP_HARDWALL
+mm_filemap_add_to_page_cache: dev 254:0 ino da7a5 pfn=0x10fa24 ofs=0 order=0
+# == second load
+# == store p[0] = 'J'
+page_fault_user: address=0x7f1ccb8a0000 ip=0x55d5552fd663 error_code=0x7
+mm_page_alloc: pfn=0x11da16 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)

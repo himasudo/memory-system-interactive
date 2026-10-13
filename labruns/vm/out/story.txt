@@ -1,0 +1,68 @@
+== /proc/self/maps at start
+  55c5ee6c6000-55c5ee6c7000 r--p 00000000 fe:00 894845                     /home/lab/story
+  55c5ee6c7000-55c5ee6c9000 r-xp 00001000 fe:00 894845                     /home/lab/story
+  55c5ee6c9000-55c5ee6ca000 r--p 00003000 fe:00 894845                     /home/lab/story
+  55c5ee6ca000-55c5ee6cb000 r--p 00003000 fe:00 894845                     /home/lab/story
+  55c5ee6cb000-55c5ee6cc000 rw-p 00004000 fe:00 894845                     /home/lab/story
+  55c617ba1000-55c617bc2000 rw-p 00000000 00:00 0                          [heap]
+  7fac8c2ff000-7fac8c400000 rw-s 00000000 00:01 17                         /dev/zero (deleted)
+  7fac8c400000-7fac8c428000 r--p 00000000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+  7fac8c428000-7fac8c5b1000 r-xp 00028000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+  7fac8c5b1000-7fac8c600000 r--p 001b1000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+  7fac8c600000-7fac8c604000 r--p 001ff000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+  7fac8c604000-7fac8c606000 rw-p 00203000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+  7fac8c606000-7fac8c613000 rw-p 00000000 00:00 0 
+  7fac8c703000-7fac8c706000 rw-p 00000000 00:00 0 
+  7fac8c714000-7fac8c716000 rw-p 00000000 00:00 0 
+  7fac8c716000-7fac8c71a000 r--p 00000000 00:00 0                          [vvar]
+  7fac8c71a000-7fac8c71c000 r--p 00000000 00:00 0                          [vvar_vclock]
+  7fac8c71c000-7fac8c71e000 r-xp 00000000 00:00 0                          [vdso]
+  7fac8c71e000-7fac8c71f000 r--p 00000000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+  7fac8c71f000-7fac8c74a000 r-xp 00001000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+  7fac8c74a000-7fac8c754000 r--p 0002c000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+  7fac8c754000-7fac8c756000 r--p 00036000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+  7fac8c756000-7fac8c758000 rw-p 00038000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+  7fff02c3c000-7fff02c62000 rw-p 00000000 00:00 0                          [stack]
+  ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+== mappings in PML4 slot 254 (0x7f0000000000-0x7f7fffffffff)
+  (none)
+VmPTE at start: 48 kB
+
+== mmap(0x7f3a1b2c3000, 16384, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE) = 0x7f3a1b2c3000
+its line in /proc/self/maps:
+  7f3a1b2c3000-7f3a1b2c7000 rw-p 00000000 00:00 0 
+page 0 after mmap              pagemap=0x0000000000000000  present=0 exclusive=0 pfn=0x0
+VmPTE after mmap: 48 kB
+
+== store p[0xd4e] = 1  (address 0x7f3a1b2c3d4e)
+faults during the store: 1
+page 0 after the store         pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=0x129b49
+VmPTE after the store: 60 kB
+faults during a second store: 0
+
+== load from page 1: x = p[0x1d4e]
+read 0, faults 1
+page 1 after the load          pagemap=0x8000000000003241  present=1 exclusive=0 pfn=0x3241
+store to page 1: faults 1
+page 1 after the store         pagemap=0x8100000000125396  present=1 exclusive=1 pfn=0x125396
+page 3 after a store           pagemap=0x810000000012638f  present=1 exclusive=1 pfn=0x12638f
+
+== fork
+parent page 0 before fork      pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=0x129b49
+parent page 0 after fork       pagemap=0x8000000000129b49  present=1 exclusive=0 pfn=0x129b49
+child page 0 after fork        pagemap=0x8000000000129b49  present=1 exclusive=0 pfn=0x129b49
+child: faults during its store 1, reads 9
+child page 0 after its store   pagemap=0x8100000000116f45  present=1 exclusive=1 pfn=0x116f45
+parent: faults during its store 1, reads 7
+parent page 0 after its store  pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=0x129b49
+
+== mprotect(page 3, PROT_READ), then store to it
+/proc/self/maps now:
+  7f3a1b2c3000-7f3a1b2c6000 rw-p 00000000 00:00 0 
+  7f3a1b2c6000-7f3a1b2c7000 r--p 00000000 00:00 0 
+SIGSEGV: trap=14 err=0x7 cr2=0x7f3a1b2c6d4e si_code=SEGV_ACCERR
+
+== madvise(page 0, MADV_DONTNEED)
+page 0 after madvise           pagemap=0x0000000000000000  present=0 exclusive=0 pfn=0x0
+load from page 0 reads 0
+page 0 after the store         pagemap=0x8100000000129b49  present=1 exclusive=1 pfn=0x129b49

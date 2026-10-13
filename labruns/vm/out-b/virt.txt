@@ -1,0 +1,13 @@
+$ lscpu | grep -E "Hypervisor vendor|Virtualization type"
+Hypervisor vendor:                       KVM
+Virtualization type:                     full
+$ grep -o -w -E "hypervisor|vmx|svm" /proc/cpuinfo | sort | uniq -c
+      4 hypervisor
+$ dmesg | grep -E "Hypervisor detected|Booting paravirtualized|pv remote TLB flush"
+Hypervisor detected: KVM
+kvm-guest: KVM setup pv remote TLB flush
+Booting paravirtualized kernel on KVM
+$ grep "System RAM" /proc/iomem
+00001000-0009fbff : System RAM
+00100000-bfffffff : System RAM
+100000000-43fffffff : System RAM

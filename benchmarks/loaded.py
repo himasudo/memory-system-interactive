@@ -10,7 +10,7 @@ import platform
 import random
 import subprocess
 import sys
-from run import read, command
+from run import read, command, cpu_details
 
 
 def main():
@@ -43,7 +43,7 @@ def main():
     topology = {str(cpu): {k: read(f'/sys/devices/system/cpu/cpu{cpu}/topology/{k}') for k in ['core_id', 'physical_package_id', 'thread_siblings_list']} for cpu in cpus}
     context = {
         'time_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        'cpu_model': next((l.split(':', 1)[1].strip() for l in (read('/proc/cpuinfo') or '').splitlines() if l.startswith('model name')), 'unknown'),
+        'cpu_model': cpu_details(cpus[0]).get('model name', 'unknown'), 'cpu_details': cpu_details(cpus[0]),
         'cpuinfo': read('/proc/cpuinfo'), 'kernel': platform.release(), 'architecture': platform.machine(),
         'cpus': cpus, 'topology': topology, 'allowed_cpus': allowed, 'lscpu': command(['lscpu']),
         'compiler': command([args.cc, '--version']), 'compile_command': compile_cmd,

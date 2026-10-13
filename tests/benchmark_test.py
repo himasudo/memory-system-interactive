@@ -8,6 +8,59 @@ import unittest
 
 
 class NativeBenchmark(unittest.TestCase):
+    def test_software_prefetch(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "prefetch.json"
+            subprocess.run(["python3", "benchmarks/prefetch.py", "--quick", "--output", str(out)], cwd=root, check=True, capture_output=True)
+            data = json.loads(out.read_text())
+            self.assertEqual(data["schema"], "memory-lab-prefetch-v1")
+            self.assertTrue(data["complete"])
+            self.assertEqual(len(data["samples"]), 24)
+            self.assertEqual({r["distance"] for r in data["samples"]}, {0, 1, 4, 16})
+            self.assertEqual({r["stride_lines"] for r in data["samples"]}, {1, 3})
+            for row in data["samples"]:
+                lines = row["bytes"] // 64
+                self.assertEqual(row["loads"], lines * row["passes"])
+                self.assertEqual(int(row["checksum"]), row["passes"] * lines * (lines + 1) // 2)
+                self.assertEqual(row["checksum"], row["expected_checksum"])
+                self.assertEqual(row["useful_bytes"], row["loads"] * 8)
+                self.assertTrue(row["verified"])
+                self.assertGreater(row["elapsed_ns"], 0)
+                self.assertEqual(row["cpu_before"], data["context"]["cpu"])
+                self.assertEqual(row["cpu_after"], data["context"]["cpu"])
+            self.assertEqual(len(data["context"]["source_sha256"]), 64)
+            for args in [["--bytes", "4097"], ["--bytes", "-1"], ["--stride", "2"], ["--distance", "65"], ["--passes", "0"], ["--cpu", "999999"]]:
+                r = subprocess.run([str(root / "benchmarks/prefetch"), *args], capture_output=True)
+                self.assertEqual(r.returncode, 2)
+
+    def test_vm_lifecycle(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "vm.json"
+            subprocess.run(["python3", "benchmarks/vm.py", "--quick", "--output", str(out)], cwd=root, check=True, capture_output=True)
+            data = json.loads(out.read_text())
+            self.assertEqual(data["schema"], "memory-lab-vm-v1")
+            self.assertTrue(data["complete"])
+            self.assertEqual(len(data["samples"]), 12)
+            for row in data["samples"]:
+                self.assertTrue(row["verification"]["passed"])
+                pages = row["bytes"] // row["page_bytes"]
+                shared = row["kind"] == "file-shared"
+                values = [0 if row["kind"] == "anon" else 10, 7, 7, 42, 42 if shared else 7]
+                for stage, value in zip(row["stages"], values):
+                    self.assertEqual(stage["checksum"], pages * value)
+                    self.assertGreater(stage["elapsed_ns"], 0)
+                    self.assertGreaterEqual(stage["minor"], 0)
+                    self.assertGreaterEqual(stage["major"], 0)
+                    self.assertEqual(stage["cpu_before"], row["cpu"])
+                    self.assertEqual(stage["cpu_after"], row["cpu"])
+                self.assertIn("after-write", row["smaps"])
+                self.assertEqual(row["verification"]["file_checksum"], pages * (0 if row["kind"] == "anon" else 42 if shared else 10))
+            for args in [["--bytes", "-1"], ["--bytes", "4097"], ["--cpu", "999999"], ["--kind", "bad"], ["--advice", "bad"], ["--kind", "file-shared", "--advice", "huge"]]:
+                r = subprocess.run([str(root / "benchmarks/vm"), *args], capture_output=True)
+                self.assertEqual(r.returncode, 2)
+
     def test_loaded_latency(self):
         root = Path(__file__).resolve().parents[1]
         cpus = sorted(os.sched_getaffinity(0))[:3]
