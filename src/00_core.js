@@ -85,6 +85,7 @@ var App = (function(){
     perf: ['vocabulary', 'predict', 'queues', 'datasets', 'measure', 'compare', 'explain']
   };
   function organizeChapter(sec, ch){
+    if (ch.lesson) return; /* lessons place their labs inline, where the concept is taught */
     var list = sec._sections; if (!list || !list.length) return;
     var order = SECTION_ORDER[ch.id];
     if (order){
@@ -160,6 +161,7 @@ var App = (function(){
   }
 
   function makeChapterHeader(sec, ch){
+    if (App.Course && App.Course.header(sec, ch)) return;
     var hd = h('header', {'class': 'chh'}, sec);
     var copy = h('div', {'class': 'ch-copy'}, hd);
     h('div', {'class': 'num'}, copy, (ch.ref ? 'REFERENCE' : 'CHAPTER ' + ch.num) + ' · ' + chapterGroup(ch));
@@ -172,6 +174,7 @@ var App = (function(){
   }
 
   function makeChapterFooter(sec, ch){
+    if (App.Course && App.Course.footer(sec, ch)) return;
     var idx = chapterIndex(ch.id), prev = idx > 0 ? chapters[idx - 1] : null, next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
     if (!prev && !next) return;
     var foot = h('footer', {'class':'chapter-footer','aria-label':'Continue through the atlas'}, sec);
@@ -207,6 +210,7 @@ var App = (function(){
     var cn = document.getElementById('crumbNum'), ct = document.getElementById('crumbTitle');
     if (cn) cn.textContent = ch.num;
     if (ct) ct.textContent = ch.short;
+    if (App.Course) App.Course.onShow(ch);
     setTimeout(secNavUpdate, 0);
     closeNav();
     if (built[ch.id].api.onShow) built[ch.id].api.onShow();
@@ -214,6 +218,8 @@ var App = (function(){
 
   function route(){
     var p = location.hash.slice(1).split('/');
+    var moved = p[1] && App.Course && App.Course.moved[p[0] + '/' + p[1]];
+    if (moved && App.Course.lessons[moved]){ p[0] = moved; try { history.replaceState(null, '', '#' + p.join('/')); } catch(e){} }
     show(p[0] || chapters[0].id);
     /* second jump after the workbenches above have finished sizing */
     if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
@@ -250,7 +256,14 @@ var App = (function(){
       if (!menu.hidden){ close(); return; }
       menu.innerHTML = '';
       var inLab = false, partLabel = (built[cur] && built[cur].sec._partLabel) || 'Experiments';
+      var lesson = built[cur] && built[cur].sec.querySelector('.lx');
       list().forEach(function(x, i){
+        if (lesson){ /* lessons: their own section numbers; inline labs listed under their section */
+          var sk = x.el.querySelector('.lx-sec-head .lx-sec-k'), lnum = x.lab ? 'Lab' : (sk ? sk.textContent : String(i + 1));
+          var lb = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (x.lab ? ' sub' : '') + (i === idx ? ' cur' : '')}, menu, '<b>' + lnum + '</b><span>' + x.title + '</span>');
+          lb.onclick = function(){ close(); scrollToSection(x.id, true); };
+          return;
+        }
         if (x.lab && !inLab){ inLab = true; h('div', {'class': 'sec-group', role: 'presentation'}, menu, partLabel); }
         var k = x.el.querySelector('.scene-kicker'), num = (k ? k.textContent : String(i + 1).padStart(2, '0')).replace(/^[^0-9]+/, '');
         var b = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (i === idx ? ' cur' : '')}, menu, '<b>' + num + '</b><span>' + x.title + '</span>');
@@ -271,9 +284,11 @@ var App = (function(){
     initTheme();
     initShell();
     var n = 0; App.CH_LABEL = App.CH_LABEL || {};
-    chapters.forEach(function(c){ c.num = c.ref ? 'A\u2013Z' : String(n++).padStart(2, '0'); App.CH_LABEL[c.id] = [c.num, c.short]; });
+    if (App.Course) App.Course.order(chapters);
+    chapters.forEach(function(c){ if (!c.num) c.num = c.ref ? 'A\u2013Z' : String(n++).padStart(2, '0'); App.CH_LABEL[c.id] = [c.num, c.short]; });
     var nav = document.getElementById('nav'), lastGroup = null;
-    chapters.forEach(function(c){
+    if (App.Course){ App.Course.nav(nav); App.Course.indexTerms(); }
+    else chapters.forEach(function(c){
       var grp = chapterGroup(c);
       if (grp !== lastGroup){ h('div', {'class': 'nav-group'}, nav, grp); lastGroup = grp; }
       var a = h('a', {href: '#' + c.id}, nav,

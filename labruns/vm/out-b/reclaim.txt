@@ -1,0 +1,58 @@
+$ grep -E "^(MemTotal|MemFree|Active|Inactive|Unevictable|SwapTotal)" /proc/meminfo
+MemTotal:       16479424 kB
+MemFree:        15927960 kB
+Active:             3952 kB
+Inactive:         454848 kB
+Active(anon):         28 kB
+Inactive(anon):   299292 kB
+Active(file):       3924 kB
+Inactive(file):   155556 kB
+Unevictable:        8588 kB
+SwapTotal:             0 kB
+$ cat /sys/fs/cgroup/memory/lab/memory.limit_in_bytes
+67108864
+== 1. read a 16 MiB file twice inside the cgroup
+$ grep -E "^(cache|rss|active_file|inactive_file) " memory.stat    # after the first read
+cache 16916480
+rss 0
+inactive_file 16781312
+active_file 135168
+$ grep -E "^(cache|rss|active_file|inactive_file) " memory.stat    # after the second read
+cache 16916480
+rss 0
+inactive_file 0
+active_file 16916480
+== 2. read a 256 MiB file once inside the cgroup
+$ cat memory.max_usage_in_bytes memory.failcnt
+67104768
+834
+$ grep -E "^(cache|rss|active_file|inactive_file) " memory.stat
+cache 66670592
+rss 0
+inactive_file 50069504
+active_file 16601088
+$ /proc/vmstat: change during the read (reclaim for the whole machine)
+pgsteal_kswapd 0
+pgsteal_direct 0
+pgscan_kswapd 0
+pgscan_direct 0
+oom_kill 0
+== 3. write 128 MiB of anonymous memory inside the cgroup
+written 0 MiB
+written 16 MiB
+written 32 MiB
+written 48 MiB
+Killed
+exit status: 137
+$ cat memory.oom_control
+oom_kill_disable 0
+under_oom 0
+oom_kill 1
+$ /proc/vmstat: change during the run
+pgsteal_kswapd 0
+pgsteal_direct 0
+pgscan_kswapd 0
+pgscan_direct 0
+oom_kill 1
+$ dmesg | grep "Memory cgroup out of memory" | tail -1
+Memory cgroup out of memory: Killed process 11049 (eat) total-vm:133640kB, anon-rss:65152kB, file-rss:1424kB, shmem-rss:0kB, UID:0 pgtables:168kB oom_score_adj:0

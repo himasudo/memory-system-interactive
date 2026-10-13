@@ -18,7 +18,7 @@ function entry(bundle, id = 'example') {
     )
   };
 }
-test('seven evidence labels stay distinct and the Start page legend explains each one', () => {
+test('evidence labels stay distinct and the Start page legend explains each one', () => {
   assert.deepEqual(I.categories, [
     'Vendor docs',
     'Peer-reviewed',
@@ -31,7 +31,11 @@ test('seven evidence labels stay distinct and the Start page legend explains eac
   const sandbox = { App: {} };
   require('node:vm').runInNewContext(read('src/03_architecture_evidence.js'), sandbox);
   const labels = sandbox.App.Evidence.labels;
-  assert.deepEqual(Array.from(labels, (l) => l.kind).sort(), I.categories.slice().sort());
+  /* the legend has the seven labels the implementation cases use, plus three the course adds */
+  assert.deepEqual(
+    Array.from(labels, (l) => l.kind).sort(),
+    I.categories.concat(['Specification', 'Linux source', 'Lab run']).sort()
+  );
   for (const l of labels) assert.ok(l.means && l.means.length > 20, l.kind);
 });
 test('implementation schematics name the generation, cite vendor sources and state limits', () => {

@@ -72,12 +72,15 @@ async function main() {
       assert.ok(await page.locator('#ch-start a[href="#map/amd"]').count());
       assert.ok(await page.locator('#ch-start a[href="#perf/datasets"]').count());
     });
-    await check('Start page legend explains all seven labels', async () => {
+    await check('Start page legend explains every label', async () => {
       await route('start');
       const kinds = await page.locator('#ch-start .label-legend .evidence-label').allTextContents();
+      /* the seven labels of the implementation cases, plus three the course lessons use */
       assert.deepEqual(
         kinds.slice().sort(),
-        (await page.evaluate(() => ImplementationEvidence.categories)).slice().sort()
+        (await page.evaluate(() => ImplementationEvidence.categories))
+          .concat(['Specification', 'Linux source', 'Lab run'])
+          .sort()
       );
     });
     for (const id of ['amd', 'intel', 'arm'])

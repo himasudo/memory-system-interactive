@@ -50,8 +50,8 @@
 /* ======================= start here ======================= */
 App.chapter({id: 'start', short: 'Start here', title: 'Memory Systems Lab',
 lede: 'How one memory access travels through a computer, from a line of C down to the DRAM chips and back. Change the experiments, compare real AMD, Intel and Arm chips, and measure your own machine.',
-points: ['Every chapter follows the same small C function.',
-  'Chapters [[num:bits]]\u2013[[num:share]] build the background. Chapters [[num:map]]\u2013[[num:e2e]] follow one access through the hardware.',
+points: ['Seven parts, in order: foundations, the core, virtual memory, caches and DRAM, ordering, devices, and the whole system.',
+  'Parts III and VI are short lessons built on outputs from real Linux machines; the other parts are chapters with interactive labs.',
   'The lab uses one small example machine, and compares it with real AMD, Intel and Arm designs.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
@@ -71,12 +71,27 @@ build: function(root){
     A(sv, 'M110 58 C110 84 61 86 61 108');
   }});
 
-  var b = P.sec(root, 'paths', 'Where to start', 'Start from the basics, go straight to the hardware, or jump to real chips and your own machine.');
-  App.h('div', {'class': 'path-cards path-cards-4'}, b,
-    '<a class="path-card" href="#bits"><span class="path-k">New to hardware</span><strong>Start with [[ch:bits]]</strong><span>Eight short chapters: bits and hex, addresses, instructions, reading assembly, cycles, caches, virtual memory, and sharing memory.</span></a>' +
-    '<a class="path-card" href="#map"><span class="path-k">Know registers, caches and virtual memory</span><strong>Start at [[ch:map]]</strong><span>A map of the whole machine, then one chapter per stage of a memory access.</span></a>' +
-    '<a class="path-card" href="#map/chips"><span class="path-k">Real chips</span><strong>AMD, Intel and Arm compared</strong><span>How three current server designs build the same parts at different sizes.</span></a>' +
-    '<a class="path-card" href="#perf/datasets"><span class="path-k">Your machine</span><strong>Measure your own computer</strong><span>One command on Linux runs the benchmarks and loads the results into every chapter.</span></a>');
+  var b = P.sec(root, 'course', 'The course', 'Seven parts. Each part has an overview page; pages you mark as done are counted here and in the sidebar.');
+  var map = App.h('div', {'class': 'course-map'}, b);
+  function drawMap(){
+    var C = App.Course; if (!C) return;
+    map.innerHTML = '';
+    var parts = C.parts.filter(function(p){ return p.id !== 'start' && p.id !== 'ref'; }), next = null, first = null;
+    parts.forEach(function(p){ C.livePages(p).forEach(function(id){ if (!first) first = id; if (!next && !C.isDone(id)) next = id; }); });
+    var label = function(id){ var c = App.chapters.filter(function(x){ return x.id === id; })[0]; return c ? c.num + ' ' + c.short : id; };
+    var any = parts.some(function(p){ return C.livePages(p).some(C.isDone); });
+    App.h('a', {'class': 'cm-next', href: '#' + (next || first)}, map,
+      '<span class="cm-k">' + (!next ? 'All pages done' : any ? 'Continue' : 'Start') + '</span><strong>' + label(next || first) + '</strong><span>' + (!next ? 'Review any part below.' : any ? 'The first page you have not marked as done.' : 'New to hardware? Begin here. Already know registers, caches and virtual memory? Pick a part below.') + '</span>');
+    var grid = App.h('div', {'class': 'cm-parts'}, map);
+    parts.forEach(function(p){
+      var list = C.livePages(p), n = list.filter(C.isDone).length, lessons = list.filter(function(id){ return C.lessons[id]; }).length;
+      App.h('a', {'class': 'cm-part', href: '#part-' + p.id}, grid,
+        '<span class="cm-num">' + p.n + '</span><span class="cm-body"><strong>' + p.title + '</strong><small>' + list.length + (list.length === 1 ? ' page' : ' pages') + (lessons ? ' · ' + lessons + ' lessons' : '') + (n ? ' · ' + n + ' done' : '') + '</small>' +
+        '<span class="cm-bar"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></span></span>');
+    });
+    App.h('p', {'class': 'cm-also'}, map, 'Also: <a href="#map/chips">AMD, Intel and Arm compared</a> · <a href="#perf/datasets">measure your own computer</a> · <a href="#gloss">glossary</a>');
+  }
+  drawMap();
 
   var c = P.sec(root, 'reading', 'How to read the pages', 'Terms, diagrams, step panels and timings.');
   var legend = ['basics', 'core', 'xlate', 'cache', 'memory', 'order', 'coh', 'pref', 'io'].map(function(k){ return '<span class="legend-chip term-' + k + '">' + App.TERM_LABEL[k] + '</span>'; }).join('');
@@ -87,6 +102,7 @@ build: function(root){
     'Step panels walk through a process one step at a time. The \u2190 and \u2192 keys also work.',
     'Each chapter is one long page. The section name in the top bar opens a list of its sections.',
     'Most hardware chapters have two parts: the walkthrough, then an <b>Experiments</b> part with small simulations you can change. Each experiment asks you to predict the result first.',
+    'Lessons, in Parts III and VI, define each new term once, in the margin, and end with questions and a short list of what to remember. Outputs marked <b>Lab run</b> come from real Linux machines and name the machine and file they came from.',
     'Timings come from the latency settings (the ≋ button). They are example values for the lab’s model machine. Your own measurements appear separately, labeled “Your machine”.'
   ])]);
   var labels = App.h('dl', {'class': 'label-legend'}, c);
@@ -108,6 +124,7 @@ build: function(root){
       x += l[2] + 12;
     });
   }});
+  return {onShow: drawMap};
 }});
 
 /* ======================= 01 bits, bytes and hex ======================= */

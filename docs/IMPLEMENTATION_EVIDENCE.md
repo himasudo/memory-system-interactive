@@ -5,17 +5,18 @@ The lab runs every simulation on one small example machine: four cores, a 32 KiB
 channels. It is small so every structure fits on screen, and it copies no
 particular chip. Real chips appear in two places:
 
-- **Chapter 09, "Real chips"**: a comparison table and one package diagram each
+- **Lesson II.01, "Real chips"**: a comparison table and one package diagram each
   for AMD EPYC 9005 (Zen 5), Intel Xeon 6900P (P-cores) and Arm Neoverse V3 /
   CSS V3, plus published measurements and two older designs worth knowing.
-- **Short notes in the chapters**: for example L1d, TLB and ROB sizes on Zen 5,
-  Golden Cove and Neoverse V3, the DDR5 burst shape, and which coherence
-  protocol each vendor uses.
+- **Short notes in the pages**: for example L1d, TLB and ROB sizes on Zen 5,
+  Golden Cove and Neoverse V3, the DDR5 burst shape, which coherence protocol
+  each vendor uses, and the "On Arm", "On AMD" and "On Intel" notes in the
+  lessons of Parts III and VI.
 
 Simulations never read these numbers. The latency settings (the ≋ button) are
 round example values the reader can change.
 
-## The seven labels
+## The ten labels
 
 The Start page explains each label; the list lives in
 `src/03_architecture_evidence.js` (`App.Evidence.labels`) and
@@ -24,7 +25,10 @@ The Start page explains each label; the list lives in
 | Label | Means |
 |---|---|
 | Simulation | A small model with made-up sizes and timings, built to show one mechanism. |
-| Vendor docs | Stated in AMD, Intel or Arm documentation for a named product. |
+| Vendor docs | Stated in AMD, Intel or Arm documentation for a named product or architecture. |
+| Specification | From a published standard, such as PCI Express, NVM Express or virtio. |
+| Linux source | Quoted from the Linux kernel source or its documentation, including the manual pages; kernel source at the version named (v6.18 throughout the lessons). |
+| Lab run | Output of a small program run on a stated Linux machine; the program and the raw output are in `labruns/`. |
 | Peer-reviewed | From a published paper, for the chips and conditions it tested. |
 | Published measurement | Measured by an independent tester on named hardware. |
 | Your machine | Measured by the lab's benchmarks on the reader's computer. |
@@ -43,6 +47,21 @@ The Start page explains each label; the list lives in
    text of the sources and are not to scale.
 5. Never feed a published number into a simulation's defaults.
 
+## Rules for lab runs and kernel source
+
+1. Quote only real output. Every "Lab run" block comes from a file in
+   `labruns/` and is registered in `src/38_runs.js` with that file, the machine
+   it ran on and what was run; `tests/runs.test.cjs` fails if a quoted line is
+   not in the file. Lines left out are marked with `…`.
+2. Name the machine. Machines A and B are described in
+   [labruns/README.md](../labruns/README.md); both are virtual machines, so
+   their physical addresses are guest physical addresses, and the lessons say so.
+3. Quote kernel source from one version, Linux v6.18, and name the file and
+   function. A quote that leaves lines out says "excerpt" and shows `…` where
+   lines are missing.
+4. A number that a run cannot show and no source publishes is labelled
+   **Inference** or **Not published**, never estimated in a figure.
+
 ## Sources used for the comparison
 
 Checked 7 October 2026.
@@ -54,7 +73,7 @@ Checked 7 October 2026.
 | Arm Neoverse V3 | [Neoverse V3 optimization guide](https://documentation-service.arm.com/static/6734eb2627eda361ad4da4f4), [CSS V3](https://arm.com/products/neoverse-compute-subsystems/css-v3), [Jiajie Chen's V3 notes](https://jia.je/hardware/2026/06/13/arm-neoverse-v3/index.md) |
 | Coherence protocols | [AMD64 APM vol. 2 (MOESI)](https://web.archive.org/web/20170619232736/http://developer.amd.com/wordpress/media/2012/10/24593_APM_v21.pdf#page=217), [Goodman and Hum, MESIF](https://www.cs.auckland.ac.nz/~goodman/TechnicalReports/MESIF-2009.pdf), [gem5 CHI states](https://www.gem5.org/documentation/general_docs/ruby/CHI/) |
 
-Published measurements in chapter 09 come from
+Published measurements in Lesson II.01 come from
 [uops.info](https://uops.info/html-instr/MOV_R64_M64.html) (L1 load-to-use on
 Zen 5 and Arrow Lake-P; the exact CPU model isn't given, so the lab says so) and
 [Chips and Cheese on Lion Cove](https://chipsandcheese.com/p/analyzing-lion-coves-memory-subsystem)

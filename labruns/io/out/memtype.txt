@@ -1,0 +1,15 @@
+$ cat /sys/kernel/debug/x86/pat_memtype_list    # only the lines for the ECAM window and for BAR0 of 0000:00:02.0
+PAT: [mem 0x00000000eec00000-0x00000000eed00000] uncached-minus
+PAT: [mem 0x0000004000080000-0x0000004000081000] uncached-minus
+PAT: [mem 0x0000004000082000-0x0000004000083000] uncached-minus
+PAT: [mem 0x0000004000084000-0x0000004000085000] uncached-minus
+PAT: [mem 0x0000004000086000-0x0000004000087000] uncached-minus
+PAT: [mem 0x0000004000088000-0x0000004000089000] uncached-minus
+$ ls -A /sys/kernel/debug/swiotlb    # the bounce-buffer pool's statistics
+(empty)
+$ zcat /proc/config.gz | grep -E "^(# )?CONFIG_(INTEL_IOMMU|AMD_IOMMU|VIRTIO_IOMMU|IRQ_REMAP|SWIOTLB)[= ]"
+# CONFIG_AMD_IOMMU is not set
+# CONFIG_INTEL_IOMMU is not set
+# CONFIG_IRQ_REMAP is not set
+# CONFIG_VIRTIO_IOMMU is not set
+CONFIG_SWIOTLB=y

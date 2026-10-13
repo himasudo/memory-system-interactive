@@ -15,9 +15,9 @@ const errors = [],
 const routes = [
   'code/fetch',
   'pref/resources',
-  'dev/iotlb',
-  'dev/queues',
-  'dev/uring',
+  'io-iommu/iotlb',
+  'io-irq/queues',
+  'io-uring/uring',
   'hier/multisocket',
   'dram/ecc',
   'dram/disturbance',
@@ -144,14 +144,14 @@ async function main() {
       assert.equal(await page.locator('.prefetch-results tbody tr').count(), 0);
     });
     await check('DMA quiescence, stale IOTLB and safe remapping replay', async () => {
-      const lab = await route('dev/iotlb');
+      const lab = await route('io-iommu/iotlb');
       await scrub(lab, 'DMA mapping event', 4);
       assert.match(await lab.locator('.cache-state').textContent(), /old IOTLB translation/);
       await scrub(lab, 'DMA mapping event', 7);
       assert.match(await lab.locator('.cache-state').textContent(), /frame 31/);
     });
     await check('I/O reuse, completion polling, remote DMA and CQ backpressure', async () => {
-      const lab = await route('dev/queues');
+      const lab = await route('io-irq/queues');
       await field(lab, 'Buffer pages reused', 4);
       assert.equal(await lab.evaluate((el) => el._ioResult.stats.iotlbMisses), 4);
       await field(lab, 'Buffers', 0);
@@ -172,7 +172,7 @@ async function main() {
     await check(
       'io_uring page-cache, direct path and polling mechanisms stay distinct',
       async () => {
-        const lab = await route('dev/uring');
+        const lab = await route('io-uring/uring');
         await field(lab, 'File read path', 'hit');
         assert.ok(
           await lab.evaluate((el) => el._uringPath.some((q) => q[0] === 'Copy from the page cache'))
@@ -304,11 +304,11 @@ async function main() {
     }
     await check('new sections appear in navigation and native protocol links exist', async () => {
       await page.setViewportSize({ width: 1440, height: 1000 });
-      await route('dev/queues');
+      await route('io-iommu/iotlb');
       await page.locator('#crumbSec').click();
       assert.match(await page.locator('#secMenu').textContent(), /A DMA mapping has a lifetime/);
       await page.keyboard.press('Escape');
-      const lab = await route('dev/uring');
+      const lab = await route('io-uring/uring');
       const href = await lab
         .getByRole('link', { name: 'How to run a controlled io_uring experiment' })
         .getAttribute('href');

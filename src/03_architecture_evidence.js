@@ -54,7 +54,19 @@ App.Evidence = {
     },
     {
       kind: 'Vendor docs',
-      means: 'Stated in AMD, Intel or Arm documentation for a named product.'
+      means: 'Stated in AMD, Intel or Arm documentation for a named product or architecture.'
+    },
+    {
+      kind: 'Specification',
+      means: 'From a published standard, such as PCI Express, NVM Express or virtio.'
+    },
+    {
+      kind: 'Linux source',
+      means: 'Quoted from the Linux kernel source or its documentation, including the manual pages. Kernel source is quoted at the version named.'
+    },
+    {
+      kind: 'Lab run',
+      means: 'Output of a small program the lab ran on a stated Linux machine. The programs are in the repository, so you can run them yourself.'
     },
     {
       kind: 'Peer-reviewed',

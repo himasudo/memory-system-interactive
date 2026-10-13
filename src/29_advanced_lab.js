@@ -1522,17 +1522,20 @@
 
   App.extendChapter('code', fetch);
   App.extendChapter('pref', prefetch);
+  /* The dma, io and uring labs sit inside the Part VI lessons when those exist (io-iommu, io-irq,
+     io-uring); otherwise they stay on the dev page. */
   App.extendChapter('dev', function (root) {
-    dma(root);
-    io(root);
-    uring(root);
+    var has = function (id) { return App.Course && App.Course.lessons[id]; };
+    if (!has('io-iommu')) dma(root);
+    if (!has('io-irq')) io(root);
+    if (!has('io-uring')) uring(root);
   });
   App.extendChapter('hier', multisocket);
   App.extendChapter('dram', function (root) {
     refresh(root);
     reliability(root);
   });
-  App.AdvancedUI = { validatePrefetch: validatePrefetch };
+  App.AdvancedUI = { validatePrefetch: validatePrefetch, labs: { dma: dma, io: io, uring: uring } };
   [
     [
       'itlb',

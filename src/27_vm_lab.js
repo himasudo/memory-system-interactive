@@ -52,7 +52,7 @@
     );
     U.model(
       sec,
-      'A simplified Linux-style lifecycle: four 4 KiB pages, two processes, one TLB each. Frames show one word, but zeroing and copying count whole pages. Faults take no time, and TLB invalidations finish at once (the shootdown lab below adds that wait).'
+      'A simplified Linux-style lifecycle: four 4 KiB pages, two processes, one TLB each. Frames show one word, but zeroing and copying count whole pages. Faults take no time, and TLB invalidations finish at once (the shootdown lab in [[ch:vm-shootdown]] adds that wait).'
     );
     U.checkpoint(
       sec,
@@ -401,7 +401,6 @@
     U.sources(sec, [
       ['Linux memory-management concepts', 'https://docs.kernel.org/admin-guide/mm/concepts.html']
     ]);
-    measurement(sec);
   }
   function pages(root) {
     var sec = section(
@@ -1132,12 +1131,25 @@
     });
     return data;
   }
+  /* the native import, as a lab section of its own */
+  function native(root) {
+    var sec = section(
+      root,
+      'native',
+      'Page faults on your machine',
+      'Run a small program on your own machine and import what it measured: faults on first reads, first writes, repeated writes and a child’s copy-on-write writes.'
+    );
+    measurement(sec);
+  }
+  /* The Part III lessons place these labs inline (L.lab in src/02_course.js). Labs whose lesson
+     is not written yet stay on the xlate lab page. */
+  App.VMUI = {
+    validate: validate,
+    labs: { lifecycle: lifecycle, pages: pages, walks: walks, shootdowns: shootdowns, native: native }
+  };
   App.extendChapter('xlate', function (root) {
-    lifecycle(root);
-    pages(root);
-    walks(root);
-    shootdowns(root);
+    if (!App.Course || !App.Course.lessons['vm-cow']) lifecycle(root);
+    if (!App.Course || !App.Course.lessons['vm-cost']) native(root);
   });
   App.extendChapter('hier', numa);
-  App.VMUI = { validate: validate };
 })();
