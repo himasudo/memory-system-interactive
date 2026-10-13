@@ -1,7 +1,7 @@
 /* ======================= chapter: translation ======================= */
 App.chapter({id: 'xlate', short: 'VA \u2192 PA', title: 'Virtual to physical: TLBs and the page walk',
 lede: 'Programs use virtual addresses, but the L1d needs the physical address before it can confirm a hit.',
-points: ['Teaching-model parameters: illustrative 64-entry / 512-entry TLBs; the table format is x86-64, four-level, 48-bit VA.', 'Follow the virtual address of <code>hist[123]</code> from the address unit to the tag compare.', 'Five situations: DTLB hit, L2 TLB hit, full page walk, page fault, and a 2 MB page.'],
+points: ['Follow the virtual address of <code>hist[123]</code> from the address unit to the tag compare.', 'Five situations: DTLB hit, L2 TLB hit, full page walk, page fault, and a 2 MB page.', 'The page tables are x86-64\u2019s four levels; Arm\u2019s work the same way under different names.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, EX = App.EX, hx = App.hx;
   var VA = App.WALK.va;
@@ -55,7 +55,7 @@ build: function(root){
   /* ---------- L1 DTLB CAM ---------- */
   var gcam = G('cam');
   s('rect', {x: 10, y: 140, width: 540, height: 196, rx: 10, 'class': 'box'}, gcam);
-  s('text', {x: 22, y: 160, 'class': 'h'}, gcam, 'Model L1 DTLB · 64 entries, fully associative');
+  s('text', {x: 22, y: 160, 'class': 'h'}, gcam, 'L1 DTLB \u00b7 64 entries, fully associative');
   s('text', {x: 22, y: 176, 'class': 's'}, gcam, 'the VPN is compared against every entry in the same cycle (a CAM)');
   var camH = ['V', 'VPN', 'PCID', 'PFN', 'size', 'perm', 'compare'], camX = [24, 48, 180, 236, 322, 372, 440];
   camH.forEach(function(t, k){ s('text', {x: camX[k], y: 196, 'class': 's'}, gcam, t); });
@@ -70,8 +70,8 @@ build: function(root){
   /* L2 TLB */
   var gl2 = G('l2');
   s('rect', {x: 565, y: 140, width: 300, height: 196, rx: 10, 'class': 'box'}, gl2);
-  s('text', {x: 577, y: 160, 'class': 'h'}, gl2, 'Model L2 TLB · 512 entries');
-  s('text', {x: 577, y: 176, 'class': 's'}, gl2, 'chosen coverage: 4 KiB / 2 MiB; larger leaves not in this TLB');
+  s('text', {x: 577, y: 160, 'class': 'h'}, gl2, 'L2 TLB \u00b7 512 entries');
+  s('text', {x: 577, y: 176, 'class': 's'}, gl2, 'checked after an L1 DTLB miss; 4 KB and 2 MB pages');
   E.l2Rows = [];
   for (k = 0; k < 6; k++){
     var y2 = 190 + k * 19;
@@ -81,7 +81,7 @@ build: function(root){
   /* walker */
   var gw = G('walker');
   s('rect', {x: 880, y: 140, width: 310, height: 196, rx: 10, 'class': 'box'}, gw);
-  s('text', {x: 892, y: 160, 'class': 'h'}, gw, 'Page walker + walk cache (count unspecified)');
+  s('text', {x: 892, y: 160, 'class': 'h'}, gw, 'Page walker + walk cache');
   s('text', {x: 892, y: 176, 'class': 's'}, gw, 'reads page-table entries through the data caches');
   E.wl = []; for (k = 0; k < 7; k++) E.wl.push(s('text', {x: 892, y: 200 + k * 18, 'font-size': 12}, gw, ''));
   /* CR3 + tables */
@@ -167,7 +167,7 @@ build: function(root){
       F('L2 TLB', 'L2 TLB hit', 'The L2 TLB (512 entries) holds the translation. It is slower than the L1 DTLB but far cheaper than a walk. The entry is copied into the L1 DTLB, replacing an older one, and the load replays.', {va: 1, cam: 'miss', l2: 'hit'});
       F('fill', 'L1 DTLB refilled, load replays', 'Next attempt: the L1 DTLB hits in the new entry and the PA is <b>0x1a3f7ce58</b>.', {va: 1, cam: 'hitnew', l2: 'hit', pa: 'ok'});
     } else {
-      F('L2 miss', 'L2 TLB miss: start a page walk', 'Neither TLB has the translation. A hardware ' + g('walk', 'page walkers') + ' takes the request. This walkthrough follows one dependent 8-byte entry per level; cached upper entries can avoid some memory requests.', {va: 1, cam: 'miss', l2: 'miss', walker: 1, huge: huge});
+      F('L2 miss', 'L2 TLB miss: start a page walk', 'Neither TLB has the translation. A hardware ' + g('walk', 'page walker') + ' takes the request. It reads one 8-byte entry per level, each read depending on the previous one; a ' + g('pwc') + ' can skip the upper levels.', {va: 1, cam: 'miss', l2: 'miss', walker: 1, huge: huge});
       var lv = huge ? 3 : 4;
       for (var q = 0; q < lv; q++){
         var tb = TB[q], ea = tb.base + BigInt(tb.idx) * 8n;
@@ -183,7 +183,7 @@ build: function(root){
       }
       if (mode === 'fault'){
         F('#PF', 'Page fault raised', 'The walker reports "not present". The load is marked faulting in the ROB.\nNothing happens until it reaches the ROB head: exceptions are taken in program order, so older instructions retire first and all younger ones are ' + g('squash', 'squashed') + '.\nThen the CPU writes the faulting address into ' + g('pf', 'CR2') + ', pushes an error code (P = 0: not present; U/S = 1: user mode; W/R: the access type) and jumps to the kernel\'s #PF handler (vector 14).', {va: 1, walker: 1, lvl: 4, pte: 3, pteVal: FAULT_PTE, pa: 'fault', kernel: 1, fault: true});
-        F('kernel', 'Linux allocates the page', 'The handler finds a permitted anonymous VMA. This selected allocation path installs a private zeroed 4 KB frame; a read-only first touch can instead map the shared zero page, as the OS lifecycle lab below shows. Placement follows memory policy and available memory, often local ' + g('ftouch') + '. The kernel function chain below is illustrative and kernel-version dependent.', {va: 1, walker: 1, lvl: 4, pte: 3, pteVal: TB[3].val, pa: 'fault', kernel: 2, fault: true});
+        F('kernel', 'Linux allocates the page', 'The handler finds the VMA covering the address and sees an anonymous page never touched. Here it allocates a zeroed 4 KB frame, usually on the NUMA node of this CPU (' + g('ftouch') + '), and writes a present PTE. A first touch that only reads can map the shared zero page instead; the OS lab below shows both. The kernel functions are shown below the diagram; their names vary between kernel versions.', {va: 1, walker: 1, lvl: 4, pte: 3, pteVal: TB[3].val, pa: 'fault', kernel: 2, fault: true});
         F('retry', 'Return and re-execute', 'iretq returns to the faulting instruction, which runs again from the start: TLB miss, walk, now the PTE is present, PFN 0x1a3f7c, <b>PA 0x1a3f7ce58</b>. This was a <b>minor</b> fault (no disk I/O). A <b>major</b> fault would also have to read the page from swap or a file, through the NVMe path of [[ch:dev]].', {va: 1, lvl: 4, pte: 3, pteVal: TB[3].val, pa: 'ok', cam: 'hitnew', kernel: 3});
       } else {
         F('fill', 'Fill the TLBs and replay', huge ? 'The 2 MB translation goes into the L2 TLB and the L1 DTLB. PA = 2 MB frame base 0x1a3e00000 + VA bits 20:0 (0x1c2e58) = <b>0x1a3fc2e58</b> (a different mapping from the 4 KB case, assumed for this scenario). One entry now covers 512 times more memory.' :
@@ -285,9 +285,10 @@ build: function(root){
 
   /* reach + context-switch cards */
   var reach = h('div', {'class': 'card'}, extra);
-  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' · hypothetical geometry; chosen entries</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
+  reach.innerHTML = '<h3>' + g('reach', 'TLB reach') + ' in the model</h3><table class="mt"><tr><th></th><th>entries</th><th>4 KB pages</th><th>2 MB pages</th></tr>' +
     '<tr><td>L1 DTLB</td><td>64</td><td>256 KB</td><td>128 MB</td></tr><tr><td>L2 TLB</td><td>512</td><td>2 MB</td><td>1 GB</td></tr></table>' +
-    '<p style="margin-top:8px">These illustrative entry counts are not a hardware specification. Compare with the chosen model cache capacities: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
+    '<p class="note" style="margin-top:8px">Real TLBs are bigger. The L1 DTLB has 96 entries on AMD Zen 5, Intel Golden Cove and Arm Neoverse V3; the L2 TLB has 4,096 on Zen 5 (16 MB of 4 KB pages) and 2,048 on Neoverse V3 (8 MB).</p>' +
+    '<p style="margin-top:8px">Compare with the model\u2019s caches: L1d 32 KB, L2 512 KB, L3 4 MB. With 4 KB pages, a working set can fit in a cache level while its translations no longer fit in a TLB level, and the two effects show up at different sizes.</p>';
   var ctx = h('div', {'class': 'card'}, extra);
   ctx.innerHTML = '<h3>Context switches and ' + g('pcid', 'PCID') + '</h3><p>Switching processes writes a new value into ' + g('cr3') + '. Without PCIDs every non-global TLB entry would have to be discarded, and the next process starts with page walks. With PCIDs each entry carries a 12-bit process tag, so entries from different processes coexist and a switch only changes which tag matches.</p>' +
     '<p>The kernel removes stale entries itself with <code>invlpg</code> (one page) or a CR3 reload, for example after <code>munmap</code>. On multi-core systems it must also interrupt other cores that may cache the entry (a TLB shootdown).</p>';

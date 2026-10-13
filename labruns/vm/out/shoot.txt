@@ -1,0 +1,34 @@
+### run 1 (taskset -c 0 ./shoot)
+ONE THREAD on CPU0, 1000 x (mmap, store, munmap):
+  CPU0  local MM shootdown     1000
+  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 +0
+TWO THREADS (the second spinning on CPU1), 1000 x (mmap, store, munmap) on CPU0:
+  CPU0  flush on task switch   2
+  CPU0  local MM shootdown     1000
+  CPU0  remote IPI send        1000
+  CPU1  flush on task switch   5
+  CPU1  remote shootdown       999
+  CPU1  local MM shootdown     1
+  CPU1  remote IPI send        1
+  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 +999
+### run 2 (taskset -c 0 ./shoot)
+ONE THREAD on CPU0, 1000 x (mmap, store, munmap):
+  CPU0  local MM shootdown     1000
+  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 +0
+TWO THREADS (the second spinning on CPU1), 1000 x (mmap, store, munmap) on CPU0:
+  CPU0  flush on task switch   3
+  CPU0  local MM shootdown     1000
+  CPU0  remote IPI send        1000
+  CPU1  flush on task switch   5
+  CPU1  remote shootdown       988
+  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 +989
+### run 3 (taskset -c 0 ./shoot)
+ONE THREAD on CPU0, 1000 x (mmap, store, munmap):
+  CPU0  local MM shootdown     1000
+  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 +0
+TWO THREADS (the second spinning on CPU1), 1000 x (mmap, store, munmap) on CPU0:
+  CPU0  flush on task switch   2
+  CPU0  local MM shootdown     1000
+  CPU0  remote IPI send        1000
+  CPU1  remote shootdown       1000
+  /proc/interrupts TLB shootdowns received: CPU0 +0, CPU1 +1000

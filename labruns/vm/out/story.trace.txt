@@ -1,0 +1,115 @@
+# == mmap 4 pages at 0x7f3a1b2c3000
+# == store to page 0: p[0xd4e] = 1
+page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c7e97 error_code=0x6
+mm_page_alloc: pfn=0x133c05 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x128e8c order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x1330d4 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x129b49 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP
+# == second store to page 0
+# == load from page 1
+page_fault_user: address=0x7f3a1b2c4d4e ip=0x55c5ee6c7f57 error_code=0x4
+# == store to page 1
+page_fault_user: address=0x7f3a1b2c4d4e ip=0x55c5ee6c7fb3 error_code=0x7
+mm_page_alloc: pfn=0x125396 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+# == store to page 3
+page_fault_user: address=0x7f3a1b2c6d4e ip=0x55c5ee6c7ffa error_code=0x6
+mm_page_alloc: pfn=0x12638f order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP
+# == fork
+page_fault_user: address=0x7fac8c50e2b0 ip=0x7fac8c50e2b0 error_code=0x14
+page_fault_user: address=0x7fac8c4ee280 ip=0x7fac8c4ee280 error_code=0x14
+mm_page_alloc: pfn=0x10dca0 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x113452 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x1134bc order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x1040af order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x1332e6 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x115112 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x128c39 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x13309e order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x128c73 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x104243 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x1137ae order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x1151bd order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x10dcfb order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+mm_page_alloc: pfn=0x14dfd0 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+tlb_flush: pages:-1 reason:local MM shootdown (3)
+page_fault_user: address=0x7fff02c5aa58 ip=0x7fac8c4f4266 error_code=0x7
+mm_page_alloc: pfn=0x12cb7f order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+tlb_flush: pages:-1 reason:flush on task switch (0)
+mm_page_alloc: pfn=0x125ea4 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+mm_page_alloc: pfn=0x1281aa order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+page_fault_user: address=0x7fac8c4ee2a7 ip=0x7fac8c4ee2a7 error_code=0x14
+mm_page_alloc: pfn=0x11514f order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+page_fault_user: address=0x7fac8c4f40b2 ip=0x7fac8c4f40b2 error_code=0x14
+page_fault_user: address=0x7fac8c60a788 ip=0x7fac8c4f40bd error_code=0x7
+mm_page_alloc: pfn=0x121b1a order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+page_fault_user: address=0x7fac8c756a28 ip=0x7fac8c4f40d7 error_code=0x7
+mm_page_alloc: pfn=0x12061e order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+page_fault_user: address=0x7fac8c7570d0 ip=0x7fac8c4f41ee error_code=0x7
+mm_page_alloc: pfn=0x117606 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+page_fault_user: address=0x7fff02c5aa58 ip=0x7fac8c4f4242 error_code=0x7
+page_fault_user: address=0x7fac8c50e420 ip=0x7fac8c50e420 error_code=0x14
+page_fault_user: address=0x55c5ee6c8050 ip=0x55c5ee6c8050 error_code=0x14
+page_fault_user: address=0x7fac8c5385f0 ip=0x7fac8c5385f0 error_code=0x14
+page_fault_user: address=0x7fac8c48fd30 ip=0x7fac8c48fd30 error_code=0x14
+page_fault_user: address=0x7fac8c469080 ip=0x7fac8c469080 error_code=0x14
+page_fault_user: address=0x7fac8c428590 ip=0x7fac8c428590 error_code=0x14
+page_fault_user: address=0x7fac8c59b240 ip=0x7fac8c59b240 error_code=0x14
+page_fault_user: address=0x55c5ee6c9688 ip=0x7fac8c59b258 error_code=0x4
+page_fault_user: address=0x7fac8c51c830 ip=0x7fac8c51c830 error_code=0x14
+# == child: warm-up (its first writes to the stack and libc data fault)
+page_fault_user: address=0x55c5ee6cb014 ip=0x55c5ee6c753f error_code=0x7
+mm_page_alloc: pfn=0x12494f order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+page_fault_user: address=0x7fac8c3ff000 ip=0x55c5ee6c77b7 error_code=0x4
+mm_page_alloc: pfn=0x104508 order=0 migratetype=0 gfp_flags=GFP_KERNEL_ACCOUNT|__GFP_ZERO|__GFP_COMP
+page_fault_user: address=0x7fac8c2ffe06 ip=0x7fac8c48fd94 error_code=0x6
+page_fault_user: address=0x7fac8c5c53ed ip=0x7fac8c469295 error_code=0x4
+page_fault_user: address=0x7fac8c45eff0 ip=0x7fac8c45eff0 error_code=0x14
+page_fault_user: address=0x7fac8c5d0c09 ip=0x7fac8c45f052 error_code=0x4
+# == child stores 9 to page 0
+page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8095 error_code=0x7
+mm_page_alloc: pfn=0x116f45 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)
+mm_page_alloc: pfn=0x1002c6 order=0 migratetype=0 gfp_flags=GFP_NOWAIT
+tlb_flush: pages:-1 reason:flush on task switch (0)
+mm_page_free: pfn=0x12494f order=0
+mm_page_alloc: pfn=0x128f54 order=0 migratetype=0 gfp_flags=GFP_NOWAIT
+mm_page_free: pfn=0x121b1a order=0
+mm_page_free: pfn=0x125ea4 order=0
+mm_page_free: pfn=0x1281aa order=0
+mm_page_free: pfn=0x12061e order=0
+mm_page_free: pfn=0x117606 order=0
+mm_page_free: pfn=0x125fe4 order=0
+mm_page_free: pfn=0x1002c6 order=0
+tlb_flush: pages:0 reason:flush on task switch (0)
+mm_page_free: pfn=0x10dca0 order=0
+# == parent stores 7 to page 0 (child has exited)
+page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8137 error_code=0x7
+# == parent stores to page 3 again
+page_fault_user: address=0x7f3a1b2c6d4e ip=0x55c5ee6c8188 error_code=0x7
+# == mprotect page 3 read-only
+tlb_flush: pages:1 reason:local MM shootdown (3)
+page_fault_user: address=0x55c617ba1170 ip=0x7fac8c4ad8c4 error_code=0x7
+page_fault_user: address=0x7fac8c703a38 ip=0x7fac8c498f23 error_code=0x7
+page_fault_user: address=0x7fac8c6066f0 ip=0x7fac8c494cf8 error_code=0x7
+page_fault_user: address=0x7fac8c6054c0 ip=0x7fac8c494c7a error_code=0x7
+page_fault_user: address=0x7fff02c59ff8 ip=0x7fac8c457b76 error_code=0x7
+# == store to read-only page 3
+page_fault_user: address=0x55c5ee6cb0a0 ip=0x7fac8c444ed4 error_code=0x7
+page_fault_user: address=0x7f3a1b2c6d4e ip=0x55c5ee6c8213 error_code=0x7
+# == madvise DONTNEED page 0
+tlb_flush: pages:1 reason:local MM shootdown (3)
+mm_page_free: pfn=0x129b49 order=0
+# == load from page 0
+page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c8284 error_code=0x4
+# == store to page 0
+page_fault_user: address=0x7f3a1b2c3d4e ip=0x55c5ee6c82b1 error_code=0x7
+mm_page_alloc: pfn=0x129b49 order=0 migratetype=1 gfp_flags=GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP
+tlb_flush: pages:1 reason:local MM shootdown (3)

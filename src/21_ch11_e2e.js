@@ -1,7 +1,7 @@
 /* ======================= chapter: one access end to end ======================= */
 App.chapter({id: 'e2e', short: 'End to end', title: 'One hist[123]++, end to end',
 lede: 'One instruction, <code>addq $1,(%rdx,%rax,8)</code> on <code>hist[123]</code>, with every stage from the other chapters on one timeline.',
-points: ['Keep the single-access walkthrough, then explore a dependency graph or many concurrent requests.', 'Distinguish value readiness, retirement, service time, queueing and throughput.'],
+points: ['Choose where the translation is found, where the line is found, and whether the DRAM row is open.', 'Read off the steps and their total, then switch to Critical path or Steady state to see work overlap.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, CFG = App.CFG;
   var o = {tlb: 'hit', lvl: 'DRAM', row: 'closed'};
@@ -23,7 +23,7 @@ build: function(root){
     var S = steps(), ghz = CFG.ghz, tot = 0;
     S.forEach(function(x){ tot += x.neg ? -x.c : x.c; });
     sv.innerHTML = ''; var x0 = 10, W = 980, acc = 0;
-    s('text', {x: 10, y: 16, 'class': 'h'}, sv, 'Serialized teaching path: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
+    s('text', {x: 10, y: 16, 'class': 'h'}, sv, 'One step after another: ' + tot + ' cycles = ' + (tot / ghz).toFixed(1) + ' ns at ' + ghz + ' GHz');
     S.forEach(function(x){
       if (x.neg) return;
       var w = (x.c / (tot + (S.filter(function(y){ return y.neg; }).reduce(function(a, y){ return a + y.c; }, 0)))) * W;
@@ -35,10 +35,10 @@ build: function(root){
     var cum = 0;
     tbl.innerHTML = '<h3>Step by step</h3><div style="overflow-x:auto"><table class="mt" style="min-width:560px"><tr><th>step</th><th>cycles</th><th>ns</th><th>total</th><th>source</th><th></th></tr>' + S.map(function(x){
       cum += x.neg ? -x.c : x.c;
-      return '<tr><td style="font-family:var(--sans)">' + x.n + '<div class="note">' + x.what + '</div></td><td>' + (x.neg ? '\u2212' : '') + x.c + '</td><td>' + (x.c / ghz).toFixed(1) + '</td><td>' + cum + '</td><td><span class="tag ' + (x.src === 'published' ? 'pub' : x.src === 'model' ? '' : 'act') + '">' + x.src + '</span></td><td><button class="lnk" data-ch="' + x.ch + '">chapter \u2192</button></td></tr>';
-    }).join('') + '</table></div><p class="note" style="margin-top:8px"><b>input</b>: chosen teaching latency settings; not calibrated hardware measurements. <b>model</b>: teaching stage counts, not measured. <b>assumed</b> / <b>derived</b>: stated in the step. Row-hit savings are applied within the load stage so the drawn bar and total use the same time boundary. See [[ch:perf]] for evidence and measurement definitions.</p>';
+      return '<tr><td style="font-family:var(--sans)">' + x.n + '<div class="note">' + x.what + '</div></td><td>' + (x.neg ? '\u2212' : '') + x.c + '</td><td>' + (x.c / ghz).toFixed(1) + '</td><td>' + cum + '</td><td><span class="tag ' + (x.src === 'setting' ? 'pub' : x.src === 'model' ? '' : 'act') + '">' + x.src + '</span></td><td><button class="lnk" data-ch="' + x.ch + '">chapter \u2192</button></td></tr>';
+    }).join('') + '</table></div><p class="note" style="margin-top:8px"><b>setting</b>: from the latency settings; put in your own measured numbers. <b>model</b>: stage counts from the [[ch:core]] model. <b>assumed</b>: explained in the step.</p>';
     tbl.querySelectorAll('button.lnk').forEach(function(b){ b.onclick = function(){ App.go(b.dataset.ch); }; });
-    sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale ([[chs:stores,coh]]).</p><p>A later eviction can write the line back down the hierarchy; another core can instead request ownership or a shared copy ([[chr:l1d,dram]]).</p><p>This later traffic is outside the instruction\u2019s dependency path but can compete for finite resources. Retiring a store is not the same event as making it visible to other cores.</p><p>Loop throughput depends on dependencies, forwarding, instruction mix and resource pressure. It cannot be inferred by inverting this single serialized instruction timeline. Compare the critical-path and steady-state modes.</p>';
+    sum.innerHTML = '<h3>After this instruction</h3><p>The line holding hist[123] is now Modified in core 0\u2019s L1d; DRAM is stale ([[chs:stores,coh]]).</p><p>Nothing else happens to it until another core asks for it or it is evicted. On eviction its 64 bytes are written back down the hierarchy and eventually reach DRAM as a write ([[chr:l1d,dram]]). That write-back is off this instruction\u2019s path; the core keeps running.</p><p>This timeline runs every step one after another. A real core overlaps independent work, so dividing by this total doesn\u2019t give the loop\u2019s speed. When everything hits, an iteration takes a few cycles ([[ch:core]]); one miss to DRAM costs as much as a hundred or more iterations. Switch to <b>Critical path</b> or <b>Steady state</b> above to see the overlap.</p>';
   }
   var PLATE = App.Plates.e2e(root, o);
   App.onCfg(draw);

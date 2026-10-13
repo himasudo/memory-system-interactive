@@ -1,0 +1,9 @@
+after mmap                                Referenced  0 kB
+after one store per page                  Referenced 64 kB
+after writing 1 to clear_refs             Referenced  0 kB
+after one load per page                   Referenced  0 kB
+after mprotect R, then RW (TLB flushed)   Referenced  0 kB
+after one load per page                   Referenced 64 kB
+# 20 runs: Referenced after the reload (kB), first after clear_refs, then after the flush
+# after clear_refs: 4 4 4 4 4 0 8 8 8 0 0 0 0 0 0 0 0 0 0 0
+# after the flush:  64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64

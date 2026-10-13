@@ -37,10 +37,10 @@ var App = (function(){
     return pfn === undefined ? null : (pfn << 12n) | (va & 0xfffn);
   };
 
-  /* ---------- chosen teaching-model latency inputs; no architecture calibration ---------- */
-  var CFG = { ghz: 4.0, l1: 4, l2: 12, l3: 35, dramNs: 90, tscGhz: 2.297 };
+  /* ---------- latency inputs for the simulations: round example values the reader can edit ---------- */
+  var CFG = { ghz: 4.0, l1: 4, l2: 12, l3: 35, dramNs: 90 };
   var CFG_DEF = JSON.parse(JSON.stringify(CFG));
-  function validCfg(k,v){return Object.prototype.hasOwnProperty.call(CFG_DEF,k) && Number.isFinite(v) && v >= (k==='ghz'||k==='tscGhz'?.1:1) && v <= (k==='ghz'||k==='tscGhz'?10:500);}
+  function validCfg(k,v){return Object.prototype.hasOwnProperty.call(CFG_DEF,k) && Number.isFinite(v) && v >= (k==='ghz'?.1:1) && v <= (k==='ghz'?10:500);}
   try { var sv = localStorage.getItem('memE2E.cfg'); if (sv){ var o = JSON.parse(sv); for (var k in o) if (validCfg(k,+o[k])) CFG[k] = +o[k]; } } catch(e){}
   var cfgListeners = [];
   function dramCycles(){ return Math.round(CFG.l3 + CFG.dramNs * CFG.ghz); }
@@ -55,17 +55,75 @@ var App = (function(){
   var chapters = [], built = {}, cur = null, extensions = {};
   function chapter(def){ chapters.push(def); }
   function extendChapter(id, fn){(extensions[id]||(extensions[id]=[])).push(fn);}
+  /* A section added by a lab file. It joins the chapter's second part ("Experiments",
+     or the label in PARTS), after the walkthrough sections. */
   function labSection(root,id,title,copy){
     var sec=root.closest('.ch'),chId=sec.id.slice(3);
     if(document.getElementById(chId+'--'+id))throw new Error('Duplicate chapter section: '+id);
-    var el=h('section',{'class':'learning-scene scene-active',id:chId+'--'+id,'data-scene':id},root);
+    var el=h('section',{'class':'learning-scene scene-active lab-scene',id:chId+'--'+id,'data-scene':id},root);
     var lead=h('div',{'class':'scene-lead'},el),list=sec._sections||(sec._sections=[]);
     h('span',{'class':'scene-kicker'},lead,String(list.length+1).padStart(2,'0'));
     h('div',null,lead,'<h2>'+title+'</h2>'+(copy?'<p>'+copy+'</p>':''));
-    list.push({id:id,title:title,el:el});sec.classList.add('long-scroll');return el;
+    list.push({id:id,title:title,copy:copy||'',el:el,lab:true});sec.classList.add('long-scroll');return el;
   }
 
-  var GROUPS = {start: 'Start here', map: 'Architecture', code: 'Architecture', core: 'Architecture', xlate: 'Memory system', l1d: 'Memory system', hier: 'Memory system',
+  /* ---------- chapter parts: walkthrough first, then experiments ---------- */
+  var PARTS = {
+    map: {label: 'Real chips', title: 'How AMD, Intel and Arm build it', kicker: '',
+      copy: 'The map above is this lab’s example machine. These sections compare it with three current server designs.'},
+    perf: false, atlas: false, start: false, gloss: false
+  };
+  var DEFAULT_PART = {label: 'Experiments', title: 'Try it yourself', kicker: 'Lab',
+    copy: 'Small simulations you can change. Each one asks you to predict a result first, then shows what the model does.'};
+  /* Preferred reading order for sections that lab files add (unlisted ones keep their order). */
+  var SECTION_ORDER = {
+    xlate: ['os', 'pages', 'granules', 'walk-contention', 'shootdown'],
+    hier: ['inclusion', 'write-pressure', 'numa', 'multisocket'],
+    stores: ['forwarding', 'litmus', 'language', 'write-traffic', 'locks'],
+    dram: ['controller', 'refresh-tails', 'ecc', 'disturbance'],
+    map: ['chips', 'amd', 'intel', 'arm', 'published', 'history'],
+    perf: ['vocabulary', 'predict', 'queues', 'datasets', 'measure', 'compare', 'explain']
+  };
+  function organizeChapter(sec, ch){
+    if (ch.lesson) return; /* lessons place their labs inline, where the concept is taught */
+    var list = sec._sections; if (!list || !list.length) return;
+    var order = SECTION_ORDER[ch.id];
+    if (order){
+      var rank = function(x, i){ var k = order.indexOf(x.id); return k < 0 ? 1000 + i : k; };
+      list = list.map(function(x, i){ return {x: x, r: rank(x, i), lab: !!x.lab, i: i}; })
+        .sort(function(a, b){ return (ch.id !== 'perf' && a.lab !== b.lab) ? (a.lab ? 1 : -1) : (a.r - b.r) || (a.i - b.i); })
+        .map(function(o){ return o.x; });
+      var parent = list[0].el.parentNode;
+      list.forEach(function(x){ parent.appendChild(x.el); });
+    }
+    var part = PARTS[ch.id] === undefined ? DEFAULT_PART : PARTS[ch.id];
+    var labs = list.filter(function(x){ return x.lab; });
+    if (!part) labs.forEach(function(x){ x.lab = false; x.el.classList.remove('lab-scene'); });
+    var walkN = 0, labN = 0;
+    list.forEach(function(x){
+      var k = x.el.querySelector('.scene-kicker');
+      var n = x.lab ? ++labN : ++walkN;
+      if (k) k.textContent = (x.lab && part.kicker ? part.kicker + ' ' : '') + String(x.lab && !part.kicker ? walkN + n : n).padStart(2, '0');
+    });
+    if (part && labs.length){
+      var chId = ch.id, div = h('section', {'class': 'lab-part', id: chId + '--part', 'aria-label': part.label});
+      labs[0].el.parentNode.insertBefore(div, labs[0].el);
+      h('div', {'class': 'lab-part-kicker'}, div, part.label);
+      h('h2', null, div, part.title);
+      h('p', null, div, part.copy);
+      var idx = h('ol', {'class': 'lab-index'}, div);
+      labs.forEach(function(x){
+        var li = h('li', null, idx), b = h('button', {type: 'button'}, li);
+        h('span', {'class': 'lab-index-k'}, b, x.el.querySelector('.scene-kicker').textContent);
+        h('span', {'class': 'lab-index-t'}, b, '<b>' + x.title + '</b>' + (x.copy ? '<small>' + x.copy + '</small>' : ''));
+        b.onclick = function(){ scrollToSection(x.id, true); };
+      });
+      sec._partLabel = part.label;
+    }
+    sec._sections = list;
+  }
+
+  var GROUPS = {start: 'Start here', map: 'The machine', code: 'The machine', core: 'The machine', xlate: 'Memory system', l1d: 'Memory system', hier: 'Memory system',
     dram: 'Memory system', stores: 'Memory system', coh: 'Memory system', pref: 'Memory system', dev: 'System path', e2e: 'System path', gloss: 'Reference'};
   function chapterGroup(ch){ return (ch && (ch.group || GROUPS[ch.id])) || 'Chapters'; }
   function chNum(id){ for (var i = 0; i < chapters.length; i++) if (chapters[i].id === id) return chapters[i].num; return '??'; }
@@ -103,6 +161,7 @@ var App = (function(){
   }
 
   function makeChapterHeader(sec, ch){
+    if (App.Course && App.Course.header(sec, ch)) return;
     var hd = h('header', {'class': 'chh'}, sec);
     var copy = h('div', {'class': 'ch-copy'}, hd);
     h('div', {'class': 'num'}, copy, (ch.ref ? 'REFERENCE' : 'CHAPTER ' + ch.num) + ' · ' + chapterGroup(ch));
@@ -115,6 +174,7 @@ var App = (function(){
   }
 
   function makeChapterFooter(sec, ch){
+    if (App.Course && App.Course.footer(sec, ch)) return;
     var idx = chapterIndex(ch.id), prev = idx > 0 ? chapters[idx - 1] : null, next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
     if (!prev && !next) return;
     var foot = h('footer', {'class':'chapter-footer','aria-label':'Continue through the atlas'}, sec);
@@ -139,6 +199,7 @@ var App = (function(){
       built[ch.id] = {sec: sec, api: ch.build(body) || {}};
       enhanceChapter(sec);
       (extensions[ch.id]||[]).forEach(function(fn){fn(body);});
+      organizeChapter(sec, ch);
       makeChapterFooter(sec, ch);
     }
     for (var k in built) built[k].sec.classList.toggle('show', k === ch.id);
@@ -149,6 +210,7 @@ var App = (function(){
     var cn = document.getElementById('crumbNum'), ct = document.getElementById('crumbTitle');
     if (cn) cn.textContent = ch.num;
     if (ct) ct.textContent = ch.short;
+    if (App.Course) App.Course.onShow(ch);
     setTimeout(secNavUpdate, 0);
     closeNav();
     if (built[ch.id].api.onShow) built[ch.id].api.onShow();
@@ -156,6 +218,8 @@ var App = (function(){
 
   function route(){
     var p = location.hash.slice(1).split('/');
+    var moved = p[1] && App.Course && App.Course.moved[p[0] + '/' + p[1]];
+    if (moved && App.Course.lessons[moved]){ p[0] = moved; try { history.replaceState(null, '', '#' + p.join('/')); } catch(e){} }
     show(p[0] || chapters[0].id);
     /* second jump after the workbenches above have finished sizing */
     if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
@@ -191,8 +255,18 @@ var App = (function(){
       e.stopPropagation();
       if (!menu.hidden){ close(); return; }
       menu.innerHTML = '';
+      var inLab = false, partLabel = (built[cur] && built[cur].sec._partLabel) || 'Experiments';
+      var lesson = built[cur] && built[cur].sec.querySelector('.lx');
       list().forEach(function(x, i){
-        var b = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (i === idx ? ' cur' : '')}, menu, '<b>' + String(i + 1).padStart(2, '0') + '</b><span>' + x.title + '</span>');
+        if (lesson){ /* lessons: their own section numbers; inline labs listed under their section */
+          var sk = x.el.querySelector('.lx-sec-head .lx-sec-k'), lnum = x.lab ? 'Lab' : (sk ? sk.textContent : String(i + 1));
+          var lb = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (x.lab ? ' sub' : '') + (i === idx ? ' cur' : '')}, menu, '<b>' + lnum + '</b><span>' + x.title + '</span>');
+          lb.onclick = function(){ close(); scrollToSection(x.id, true); };
+          return;
+        }
+        if (x.lab && !inLab){ inLab = true; h('div', {'class': 'sec-group', role: 'presentation'}, menu, partLabel); }
+        var k = x.el.querySelector('.scene-kicker'), num = (k ? k.textContent : String(i + 1).padStart(2, '0')).replace(/^[^0-9]+/, '');
+        var b = h('button', {type: 'button', role: 'menuitem', 'class': 'sec-item' + (i === idx ? ' cur' : '')}, menu, '<b>' + num + '</b><span>' + x.title + '</span>');
         b.onclick = function(){ close(); scrollToSection(x.id, true); };
       });
       menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
@@ -210,9 +284,11 @@ var App = (function(){
     initTheme();
     initShell();
     var n = 0; App.CH_LABEL = App.CH_LABEL || {};
-    chapters.forEach(function(c){ c.num = c.ref ? 'A\u2013Z' : String(n++).padStart(2, '0'); App.CH_LABEL[c.id] = [c.num, c.short]; });
+    if (App.Course) App.Course.order(chapters);
+    chapters.forEach(function(c){ if (!c.num) c.num = c.ref ? 'A\u2013Z' : String(n++).padStart(2, '0'); App.CH_LABEL[c.id] = [c.num, c.short]; });
     var nav = document.getElementById('nav'), lastGroup = null;
-    chapters.forEach(function(c){
+    if (App.Course){ App.Course.nav(nav); App.Course.indexTerms(); }
+    else chapters.forEach(function(c){
       var grp = chapterGroup(c);
       if (grp !== lastGroup){ h('div', {'class': 'nav-group'}, nav, grp); lastGroup = grp; }
       var a = h('a', {href: '#' + c.id}, nav,
@@ -442,7 +518,7 @@ var App = (function(){
   }
 
   function enhanceCoreWorkbench(sec){
-    var intro=sec.querySelector('.core-intro'); makeDisclosure(intro,'How the model works','Chosen capacities, scheduling rules and timing boundaries.',false);
+    var intro=sec.querySelector('.core-intro'); makeDisclosure(intro,'How the model works','What the model assumes, and how its sizes compare with real cores.',false);
     var sc=sec.querySelector('.core-floorplan');
     var cam=addFocusStrip(sec,sc,[
       {id:'overview',label:'Overview',box:[0,0,1200,445]},
@@ -684,7 +760,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'model',title:'The model',copy:'What the simulated core contains, and what it leaves out.',nodes:[ds[0]]},
         {id:'run',title:'Run the core',copy:'Step the machine. The active structures and signal paths change with the cycle.',nodes:[q('.core-controls'),q('.core-viz'),q('.core-events')]},
-        {id:'real',title:'The model core, entry by entry',copy:'Chosen finite capacities, with one loop iteration marked.',nodes:[q('.plate-core')]},
+        {id:'real',title:'The model core, entry by entry',copy:'Every queue in the model at its size, with one loop iteration marked.',nodes:[q('.plate-core')]},
         {id:'inspect',title:'Inspect state',copy:'Open one structure at a time while keeping the current cycle fixed.',nodes:[q('.inspector-deck'),q('.core-state-grid')]},
         {id:'timeline',title:'Read the timeline',copy:'Every µop against every cycle, in one table.',nodes:[ds[1]]}
       ]);
@@ -700,7 +776,7 @@ var App = (function(){
       makeGuidedJourney(sec,[
         {id:'layout',title:'Cache layout',copy:'Sets, ways, tags, and the bits stored with every line.',nodes:[ds[0]]},
         {id:'lookup',title:'Run a lookup',copy:'Change the address or operation, then follow the highlighted set, tags, way and miss path.',nodes:[q('.l1-workbench')]},
-        {id:'arrays',title:'The arrays, to scale',copy:'Chosen cache geometry, parallel tag lookup and the selected data way.',nodes:[q('.plate-l1d')]}
+        {id:'arrays',title:'The arrays, to scale',copy:'Tag and data arrays drawn to one bit scale, and how a lookup picks the way.',nodes:[q('.plate-l1d')]}
       ]);
     } else if(sec.id==='ch-hier'){
       var cards=kids('.card');
@@ -732,7 +808,7 @@ var App = (function(){
       ]);
     } else if(sec.id==='ch-pref'){
       makeGuidedJourney(sec,[
-        {id:'known',title:'What is known',copy:'Chosen detector rules and the limits of implementation-specific evidence.',nodes:[directChild(body,'.grid2')]},
+        {id:'known',title:'What is known',copy:'What this model assumes, and what vendors publish about their prefetchers.',nodes:[directChild(body,'.grid2')]},
         {id:'experiment',title:'Experiment with prediction',copy:'Change pattern and distance, then compare covered, late and useless prefetches.',nodes:[q('.pref-workbench')]}
       ]);
     } else if(sec.id==='ch-dev'){
@@ -744,12 +820,12 @@ var App = (function(){
     } else if(sec.id==='ch-e2e'){
       var top=Array.prototype.slice.call(body.children);
       makeGuidedJourney(sec,[
-        {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state for the serialized teaching walkthrough.',nodes:[top[0],top[1]]},
-        {id:'steps',title:'Inspect the serialized steps',copy:'Each step in order, with its latency and evidence label.',nodes:[top[2]]},
+        {id:'scenario',title:'Choose the scenario',copy:'Pick translation, cache level and DRAM row state, then follow the steps.',nodes:[top[0],top[1]]},
+        {id:'steps',title:'Inspect the steps',copy:'Each step in order, with its latency.',nodes:[top[2]]},
         {id:'timeline',title:'One time axis',copy:'Every stage to scale, then the first cycles magnified.',nodes:[q('.plate-e2e')]},
         {id:'after',title:'What happens after',copy:'Finish with the state left behind by this instruction.',nodes:[top[3]]},
-        {id:'critical',title:'Find the dependency path',copy:'Overlap independent work and follow the prerequisites of retirement.',nodes:[q('.e2e-critical')]},
-        {id:'steady',title:'Run many requests',copy:'Finite queues turn independent work into throughput, until a resource saturates.',nodes:[q('.e2e-steady')]}
+        {id:'critical',title:'Find the dependency path',copy:'Overlap independent work and find what retirement waits for.',nodes:[q('.e2e-critical')]},
+        {id:'steady',title:'Run many requests',copy:'Independent requests overlap until a queue fills up.',nodes:[q('.e2e-steady')]}
       ]);
     } else if(sec.id==='ch-gloss'){
       /* The glossary is intentionally search-first rather than a fake multi-step journey. */
@@ -852,16 +928,15 @@ var App = (function(){
   function initCfg(){
     var dr = document.getElementById('cfg'), inn = document.getElementById('cfgIn');
     var rows = [
-      ['ghz', 'Core clock (GHz)', 'teaching input; not host frequency'],
-      ['l1', 'L1d load-to-use (cycles)', 'chosen model input: 4'],
-      ['l2', 'L2 load-to-use (cycles)', 'chosen model input: 12'],
-      ['l3', 'L3 load-to-use (cycles)', 'chosen model input: 35'],
-      ['dramNs', 'DRAM extra latency beyond L3 (ns)', 'ballpark only; depends on DIMMs'],
-      ['tscGhz', 'TSC frequency (GHz)', 'measure your own with RDTSC against CLOCK_MONOTONIC']
+      ['ghz', 'Core clock (GHz)', 'default 4.0'],
+      ['l1', 'L1d load-to-use (cycles)', 'default 4'],
+      ['l2', 'L2 load-to-use (cycles)', 'default 12'],
+      ['l3', 'L3 load-to-use (cycles)', 'default 35'],
+      ['dramNs', 'DRAM time beyond L3 (ns)', 'default 90; depends on the chip and the DIMMs']
     ];
-    var html = '<h2>Latency model</h2><p class="note"><b>Teaching-model parameters.</b> These chosen inputs are not calibrated to a CPU. Published hardware evidence and native result bundles keep their own scopes and never silently change these settings. <a href="#map/published">Inspect the hardware evidence</a>. Cache latencies are total load-to-use costs, not costs to add at each level. DRAM ns here is extra beyond L3. Loaded latency can be much higher. <a href="#perf/measure">Measure and record your conditions</a>.</p>';
+    var html = '<h2>Latency model</h2><p class="note">The cycle counts every simulation uses. The defaults are round example numbers, not any one chip. Put in your own (from <a href="#perf/measure">Measure your machine</a>) and every chapter updates.</p><p class="note">Each cache number is the total time for a hit at that level, not an extra cost per level. The DRAM number is the extra time after an L3 miss on an idle machine; under load it can be several times higher.</p>';
     rows.forEach(function(r){ html += '<label><span>' + r[1] + '<small>' + r[2] + '</small></span><input type="number" step="any" min="0" data-k="' + r[0] + '" value="' + CFG[r[0]] + '"></label>'; });
-    html += '<p class="note">TSC ticks and core cycles are different quantities. Inputs accept 0.1–10 GHz and 1–500 cycles/ns; pipeline times round to whole cycles. These are supported model ranges, not hardware limits.</p><p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset example defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
+    html += '<p class="note">Accepted: 0.1–10 GHz and 1–500 cycles or ns. The pipeline views round to whole cycles.</p><p class="note" id="cfgDram" style="margin-top:14px"></p><div style="display:flex;gap:8px;margin-top:18px"><button id="cfgReset">reset defaults</button><button class="pri" id="cfgClose" style="margin-left:auto">done</button></div>';
     inn.innerHTML = html;
     function upd(){ document.getElementById('cfgDram').textContent = 'Current DRAM load-to-use model: ' + dramCycles() + ' cycles = ' + (dramCycles() / CFG.ghz).toFixed(1) + ' ns.'; }
     upd();

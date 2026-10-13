@@ -1,6 +1,6 @@
 /* ======================= chapter: down the hierarchy ======================= */
 App.chapter({id: 'hier', short: 'Down the hierarchy', title: 'Down the hierarchy: L2, L3, fabric, DRAM',
-lede: 'This teaching path chooses private inclusive L2, a victim-oriented shared L3 and a perfect holder directory. When the L1d misses, the request moves outward until some level has the line.',
+lede: 'When the L1d misses, the request moves outward until some level has the line.',
 points: ['Follow the request to the L2, the L3, another core, or DRAM.', 'The line comes back the same way it went out.', 'Where it was found decides how long the load waits.'],
 build: function(root){
   var h = App.h, s = App.s, g = App.g, CFG = App.CFG, hx = App.hx, HW = App.HW;
@@ -40,9 +40,9 @@ build: function(root){
   });
   box('l3', 20, 282, 930, 96, 'L3 \u00b7 4 MB \u00b7 16-way \u00b7 set ' + l3set + ' \u00b7 victim cache', '', 'a2b');
   for (var k = 0; k < 4; k++){ s('rect', {x: 30 + k * 228, y: 310, width: 218, height: 30, rx: 5, 'class': 'box'}, P.l3); s('text', {x: 40 + k * 228, y: 330, 'class': 's'}, P.l3, 'slice ' + k + ' \u00b7 1 MB'); }
-  P.sh = s('g', null, sv); s('rect', {x: 30, y: 346, width: 910, height: 24, rx: 5, 'class': 'a3b'}, P.sh); s('text', {x: 40, y: 363, 'font-size': 12}, P.sh, 'chosen perfect directory: tracks every upper-cache holder');
-  box('df', 20, 410, 1160, 40, 'Coherent interconnect · chosen model path', '', 'a3b');
-  box('umc', 20, 480, 520, 66, 'Memory controllers · chosen two-channel example', 'queues, address mapping, DRAM commands');
+  P.sh = s('g', null, sv); s('rect', {x: 30, y: 346, width: 910, height: 24, rx: 5, 'class': 'a3b'}, P.sh); s('text', {x: 40, y: 363, 'font-size': 12}, P.sh, 'shadow tags: a copy of all four L2s\u2019 tags');
+  box('df', 20, 410, 1160, 40, 'Coherent interconnect (fabric)', '', 'a3b');
+  box('umc', 20, 480, 520, 66, 'Memory controllers \u00b7 one per channel', 'queues, address mapping, DRAM commands');
   HW.txt(P.umc, 300, 495, 'request queue', {size: 8.5, fill: 'var(--tx3)'});
   for (k = 0; k < 8; k++) HW.rect(P.umc, 300 + k * 12, 499, 10, 14, k === 0 ? 'box' : 'sunk', 2);
   HW.blocks(P.umc, 404, 486, 128, 30, [{t: 'command scheduler', sub: 'ACT \u00b7 RD \u00b7 PRE \u00b7 REF', cls: 'sunk'}], {size: 9, subSize: 8});
@@ -80,18 +80,18 @@ build: function(root){
     F('L1 miss', 'The L1d misses', 'The tag compare of [[ch:l1d]] finds no match. A ' + g('mab') + ' entry records the missing line PA <code>' + hx(LINE) + '</code> and which loads wait for it; later loads to the same line merge into this entry. The request goes to the L2.', ['l1', 'mab', 'a1'], ['request sent', 'L1 load-to-use would', 'have been ' + CFG.l1 + ' cycles']);
     if (mode === 'L2'){
       F('L2 hit', 'L2 lookup: hit', 'The L2 indexes set ' + l2set + ' with PA bits 15:6 and compares 8 tags. Hit.', ['l2', 'a1'], ['L2 tag compare']);
-      F('fill', 'The line comes back', 'The L1\u2013L2 path is 32 bytes wide, so the 64-byte line takes 2 transfers. It is filled into the L1d (the L1 victim, if dirty, is written into the L2 copy it already has) and the waiting load wakes up.\n<b>Total \u2248 ' + L2 + ' cycles = ' + ns(L2) + '</b>.', ['l2', 'r1', 'l1'], [L2 + ' cycles', ns(L2), '', 'L2 hit, model input', 'chosen latency input']);
+      F('fill', 'The line comes back', 'The L1\u2013L2 path is 32 bytes wide, so the 64-byte line takes 2 transfers. It is filled into the L1d (the L1 victim, if dirty, is written into the L2 copy it already has) and the waiting load wakes up.\n<b>Total \u2248 ' + L2 + ' cycles = ' + ns(L2) + '</b>.', ['l2', 'r1', 'l1'], [L2 + ' cycles', ns(L2), '', 'L2 hit time', 'from the latency settings']);
     } else {
-      F('L2 miss', 'L2 lookup: miss', 'Set ' + l2set + ', 8 tags, no match. The L2 has its own miss tracking. This walkthrough has no calibrated hardware miss-tracking capacity; the finite-resource lab exposes its own chosen limits. The request goes to the L3.', ['l2', 'a2'], ['L2 missed', 'request to L3']);
+      F('L2 miss', 'L2 lookup: miss', 'Set ' + l2set + ', 8 tags, no match. The L2 has its own miss queue, so many misses can be on their way to the L3 at once. The request goes to the L3.', ['l2', 'a2'], ['L2 missed', 'request to L3']);
       if (mode === 'L3'){
-        F('L3 hit', 'L3 lookup: hit', 'The addressed slice checks the line (logical set ' + l3set + ' in this diagram): hit. In parallel the ' + g('shadow') + ' confirm no other L2 holds the line, so no probe is needed. Slice selection here is a simplified model, not the real chip\u2019s mapping.', ['l3', 'sh', 'a2'], ['L3 tag compare']);
-        F('move up', 'The line moves up, a victim moves down', 'The line goes to core 0\u2019s L2 and L1d. Because the L3 is mostly exclusive, it normally drops its own copy.\nThe L2 had to evict something from set ' + l2set + ' to make room: that victim goes <b>into</b> the L3. This is the only way the L3 gets filled.\n<b>Total \u2248 ' + L3 + ' cycles = ' + ns(L3) + '</b>.', ['l3', 'r2', 'r1', 'l2', 'l1'], [L3 + ' cycles', ns(L3), '', 'chosen model input', 'configured latency']);
+        F('L3 hit', 'L3 lookup: hit', 'The addressed slice checks the line (logical set ' + l3set + ' in this diagram): hit. In parallel the ' + g('shadow') + ' confirm no other L2 holds the line, so no probe is needed. Vendors don\u2019t publish how addresses map to slices; the diagram uses a simple mapping.', ['l3', 'sh', 'a2'], ['L3 tag compare']);
+        F('move up', 'The line moves up, a victim moves down', 'The line goes to core 0\u2019s L2 and L1d. Because the L3 is mostly exclusive, it normally drops its own copy.\nThe L2 had to evict something from set ' + l2set + ' to make room: that victim goes <b>into</b> the L3. This is the only way the L3 gets filled.\n<b>Total \u2248 ' + L3 + ' cycles = ' + ns(L3) + '</b>.', ['l3', 'r2', 'r1', 'l2', 'l1'], [L3 + ' cycles', ns(L3), '', 'L3 hit time', 'from the latency settings']);
       } else if (mode === 'peer'){
         F('shadow tags', 'L3 miss, but the shadow tags know', 'The L3 does not have the line, but its copy of core 2\u2019s L2 tags does: core 2 holds it <b>modified</b> (its value is newer than DRAM). Reading DRAM would return stale data.', ['l3', 'sh', 'a2'], ['L3 missed', 'shadow tag hit:', 'core 2']);
-        F('probe', 'Probe core 2', 'The L3 sends a ' + g('probe') + ' only to core 2 (the other L2s are not disturbed). Core 2\u2019s L2 returns the 64 bytes.\nUnder ' + g('moesi') + ' it keeps its dirty copy as <b>Owned</b> and core 0 gets it <b>Shared</b>; DRAM is not written ([[ch:coh]]).\nNo hardware latency is assigned here; a scoped core-to-core benchmark can measure it.', ['a3', 'c2l2', 'r3', 'r2', 'r1', 'l2', 'l1'], ['cache-to-cache', 'latency: measure it', '(not published)']);
+        F('probe', 'Probe core 2', 'The L3 sends a ' + g('probe') + ' only to core 2 (the other L2s are not disturbed). Core 2\u2019s L2 returns the 64 bytes.\nUnder ' + g('moesi') + ' it keeps its dirty copy as <b>Owned</b> and core 0 gets it <b>Shared</b>; DRAM is not written ([[ch:coh]]).\nVendors don\u2019t publish this latency; a core-to-core ping-pong benchmark measures it.', ['a3', 'c2l2', 'r3', 'r2', 'r1', 'l2', 'l1'], ['cache-to-cache', 'latency: measure it', '(not published)']);
       } else {
-        F('L3 miss', 'L3 miss, shadow tags miss', 'Neither the model L3 nor any private L2 has the line. The request crosses the interconnect toward system memory. The L3-hit load-to-use figure is a comparison baseline, not a measured timestamp for this step.', ['l3', 'sh', 'a4'], ['L3 missed', 'L3-hit baseline:', CFG.l3 + ' cycles load-to-use']);
-        F('fabric', 'Fabric to the memory controller', 'The fabric routes by physical address to the memory controller for the channel that owns this line. Transport, clock domains and request tracking depend on implementation. This walkthrough assigns no proprietary fabric clock or queue limit.', ['df', 'a5', 'umc'], ['in the fabric']);
+        F('L3 miss', 'L3 miss, shadow tags miss', 'Neither the L3 nor any L2 in this cluster has the line. The request leaves through the interconnect for system memory. The L3-hit time on the right is only for comparison.', ['l3', 'sh', 'a4'], ['L3 missed', 'L3-hit baseline:', CFG.l3 + ' cycles load-to-use']);
+        F('fabric', 'Fabric to the memory controller', 'The fabric routes by physical address to the memory controller for the channel that owns this line. On a large server chip this hop can cross a mesh or a link between chiplets, one reason DRAM latency differs between AMD, Intel and Arm designs ([[ch:map]]).', ['df', 'a5', 'umc'], ['in the fabric']);
         F('DRAM', 'DRAM access', 'The controller turns the request into DRAM commands: open the row if needed (ACT), read the column (RD), close rows that conflict (PRE). [[ch:dram]] steps through exactly this address.', ['umc', 'a6', 'dram'], ['DRAM access', 'see [[ch:dram]]']);
         F('return', 'The line returns to L2 and L1, not L3', 'Data comes back through the fabric straight to core 0\u2019s L2 and then the L1d. The L3 does <b>not</b> keep a copy: as a victim cache it only receives lines the L2 later evicts.\n<b>Total \u2248 ' + D + ' cycles = ' + ns(D) + '</b> with the current latency settings (L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns).', ['df', 'r4', 'r1', 'l2', 'l1'], [D + ' cycles', ns(D), '', 'L3 + DRAM extra,', 'from latency settings']);
       }
@@ -126,7 +126,7 @@ build: function(root){
       s('rect', {x: 80, y: y, width: w, height: 32, rx: 4, 'class': ['a4b', 'a2b', 'a3b', 'a1b'][i]}, lsv);
       s('text', {x: 88 + w, y: y + 21, 'class': 'm', 'font-size': 12}, lsv, r[1] + ' cycles \u00b7 ' + (r[1] / CFG.ghz).toFixed(1) + ' ns \u00b7 ' + (r[1] / CFG.l1).toFixed(0) + '\u00d7 L1');
     });
-    cap.innerHTML = 'Chosen teaching-model latency inputs and inclusion/victim policies. These are not calibrated implementation values. A pointer-chase working-set sweep can reveal transitions, but translation, placement and prefetching also affect the result. <a href="#perf/measure">Run and interpret the measurement</a>.';
+    cap.innerHTML = 'Values come from the latency settings: round example numbers unless you entered your own. A pointer-chase sweep over growing working sets shows these four plateaus on real hardware; TLB misses, page placement and prefetching also show up in it. <a href="#perf/measure">Measure your machine</a>.';
   }
   ladder();
 
@@ -145,7 +145,7 @@ build: function(root){
     s('text', {x: Math.min(X(4 * D) - 180, 800), y: 270, 'class': 'm', 'font-size': 12}, msv, 'done at \u2248 ' + 4 * D + ' cycles');
     s('line', {x1: 150, x2: 970, y1: 285, y2: 285, 'class': 'wire'}, msv);
     s('text', {x: 150, y: 298, 'class': 's'}, msv, '0'); s('text', {x: 970, y: 298, 'class': 's', 'text-anchor': 'end'}, msv, tot + ' cycles');
-    mcap.innerHTML = '<p>Independent addresses are all known up front, so the core issues the four loads within a few cycles and the misses overlap (' + g('mlp') + '). More independent misses can overlap until a real finite resource saturates. The bounded experiment has explicit model capacities; measure the actual host with recorded placement.</p><p>A pointer chase cannot overlap: each address is the previous load\u2019s data, so each miss starts only when the last one finishes. This is why latency benchmarks use a pointer chase: it exposes one full miss at a time.</p>';
+    mcap.innerHTML = '<p>Independent addresses are all known up front, so the core issues the four loads within a few cycles and the misses overlap (' + g('mlp') + '). More independent misses keep overlapping until a queue fills: the L1d\u2019s miss buffers, the L2\u2019s miss queue or the memory controller\u2019s. [[ch:perf]] lets you change those sizes.</p><p>A pointer chase cannot overlap: each address is the previous load\u2019s data, so each miss starts only when the last one finishes. This is why latency benchmarks use a pointer chase: it exposes one full miss at a time.</p>';
   }
   mlpDraw();
 
