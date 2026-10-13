@@ -1,0 +1,18 @@
+== 1. page tables for 64 MiB (small pages)
+VmPTE before 40 kB, after one store per 4 KiB page 168 kB, after munmap 40 kB
+
+== 2. fault counts, 64 MiB, one access per 4 KiB page
+first store pass   faults 16384
+second store pass  faults 0
+load pass (fresh)  faults 16384
+then a store pass  faults 16384
+
+== 3. prefaulting with madvise(MADV_POPULATE_WRITE), 64 MiB, small pages
+faults inside madvise 16384 (28.1 ms)
+faults during the store pass 0 (0.41 ms)
+
+== 4. time per fault, 21 samples, fresh 64 MiB each, one store per 4 KiB page
+small pages 16384 faults per sample; ns per fault min 1622, median 1738, max 2164; median per MiB 444811 ns
+huge pages     32 faults per sample; ns per fault min 329844, median 351090, max 550476; median per MiB 175545 ns
+huge-page region after one pass: AnonHugePages:     65536 kB
+first pfn of the huge-page region: 0x155600

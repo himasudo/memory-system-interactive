@@ -1,8 +1,202 @@
-# Native performance experiments — Phase 1
+# Native measurement workflow
+
+The primary workflow on Linux is:
+
+```sh
+python3 benchmarks/run_all.py
+# Run, open the local lab and load every chapter automatically:
+python3 benchmarks/run_all.py --serve
+```
+
+Python 3 and a GCC-compatible C compiler are required. No extra Python packages,
+root permissions or remembered CPU IDs are needed. Run from the repository root.
+The command reads `/proc/cpuinfo`, kernel information, sysfs core/package/die/NUMA
+IDs and reciprocal SMT sibling lists, intersected with the process affinity and
+online CPU sets. It runs memory/MLP, atomic sharing, loaded latency, VM/COW and
+software-prefetch experiments sequentially. Sharing uses a physical-core pair
+and a separate SMT pair when available; loaded latency uses up to four confirmed
+physical cores. CPU numbers are never assumed to be alternating physical cores.
+
+Missing topology or restricted affinity falls back to a single-CPU baseline,
+with reasons for omitted placements. `--cpu N` prefers an anchor; `--cpus 2-5,8`
+restricts candidates. Bundle seeds are restricted to 1–2^53−1 for exact browser
+representation; individual runners retain their uint64 interfaces. Unavailable requested IDs produce an explicit fallback,
+not a guessed placement. Pinning does not isolate SMT siblings or background
+load, and it does not change NUMA policy, governors, boost, ASLR or THP.
+
+```text
+results/
+  raw/
+    memory.json
+    sharing.json
+    sharing-physical_cores-0.json  # original placement output, when two runs exist
+    sharing-smt_siblings-1.json    # original placement output, when available
+    loaded.json
+    vm.json
+    prefetch.json
+    *-attempts.json               # commands, exit status and diagnostics
+  reference-machine.json
+```
+
+The aggregate is a portable `memory-lab-bundle-v1` document. It retains each
+untouched native run and its exact context, alongside selected placements,
+raw-file SHA-256 hashes, source/binary/runner hashes, compiler commands and flags,
+machine/kernel/topology, capability availability, raw repetitions and derived
+statistics. A canonical `sharing.json` combines placement trials without losing
+their `placement_id` or original contexts; original placement files also remain.
+Skipped suites have no invented samples. Native errors retain diagnostics and
+partial trials, the remaining suites still run, and the command returns nonzero
+for failed/partial suites. Completed runs overwrite their generated outputs;
+the aggregate only references the current run's files. Interrupted runs retain
+the last aggregate checkpoint and any per-suite checkpoint.
+
+If a detected cache line differs from the sharing harness's assumed 64-byte
+spacing, that suite is skipped with a reason. Unknown line size remains an
+explicit assumption in raw context and topology, not a measured line-size claim.
+
+The output filename does not assert a particular CPU. The UI uses recorded
+model/vendor/family/model provenance, and never calls a generic host data from a differently identified CPU.
+Hashes support reproducibility; this is self-reported measurement provenance,
+not remote hardware attestation. See [the bundle contract](../docs/MEASUREMENT_BUNDLES.md).
+
+### Environment observations and optional dataset curation
+
+Every unified run (including quick harness checks) captures the environment
+before the run, immediately before/after each suite, and after native suites and
+optional perf. Full characterization keeps the same one-command interface:
+
+```sh
+python3 benchmarks/run_all.py --serve \
+  --notes "My machine; recorded OS and memory configuration; normal idle system"
+```
+
+Read-only telemetry includes Mains online / AC versus battery evidence, battery
+status/capacity, ACPI and per-device platform profiles, and an optional bounded
+`busctl` D-Bus `Properties.Get` query with daemon activation and interactive
+authorization disabled. Inactive services are skipped instead of started. It
+records each online logical CPU's governor,
+driver, related CPUs, `scaling_cur_freq`, policy min/max and exposed hardware
+current/min/max frequency. Boost and `intel_no_turbo` are recorded separately.
+Thermal zones retain zone/type names; hwmon temperature inputs retain exposed
+driver/label names (including k10temp/coretemp when exposed). Units and the sysfs
+source are explicit. A sensor index is never assumed to be CPU/package temperature.
+Missing, denied, malformed or disappearing readings have an unavailable reason.
+No root permissions or system-policy changes are used.
+
+**Results** exposes snapshots, UTC timestamps, monotonic suite duration and
+potential-confound warnings. Suite elapsed time covers the runner(s), compilation,
+setup, trials and result collection, excluding the before/after telemetry reads.
+Run elapsed time also includes telemetry, checkpoint I/O and optional perf;
+neither duration replaces native kernel timing. A snapshot records its own
+collection duration because its fields are read sequentially.
+
+Warnings compare available observations across a suite and across the whole run.
+A reported current-frequency range must differ by at least 200 MHz **and** 20%
+of its observed minimum; a temperature range must differ by at least 10 °C.
+Observed governor/profile/boost/AC/battery-state/policy-limit changes are flagged.
+The thresholds are descriptive curation aids, not hardware limits. Warnings do
+not exclude trials, change completion, diagnose thermal throttling or assert
+that frequency caused a timing difference. Missing readings and a lack of
+warnings do not prove a stable environment. `scaling_cur_freq` can represent a
+requested policy frequency; snapshots are not active-kernel averages. See the
+primary [CPUFreq](https://docs.kernel.org/admin-guide/pm/cpufreq.html),
+[power supply](https://docs.kernel.org/power/power_supply_class.html),
+[platform profile](https://docs.kernel.org/userspace-api/sysfs-platform_profile.html),
+[thermal](https://docs.kernel.org/driver-api/thermal/sysfs-api.html) and
+[hwmon](https://docs.kernel.org/hwmon/sysfs-interface.html) interfaces.
+
+After inspecting and choosing an existing full run:
+
+```sh
+python3 benchmarks/export_public.py \
+  results/reference-machine.json data/reference/my-machine.json
+```
+
+The separate exporter does **not** measure again, commit, upload or modify the
+private bundle/raw directory. It preserves trial values, parameters, CPU/kernel,
+compiler version/flags, hashes, timing boundaries, telemetry/warnings and optional
+evidence availability. Local absolute paths in commands, notes, diagnostics,
+metadata keys and embedded JSON become logical benchmark/result paths or opaque
+`paths/local-N` aliases. Windows drive/UNC paths are covered too. Kernel sysfs,
+proc, device and known D-Bus interface paths remain as scientifically useful
+source labels. VM smaps
+headers retain their mapping/address/page fields; only local filename text is
+sanitized. `raw_sha256` still identifies the original private raw file bytes,
+as the export's provenance explicitly states; it is not a hash of the sanitized
+embedded metadata. No private alias table is exported.
+
+The exporter works on older compatible bundles too, without inferring missing
+telemetry. To retain independent new runs, choose distinct `--results` directories
+and pass the chosen bundle to the exporter. Review free-form notes when curating:
+filesystem-path sanitization does not remove unrelated personal prose. The legacy named
+`ryzen7-3750h.json` export retains its CPU-identity guard; this filename is optional,
+not automatically required or loaded. Public loading and browser-local
+visitor import keep their existing validation/privacy behavior.
+
+### Local lab and visitors
+
+`--serve` builds the standalone page, starts a loopback-only read-only server,
+prints/opens the lab URL and supplies the new bundle through a fixed GET endpoint.
+Every relevant chapter loads it automatically. Ctrl+C stops the server. Use
+`--port 0` to choose a free port or `--no-browser` on a headless machine. If port
+8000 is busy, the default server chooses a free port. No upload or write endpoints
+exist. `--results PATH` changes the output folder without requiring a public copy.
+
+On GitHub Pages, `data/reference/index.json` optionally lists up to eight sanitized
+measured bundles with expected recorded CPU identities. The site loads available
+entries and offers a selector; no machine is the architectural reference. A
+missing/empty registry or unavailable bundle leaves measurements absent. Producing
+a native bundle never copies or commits public files. After export, register it:
+
+```sh
+python3 benchmarks/register_dataset.py data/reference/my-machine.json \
+  --id my-machine --label "My measured machine"
+```
+
+Registration reads an existing sanitized bundle and writes only the adjacent
+identity registry; it never reruns measurements, commits or uploads. Review the
+files before committing. See [curation](../data/reference/README.md).
+**Results** accepts one visitor bundle for session-local comparison. Importing
+uses `File.text()` locally, makes no network requests, does not persist the bundle
+and cannot write to GitHub, replace shipped datasets or affect another visitor.
+Every old per-suite file input and the two-memory-run comparison remain available.
+
+### Optional evidence and conservative fallbacks
+
+The workflow detects `perf`, its version and permission policy, and sysfs
+`ibs_op` / `ibs_fetch` PMUs with exposed type/format/capability fields. When perf
+works, it attempts separate bounded representative memory executions for the
+documented generic `cycles:u`, `instructions:u` and software `task-clock` events.
+It keeps exact commands, workload output, raw stderr, counter runtime and running
+percentage. Events returning errors, unsupported/uncounted values, or output it
+cannot parse are skipped with reasons. `--no-perf` explicitly disables collection.
+
+These counts cover the native **process lifetime**, including pinning, allocation,
+validation, warm-up and teardown, in separate executions. They are never divided
+by a kernel-only elapsed time, never combined into cross-execution IPC/MPKI, and
+never presented as cache-level, DRAM-traffic or queue evidence. Generic symbols
+are not invented raw PMCs. Perf's scaling/multiplexing percentage is retained.
+
+Automatic IBS sampling is deliberately skipped even when a PMU is detected:
+permission/filtering and model/kernel-specific fields are not established by
+sysfs presence. No generic `perf mem` latency is substituted for validated, CPU-specific
+IBS evidence. Cache/ownership/controller PMCs, storage experiments, cache
+dropping, disturbance and privileged configuration protocols remain explicit
+manual investigations with their existing documentation. No policy is loosened
+to make perf work. See the [upstream perf tutorial](https://perfwiki.github.io/main/tutorial/)
+and the primary references below.
+
+`--quick` runs small correctness trials, never hardware characterization. With
+less than 512 MiB remaining host/cgroup memory the workflow records a quick-mode
+fallback; with less than 128 MiB it skips native compilation/execution. Per-suite
+timeouts terminate both the runner and its native process group, retain partial
+evidence and continue. Extra BIOS/DIMM/load notes can be supplied using `--notes`.
+
+## Individual memory runner (preserved)
 
 These Linux experiments accompany **Measure & explain** (`#perf/measure`). They
-are native C workloads, not browser timing benchmarks and not a calibrated Zen+
-simulator. Record the actual CPU; results from another machine are not 3750H data.
+are native C workloads, not browser timing benchmarks and not a calibrated hardware
+simulator. Record the actual CPU; a run on one machine is not evidence from another.
 
 ```sh
 python3 benchmarks/run.py --cpu 2 --output results.json \
@@ -51,7 +245,8 @@ benchmarks/memlab --mode chase --bytes 67108864 --chains 4 \
 
 ## Observe and explain
 
-Import `results.json` in the app. Inspect raw ns, operations, checksum, placement,
+Normally the aggregate loads automatically with `--serve`. As a fallback,
+import `results.json` in the memory section. Inspect raw ns, operations, checksum, placement,
 compiler and hashes. Mean, median, population standard deviation and nearest-rank
 p95/p99 refer to **run-average ns/operation**. With nine repeats p95 and p99 both
 select the maximum; they do not estimate per-load tails. Repeat for longer if
@@ -79,7 +274,7 @@ claiming matching IPC/MPKI. Check unsupported events, access errors, counter
 multiplexing and running percentages. No raw PMU encodings are prescribed.
 
 AMD IBS sampling can provide operation/cache/translation information on supported
-hardware and kernels; not every newer IBS field or filter exists on Zen+. `perf
+hardware and kernels; historical Zen+ hardware does not expose every newer IBS field or filter. `perf
 mem` latency meanings differ across architectures. `perf c2c` may classify sharing
 traffic where supported; never equate every miss with HITM or a DRAM access.
 
@@ -93,7 +288,7 @@ Primary references:
 
 - [Upstream perf stat](https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux-stable/+/master/tools/perf/Documentation/perf-stat.txt)
 - [Linux AMD IBS documentation](https://android.googlesource.com/kernel/common/+/0e674132ddfa938cd53ba7c3706f0d83b2a91491/tools/perf/Documentation/perf-amd-ibs.txt)
-- [AMD Family 17h optimization guide 55723](https://docs.amd.com/v/u/en-US/55723_3.01) — verify model applicability; use the exact processor PPR for PMCs.
+- [Historical AMD Family 17h optimization guide 55723](https://docs.amd.com/v/u/en-US/55723_3.01) — verify model applicability; use the exact processor PPR for PMCs.
 
 Conflict, split-access, forwarding, false-sharing and atomics experiments belong
 to Phase 2; DRAM scheduling to Phase 3; page and NUMA experiments to Phase 4.
@@ -111,7 +306,7 @@ python3 benchmarks/sharing.py --cpus 0,2 --output sharing-results.json \
 Replace `0,2` with allowed CPUs after inspecting topology. Run a pair of SMT
 siblings, a pair of different physical cores and, optionally, four physical
 cores. `--cpus 0` runs the one-thread cases only; every multi-thread run also
-includes one-thread baselines. A 3750H has four physical cores, so eight logical
+includes one-thread baselines. Historical topology example: a Ryzen 7 3750H has four physical cores, so eight logical
 CPUs must not be treated as eight independent cache-owning physical cores.
 
 The C kernel compares one shared counter, separate counters eight bytes apart,
@@ -177,7 +372,7 @@ python3 benchmarks/loaded.py --cpus 0,2,4,6 --output loaded-results.json \
 ```
 
 Choose **actual** physical-core IDs; the sample numbers do not prescribe the
-3750H's logical CPU enumeration. The first CPU runs a randomized dependent ring;
+any fixed logical CPU enumeration. The first CPU runs a randomized dependent ring;
 subsequent CPUs run independent streaming read or temporal-write generators.
 The runner includes a zero-generator baseline and sweeps up to the supplied
 number of generators, with randomized case order and repeated trials. Use SMT
@@ -292,7 +487,7 @@ source hashes, missing metadata, quick runs or partial datasets limit what can
 be concluded. A matching source hash is necessary for a controlled program
 comparison, but does not establish identical generated code or system conditions.
 
-For Zen+/Intel/Arm comparisons, compile for each actual target with recorded
+For implementation comparisons, compile for each actual target with recorded
 flags and inspect the kernels. Keep useful work and the measurement boundary
 equal; record differences in page size, working-set/cache fit, SMT placement,
 memory population, frequency and compiler transformations. Report dispersion
@@ -304,3 +499,11 @@ The [ordering protocol](litmus/README.md) supplies generated assembly litmus
 tests for herd7 and supported native litmus7 workflows. Browser witness counts
 are exhaustive only for their small stated model; they are neither empirical
 frequency estimates nor a complete AArch64/C11 semantics implementation.
+
+## Phase 6 extensions
+
+For the runnable software-prefetch sweep and controlled instruction-side,
+io_uring/NVMe, IOMMU, NUMA and reliability observation protocols, see
+[advanced/README.md](advanced/README.md). Import verified software-hint results in
+`#pref/resources`; the queue/controller simulations remain separately labeled
+teaching models.

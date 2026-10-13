@@ -1,5 +1,7 @@
 # Audit implementation ledger
 
+> **Historical record.** The readability pass in PR #9 reorganized the site: each hardware chapter now has a walkthrough followed by an *Experiments* part, and `#map/reference` and `#map/chiplets` were folded into chapter 09's *Real chips* part (`#map/chips`, `#map/amd`, `#map/intel`, `#map/arm`). The evidence categories were renamed; see [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). The site has since become a seven-part course, and chapter 09 is now page II.01; see the [README](../README.md#course).
+
 `AUDIT.md` is the supplied, agreed roadmap, copied without editing. This is an
 implementation map, not a new audit. Baseline: `da35edc`.
 
@@ -70,7 +72,9 @@ the current lookup, pipeline, store, coherence, prefetch or I/O simulations.
 
 ## Status
 
-Phases 1–5 are implemented. Phase 6 is pending. Validation is recorded by stage below.
+Phases 1–6 are implemented in separately reviewable stages. Validation and the
+scope of the advanced models are recorded by stage below. Target-machine and
+cross-machine measurements still require actual supplied hardware results.
 
 | Phase 1 item | Delivered |
 | --- | --- |
@@ -265,3 +269,147 @@ themes, including evidence filters, ordering witnesses, language semantics,
 inclusion/granule controls and real native-run comparison imports. No uncaught
 errors. Desktop/mobile screenshots were inspected. The new litmus section uses
 `#stores/litmus`, preserving the original `#stores/ordering` route.
+
+## Phase 6 delivery
+
+This stage is stacked on Phase 5 (`8850506`). No previous phase is re-audited or
+rewritten. `12_advanced_models.js` contains pure mechanism models;
+`29_advanced_lab.js` appends sections through the existing extension hooks.
+Original chapter IDs/numbers, steppers, source content, glossary definitions,
+latency configuration and the standalone build are retained.
+
+| Roadmap item | Delivered route / behavior |
+| --- | --- |
+| Instruction-side hierarchy | `#code/fetch`: resident executable block traces, dense/sparse branch targets, finite LRU iTLB/L1I/decoded-block caches, line/page splits, four dependent walk reads, aggregate hierarchy-serviced fills, decode bypass and serial delivery wait. |
+| Prefetch resource modeling | `#pref/resources`: bounded prediction queue, shared miss/request/service/return resources, demand-first/FIFO launch, finite cache eviction, multistream pressure and matched-demand prefetch-off comparisons. |
+| Prefetch metrics and measurement | Accuracy includes unique late use; coverage joins baseline miss IDs; timeliness, newly introduced misses, demand evictions and useful/line traffic remain separate. Distance sweep and native `prefetch.c` / `prefetch.py` with verified local result import. |
+| IOTLB / pinned / SG lifetime | `#dev/iotlb`: pin/map, translation miss, DMA quiescence, table removal, stale IOTLB state, invalidation acknowledgement, unpin/reuse and remapping. Linux DMA API scatter-gather and synchronization rules remain distinct. |
+| I/O queue / IRQ / polling | `#dev/queues`: bounded outstanding window/CQ, chosen service initiation parallelism, IOTLB reuse/churn, DMA serialization, completion moderation, CPU work, periodic polling and remote data placement. |
+| NVMe / io_uring path | `#dev/uring`: user SQE → kernel submission → buffered-hit/miss or direct path → block/NVMe SQ → DMA → hardware CQ → user CQE. Registered buffers, SQPOLL, IOPOLL and CQ polling are distinguished. Unsupported buffered/IOPOLL selection is rejected. |
+| Multisocket NUMA | `#hier/multisocket`: two explicit server nodes, serial/parallel first touch or interleave, migration without page movement, finite node initiation intervals and directional remote return links. |
+| ECC | `#dram/ecc`: exact extended Hamming(8,4), payload/parity positions, syndrome/overall checks, every bit injectable, single correction, double detection and larger-error aliasing/miscorrection. Platform/system/on-die protection boundaries remain qualified. |
+| Refresh tails | `#dram/refresh-tails`: identical offered request traces with refresh off/on through the tested Phase 3 engine; individual p50/p95/p99/max and per-request curves, without inventing a second controller. |
+| Rowhammer architecture | `#dram/disturbance`: column hits versus ACT/PRE sequences and conceptual neighbor restoration. No vulnerability threshold, proprietary physical map, predicted flip or hardware hammering code. |
+| Modern CPU/chiplet contrasts | `#map/chiplets`: AMD EPYC CCD/IOD/cache-versus-NUMA domains, Intel mesh/CHA/DDIO placement, NVIDIA Grace CPU Superchip nodes/link and the unchanged Zen+ laptop anchor. Primary vendor sources are attached to their scope. |
+
+### Model boundaries and measurement
+
+The instruction experiment serializes valid resident blocks; it is not an OoO
+front end or a proprietary branch/op-cache model. The prefetch detector uses
+chosen equal-delta rules, not an adaptive Zen+ policy. Shared-request accounting
+includes trailing speculative fills, while useful completion ends at the last
+demand. Coverage reports gross matched miss elimination and separately reports
+new misses, because inter-stream order can change.
+
+The I/O abstraction sets a service initiation interval, not a NAND-channel or
+NVMe hardware-engine layout. IOTLB lookup occurs at request admission without a
+finite IOMMU walker. Empty polling yields to runnable submission work on the
+chosen single CPU; this prevents polling from starving initial submission.
+Model application slots, controller readiness, CQ publication and observed
+completion have explicitly different boundaries. Registered user buffers do
+not promise zero-copy buffered reads or eliminate driver DMA mapping.
+
+The native software-prefetch runner preserves matched work, pinning/first touch,
+plain warm-up, randomized case order, compiler/kernel/topology, source/binary
+hashes and checksums. Odd strides traverse every line of a power-of-two ring;
+hints always stay inside the allocation. Import independently checks load/byte
+counts, CPU placement and the closed-form expected checksum. Trial-average
+percentiles are not individual-load tails or detector accuracy. Hardware
+prefetchers remain enabled; emitted assembly and loop overhead are confounds.
+
+`benchmarks/advanced/README.md` supplies instruction, IOMMU, multisocket and
+read-only regular-file io_uring/fio protocols. No NVMe/fio or reference-machine
+dataset is present, so no such hardware result is asserted. Reliability
+observations use existing reporting, not hardware fault injection. Modern
+comparison tables contain documented distinctions and experiments, never
+fabricated performance rankings.
+
+### Validation
+
+72 model/regression tests and five native harness checks pass. New invariants
+cover request/byte conservation, shared queue bounds, launch/return spacing,
+completed demand identity, prefetch pollution, DMA lifetime, CQ backpressure,
+CPU-work accounting, directional NUMA link serialization, page placement after
+migration and all single/double ECC errors across every payload. Larger ECC
+errors have explicit counterexamples. Refresh comparisons retain identical
+offered requests. Rendered validation: 253 checks pass in Chromium 138 (182 existing regressions
+plus 71 advanced checks), covering 1440/768/390px in both themes, all new
+controls, replay, native import/rejection, deep links and viewport bounds. No
+uncaught browser errors. Desktop/mobile screenshots were inspected. Initial
+boolean selector values and the test pointer’s sidebar hover were corrected;
+the final full regression run is green. The generated standalone HTML matches
+the source build.
+
+## Post-audit measurement integration
+
+The six audit phases remain complete. This improvement changes the native
+measurement workflow and dataset integration, without introducing another phase.
+
+`python3 benchmarks/run_all.py` selects Linux-affinity-safe physical/SMT
+placements, runs all five safe native suites, retains original raw outputs and
+writes a normalized provenance-preserving bundle. The existing individual
+runners remain. Compiler metadata for sharing/loaded/VM now identifies the
+selected CPU rather than assuming the first `/proc/cpuinfo` entry is relevant.
+Memory pressure and missing topology/tools have recorded fallbacks; failed
+native runs retain partial evidence and do not prevent the remaining suites.
+
+Optional perf stat uses only documented generic user cycles/instructions and
+software task-clock, in separate bounded workload-lifetime executions. Exact
+scope, stderr, availability and running percentages remain attached. There is
+no kernel-time normalization or IPC/MPKI/cache/queue attribution from these
+counts. IBS PMU detection is recorded independently of permission and validated
+sampling semantics; unvalidated sampling and raw PMCs are skipped explicitly.
+
+`--serve` opens a loopback read-only lab and automatically populates memory,
+sharing, loaded-latency, VM and prefetch sections from the new bundle. Public
+loading uses the optional committed target bundle. Session-local visitor import
+reads one file without network requests/writes, persistence or reference changes.
+Matching comparisons gate source/flags, work, timing and topology relationships;
+missing/differing VM mapping outcomes produce no automatic ratio. Manual imports,
+including the two-run fallback, remain and refuse mismatched timing boundaries.
+
+Validation: 83 JavaScript model/bundle/regression tests, five original native
+harness checks and 14 topology/capability/full-workflow tests pass. Rendered
+validation passes 283 checks in Chromium 138: all 253 existing checks plus 30
+workflow/privacy checks, at 1440/768/390px in both themes. Tests cover public
+reference presence/absence/rejection, visitor isolation and no network writes,
+all five automatically populated chapters, partial bundles, manual fallbacks,
+read-only server endpoints and delayed-load scroll stability. Screenshots were
+inspected. The full default native workflow completed 1,251 real trials on the
+identified Xeon development host with quick mode off; those ignored results are
+not shipped as Ryzen data. Perf/IBS were unavailable on that host; detection,
+denied/unsupported counts and scope handling have deterministic tests. No target
+3750H dataset is invented; curation is documented in `data/reference/README.md`.
+
+### Reference-workflow hardening within PR #7
+
+Read-only environment telemetry now brackets the full native workflow and each
+suite, recording power/profile, governor/boost, per-CPU frequency limits/readings,
+named thermal/hwmon inputs, availability reasons, UTC timestamps and monotonic
+durations. Available state/range changes have descriptive potential-confound
+warnings with observed values/scope. They do not alter trials/completion, infer
+throttling or assert a timing cause; snapshot frequency is not an active-kernel
+average. No system policy or permission is changed.
+
+`benchmarks/export_public.py` derives a separate sanitized artifact from an
+existing bundle without another run. It preserves measurements, source/binary/raw
+hashes, scientific boundaries/parameters, environment and evidence availability,
+while replacing local POSIX/Windows paths with logical paths. Exact trial values
+are checked; only local VM smaps pathname text may change. The private input/raw
+directory is protected, and export provenance clarifies original raw-file hash
+scope. The browser validates new telemetry associations and export provenance;
+older bundles, automatic loading and private visitor/manual imports remain valid.
+
+This hardening remains part of the post-audit workflow improvement. No seventh
+audit phase or canonical hardware dataset is introduced by the code change.
+
+Hardening validation: 83 JavaScript checks and 44 Python/native checks pass
+(five original harness, 16 workflow, 10 environment and 13 public-export checks).
+All 285 rendered checks pass in Chromium 138: the 253 Phase 1–6 regressions
+and 32 workflow/privacy checks, including both themes and 1440/768/390px layouts.
+The final workflow checks exercise the new collector, existing-bundle export,
+automatic local/reference loading and unchanged visitor/manual imports. Missing
+and denied telemetry, modern/legacy profile queries without daemon activation,
+descriptive state changes, misplaced snapshots, POSIX/Windows path sanitization,
+trial/hash preservation and private-file protection have deterministic coverage.
+Generated HTML matches the source build; desktop/mobile screenshots were inspected.

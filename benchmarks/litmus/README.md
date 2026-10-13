@@ -40,7 +40,7 @@ to compile/run the generated test; record compiler output, placement, iterations
 OS and CPU. Use enough independent trials and retain every outcome count. An
 allowed outcome can be rare or absent in finite runs. Failure to see it does not
 establish a stronger architectural guarantee. Emulation is not a characterization
-of the target CPU's ordering or performance. No real 3750H or Arm litmus results
+of the target CPU's ordering or performance. No real x86 or Arm litmus results
 are bundled, and herd7 was not installed in the development environment.
 
 For C11 message passing, initialize objects before starting threads and use a
