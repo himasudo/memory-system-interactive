@@ -1,0 +1,83 @@
+$ lscpu | grep -E "Model name|Address sizes|Hypervisor"
+Address sizes:                           46 bits physical, 48 bits virtual
+Model name:                              Intel(R) Xeon(R) Processor @ 2.80GHz
+Hypervisor vendor:                       KVM
+$ grep -o -w -E "pcid|invpcid|la57|pdpe1gb|nx|smep|smap|pku|pti" /proc/cpuinfo | sort -u | tr "
+" " "
+invpcid nx pcid pdpe1gb smap smep 
+$ cat /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag
+always [madvise] never
+always defer defer+madvise [madvise] never
+$ cat /proc/sys/vm/nr_hugepages /proc/sys/kernel/randomize_va_space
+0
+2
+$ cat /sys/devices/system/cpu/vulnerabilities/meltdown
+Not affected
+$ grep -w -E "_text|_etext" /proc/kallsyms
+ffffffff81000000 T _text
+ffffffff821350e8 T _etext
+$ cd /sys/devices/system/cpu/cpu0/cache/index0 && grep . level type size ways_of_associativity number_of_sets coherency_line_size
+level:1
+type:Data
+size:32K
+ways_of_associativity:8
+number_of_sets:64
+coherency_line_size:64
+$ cat /proc/self/maps    # run 1
+563a1b1cf000-563a1b1d1000 r--p 00000000 fe:00 343944                     /usr/bin/cat
+563a1b1d1000-563a1b1d6000 r-xp 00002000 fe:00 343944                     /usr/bin/cat
+563a1b1d6000-563a1b1d8000 r--p 00007000 fe:00 343944                     /usr/bin/cat
+563a1b1d8000-563a1b1d9000 r--p 00008000 fe:00 343944                     /usr/bin/cat
+563a1b1d9000-563a1b1da000 rw-p 00009000 fe:00 343944                     /usr/bin/cat
+563a4654a000-563a4656b000 rw-p 00000000 00:00 0                          [heap]
+7f128d400000-7f128d428000 r--p 00000000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f128d428000-7f128d5b1000 r-xp 00028000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f128d5b1000-7f128d600000 r--p 001b1000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f128d600000-7f128d604000 r--p 001ff000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f128d604000-7f128d606000 rw-p 00203000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f128d606000-7f128d613000 rw-p 00000000 00:00 0 
+7f128d7a0000-7f128d7c5000 rw-p 00000000 00:00 0 
+7f128d7d3000-7f128d7d5000 rw-p 00000000 00:00 0 
+7f128d7d5000-7f128d7d9000 r--p 00000000 00:00 0                          [vvar]
+7f128d7d9000-7f128d7db000 r--p 00000000 00:00 0                          [vvar_vclock]
+7f128d7db000-7f128d7dd000 r-xp 00000000 00:00 0                          [vdso]
+7f128d7dd000-7f128d7de000 r--p 00000000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f128d7de000-7f128d809000 r-xp 00001000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f128d809000-7f128d813000 r--p 0002c000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f128d813000-7f128d815000 r--p 00036000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f128d815000-7f128d817000 rw-p 00038000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7fff883db000-7fff88401000 rw-p 00000000 00:00 0                          [stack]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+$ cat /proc/self/maps    # run 2
+557dd07da000-557dd07dc000 r--p 00000000 fe:00 343944                     /usr/bin/cat
+557dd07dc000-557dd07e1000 r-xp 00002000 fe:00 343944                     /usr/bin/cat
+557dd07e1000-557dd07e3000 r--p 00007000 fe:00 343944                     /usr/bin/cat
+557dd07e3000-557dd07e4000 r--p 00008000 fe:00 343944                     /usr/bin/cat
+557dd07e4000-557dd07e5000 rw-p 00009000 fe:00 343944                     /usr/bin/cat
+557dd4ea8000-557dd4ec9000 rw-p 00000000 00:00 0                          [heap]
+7f63ae600000-7f63ae628000 r--p 00000000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f63ae628000-7f63ae7b1000 r-xp 00028000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f63ae7b1000-7f63ae800000 r--p 001b1000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f63ae800000-7f63ae804000 r--p 001ff000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f63ae804000-7f63ae806000 rw-p 00203000 fe:00 344580                     /usr/lib/x86_64-linux-gnu/libc.so.6
+7f63ae806000-7f63ae813000 rw-p 00000000 00:00 0 
+7f63ae9bf000-7f63ae9e4000 rw-p 00000000 00:00 0 
+7f63ae9f2000-7f63ae9f4000 rw-p 00000000 00:00 0 
+7f63ae9f4000-7f63ae9f8000 r--p 00000000 00:00 0                          [vvar]
+7f63ae9f8000-7f63ae9fa000 r--p 00000000 00:00 0                          [vvar_vclock]
+7f63ae9fa000-7f63ae9fc000 r-xp 00000000 00:00 0                          [vdso]
+7f63ae9fc000-7f63ae9fd000 r--p 00000000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f63ae9fd000-7f63aea28000 r-xp 00001000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f63aea28000-7f63aea32000 r--p 0002c000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f63aea32000-7f63aea34000 r--p 00036000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f63aea34000-7f63aea36000 rw-p 00038000 fe:00 344560                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7ffc07799000-7ffc077bf000 rw-p 00000000 00:00 0                          [stack]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+$ grep VmPTE /proc/self/status    # 5 runs
+VmPTE:	      44 kB
+VmPTE:	      48 kB
+VmPTE:	      52 kB
+VmPTE:	      48 kB
+VmPTE:	      52 kB
+$ uname -r
+6.18.44-fc-v114

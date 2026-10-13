@@ -1,0 +1,11 @@
+read  an unmapped user address           trap=14 err=0x4   si_code=SEGV_MAPERR
+write an unmapped user address           trap=14 err=0x6   si_code=SEGV_MAPERR
+write a PROT_READ page, never touched    trap=14 err=0x6   si_code=SEGV_ACCERR
+read  a PROT_READ page                   no signal
+write that page after the read           trap=14 err=0x7   si_code=SEGV_ACCERR
+read  a PROT_NONE page (was written)     trap=14 err=0x4   si_code=SEGV_ACCERR
+call into a PROT_READ|PROT_WRITE page    trap=14 err=0x15  si_code=SEGV_ACCERR
+read  0xffff888000000000 (kernel half)   trap=14 err=0x5   si_code=SEGV_MAPERR
+write 0xffff888000000000 (kernel half)   trap=14 err=0x7   si_code=SEGV_MAPERR
+read  0xffffffff81000000 (kernel code)   trap=14 err=0x5   si_code=SEGV_MAPERR
+read  0x0000800000000000 (non-canonical) trap=13 err=0x0   si_code=SI_KERNEL

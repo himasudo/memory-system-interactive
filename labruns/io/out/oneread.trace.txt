@@ -1,0 +1,16 @@
+       0.0 us  cpu000  # == io_uring_enter: submit one 4 KiB read at offset 1 MiB, wait for it
+       8.0 us  cpu000  io_uring_submit_req: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, opcode READ, flags 0x400000, sq_thread 0
+      11.0 us  cpu000  block_bio_queue: 254,0 RS 19671040 + 8 [oneread]
+      12.0 us  cpu000  block_getrq: 254,0 RS 19671040 + 8 [oneread]
+      13.0 us  cpu000  block_rq_insert: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]
+      14.0 us  cpu000  block_rq_issue: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]
+      29.0 us  cpu000  sched_switch: prev_comm=oneread prev_pid=18827 prev_prio=120 prev_state=S ==> next_comm=swapper/0 next_pid=0 next_prio=120
+      53.0 us  cpu003  irq_handler_entry: irq=37 name=virtio1-req.0
+      55.0 us  cpu003  irq_handler_exit: irq=37 ret=handled
+      55.0 us  cpu003  block_rq_complete: 254,0 RS () 19671040 + 8 be,0,4 [0]
+      56.0 us  cpu003  ipi_send_cpu: cpu=0 callsite=ttwu_queue_wakelist+0x11c/0x140 callback=generic_smp_call_function_single_interrupt+0x0/0x20
+      98.0 us  cpu000  sched_wakeup: comm=oneread pid=18827 prio=120 target_cpu=000
+      99.0 us  cpu000  sched_switch: prev_comm=swapper/0 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=oneread next_pid=18827 next_prio=120
+     100.0 us  cpu000  io_uring_complete: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, result 4096, cflags 0x0 extra1 0 extra2 0
+     101.0 us  cpu000  io_uring_task_work_run: tctx 0000000088b7722e, count 1
+     102.0 us  cpu000  # == io_uring_enter returned 4096

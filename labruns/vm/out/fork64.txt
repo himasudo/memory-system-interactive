@@ -1,0 +1,9 @@
+run 1  fork returned in the child after 2.20 ms
+       child store pass:  16384 faults, 45.3 ms, 2765 ns per fault
+       parent store pass: 16384 faults, 12.5 ms, 762 ns per fault (after the child exited)
+run 2  fork returned in the child after 1.95 ms
+       child store pass:  16384 faults, 45.5 ms, 2776 ns per fault
+       parent store pass: 16384 faults, 13.1 ms, 802 ns per fault (after the child exited)
+run 3  fork returned in the child after 1.81 ms
+       child store pass:  16384 faults, 44.2 ms, 2696 ns per fault
+       parent store pass: 16384 faults, 12.8 ms, 782 ns per fault (after the child exited)
