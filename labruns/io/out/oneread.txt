@@ -1,0 +1,7 @@
+io_uring_setup(4) = fd 4: 4 submission entries, 8 completion entries
+sq_off: head 0  tail 4  ring_mask 16  ring_entries 24  flags 36  dropped 32  array 192
+cq_off: head 8  tail 12  ring_mask 20  ring_entries 28  overflow 44  cqes 64  flags 40
+rings mapped at 0x7fdb41b4a000 (one mapping: yes), SQEs at 0x7fdb41b49000, 64 bytes each
+buffer at 0x7fdb41b48000, frame 0x124451
+traced read: result 4096, 94.0 us from submission to completion
+1000 more reads at random 4 KiB offsets of the 4096-KiB file, us per read: min 34.5  median 40.9  99th percentile 88.8  max 133.5

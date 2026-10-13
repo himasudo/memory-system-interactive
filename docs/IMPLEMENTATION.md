@@ -1,5 +1,7 @@
 # Audit implementation ledger
 
+> **Historical record.** The readability pass in PR #9 reorganized the site: each hardware chapter now has a walkthrough followed by an *Experiments* part, and `#map/reference` and `#map/chiplets` were folded into chapter 09's *Real chips* part (`#map/chips`, `#map/amd`, `#map/intel`, `#map/arm`). The evidence categories were renamed; see [IMPLEMENTATION_EVIDENCE.md](IMPLEMENTATION_EVIDENCE.md). The site has since become a seven-part course, and chapter 09 is now page II.01; see the [README](../README.md#course).
+
 `AUDIT.md` is the supplied, agreed roadmap, copied without editing. This is an
 implementation map, not a new audit. Baseline: `da35edc`.
 
@@ -70,7 +72,9 @@ the current lookup, pipeline, store, coherence, prefetch or I/O simulations.
 
 ## Status
 
-Phases 1 and 2 are implemented and locally validated. Phases 3–6 are pending.
+Phases 1–6 are implemented in separately reviewable stages. Validation and the
+scope of the advanced models are recorded by stage below. Target-machine and
+cross-machine measurements still require actual supplied hardware results.
 
 | Phase 1 item | Delivered |
 | --- | --- |
@@ -143,3 +147,269 @@ with recorded topology/conditions and PMU support. No local smoke timing is
 claimed as Zen+ evidence. Cache inclusion/vendor topology comparisons belong to
 Phase 5; read/write bus scheduling belongs to Phase 3. All added exact queue,
 bank, forwarding-policy and coherence-timing choices are labeled teaching rules.
+
+## Phase 3 delivery
+
+`12_controller_model.js` schedules actual commands from request arrivals;
+`26_controller_lab.js` appends `#dram/controller` to the original DDR4 chapter.
+The original device plate/stepper and its speed-bin example are preserved.
+The new model uses deliberately small model-clock timings, supplied bank/rank/
+channel coordinates, and no claimed Zen+ address mapping or scheduler.
+
+| Roadmap item | Delivered behavior |
+| --- | --- |
+| Controller queues | Separate bounded read/write admission with explicit upstream waiting; editable request table and generated workloads. |
+| FCFS / FR-FCFS-style | Oldest-request head-of-line blocking versus ready-command/row-hit preference; identical-trace comparison, per-request bypass counts and optional age override. |
+| Write draining | High/low watermark selection, drain mode, old-read override at mode boundaries; started requests finish before switching modes. |
+| Bus turnaround | Read/write direction gaps, same-rank write-to-read timing and rank-switch gaps; one non-overlapping data bus per channel. |
+| Parallelism | Independent bank activation subject to rank timing, shared rank bus and independent channels; command/data timeline and per-bank state. |
+| Additional timing | RCD, RP, RAS, RC, RRD, CCD, RTP, WR, WTR, four-activate windows and stated simplified turnaround rules. Scope explicitly excludes a complete JEDEC validator. |
+| Refresh / tails | Rank quiescence, precharge, data drain, REF busy interval and staggered simplified deadlines; individual-request mean/quantiles/max. |
+| Loaded latency | Offered-load sweep, admission/queue/command-interval decomposition and request detail; no mislabeled pure service time. |
+| Native observability | `loaded.c` / `loaded.py`: validated dependent ring with concurrent pinned read/write generators, random repeated cases, context/hashes and safe import. Background useful bandwidth is chunk-quantized and not DRAM bus bytes. |
+
+The native timer excludes setup and generator ramp-up. Generators publish
+progress in 64 KiB chunks; the measurement UI names that approximation and
+retains raw trials. No hardware output is bundled or labeled as a 3750H result.
+Reference-machine characterization remains an external hardware gate.
+
+Model validation: 38 total tests, including 14 controller tests independently
+reconstructing timing constraints from the command log, queue bounds, byte
+conservation, non-overlapping transfers, refresh exclusion, multi-channel
+concurrency and scheduler/age counterexamples. Three native harness tests
+compile with warnings as errors, execute every mode and reject invalid inputs.
+Phase 2 remote CI is green at `5b8426a`.
+
+Rendered validation: 130 checks pass in Chromium 138 at 1440/768/390px, both
+themes, with the original chapters and controls retained. No uncaught errors.
+Command timelines, JSON export/import and mobile rendering were inspected.
+A targeted follow-up verified invalid-trace recovery and disabled stale-result
+export; timeline SVGs now retain readable scale inside horizontal scrollers.
+
+## Phase 4 delivery
+
+`12_vm_model.js` separates VMA policy, present/swapped leaf entries, conceptual
+TLBs, physical frames, file page cache and swap backing. `27_vm_lab.js` appends
+four scenes to translation and a clearly scoped two-node extension to hierarchy.
+Original translation controls, synthetic page tables and detailed plates remain.
+
+| Roadmap item | Delivered route / behavior |
+| --- | --- |
+| mmap / demand-zero | `#xlate/os`: mapping without residency, shared zero-page reads, private allocation/zeroing on write and independent TLB/walk/fault counters. |
+| COW | Fork protects private mappings before the child runs; parent invalidation, child copying or exclusive-page reuse; actual representative word values remain consistent. |
+| Page cache | Warm/cold model state, private versus shared file mappings, dirty shared data and explicit backing writeback before eviction. Storage durability is not equated with CPU visibility. |
+| Reclaim / swap | Advanced interactive reclaim, dirty file writeback, anonymous swap preservation, swap-cache reuse, COW across swap and a disabled-swap outcome that retains data. |
+| THP / explicit huge pages | `#xlate/pages`: dense/sparse TLB traces, reach/footprint, successful PMD mapping, THP base-page fallback and explicit HugeTLB failure. Multi-size THP and actual-mapping observation are distinguished. |
+| Walk contention | `#xlate/walk-contention`: serial dependent PTE requests, cached upper levels, finite walkers and memory slots shared with ordinary data; request timeline and traffic. |
+| Shootdown scaling | `#xlate/shootdown`: CPU mask, page batching, invalidation choice, remote handler delay, acknowledgements and sum-of-work versus origin critical path. |
+| NUMA | `#hier/numa`: two memory nodes, first-touch/interleave placement, execution migration without automatic data migration and a contended remote response link. Explicitly outside the laptop topology. |
+| Native observability | `vm.c` / `vm.py`: pinned anonymous/private/shared mapping probes, fault deltas and content validation, parent/child checks, advice versus actual smaps evidence, raw context and safe import. |
+
+The OS model is deliberately not a Linux implementation or a predicted fault
+count. It shows one word per full 4 KiB frame, ignores page-table allocation,
+uses immediate invalidation in lifecycle scenes and models storage-backed
+faults without time. The separate shootdown scene exposes completion delays.
+NUMA clocks, topology and bandwidth are chosen. No new proprietary Zen+ walker
+count, TLB replacement policy or hardware page-size capacity is asserted.
+The older walkthrough now qualifies the private allocation path and removes an
+unsupported exact walker count without removing its detailed translation steps.
+
+Validation: 50 model/regression tests, including 12 VM/translation tests for
+ownership, swapped aliases, permissions, value preservation, serial walk
+dependencies, finite resources, shootdown completion and remote-link bounds.
+Four native harness tests compile and exercise their modes with data/affinity
+checks. Fault totals and THP success are not asserted as fixed hardware results.
+Phase 3 remote CI is green at `336596d`.
+
+Rendered validation: 154 checks pass in Chromium 138 at 1440/768/390px, both
+themes, including new VM actions, model outcomes and native imports. No uncaught
+errors. Desktop/mobile screenshots were inspected; a follow-up corrects an
+ambiguous parent-to-frame wire and checks import accounting. Reference-host
+measurement on the actual 3750H remains an external gate; development smoke
+results are not bundled as reference-machine evidence.
+
+## Phase 5 delivery
+
+`03_architecture_evidence.js` provides the claim/source registry;
+`12_architecture_model.js` contains pure ordering, inclusion and granule
+experiments; `28_architecture_lab.js` appends scoped comparisons to their existing
+chapters. There is no separate duplicated Intel or Arm chapter sequence.
+
+| Roadmap item | Delivered route / behavior |
+| --- | --- |
+| Formal Zen+ anchor | `#map/reference`: exact-product facts, externally reported family observations, inference, teaching choices and unknowns, with scope and experimental relevance. |
+| Fidelity labels | Filterable claim registry, original-chapter scope notes, primary source links and point-of-claim corrections for unverified legacy values. |
+| Intel / Arm contrasts | Ordinary x86 WB ordering versus selected AArch64 cases; E5 v4 inclusive versus Skylake-SP non-inclusive LLC; AArch64 translation-granule choices. No universal vendor queue or cache layout. |
+| Ordering layers | `#stores/litmus` separates language, compiler, ISA, microarchitecture and coherence. SB/MP/LB state enumeration produces actual witnesses; full ordering points change outcomes. |
+| Language semantics | `#stores/language`: invalid non-atomic flag synchronization, all-relaxed atomic access, one-publication release/acquire, and seq_cst; synchronization depends on reading the published value. |
+| Cache/topology | `#hier/inclusion`: read-only inclusive/exclusive/NINE policies, data duplication, victim movement, private back-invalidations and ideal directory assumptions. Existing SMT/NUMA labs supply topology experiments. |
+| Translation contrast | `#xlate/granules`: equal-entry TLB geometry and page-offset VIPT constraint with 4/16/64 KiB granules; actual implementation/OS support remains required. |
+| Benchmark comparison | `#perf/compare`: two real native imports, exact work/seed pairing, context/source-hash differences and descriptive median ratios. No fabricated cross-machine results. |
+| Reproduction | `benchmarks/litmus/generate.py` emits x86/AArch64 SB/MP/LB variants with optional full barriers; the protocol separates formal enumeration from native observations. |
+
+The reduced relaxed ordering engine is explicitly **not** a complete Arm model.
+SC/TSO modes cover ordinary reads, writes and full fences in three two-thread
+tests; no atomics, mixed sizes, device attributes or speculative timing. Formal
+ISA verification uses the linked primary models and the supplied herd7 workflow.
+herd7 was not installed locally; no formal-tool or native litmus result is claimed.
+
+The existing model queue sizes and execution behavior remain intact. The legacy
+44-entry load-queue reference conflicts with the external Zen notes' 72; it is
+now unresolved for the 3750H rather than silently treated as a product fact.
+Other unverified limits and the unsupported 20.8-TSC-tick misprediction statement
+retain their historical numbers with explicit qualification, not false measured
+attribution. Product capacities remain concrete. No audit replacement was made.
+
+Validation: 58 model/regression tests, including eight architecture tests for
+ordering outcomes, FIFO publication, fence completion, inclusion/exclusion at
+each access, peer copies, page geometry and exact-work measurement joins. Four
+native harness checks pass. Phase 4 remote CI is green at `6ba79d5`.
+Rendered validation: 182 checks pass in Chromium 138 at 1440/768/390px in both
+themes, including evidence filters, ordering witnesses, language semantics,
+inclusion/granule controls and real native-run comparison imports. No uncaught
+errors. Desktop/mobile screenshots were inspected. The new litmus section uses
+`#stores/litmus`, preserving the original `#stores/ordering` route.
+
+## Phase 6 delivery
+
+This stage is stacked on Phase 5 (`8850506`). No previous phase is re-audited or
+rewritten. `12_advanced_models.js` contains pure mechanism models;
+`29_advanced_lab.js` appends sections through the existing extension hooks.
+Original chapter IDs/numbers, steppers, source content, glossary definitions,
+latency configuration and the standalone build are retained.
+
+| Roadmap item | Delivered route / behavior |
+| --- | --- |
+| Instruction-side hierarchy | `#code/fetch`: resident executable block traces, dense/sparse branch targets, finite LRU iTLB/L1I/decoded-block caches, line/page splits, four dependent walk reads, aggregate hierarchy-serviced fills, decode bypass and serial delivery wait. |
+| Prefetch resource modeling | `#pref/resources`: bounded prediction queue, shared miss/request/service/return resources, demand-first/FIFO launch, finite cache eviction, multistream pressure and matched-demand prefetch-off comparisons. |
+| Prefetch metrics and measurement | Accuracy includes unique late use; coverage joins baseline miss IDs; timeliness, newly introduced misses, demand evictions and useful/line traffic remain separate. Distance sweep and native `prefetch.c` / `prefetch.py` with verified local result import. |
+| IOTLB / pinned / SG lifetime | `#dev/iotlb`: pin/map, translation miss, DMA quiescence, table removal, stale IOTLB state, invalidation acknowledgement, unpin/reuse and remapping. Linux DMA API scatter-gather and synchronization rules remain distinct. |
+| I/O queue / IRQ / polling | `#dev/queues`: bounded outstanding window/CQ, chosen service initiation parallelism, IOTLB reuse/churn, DMA serialization, completion moderation, CPU work, periodic polling and remote data placement. |
+| NVMe / io_uring path | `#dev/uring`: user SQE → kernel submission → buffered-hit/miss or direct path → block/NVMe SQ → DMA → hardware CQ → user CQE. Registered buffers, SQPOLL, IOPOLL and CQ polling are distinguished. Unsupported buffered/IOPOLL selection is rejected. |
+| Multisocket NUMA | `#hier/multisocket`: two explicit server nodes, serial/parallel first touch or interleave, migration without page movement, finite node initiation intervals and directional remote return links. |
+| ECC | `#dram/ecc`: exact extended Hamming(8,4), payload/parity positions, syndrome/overall checks, every bit injectable, single correction, double detection and larger-error aliasing/miscorrection. Platform/system/on-die protection boundaries remain qualified. |
+| Refresh tails | `#dram/refresh-tails`: identical offered request traces with refresh off/on through the tested Phase 3 engine; individual p50/p95/p99/max and per-request curves, without inventing a second controller. |
+| Rowhammer architecture | `#dram/disturbance`: column hits versus ACT/PRE sequences and conceptual neighbor restoration. No vulnerability threshold, proprietary physical map, predicted flip or hardware hammering code. |
+| Modern CPU/chiplet contrasts | `#map/chiplets`: AMD EPYC CCD/IOD/cache-versus-NUMA domains, Intel mesh/CHA/DDIO placement, NVIDIA Grace CPU Superchip nodes/link and the unchanged Zen+ laptop anchor. Primary vendor sources are attached to their scope. |
+
+### Model boundaries and measurement
+
+The instruction experiment serializes valid resident blocks; it is not an OoO
+front end or a proprietary branch/op-cache model. The prefetch detector uses
+chosen equal-delta rules, not an adaptive Zen+ policy. Shared-request accounting
+includes trailing speculative fills, while useful completion ends at the last
+demand. Coverage reports gross matched miss elimination and separately reports
+new misses, because inter-stream order can change.
+
+The I/O abstraction sets a service initiation interval, not a NAND-channel or
+NVMe hardware-engine layout. IOTLB lookup occurs at request admission without a
+finite IOMMU walker. Empty polling yields to runnable submission work on the
+chosen single CPU; this prevents polling from starving initial submission.
+Model application slots, controller readiness, CQ publication and observed
+completion have explicitly different boundaries. Registered user buffers do
+not promise zero-copy buffered reads or eliminate driver DMA mapping.
+
+The native software-prefetch runner preserves matched work, pinning/first touch,
+plain warm-up, randomized case order, compiler/kernel/topology, source/binary
+hashes and checksums. Odd strides traverse every line of a power-of-two ring;
+hints always stay inside the allocation. Import independently checks load/byte
+counts, CPU placement and the closed-form expected checksum. Trial-average
+percentiles are not individual-load tails or detector accuracy. Hardware
+prefetchers remain enabled; emitted assembly and loop overhead are confounds.
+
+`benchmarks/advanced/README.md` supplies instruction, IOMMU, multisocket and
+read-only regular-file io_uring/fio protocols. No NVMe/fio or reference-machine
+dataset is present, so no such hardware result is asserted. Reliability
+observations use existing reporting, not hardware fault injection. Modern
+comparison tables contain documented distinctions and experiments, never
+fabricated performance rankings.
+
+### Validation
+
+72 model/regression tests and five native harness checks pass. New invariants
+cover request/byte conservation, shared queue bounds, launch/return spacing,
+completed demand identity, prefetch pollution, DMA lifetime, CQ backpressure,
+CPU-work accounting, directional NUMA link serialization, page placement after
+migration and all single/double ECC errors across every payload. Larger ECC
+errors have explicit counterexamples. Refresh comparisons retain identical
+offered requests. Rendered validation: 253 checks pass in Chromium 138 (182 existing regressions
+plus 71 advanced checks), covering 1440/768/390px in both themes, all new
+controls, replay, native import/rejection, deep links and viewport bounds. No
+uncaught browser errors. Desktop/mobile screenshots were inspected. Initial
+boolean selector values and the test pointer’s sidebar hover were corrected;
+the final full regression run is green. The generated standalone HTML matches
+the source build.
+
+## Post-audit measurement integration
+
+The six audit phases remain complete. This improvement changes the native
+measurement workflow and dataset integration, without introducing another phase.
+
+`python3 benchmarks/run_all.py` selects Linux-affinity-safe physical/SMT
+placements, runs all five safe native suites, retains original raw outputs and
+writes a normalized provenance-preserving bundle. The existing individual
+runners remain. Compiler metadata for sharing/loaded/VM now identifies the
+selected CPU rather than assuming the first `/proc/cpuinfo` entry is relevant.
+Memory pressure and missing topology/tools have recorded fallbacks; failed
+native runs retain partial evidence and do not prevent the remaining suites.
+
+Optional perf stat uses only documented generic user cycles/instructions and
+software task-clock, in separate bounded workload-lifetime executions. Exact
+scope, stderr, availability and running percentages remain attached. There is
+no kernel-time normalization or IPC/MPKI/cache/queue attribution from these
+counts. IBS PMU detection is recorded independently of permission and validated
+sampling semantics; unvalidated sampling and raw PMCs are skipped explicitly.
+
+`--serve` opens a loopback read-only lab and automatically populates memory,
+sharing, loaded-latency, VM and prefetch sections from the new bundle. Public
+loading uses the optional committed target bundle. Session-local visitor import
+reads one file without network requests/writes, persistence or reference changes.
+Matching comparisons gate source/flags, work, timing and topology relationships;
+missing/differing VM mapping outcomes produce no automatic ratio. Manual imports,
+including the two-run fallback, remain and refuse mismatched timing boundaries.
+
+Validation: 83 JavaScript model/bundle/regression tests, five original native
+harness checks and 14 topology/capability/full-workflow tests pass. Rendered
+validation passes 283 checks in Chromium 138: all 253 existing checks plus 30
+workflow/privacy checks, at 1440/768/390px in both themes. Tests cover public
+reference presence/absence/rejection, visitor isolation and no network writes,
+all five automatically populated chapters, partial bundles, manual fallbacks,
+read-only server endpoints and delayed-load scroll stability. Screenshots were
+inspected. The full default native workflow completed 1,251 real trials on the
+identified Xeon development host with quick mode off; those ignored results are
+not shipped as Ryzen data. Perf/IBS were unavailable on that host; detection,
+denied/unsupported counts and scope handling have deterministic tests. No target
+3750H dataset is invented; curation is documented in `data/reference/README.md`.
+
+### Reference-workflow hardening within PR #7
+
+Read-only environment telemetry now brackets the full native workflow and each
+suite, recording power/profile, governor/boost, per-CPU frequency limits/readings,
+named thermal/hwmon inputs, availability reasons, UTC timestamps and monotonic
+durations. Available state/range changes have descriptive potential-confound
+warnings with observed values/scope. They do not alter trials/completion, infer
+throttling or assert a timing cause; snapshot frequency is not an active-kernel
+average. No system policy or permission is changed.
+
+`benchmarks/export_public.py` derives a separate sanitized artifact from an
+existing bundle without another run. It preserves measurements, source/binary/raw
+hashes, scientific boundaries/parameters, environment and evidence availability,
+while replacing local POSIX/Windows paths with logical paths. Exact trial values
+are checked; only local VM smaps pathname text may change. The private input/raw
+directory is protected, and export provenance clarifies original raw-file hash
+scope. The browser validates new telemetry associations and export provenance;
+older bundles, automatic loading and private visitor/manual imports remain valid.
+
+This hardening remains part of the post-audit workflow improvement. No seventh
+audit phase or canonical hardware dataset is introduced by the code change.
+
+Hardening validation: 83 JavaScript checks and 44 Python/native checks pass
+(five original harness, 16 workflow, 10 environment and 13 public-export checks).
+All 285 rendered checks pass in Chromium 138: the 253 Phase 1–6 regressions
+and 32 workflow/privacy checks, including both themes and 1440/768/390px layouts.
+The final workflow checks exercise the new collector, existing-bundle export,
+automatic local/reference loading and unchanged visitor/manual imports. Missing
+and denied telemetry, modern/legacy profile queries without daemon activation,
+descriptive state changes, misplaced snapshots, POSIX/Windows path sanitization,
+trial/hash preservation and private-file protection have deterministic coverage.
+Generated HTML matches the source build; desktop/mobile screenshots were inspected.

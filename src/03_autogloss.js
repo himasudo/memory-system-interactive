@@ -1,13 +1,20 @@
 /* ======================= automatic links: chapter references and glossary terms ======================= */
 (function(){
   /* ---- chapter references: [[ch:id]], [[chs:a,b]], [[chr:a,b]], [[num:id]] ---- */
-  var REF = /\[\[(ch|chs|chr|num):([a-z0-9_,]+)\]\]/g;
+  var REF = /\[\[(ch|chs|chr|num):([a-z0-9_,-]+)\]\]/g;
   function nums(ids){ return ids.map(function(i){ return App.chNum(i); }); }
+  /* In the course, a reference names the lesson ("Lesson III.04"), lab or part. */
+  function kind(id){
+    var i = App.Course && App.Course.info[id];
+    if (!i) return 'Chapter';
+    if (!i.index) return 'Part';
+    return App.Course.labPages[id] ? 'Lab' : 'Lesson';
+  }
   function plain(k, ids){
     var n = nums(ids);
     if (k === 'num') return n[0];
-    if (k === 'ch') return ids[0] === 'gloss' ? 'the glossary' : 'Chapter ' + n[0];
-    return 'Chapters ' + n[0] + (k === 'chr' ? '\u2013' : ' and ') + n[1];
+    if (k === 'ch') return ids[0] === 'gloss' ? 'the glossary' : ids[0] === 'atlas' ? 'the hardware atlas' : ids[0] === 'start' ? 'the course home' : kind(ids[0]) + ' ' + n[0];
+    return kind(ids[0]) + 's ' + n[0] + (k === 'chr' ? '\u2013' : ' and ') + n[1];
   }
   function link(id, label){ var a = document.createElement('a'); a.href = '#' + id; a.className = 'ch-ref'; a.textContent = label; return a; }
   function resolveRefs(t){
@@ -20,7 +27,7 @@
       var k = m[1], ids = m[2].split(','), n = nums(ids);
       if (k === 'num') frag.appendChild(document.createTextNode(n[0]));
       else if (k === 'ch') frag.appendChild(link(ids[0], plain('ch', ids)));
-      else { frag.appendChild(document.createTextNode('Chapters ')); frag.appendChild(link(ids[0], n[0])); frag.appendChild(document.createTextNode(k === 'chr' ? '\u2013' : ' and ')); frag.appendChild(link(ids[1], n[1])); }
+      else { frag.appendChild(document.createTextNode(kind(ids[0]) + 's ')); frag.appendChild(link(ids[0], n[0])); frag.appendChild(document.createTextNode(k === 'chr' ? '\u2013' : ' and ')); frag.appendChild(link(ids[1], n[1])); }
       last = m.index + m[0].length;
     }
     var tail = last < text.length ? document.createTextNode(text.slice(last)) : null;

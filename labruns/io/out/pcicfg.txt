@@ -1,0 +1,33 @@
+config space of 0000:00:02.0: 256 bytes (from /sys/bus/pci/devices/0000:00:02.0/config)
+00: f4 1a 42 10 06 04 10 00 01 00 80 01 00 00 00 00
+10: 04 00 08 00 40 00 00 00 00 00 00 00 00 00 00 00
+20: 00 00 00 00 00 00 00 00 00 00 00 00 f4 1a 42 10
+30: 00 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00
+40: 09 50 10 01 00 00 00 00 00 00 00 00 38 00 00 00
+50: 09 60 10 03 00 00 00 00 00 20 00 00 01 00 00 00
+60: 09 70 10 04 00 00 00 00 00 40 00 00 00 10 00 00
+70: 09 84 14 02 00 00 00 00 00 60 00 00 00 10 00 00
+80: 04 00 00 00 09 98 14 05 00 00 00 00 00 00 00 00
+90: 00 00 00 00 00 00 00 00 11 00 01 80 00 80 00 00
+a0: 00 80 04 00 00 00 00 00 00 00 00 00 00 00 00 00
+(rows b0-f0 are all zero)
+0x00 vendor ID        0x1af4
+0x02 device ID        0x1042   virtio: 0x1040 + type 2 (block device)
+0x04 command          0x0406   I/O space off, memory space on, bus master on, INTx disabled yes
+0x06 status           0x0010   capabilities list yes
+0x08 revision         0x01
+0x09 class code       0x018000 mass storage (0x01), subclass 0x80
+0x0e header type      0x00     type 0: an endpoint
+0x10 BAR0             0x00080004   memory, 64-bit (with BAR1), not prefetchable
+0x14 BAR1             0x00000040   upper half of BAR0
+     BAR0 address     0x4000080000, size 512 KiB (sysfs resource: 0x4000080000-0x40000fffff)
+0x2c subsystem        0x1af4:0x1042
+0x34 capabilities at  0x40
+0x3d interrupt pin    0        no INTx pin: interrupts come only as messages (MSI-X)
+capability list:
+  0x40  0x09 vendor (virtio)  common config      BAR0 offset 0x0000  length 56
+  0x50  0x09 vendor (virtio)  ISR status         BAR0 offset 0x2000  length 1
+  0x60  0x09 vendor (virtio)  device config      BAR0 offset 0x4000  length 4096
+  0x70  0x09 vendor (virtio)  notifications      BAR0 offset 0x6000  length 4096, notify_off_multiplier 4
+  0x84  0x09 vendor (virtio)  PCI config access  BAR0 offset 0x0000  length 0
+  0x98  0x11 MSI-X  2 vectors, enabled; table in BAR0 at 0x8000; pending bits in BAR0 at 0x48000
