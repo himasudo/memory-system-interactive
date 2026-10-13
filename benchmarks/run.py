@@ -27,6 +27,16 @@ def command(args):
         return {"command": args, "unavailable": str(e)}
 
 
+def cpu_details(cpu):
+    keys = {"vendor_id", "cpu family", "model", "model name", "stepping", "microcode", "flags"}
+    for block in (read("/proc/cpuinfo") or "").split("\n\n"):
+        fields = {k.strip(): v.strip() for line in block.splitlines() if ":" in line
+                  for k, v in [line.split(":", 1)]}
+        if fields.get("processor") == str(cpu):
+            return {k: v for k, v in fields.items() if k in keys}
+    return {}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cpu", type=int)
@@ -47,14 +57,7 @@ def main():
     flags = ["-O3", "-std=c11", "-Wall", "-Wextra", "-Werror", "-g"]
     compile_cmd = [args.cc, *flags, str(source), "-o", str(binary)]
     subprocess.run(compile_cmd, check=True)
-    cpuinfo = read("/proc/cpuinfo") or ""
-    keys = {"vendor_id", "cpu family", "model", "model name", "stepping", "microcode", "flags"}
-    cpu_info = {}
-    for block in cpuinfo.split("\n\n"):
-        fields = {k.strip(): v.strip() for line in block.splitlines() if ":" in line for k, v in [line.split(":", 1)]}
-        if fields.get("processor") == str(cpu):
-            cpu_info = {k: v for k, v in fields.items() if k in keys}
-            break
+    cpu_info = cpu_details(cpu)
     cpuroot = f"/sys/devices/system/cpu/cpu{cpu}"
     context = {
         "time_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
