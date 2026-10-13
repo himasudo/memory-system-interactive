@@ -1,0 +1,7 @@
+$ cat /proc/swaps
+Filename				Type		Size		Used		Priority
+$ zcat /proc/config.gz | grep -E "^(# )?CONFIG_(SWAP|ZSWAP|ZRAM|LRU_GEN)[= ]"
+CONFIG_SWAP=y
+CONFIG_ZSWAP=y
+# CONFIG_LRU_GEN is not set
+CONFIG_ZRAM=y

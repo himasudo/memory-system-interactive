@@ -1,52 +1,77 @@
-# Curated reference measurements
+# Optional measured machines
 
-The site reads `data/reference/ryzen7-3750h.json` automatically when present.
-There is intentionally no measured JSON here until a real target-machine run is
-available. Development-host checks and synthetic test fixtures are not reference
-measurements.
+No processor is the lab’s universal reference and no measured JSON is required.
+Development checks and synthetic test fixtures are never shipped as hardware
+evidence. A historical Ryzen 7 3750H run can be one contributed dataset, with its
+recorded identity and conditions, alongside other machines.
 
-On the actual Ryzen 7 3750H Linux machine:
+Measure and inspect on the actual Linux host:
 
 ```sh
 python3 benchmarks/run_all.py --serve \
-  --notes "Ryzen 7 3750H reference run; Ubuntu 24.04; normal idle system"
+  --notes "My machine; recorded OS and memory configuration; normal idle system"
 ```
 
-Inspect `results/reference-machine.json`: all suites should be complete, full
-runs (`context.quick: false`), source/compiler/timing/placement provenance should
-be intact, and CPU identification should be AMD Ryzen 7 3750H, AuthenticAMD,
-family 23, model 24. Keep optional-evidence skip reasons; do not fill them with
-assumed PMCs or counts. Record unknown configuration honestly.
+**Measure your machine** loads every suite automatically. Inspect completeness,
+full versus quick mode, source/binary hashes, compiler, timing, CPU placement,
+raw-trial dispersion and environment telemetry. Missing perf/IBS or sensor data
+retain reasons. Environment changes are potential confounds, not diagnoses or
+an automatic reason to discard trials. Keep independent runs in separate
+`--results` folders.
 
-Inspect the environment snapshots and potential-confound warnings in **Results**:
-the before/after full-run and per-suite readings preserve power/profile, governor,
-boost, per-CPU reported frequencies and named temperatures where available.
-Suite elapsed time is separate from native trial timers. Material observed state
-changes can qualify interpretation (especially loaded latency) but are not a
-causal diagnosis, proof of throttling, or an automatic reason to discard trials.
-Retain independent runs with distinct `--results` folders when comparing them.
-
-After choosing an appropriate **existing** run, export a sanitized public copy:
+After choosing an **existing** run, derive an optional public artifact:
 
 ```sh
 python3 benchmarks/export_public.py \
-  results/reference-machine.json data/reference/ryzen7-3750h.json
+  results/reference-machine.json data/reference/my-machine.json
+python3 benchmarks/register_dataset.py data/reference/my-machine.json \
+  --id my-machine --label "My measured machine"
 ```
 
-The exporter never reruns benchmarks or mutates the private bundle/raw files.
-Measurements, hashes, source/compiler/timing/placement provenance and environment
-observations remain intact. Local absolute paths become logical paths; Windows
-drive/UNC paths and paths embedded in diagnostics/notes are sanitized. Only the
-pathname portion of a VM smaps header changes; all mapping/trial values remain.
-Export provenance explains that raw-file hashes still describe original private
-file bytes. Older bundles remain exportable with telemetry explicitly unrecorded.
+Neither command reruns benchmarks, commits or uploads. Export leaves private
+results unchanged while sanitizing local POSIX/Windows paths and preserving
+measurements, hashes, environment and scope. Review free-form notes: path
+sanitization does not remove unrelated personal prose. Registration only writes
+an adjacent identity registry from an already sanitized bundle.
 
-Commit the derived curated file through the normal repository workflow. Export
-and visitor import do not commit or upload it. Path sanitization does not remove
-unrelated personal prose from free-form notes; inspect that content when curating.
+Commit the reviewed derived JSON and registry through the normal repository
+workflow. `results/reference-machine.json` is a retained compatibility output
+name; it does not make that CPU the project’s architectural reference. The old
+`ryzen7-3750h.json` export filename retains its specific identity guard but is
+loaded only when deliberately listed, just like any other optional dataset.
 
-The loader validates provenance and refuses another CPU's bundle as this named
-reference. Absent, malformed or incompatible files leave reference measurements
-unavailable while the simulations, visitor import and individual imports remain
-usable. Visitor files are read locally in their browser, kept only in the page
-session and never modify this directory or the public dataset.
+## Registry contract
+
+`data/reference/index.json` uses this shape (the example identity is a placeholder,
+not hardware evidence; the registration command records the real bundle fields):
+
+```json
+{
+  "schema": "memory-lab-measured-machines-v1",
+  "machines": [
+    {
+      "id": "my-machine",
+      "label": "My measured machine",
+      "file": "my-machine.json",
+      "identity": {
+        "cpu_model": "Copy the recorded model from the bundle",
+        "architecture": "Copy the recorded architecture",
+        "cpu_details": {}
+      }
+    }
+  ]
+}
+```
+
+The browser supports up to eight entries and verifies complete recorded CPU
+details, architecture and model against each bundle. Filenames must be simple
+JSON basenames; URLs, traversal and local paths are rejected. Missing/empty
+registries are normal. Unavailable or malformed entries retain a reason, and
+other usable datasets remain selectable. Models and published evidence remain
+usable without local measurements; absent values are never invented.
+
+Selecting a shipped machine changes only the comparison view. Visitor imports
+read `File.text()` locally and remain in the current page session, with no
+network request, storage persistence, GitHub integration or repository write.
+They cannot change this directory, a shipped dataset or another visitor’s view.
+Manual per-suite import and the two-run comparison remain available.

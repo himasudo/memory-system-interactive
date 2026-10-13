@@ -8,7 +8,7 @@ claim that the host is a Ryzen. Individual runner formats remain unchanged.
 |---|---|
 | `schema`, `created_utc`, `complete` | Version, UTC collection start, and whether all selected native suites completed |
 | `machine` | Recorded CPU model/identity, architecture, kernel, Linux topology/affinity, page/governor/THP/BIOS metadata and unmeasured controls |
-| `machine.is_ryzen_7_3750h` | Derived from AMD model name, vendor, family 23 and model 24; rechecked by the browser |
+| `machine.is_ryzen_7_3750h` | Legacy compatibility flag derived from AMD model name, vendor, family 23 and model 24; rechecked, never used as a generic dataset acceptance gate |
 | `selection` | Single CPU, confirmed physical cores, reciprocal SMT siblings, placement topology and explicit fallback reasons |
 | `provenance` | Orchestrator/workflow hashes, invocation, Python version, memory budget, quick-mode request and statistic definitions |
 | `capabilities` | Availability/reason records for compiler, perf, IBS, collection/skip policies and optional raw perf evidence |
@@ -44,18 +44,25 @@ placement labels. Missing provenance, malformed data, invalid counts or a
 contradictory target claim reject the import before replacing existing data.
 Valid partial bundles expose available runs and explicit unavailable-suite reasons.
 
-Public reference reads use a fixed relative GET for
-`data/reference/ryzen7-3750h.json`; they also require the derived target identity.
-A missing file is a normal unavailable state. Local `--serve` adds a fixed GET
-endpoint `/__memory_lab__/bundle.json`, read only on a loopback origin with
-`?local=1`. It serves the newly generated output even outside the repository root.
-Neither route accepts an arbitrary visitor-provided URL or writes files.
+Optional public machine reads start with `data/reference/index.json` using a
+same-origin GET. Its `memory-lab-measured-machines-v1` registry lists at most eight
+entries with `id`, `label`, plain JSON `file` basename and expected `identity`
+(`cpu_model`, `architecture`, complete recorded `cpu_details`). URLs, traversal,
+local absolute paths, duplicate IDs/files and missing identities are rejected
+before any dataset request. Each listed bundle passes full provenance validation
+and exact identity matching. Labels do not override recorded CPU names. Selection
+uses already loaded bundles; unavailable entries retain reasons. There is no
+fixed Ryzen file, mandatory dataset or simulation calibration.
+
+Local `--serve` adds `/__memory_lab__/bundle.json`, read only on a loopback origin
+with `?local=1`. It supplies the newly generated output even outside the repository
+root. Neither route accepts a visitor-provided URL or writes files.
 
 Visitor import only calls `File.text()`, `JSON.parse` and local validation/state
 updates. No fetch/XHR, upload, GitHub call, localStorage or sessionStorage stores
 visitor data. Reload/clear removes it. Existing theme/navigation persistence is
-independent. Reference and visitor bundles remain distinct, and no imported
-measurement changes simulation defaults or the documented architecture profile.
+independent. Optional shipped and visitor bundles remain distinct, and no imported
+measurement changes simulation defaults or documented implementation facts.
 
 ## Comparisons and optional PMU scope
 
@@ -75,7 +82,7 @@ detection and validated IBS evidence are separate states; unvalidated sampling
 and model-specific event semantics remain explicitly skipped.
 
 The bundled loader tests use synthetic identity fixtures only inside test
-contexts. No fixture or development-host result is shipped as Ryzen measurements.
+contexts. No fixture or development-host result is shipped as another CPU’s measurements.
 
 ## Environment telemetry and safe derived exports
 
@@ -120,3 +127,9 @@ unchanged. `public_export.input_bundle_sha256` identifies the original aggregate
 and `raw_hash_scope` makes clear that retained `raw_sha256` values identify original
 private raw-file bytes, not sanitized metadata. Export is a separate artifact,
 not a new measurement, upload, automatic commit or replacement of visitor data.
+
+`python3 benchmarks/register_dataset.py PUBLIC_JSON --id ID --label LABEL` reads
+an already sanitized export and creates/appends its adjacent `index.json`. It
+preserves the bundle bytes, checks the export marker and absence of private paths,
+and refuses duplicate or malformed entries. This is optional local curation, not
+a measurement, commit, upload or modification of visitor state.

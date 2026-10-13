@@ -1,0 +1,16 @@
+parent 2229, child 2230: 1000 round trips on CPU 0
+context switches between the two processes: 2000
+  CR3 loads at those switches that flushed the TLB: 1
+  CR3 loads at those switches that kept the TLB:    1999
+parent 2232, child 2233: 1000 round trips on CPU 0
+context switches between the two processes: 2000
+  CR3 loads at those switches that flushed the TLB: 1
+  CR3 loads at those switches that kept the TLB:    1999
+parent 2235, child 2236: 1000 round trips on CPU 0
+context switches between the two processes: 2002
+  CR3 loads at those switches that flushed the TLB: 1
+  CR3 loads at those switches that kept the TLB:    2001
+parent 2238, child 2239: 1000 round trips on CPU 0
+context switches between the two processes: 2000
+  CR3 loads at those switches that flushed the TLB: 1
+  CR3 loads at those switches that kept the TLB:    1999

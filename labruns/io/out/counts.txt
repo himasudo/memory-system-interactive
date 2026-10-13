@@ -1,0 +1,8 @@
+$ grep -E "CPU|virtio1-req" /proc/interrupts    # before
+           CPU0       CPU1       CPU2       CPU3       
+ 37:          0          0          0      66036 PCI-MSIX-0000:00:02.0   1-edge      virtio1-req.0
+$ grep -E "CPU|virtio1-req" /proc/interrupts    # after
+           CPU0       CPU1       CPU2       CPU3       
+ 37:          0          0          0      67040 PCI-MSIX-0000:00:02.0   1-edge      virtio1-req.0
+$ grep -c -E "  (dma_|swiotlb_)" oneread.trace.txt    # DMA-mapping and bounce-buffer events in the trace
+0

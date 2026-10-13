@@ -1,17 +1,208 @@
 'use strict';
-const test=require('node:test'),assert=require('node:assert/strict'),M=require('../src/12_vm_model.js');
-function step(s,kind,extra={}){const r=M.act(s,{kind,...extra});valid(r.state);assert.deepEqual(r.events.at(-1).state,r.state);return r.state;}
-function valid(s){assert.equal(s.frames[0].value,0);assert.equal(s.frames[0].dirty,false);for(const p of Object.values(s.processes)){for(const [pg,t] of Object.entries(p.tlb)){const q=p.ptes[pg];assert.ok(q&&q.frame!==undefined);assert.equal(t.frame,q.frame);assert.equal(t.writable,q.writable);assert.ok(p.vmas[pg]);}for(const [pg,q] of Object.entries(p.ptes)){assert.ok(p.vmas[pg]);if(q.frame!==undefined){assert.ok(s.frames[q.frame]);if(q.writable)assert.equal(p.vmas[pg].prot,'rw');}else assert.ok(s.swap[q.swap]);}}}
-function word(s,pid='parent',page=0){return s.frames[s.processes[pid].ptes[page].frame].value;}
-test('VMA creation, shared zero read, private first write and TLB reuse are separate',()=>{let s=M.create();s=step(s,'map');assert.equal(Object.keys(s.processes.parent.ptes).length,0);assert.equal(s.stats.allocations,0);s=step(s,'read');assert.equal(s.processes.parent.ptes[0].frame,0);assert.equal(s.stats.minor,1);s=step(s,'write',{value:7});assert.equal(word(s),7);assert.equal(s.stats.minor,2);assert.equal(s.stats.zeroBytes,4096);assert.equal(s.stats.copyBytes,0);s=step(s,'read');assert.equal(s.stats.tlbHits,1);});
-test('fork protects parent translations and child COW preserves the parent data',()=>{let s=step(M.create(),'map');s=step(s,'write',{value:7});s=step(s,'fork');assert.deepEqual(s.processes.parent.tlb,{});assert.equal(s.stats.copyBytes,0);assert.equal(s.processes.parent.ptes[0].frame,s.processes.child.ptes[0].frame);s=step(s,'write',{pid:'child',value:42});assert.equal(word(s),7);assert.equal(word(s,'child'),42);assert.equal(s.stats.copyBytes,4096);s=step(s,'write',{value:99});assert.equal(s.stats.copyBytes,4096,'exclusive anonymous page can be reused');assert.equal(word(s,'child'),42);});
-test('private file writes separate from page cache; shared writes and writeback preserve values',()=>{for(const kind of ['file-private','file-shared']){let s=step(M.create({kind}),'map');s=step(s,'read');assert.equal(s.stats.major,1);s=step(s,'fork');s=step(s,'write',{pid:'child',value:42});assert.equal(word(s),kind==='file-private'?10:42);assert.equal(s.file[0],10);s=step(s,'reclaim',{pid:'parent'});assert.equal(s.file[0],kind==='file-private'?10:42);assert.equal(s.stats.writebackBytes,kind==='file-private'?0:4096);s=step(s,'read');assert.equal(word(s),kind==='file-private'?10:42);assert.equal(s.stats.major,2);}});
-test('warm file-private write is one minor fault with one copy, not two fault entries',()=>{let s=step(M.create({kind:'file-private',warm:true}),'map');s=step(s,'write',{value:42});assert.equal(s.stats.minor,1);assert.equal(s.stats.major,0);assert.equal(s.stats.copyBytes,4096);assert.equal(s.file[0],10);});
-test('COW survives swap-out, shared swap-cache reuse and another child write',()=>{let s=step(M.create(),'map');s=step(s,'write',{value:7});s=step(s,'fork');s=step(s,'reclaim');assert.equal(s.stats.swapOutBytes,4096);s=step(s,'read');assert.equal(s.stats.swapInBytes,4096);s=step(s,'write',{value:99});assert.equal(s.stats.copyBytes,4096,'a swapped alias still owns the resident swap-cache contents');s=step(s,'read',{pid:'child'});assert.equal(word(s,'child'),7);s=step(s,'write',{pid:'child',value:42});assert.equal(word(s),99);assert.equal(word(s,'child'),42);assert.equal(Object.keys(s.swap).length,0);});
-test('permissions, unmapping and disabled swap never silently discard private data',()=>{let s=step(M.create({swap:false}),'map');s=step(s,'write',{value:7});s=step(s,'reclaim');assert.equal(word(s),7);s=step(s,'protect',{prot:'r'});s=step(s,'write',{value:42});assert.equal(s.last.error,'SIGSEGV');assert.equal(word(s),7);s=step(s,'protect',{prot:'rw'});s=step(s,'write',{value:42});s=step(s,'unmap');assert.deepEqual(Object.keys(s.frames),['0']);s=step(s,'read');assert.equal(s.last.error,'SIGSEGV');});
-test('dense huge-page coverage reduces translations; sparse coverage can waste memory without gaining hits',()=>{const a=M.tlb(),b=M.tlb({pageBytes:2097152}),c=M.tlb({pageBytes:2097152,pattern:'sparse'});assert.equal(a.misses,512);assert.equal(b.misses,1);assert.equal(c.misses,a.misses);assert.equal(c.mappedBytes,a.mappedBytes*512);assert.equal(M.tlb({pages:64}).misses,64);});
-test('page walks preserve each dependent level and finite shared resource bounds',()=>{for(const walkers of [1,4])for(const slots of [1,4])for(const cached of [0,2]){const r=M.walks({walkers,slots,cached});assert.equal(r.pteReads,8*(4-cached));assert.equal(r.lineBytes,(r.pteReads+8+16)*64);for(const t of r.trace){assert.ok(t.slots<=slots);assert.ok(t.walkers<=walkers);}for(const task of r.tasks){const req=r.requests.filter(q=>q.walk===task.id);assert.equal(req.at(-1).kind,'data');assert.equal(task.translated,req.at(-2).done);for(let i=1;i<req.length;i++)assert.ok(req[i].issue>=req[i-1].done);assert.equal(task.done,req.at(-1).done);}}});
-test('ordinary data competes with walks and cached upper levels remove real modeled requests',()=>{const idle=M.walks({demand:0,slots:2}),load=M.walks({demand:64,slots:2}),cached=M.walks({cached:2}),cold=M.walks({cached:0});assert.ok(load.tasks.at(-1).translated>idle.tasks.at(-1).translated);assert.ok(cached.pteReads<cold.pteReads);assert.ok(cached.cycles<cold.cycles);});
-test('shootdown completion waits for every required acknowledgement and batching reduces messages',()=>{const a=M.shootdown(),b=M.shootdown({batch:false}),c=M.shootdown({late:64});assert.equal(a.ipis,7);assert.equal(b.ipis,7*16);assert.ok(b.cycles>a.cycles);assert.ok(c.cycles>a.cycles);for(const r of [a,b,c]){for(const round of Array.from({length:r.rounds},(_,i)=>i)){const e=r.events.filter(e=>e.round===round);assert.equal(e.at(-1).end,Math.max(...e.map(e=>e.end)));}}const local=M.shootdown({touchers:1});assert.equal(local.ipis,0);assert.equal(local.cycles,22);});
-test('NUMA execution migration changes locality without changing physical page placement',()=>{const a=M.numa(),b=M.numa({cpuNode:1}),c=M.numa({placement:'interleave'});assert.equal(a.remote,0);assert.equal(b.local,0);assert.deepEqual(a.requests.map(q=>q.node),b.requests.map(q=>q.node));assert.equal(c.remote,c.local);assert.ok(b.mean>a.mean);assert.equal(b.linkBytes,b.lineBytes);});
-test('remote fabric responses serialize and link capacity bounds their throughput',()=>{const a=M.numa({cpuNode:1,spacing:0,linkBytes:4}),b=M.numa({cpuNode:1,spacing:0,linkBytes:32});assert.ok(a.cycles>b.cycles);const ordered=a.requests.slice().sort((a,b)=>a.linkStart-b.linkStart);for(let i=1;i<ordered.length;i++)assert.ok(ordered[i].linkStart>=ordered[i-1].linkEnd);assert.ok(a.linkBytes/a.cycles<=4);for(const q of a.requests)assert.ok(q.done>=q.memoryDone&&q.memoryDone>q.admit&&q.admit>=q.toNode);});
+const test = require('node:test'),
+  assert = require('node:assert/strict'),
+  M = require('../src/12_vm_model.js');
+function step(s, kind, extra = {}) {
+  const r = M.act(s, { kind, ...extra });
+  valid(r.state);
+  assert.deepEqual(r.events.at(-1).state, r.state);
+  return r.state;
+}
+function valid(s) {
+  assert.equal(s.frames[0].value, 0);
+  assert.equal(s.frames[0].dirty, false);
+  for (const p of Object.values(s.processes)) {
+    for (const [pg, t] of Object.entries(p.tlb)) {
+      const q = p.ptes[pg];
+      assert.ok(q && q.frame !== undefined);
+      assert.equal(t.frame, q.frame);
+      assert.equal(t.writable, q.writable);
+      assert.ok(p.vmas[pg]);
+    }
+    for (const [pg, q] of Object.entries(p.ptes)) {
+      assert.ok(p.vmas[pg]);
+      if (q.frame !== undefined) {
+        assert.ok(s.frames[q.frame]);
+        if (q.writable) assert.equal(p.vmas[pg].prot, 'rw');
+      } else assert.ok(s.swap[q.swap]);
+    }
+  }
+}
+function word(s, pid = 'parent', page = 0) {
+  return s.frames[s.processes[pid].ptes[page].frame].value;
+}
+test('VMA creation, shared zero read, private first write and TLB reuse are separate', () => {
+  let s = M.create();
+  s = step(s, 'map');
+  assert.equal(Object.keys(s.processes.parent.ptes).length, 0);
+  assert.equal(s.stats.allocations, 0);
+  s = step(s, 'read');
+  assert.equal(s.processes.parent.ptes[0].frame, 0);
+  assert.equal(s.stats.minor, 1);
+  s = step(s, 'write', { value: 7 });
+  assert.equal(word(s), 7);
+  assert.equal(s.stats.minor, 2);
+  assert.equal(s.stats.zeroBytes, 4096);
+  assert.equal(s.stats.copyBytes, 0);
+  s = step(s, 'read');
+  assert.equal(s.stats.tlbHits, 1);
+});
+test('fork protects parent translations and child COW preserves the parent data', () => {
+  let s = step(M.create(), 'map');
+  s = step(s, 'write', { value: 7 });
+  s = step(s, 'fork');
+  assert.deepEqual(s.processes.parent.tlb, {});
+  assert.equal(s.stats.copyBytes, 0);
+  assert.equal(s.processes.parent.ptes[0].frame, s.processes.child.ptes[0].frame);
+  s = step(s, 'write', { pid: 'child', value: 42 });
+  assert.equal(word(s), 7);
+  assert.equal(word(s, 'child'), 42);
+  assert.equal(s.stats.copyBytes, 4096);
+  s = step(s, 'write', { value: 99 });
+  assert.equal(s.stats.copyBytes, 4096, 'exclusive anonymous page can be reused');
+  assert.equal(word(s, 'child'), 42);
+});
+test('private file writes separate from page cache; shared writes and writeback preserve values', () => {
+  for (const kind of ['file-private', 'file-shared']) {
+    let s = step(M.create({ kind }), 'map');
+    s = step(s, 'read');
+    assert.equal(s.stats.major, 1);
+    s = step(s, 'fork');
+    s = step(s, 'write', { pid: 'child', value: 42 });
+    assert.equal(word(s), kind === 'file-private' ? 10 : 42);
+    assert.equal(s.file[0], 10);
+    s = step(s, 'reclaim', { pid: 'parent' });
+    assert.equal(s.file[0], kind === 'file-private' ? 10 : 42);
+    assert.equal(s.stats.writebackBytes, kind === 'file-private' ? 0 : 4096);
+    s = step(s, 'read');
+    assert.equal(word(s), kind === 'file-private' ? 10 : 42);
+    assert.equal(s.stats.major, 2);
+  }
+});
+test('warm file-private write is one minor fault with one copy, not two fault entries', () => {
+  let s = step(M.create({ kind: 'file-private', warm: true }), 'map');
+  s = step(s, 'write', { value: 42 });
+  assert.equal(s.stats.minor, 1);
+  assert.equal(s.stats.major, 0);
+  assert.equal(s.stats.copyBytes, 4096);
+  assert.equal(s.file[0], 10);
+});
+test('COW survives swap-out, shared swap-cache reuse and another child write', () => {
+  let s = step(M.create(), 'map');
+  s = step(s, 'write', { value: 7 });
+  s = step(s, 'fork');
+  s = step(s, 'reclaim');
+  assert.equal(s.stats.swapOutBytes, 4096);
+  s = step(s, 'read');
+  assert.equal(s.stats.swapInBytes, 4096);
+  s = step(s, 'write', { value: 99 });
+  assert.equal(
+    s.stats.copyBytes,
+    4096,
+    'a swapped alias still owns the resident swap-cache contents'
+  );
+  s = step(s, 'read', { pid: 'child' });
+  assert.equal(word(s, 'child'), 7);
+  s = step(s, 'write', { pid: 'child', value: 42 });
+  assert.equal(word(s), 99);
+  assert.equal(word(s, 'child'), 42);
+  assert.equal(Object.keys(s.swap).length, 0);
+});
+test('permissions, unmapping and disabled swap never silently discard private data', () => {
+  let s = step(M.create({ swap: false }), 'map');
+  s = step(s, 'write', { value: 7 });
+  s = step(s, 'reclaim');
+  assert.equal(word(s), 7);
+  s = step(s, 'protect', { prot: 'r' });
+  s = step(s, 'write', { value: 42 });
+  assert.equal(s.last.error, 'SIGSEGV');
+  assert.equal(word(s), 7);
+  s = step(s, 'protect', { prot: 'rw' });
+  s = step(s, 'write', { value: 42 });
+  s = step(s, 'unmap');
+  assert.deepEqual(Object.keys(s.frames), ['0']);
+  s = step(s, 'read');
+  assert.equal(s.last.error, 'SIGSEGV');
+});
+test('dense huge-page coverage reduces translations; sparse coverage can waste memory without gaining hits', () => {
+  const a = M.tlb(),
+    b = M.tlb({ pageBytes: 2097152 }),
+    c = M.tlb({ pageBytes: 2097152, pattern: 'sparse' });
+  assert.equal(a.misses, 512);
+  assert.equal(b.misses, 1);
+  assert.equal(c.misses, a.misses);
+  assert.equal(c.mappedBytes, a.mappedBytes * 512);
+  assert.equal(M.tlb({ pages: 64 }).misses, 64);
+});
+test('page walks preserve each dependent level and finite shared resource bounds', () => {
+  for (const walkers of [1, 4])
+    for (const slots of [1, 4])
+      for (const cached of [0, 2]) {
+        const r = M.walks({ walkers, slots, cached });
+        assert.equal(r.pteReads, 8 * (4 - cached));
+        assert.equal(r.lineBytes, (r.pteReads + 8 + 16) * 64);
+        for (const t of r.trace) {
+          assert.ok(t.slots <= slots);
+          assert.ok(t.walkers <= walkers);
+        }
+        for (const task of r.tasks) {
+          const req = r.requests.filter((q) => q.walk === task.id);
+          assert.equal(req.at(-1).kind, 'data');
+          assert.equal(task.translated, req.at(-2).done);
+          for (let i = 1; i < req.length; i++) assert.ok(req[i].issue >= req[i - 1].done);
+          assert.equal(task.done, req.at(-1).done);
+        }
+      }
+});
+test('ordinary data competes with walks and cached upper levels remove real modeled requests', () => {
+  const idle = M.walks({ demand: 0, slots: 2 }),
+    load = M.walks({ demand: 64, slots: 2 }),
+    cached = M.walks({ cached: 2 }),
+    cold = M.walks({ cached: 0 });
+  assert.ok(load.tasks.at(-1).translated > idle.tasks.at(-1).translated);
+  assert.ok(cached.pteReads < cold.pteReads);
+  assert.ok(cached.cycles < cold.cycles);
+});
+test('shootdown completion waits for every required acknowledgement and batching reduces messages', () => {
+  const a = M.shootdown(),
+    b = M.shootdown({ batch: false }),
+    c = M.shootdown({ late: 64 });
+  assert.equal(a.ipis, 7);
+  assert.equal(b.ipis, 7 * 16);
+  assert.ok(b.cycles > a.cycles);
+  assert.ok(c.cycles > a.cycles);
+  for (const r of [a, b, c]) {
+    for (const round of Array.from({ length: r.rounds }, (_, i) => i)) {
+      const e = r.events.filter((e) => e.round === round);
+      assert.equal(e.at(-1).end, Math.max(...e.map((e) => e.end)));
+    }
+  }
+  const local = M.shootdown({ touchers: 1 });
+  assert.equal(local.ipis, 0);
+  assert.equal(local.cycles, 22);
+});
+test('NUMA execution migration changes locality without changing physical page placement', () => {
+  const a = M.numa(),
+    b = M.numa({ cpuNode: 1 }),
+    c = M.numa({ placement: 'interleave' });
+  assert.equal(a.remote, 0);
+  assert.equal(b.local, 0);
+  assert.deepEqual(
+    a.requests.map((q) => q.node),
+    b.requests.map((q) => q.node)
+  );
+  assert.equal(c.remote, c.local);
+  assert.ok(b.mean > a.mean);
+  assert.equal(b.linkBytes, b.lineBytes);
+});
+test('remote fabric responses serialize and link capacity bounds their throughput', () => {
+  const a = M.numa({ cpuNode: 1, spacing: 0, linkBytes: 4 }),
+    b = M.numa({ cpuNode: 1, spacing: 0, linkBytes: 32 });
+  assert.ok(a.cycles > b.cycles);
+  const ordered = a.requests.slice().sort((a, b) => a.linkStart - b.linkStart);
+  for (let i = 1; i < ordered.length; i++)
+    assert.ok(ordered[i].linkStart >= ordered[i - 1].linkEnd);
+  assert.ok(a.linkBytes / a.cycles <= 4);
+  for (const q of a.requests)
+    assert.ok(q.done >= q.memoryDone && q.memoryDone > q.admit && q.admit >= q.toNode);
+});
