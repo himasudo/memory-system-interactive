@@ -89,7 +89,7 @@ build: function(root){
         '<span class="cm-num">' + p.n + '</span><span class="cm-body"><strong>' + p.title + '</strong><small>' + list.length + (list.length === 1 ? ' page' : ' pages') + (lessons ? ' · ' + lessons + ' lessons' : '') + (n ? ' · ' + n + ' done' : '') + '</small>' +
         '<span class="cm-bar"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></span></span>');
     });
-    App.h('p', {'class': 'cm-also'}, map, 'Also: <a href="#map/chips">AMD, Intel and Arm compared</a> · <a href="#perf/datasets">measure your own computer</a> · <a href="#gloss">glossary</a>');
+    App.h('p', {'class': 'cm-also'}, map, 'Also: <a href="#chips">AMD, Intel and Arm compared</a> · <a href="#perf/datasets">measure your own computer</a> · <a href="#gloss">glossary</a>');
   }
   drawMap();
 
@@ -114,7 +114,7 @@ build: function(root){
   var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One small example machine, three real ones, and yours.');
   P.row(d, [
     'Sizes and addresses come from one small example machine: four cores, a 32 KiB L1 data cache and a 512 KiB L2 per core, a 4 MiB L3 shared by all four, and two DDR4 memory channels. It is small on purpose, so every structure fits on screen, and it copies no particular chip.',
-    'Real chips build the same parts at other sizes. [[ch:map]] compares the example with <a href="#map/amd">AMD EPYC 9005</a>, <a href="#map/intel">Intel Xeon 6</a> and <a href="#map/arm">Arm Neoverse V3</a>, and <a href="#perf/datasets">Measure your machine</a> runs the same experiments on your own computer.'
+    'Real chips build the same parts at other sizes. [[ch:chips]] compares the example with <a href="#chips/amd">AMD EPYC 9005</a>, <a href="#chips/intel">Intel Xeon 6</a> and <a href="#chips/arm">Arm Neoverse V3</a>, and <a href="#perf/datasets">Measure your machine</a> runs the same experiments on your own computer.'
   ], {h: 120, cap: 'Capacity per level in the example machine. Each level is larger and slower than the one before it.', draw: function(sv){
     var L = [['core', '', 50], ['L1d', '32 KiB', 70], ['L2', '512 KiB', 80], ['L3', '4 MiB', 92], ['DRAM', 'GBs', 102]], x = 10;
     L.forEach(function(l, i){

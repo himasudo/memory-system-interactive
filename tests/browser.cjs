@@ -86,7 +86,7 @@ async function main() {
         lessons: Object.keys(lessons).length
       };
     });
-    assert.equal(kinds.chapters, 24);
+    assert.equal(kinds.chapters, 23);
     assert.equal(kinds.parts, 7);
     assert.equal(ids.length, kinds.chapters + kinds.parts + kinds.lessons);
     for (const id of ids)
@@ -104,7 +104,7 @@ async function main() {
         await page.evaluate(() =>
           ['start', 'map', 'core', 'l1d', 'e2e', 'perf', 'xlate', 'dev'].map((id) => App.chNum(id))
         ),
-        ['00', 'II.01', 'II.03', 'IV.01', 'VII.01', 'VII.02', 'III.09', 'VI.12']
+        ['00', 'II.01', 'II.03', 'IV.01', 'VII.01', 'VII.03', 'III.09', 'VI.12']
       );
     });
     await check('redirect preserves section hash', async () => {
@@ -511,19 +511,21 @@ async function main() {
         document.querySelector('.vm-measurement-status').textContent.startsWith('Could not import')
       );
     });
-    await check('real chips part compares the example machine with AMD, Intel and Arm', async () => {
-      await route('map/chips');
-      const part = page.locator('#map--part');
-      assert.match(await part.locator('h2').textContent(), /How AMD, Intel and Arm build it/);
-      assert.equal(await part.locator('.lab-index button').count(), 6);
-      const table = page.locator('#map--chips .chip-compare');
+    await check('real chips lesson compares the example machine with AMD, Intel and Arm', async () => {
+      await route('chips/chips');
+      const table = page.locator('#chips--chips table');
       assert.equal(await table.locator('tbody tr').count(), 8);
       assert.match(await table.textContent(), /MOESI.*MESIF.*CHI/s);
+      assert.ok(await table.locator('dfn[data-g="ccd"]').count(), 'vendor terms open their definitions');
       for (const id of ['amd', 'intel', 'arm'])
-        assert.equal(await page.locator('#map--' + id + ' .implementation-figure svg').count(), 1);
-      await page.locator('#crumbSec').click();
-      assert.match(await page.locator('#secMenu .sec-group').textContent(), /Real chips/);
-      await page.keyboard.press('Escape');
+        assert.equal(await page.locator('#chips--' + id + ' .implementation-figure svg').count(), 1);
+      assert.match(await page.locator('#chips--measured').textContent(), /labruns\/hw\/out\/ladder\.txt/);
+    });
+    await check('old links into the machine chapter open the real chips lesson', async () => {
+      await page.goto(base + '/memory_end_to_end.html#map/amd');
+      await page.waitForFunction(() => document.querySelector('.ch.show')?.id === 'ch-chips');
+      await page.waitForTimeout(500);
+      assert.equal(await page.evaluate(() => location.hash), '#chips/amd');
     });
     await check('ordering witnesses change under TSO, relaxed rules and full fences', async () => {
       await route('stores/litmus');
@@ -720,7 +722,7 @@ async function main() {
           'vm-tlb/walk-contention',
           'vm-shootdown/shootdown',
           'hier/numa',
-          'map/chips',
+          'chips/chips',
           'stores/litmus',
           'stores/language',
           'hier/inclusion',

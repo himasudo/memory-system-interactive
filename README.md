@@ -2,7 +2,7 @@
 
 > An interactive lab that follows one memory access through a computer, from a line of C down to the DRAM chips and back.
 
-Every simulation runs on one small example machine, so each structure fits on screen. Lesson II.01 compares that machine with current AMD EPYC 9005, Intel Xeon 6 and Arm Neoverse V3 designs, and one command runs the same experiments on your own Linux machine (x86-64 or Arm). No single vendor or chip is the reference.
+Every simulation runs on one small example machine, so each structure fits on screen. Lesson VII.02 compares that machine with current AMD EPYC 9005, Intel Xeon 6 and Arm Neoverse V3 designs, and measures one of them, and one command runs the same experiments on your own Linux machine (x86-64 or Arm). No single vendor or chip is the reference.
 
 ---
 
@@ -28,12 +28,12 @@ The site is a course in seven parts. A page's number comes from its place in the
 |---|---|---|
 | Start | `00` | The running example, the course map with your progress, how to read the pages, where the numbers come from |
 | **I** Foundations | `I.01`–`I.08` | Bits and hex, memory and addresses, instructions and registers, reading x86 assembly, cycles and latency, why caches exist, virtual memory, cores and devices |
-| **II** The machine and the core | `II.01`–`II.03` | The whole example machine and how AMD, Intel and Arm build the same parts; C → instructions → µops; the out-of-order core, cycle by cycle |
+| **II** The machine and the core | `II.01`–`II.03` | The example machine, one block at a time, in the order a load meets them; C → instructions → µops; the out-of-order core, cycle by cycle |
 | **III** Virtual memory | `III.01`–`III.24` | 23 lessons and one lab, listed below |
 | **IV** Caches and DRAM | `IV.01`–`IV.04` | The L1d lookup; L2, L3, fabric and the path to DRAM; DRAM banks, commands, refresh and ECC; prefetchers |
 | **V** Stores, ordering and coherence | `V.01`–`V.02` | The store path, memory types and fences; MOESI coherence and false sharing |
-| **VI** Devices and I/O | `VI.01`–`VI.13` | 12 lessons and one lab, listed below |
-| **VII** The whole system | `VII.01`–`VII.02` | One `hist[123]++`, end to end; units, Little's law, queue limits and benchmarks on your machine |
+| **VI** Devices and I/O | `VI.01`–`VI.15` | 14 lessons and one lab, listed below |
+| **VII** The whole system | `VII.01`–`VII.03` | One `hist[123]++`, end to end; real chips: AMD, Intel and Arm designs next to the example machine, and one of them measured; units, Little's law, queue limits and benchmarks on your machine |
 | Reference | `REF`, `A–Z` | **Atlas**: every full-width plate, plus the AMD, Intel and Arm package diagrams. **Glossary**: every term, searchable |
 
 Pages scroll in linkable sections (`#page/section`, for example `#l1d/lookup` or `#vm-walk/walk`). The top bar shows the current section, a section menu and reading progress. Each lesson and lab has **Mark as done**; the sidebar and the start page count the pages done in each part, and the start page links to the next page not done. Progress stays in the browser (`localStorage`).
@@ -42,7 +42,7 @@ Pages scroll in linkable sections (`#page/section`, for example `#l1d/lookup` or
 
 Parts III and VI are written as lessons. A lesson is a series of short steps: one or two sentences, then one figure, output, source excerpt or small widget, then one or two sentences. Each term is defined once, in the margin, where it first appears. A lesson ends with **Check yourself** (questions with feedback) and **What to remember**.
 
-The examples come from real Linux machines. Program outputs are quoted from runs on two cloud virtual machines, kept with their scripts in [`labruns/`](labruns/README.md); kernel code is quoted from Linux v6.18. The worked example is x86-64, with notes where Arm, AMD or Intel differ.
+The examples come from real Linux machines. Program outputs are quoted from runs on three cloud virtual machines, kept with their scripts in [`labruns/`](labruns/README.md); kernel code is quoted from Linux v6.18. The worked example is x86-64, with notes where Arm, AMD or Intel differ.
 
 The earlier chapters on translation and on devices are now the labs `III.09` and `VI.12`. Their experiments sit inside the lessons they belong to (copy-on-write in `III.17`, the IOMMU mapping lifetime in `VI.08`, interrupt and queue depth in `VI.09`, io_uring in `VI.11`). `III.09` keeps the translation and page-walk steppers; `VI.12` keeps the step-by-step NVMe read.
 
@@ -88,6 +88,8 @@ The earlier chapters on translation and on devices are now the labs `III.09` and
 | `VI.11` | io_uring | `#io-uring` |
 | `VI.12` | **Lab** · Devices: MMIO, DMA, the IOMMU and interrupts | `#dev` |
 | `VI.13` | One 4 KiB read, end to end | `#io-review` |
+| `VI.14` | A GPU and memory | `#gpu-mem` |
+| `VI.15` | One address space for CPU and GPU | `#gpu-svm` |
 
 ---
 
@@ -349,7 +351,7 @@ The original hardware walkthrough keeps its pages and routes, arranged as a cour
 
 - **Parts III and VI** are short lessons built on outputs from real Linux machines, with the earlier experiments placed inside them.
 - Most hardware pages end with an **Experiments** part: small simulations with a prediction to make first (caches, forwarding, SMT, coherence, the DRAM controller, page tables and TLBs, prefetching, I/O queues, NUMA, ECC, refresh and more).
-- Lesson II.01 has a **Real chips** part comparing the example machine with AMD EPYC 9005, Intel Xeon 6 and Arm Neoverse V3, with sources.
+- Lesson VII.02, **Real chips**, compares the example machine with AMD EPYC 9005, Intel Xeon 6 and Arm Neoverse V3, with sources, and measures machine C, a Xeon 6 virtual machine.
 - **Measure your machine** runs native benchmarks with one command and shows the results next to each simulation.
 
 Every simulation uses round example numbers (four cores, 32 KiB L1d, 512 KiB L2, 4 MiB L3, two DDR4 channels). The assembly and page tables use x86-64; the DRAM chip example uses DDR4, with notes on DDR5. Measurements never change the simulations' settings.

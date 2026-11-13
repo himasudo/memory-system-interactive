@@ -69,8 +69,6 @@ var App = (function(){
 
   /* ---------- chapter parts: walkthrough first, then experiments ---------- */
   var PARTS = {
-    map: {label: 'Real chips', title: 'How AMD, Intel and Arm build it', kicker: '',
-      copy: 'The map above is this lab’s example machine. These sections compare it with three current server designs.'},
     perf: false, atlas: false, start: false, gloss: false
   };
   var DEFAULT_PART = {label: 'Experiments', title: 'Try it yourself', kicker: 'Lab',
@@ -608,14 +606,6 @@ var App = (function(){
 
   function enhanceAllChapterWorkbench(sec){
     var id=sec.id;
-    if(id==='ch-map'){
-      var sc=sec.querySelector('.map-canvas'); if(sc) sec._cameraFocus=addFocusStrip(sec,sc,[
-        {id:'overview',label:'Whole machine',box:[0,0,1200,760]},
-        {id:'core',label:'CPU + caches',box:[15,35,780,405]},
-        {id:'memory',label:'Fabric + DRAM',box:[0,350,800,410]},
-        {id:'io',label:'I/O + devices',box:[760,20,440,740]}
-      ],{auto:false,follow:false,initial:'overview',label:'system view'});
-    }
     if(id==='ch-hier'){
       buildGenericWorkbench(sec,{className:'hier-workbench',views:[
         {id:'overview',label:'Overview',box:[0,0,1200,560]},
@@ -742,12 +732,7 @@ var App = (function(){
     function q(sel){return sec.querySelector(sel);} function kids(sel){return Array.prototype.slice.call(body.querySelectorAll(':scope > '+sel));}
     var psec = body.querySelectorAll(':scope > .p-sec');
     if (psec.length){ makeGuidedJourney(sec, Array.prototype.map.call(psec, function(el){ return {id: el.dataset.sec, title: el.dataset.title, copy: el.dataset.copy, nodes: [el]}; })); return; }
-    if(sec.id==='ch-map'){
-      makeGuidedJourney(sec,[
-        {id:'atlas',title:'See the whole machine',copy:'Click any block to see what it is, how big it is, and which chapter explains it.',nodes:[q('.map-workbench')]},
-        {id:'route',title:'Follow the route',copy:'The order the chapters follow: one stage of a memory access each.',nodes:[q('.route-index')]}
-      ]);
-    } else if(sec.id==='ch-code'){
+    if(sec.id==='ch-code'){
       var tops=Array.prototype.slice.call(body.children);
       makeGuidedJourney(sec,[
         {id:'example',title:'The example',copy:'The C function, its three arguments, and the registers they arrive in.',nodes:[tops[0]]},

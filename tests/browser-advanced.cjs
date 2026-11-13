@@ -212,9 +212,9 @@ async function main() {
       await field(lab, 'Threads', 1);
       assert.equal(await lab.evaluate((el) => el._multisocketResult.stats.local), 0);
       assert.equal(await lab.evaluate((el) => el._multisocketResult.stats.linkBytes), 128 * 64);
-      assert.match(await (await route('map/amd')).textContent(), /EPYC 9005/);
-      assert.match(await (await route('map/intel')).textContent(), /Xeon 6/);
-      const arm = await route('map/arm');
+      assert.match(await (await route('chips/amd')).textContent(), /EPYC 9005/);
+      assert.match(await (await route('chips/intel')).textContent(), /Xeon 6/);
+      const arm = await route('chips/arm');
       assert.match(await arm.textContent(), /Neoverse V3/);
       assert.match(await arm.textContent(), /Grace Superchip/);
     });

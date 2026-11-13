@@ -21,20 +21,6 @@
   function num(id){ return App.chNum(id); }
   function lines(sv, x, y, arr, cls){ arr.forEach(function(t, i){ T(sv, x, y + i * 14, t, cls || 's', 'middle'); }); }
 
-  /* ---- 09 the machine ---- */
-  add('map', 'route', {h: 150, cap: 'One access, stage by stage. The number under each stage is the chapter that covers it.', draw: function(sv){
-    [['C \u2192 \u00b5ops', 'code'], ['core', 'core'], ['TLB', 'xlate'], ['L1d', 'l1d'], ['L2 \u00b7 L3', 'hier'], ['DRAM', 'dram']].forEach(function(s, i){
-      var x = 6 + i * 76; R(sv, x, 12, 68, 40, 'a2b');
-      T(sv, x + 34, 37, s[0], '', 'middle'); T(sv, x + 34, 70, 'ch. ' + num(s[1]), 's m', 'middle');
-      if (i < 5) A(sv, 'M' + (x + 69) + ' 32 H' + (x + 75));
-    });
-    T(sv, 6, 100, 'acting on the same path', 's');
-    [['stores', 'stores'], ['coherence', 'coh'], ['prefetch', 'pref'], ['devices', 'dev'], ['full path', 'e2e']].forEach(function(s, i){
-      var x = 6 + i * 90; R(sv, x, 108, 86, 36, 'box', 10);
-      T(sv, x + 43, 123, s[0], 's', 'middle'); T(sv, x + 43, 138, 'ch. ' + num(s[1]), 's m', 'middle');
-    });
-  }});
-
   /* ---- 10 C -> assembly -> bytes -> uops ---- */
   add('code', 'example', {h: 124, cap: 'The System V AMD64 calling convention passes the first three integer arguments in rdi, rsi and rdx.', draw: function(sv){
     [['const unsigned char *data', 'rdi', '0x55555555a2c0'], ['long n', 'rsi', 'the count'], ['long *hist', 'rdx', '0x7ffd4a3c2a80']].forEach(function(r, i){

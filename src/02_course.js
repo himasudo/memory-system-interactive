@@ -33,14 +33,15 @@
       outcomes: ['Follow a store from the store queue to L1', 'Read a litmus test', 'Step through MOESI state changes'],
       pages: ['stores', 'coh']},
     {id: 'io', n: 'VI', title: 'Devices and I/O',
-      lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, and the queues behind every disk and network request. The outputs shown are from real runs on a Linux machine.',
-      outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt'],
+      lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, the queues behind every disk and network request, and how a GPU fits in. The outputs shown are from real runs on a Linux machine.',
+      outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt', 'Say where a GPU’s memory is, and how CPU and GPU can share one address space'],
       runs: ['b'],
-      pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review']},
+      pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review', 'gpu-mem', 'gpu-svm']},
     {id: 'system', n: 'VII', title: 'The whole system',
-      lede: 'Everything together: one access end to end, then predicting, measuring and explaining performance on your own machine.',
-      outcomes: ['Add up one access from instruction to DRAM', 'Predict throughput from queue sizes', 'Measure your own machine and compare'],
-      pages: ['e2e', 'perf']},
+      lede: 'Everything together: one access end to end, the same blocks in real AMD, Intel and Arm chips, then predicting, measuring and explaining performance on your own machine.',
+      outcomes: ['Add up one access from instruction to DRAM', 'Map a real server chip onto the example machine', 'Predict throughput from queue sizes', 'Measure your own machine and compare'],
+      runs: ['c'],
+      pages: ['e2e', 'chips', 'perf']},
     {id: 'ref', n: '', title: 'Reference', pages: ['atlas', 'gloss']}
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
@@ -48,11 +49,14 @@
   /* Experiments that moved from the two labs into lessons. An old link such as #xlate/os opens
      the lesson that holds the experiment now (#vm-cow/os); the section id did not change. */
   var MOVED = {'xlate/os': 'vm-cow', 'xlate/native': 'vm-cost', 'xlate/pages': 'vm-huge', 'xlate/granules': 'vm-vipt',
-    'xlate/walk-contention': 'vm-tlb', 'xlate/shootdown': 'vm-shootdown', 'dev/iotlb': 'io-iommu', 'dev/queues': 'io-irq', 'dev/uring': 'io-uring'};
+    'xlate/walk-contention': 'vm-tlb', 'xlate/shootdown': 'vm-shootdown', 'dev/iotlb': 'io-iommu', 'dev/queues': 'io-irq', 'dev/uring': 'io-uring',
+    /* the real-chips half of the old machine chapter is now Lesson VII.02 */
+    'map/chips': 'chips', 'map/amd': 'chips', 'map/intel': 'chips', 'map/arm': 'chips', 'map/published': 'chips', 'map/history': 'chips', 'map/part': 'chips'};
   /* The machines the "Lab run" outputs were captured on. Each output names its machine. */
   var MACHINES = {
     a: {name: 'machine A', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses.'},
-    b: {name: 'machine B', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'}
+    b: {name: 'machine B', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'},
+    c: {name: 'machine C', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.30 GHz (family 6, model 173, stepping 1), with a 48 KiB L1 data cache and a 2 MiB L2 per core, and 52-bit physical and 57-bit virtual addresses.'}
   };
   var RUN_MACHINE = MACHINES.a.text;
   function machineName(id){ return (MACHINES[id || 'a'] || MACHINES.a).name; }

@@ -2947,6 +2947,18 @@ svg .dash{stroke-dasharray:4 3}
 .cm-bar i{display:block;height:100%;border-radius:2px;background:var(--act)}
 .cm-also{margin:2px 0 0;color:var(--tx2);font-size:14px}
 
+/* ---------- II.01: the whole-machine diagram inside the lesson ---------- */
+.machine-lesson{display:grid;gap:10px}
+.machine-paths{display:flex;flex-wrap:wrap;gap:6px}
+.machine-paths button{font:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--bd);border-radius:7px;background:var(--panel);color:var(--tx2);cursor:pointer}
+.machine-paths button.on,.machine-paths button[aria-pressed="true"]{border-color:var(--act);color:var(--tx);background:color-mix(in srgb,var(--act) 14%,var(--panel))}
+.machine-lesson svg g.click{cursor:pointer}
+.machine-lesson svg g.click:focus-visible{outline:2px solid var(--act);outline-offset:2px}
+.machine-info{min-height:64px}
+.machine-info h3{margin:0 0 6px;font-size:16px}
+.machine-info p{margin:0 0 6px;color:var(--tx2);font-size:14px}
+.machine-go{display:inline-block;margin-top:2px;font-size:13.5px}
+
 </style>
 </head>
 <body>
@@ -3067,8 +3079,6 @@ var App = (function(){
 
   /* ---------- chapter parts: walkthrough first, then experiments ---------- */
   var PARTS = {
-    map: {label: 'Real chips', title: 'How AMD, Intel and Arm build it', kicker: '',
-      copy: 'The map above is this lab’s example machine. These sections compare it with three current server designs.'},
     perf: false, atlas: false, start: false, gloss: false
   };
   var DEFAULT_PART = {label: 'Experiments', title: 'Try it yourself', kicker: 'Lab',
@@ -3606,14 +3616,6 @@ var App = (function(){
 
   function enhanceAllChapterWorkbench(sec){
     var id=sec.id;
-    if(id==='ch-map'){
-      var sc=sec.querySelector('.map-canvas'); if(sc) sec._cameraFocus=addFocusStrip(sec,sc,[
-        {id:'overview',label:'Whole machine',box:[0,0,1200,760]},
-        {id:'core',label:'CPU + caches',box:[15,35,780,405]},
-        {id:'memory',label:'Fabric + DRAM',box:[0,350,800,410]},
-        {id:'io',label:'I/O + devices',box:[760,20,440,740]}
-      ],{auto:false,follow:false,initial:'overview',label:'system view'});
-    }
     if(id==='ch-hier'){
       buildGenericWorkbench(sec,{className:'hier-workbench',views:[
         {id:'overview',label:'Overview',box:[0,0,1200,560]},
@@ -3740,12 +3742,7 @@ var App = (function(){
     function q(sel){return sec.querySelector(sel);} function kids(sel){return Array.prototype.slice.call(body.querySelectorAll(':scope > '+sel));}
     var psec = body.querySelectorAll(':scope > .p-sec');
     if (psec.length){ makeGuidedJourney(sec, Array.prototype.map.call(psec, function(el){ return {id: el.dataset.sec, title: el.dataset.title, copy: el.dataset.copy, nodes: [el]}; })); return; }
-    if(sec.id==='ch-map'){
-      makeGuidedJourney(sec,[
-        {id:'atlas',title:'See the whole machine',copy:'Click any block to see what it is, how big it is, and which chapter explains it.',nodes:[q('.map-workbench')]},
-        {id:'route',title:'Follow the route',copy:'The order the chapters follow: one stage of a memory access each.',nodes:[q('.route-index')]}
-      ]);
-    } else if(sec.id==='ch-code'){
+    if(sec.id==='ch-code'){
       var tops=Array.prototype.slice.call(body.children);
       makeGuidedJourney(sec,[
         {id:'example',title:'The example',copy:'The C function, its three arguments, and the registers they arrive in.',nodes:[tops[0]]},
@@ -4211,14 +4208,15 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
       outcomes: ['Follow a store from the store queue to L1', 'Read a litmus test', 'Step through MOESI state changes'],
       pages: ['stores', 'coh']},
     {id: 'io', n: 'VI', title: 'Devices and I/O',
-      lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, and the queues behind every disk and network request. The outputs shown are from real runs on a Linux machine.',
-      outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt'],
+      lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, the queues behind every disk and network request, and how a GPU fits in. The outputs shown are from real runs on a Linux machine.',
+      outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt', 'Say where a GPU’s memory is, and how CPU and GPU can share one address space'],
       runs: ['b'],
-      pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review']},
+      pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review', 'gpu-mem', 'gpu-svm']},
     {id: 'system', n: 'VII', title: 'The whole system',
-      lede: 'Everything together: one access end to end, then predicting, measuring and explaining performance on your own machine.',
-      outcomes: ['Add up one access from instruction to DRAM', 'Predict throughput from queue sizes', 'Measure your own machine and compare'],
-      pages: ['e2e', 'perf']},
+      lede: 'Everything together: one access end to end, the same blocks in real AMD, Intel and Arm chips, then predicting, measuring and explaining performance on your own machine.',
+      outcomes: ['Add up one access from instruction to DRAM', 'Map a real server chip onto the example machine', 'Predict throughput from queue sizes', 'Measure your own machine and compare'],
+      runs: ['c'],
+      pages: ['e2e', 'chips', 'perf']},
     {id: 'ref', n: '', title: 'Reference', pages: ['atlas', 'gloss']}
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
@@ -4226,11 +4224,14 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
   /* Experiments that moved from the two labs into lessons. An old link such as #xlate/os opens
      the lesson that holds the experiment now (#vm-cow/os); the section id did not change. */
   var MOVED = {'xlate/os': 'vm-cow', 'xlate/native': 'vm-cost', 'xlate/pages': 'vm-huge', 'xlate/granules': 'vm-vipt',
-    'xlate/walk-contention': 'vm-tlb', 'xlate/shootdown': 'vm-shootdown', 'dev/iotlb': 'io-iommu', 'dev/queues': 'io-irq', 'dev/uring': 'io-uring'};
+    'xlate/walk-contention': 'vm-tlb', 'xlate/shootdown': 'vm-shootdown', 'dev/iotlb': 'io-iommu', 'dev/queues': 'io-irq', 'dev/uring': 'io-uring',
+    /* the real-chips half of the old machine chapter is now Lesson VII.02 */
+    'map/chips': 'chips', 'map/amd': 'chips', 'map/intel': 'chips', 'map/arm': 'chips', 'map/published': 'chips', 'map/history': 'chips', 'map/part': 'chips'};
   /* The machines the "Lab run" outputs were captured on. Each output names its machine. */
   var MACHINES = {
     a: {name: 'machine A', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses.'},
-    b: {name: 'machine B', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'}
+    b: {name: 'machine B', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'},
+    c: {name: 'machine C', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.30 GHz (family 6, model 173, stepping 1), with a 48 KiB L1 data cache and a 2 MiB L2 per core, and 52-bit physical and 57-bit virtual addresses.'}
   };
   var RUN_MACHINE = MACHINES.a.text;
   function machineName(id){ return (MACHINES[id || 'a'] || MACHINES.a).name; }
@@ -5595,7 +5596,7 @@ build: function(root){
         '<span class="cm-num">' + p.n + '</span><span class="cm-body"><strong>' + p.title + '</strong><small>' + list.length + (list.length === 1 ? ' page' : ' pages') + (lessons ? ' · ' + lessons + ' lessons' : '') + (n ? ' · ' + n + ' done' : '') + '</small>' +
         '<span class="cm-bar"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></span></span>');
     });
-    App.h('p', {'class': 'cm-also'}, map, 'Also: <a href="#map/chips">AMD, Intel and Arm compared</a> · <a href="#perf/datasets">measure your own computer</a> · <a href="#gloss">glossary</a>');
+    App.h('p', {'class': 'cm-also'}, map, 'Also: <a href="#chips">AMD, Intel and Arm compared</a> · <a href="#perf/datasets">measure your own computer</a> · <a href="#gloss">glossary</a>');
   }
   drawMap();
 
@@ -5620,7 +5621,7 @@ build: function(root){
   var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One small example machine, three real ones, and yours.');
   P.row(d, [
     'Sizes and addresses come from one small example machine: four cores, a 32 KiB L1 data cache and a 512 KiB L2 per core, a 4 MiB L3 shared by all four, and two DDR4 memory channels. It is small on purpose, so every structure fits on screen, and it copies no particular chip.',
-    'Real chips build the same parts at other sizes. [[ch:map]] compares the example with <a href="#map/amd">AMD EPYC 9005</a>, <a href="#map/intel">Intel Xeon 6</a> and <a href="#map/arm">Arm Neoverse V3</a>, and <a href="#perf/datasets">Measure your machine</a> runs the same experiments on your own computer.'
+    'Real chips build the same parts at other sizes. [[ch:chips]] compares the example with <a href="#chips/amd">AMD EPYC 9005</a>, <a href="#chips/intel">Intel Xeon 6</a> and <a href="#chips/arm">Arm Neoverse V3</a>, and <a href="#perf/datasets">Measure your machine</a> runs the same experiments on your own computer.'
   ], {h: 120, cap: 'Capacity per level in the example machine. Each level is larger and slower than the one before it.', draw: function(sv){
     var L = [['core', '', 50], ['L1d', '32 KiB', 70], ['L2', '512 KiB', 80], ['L3', '4 MiB', 92], ['DRAM', 'GBs', 102]], x = 10;
     L.forEach(function(l, i){
@@ -6681,142 +6682,258 @@ build: function(root){
   App.Plates = {plate: plate, dram: dramPlate, l1d: l1dPlate, e2e: e2ePlate, xlate: xlatePlate, core: corePlate};
 })();
 
-/* ======================= chapter: the machine ======================= */
-App.chapter({id: 'map', short: 'The machine', title: 'The machine, all of it',
-lede: 'Every structure a memory access can touch, from the core’s load/store unit out to the DRAM chips and the SSD.',
-points: ['Click a block to see what it does and which chapter takes it apart.', 'The sizes are the lab’s example machine, a small four-core design the simulations use. It is not any one product.', 'The second half of the chapter shows how AMD, Intel and Arm build the same parts today.'],
-build: function(root){
-  var h = App.h, s = App.s, g = App.g, HW = App.HW;
-  var work = h('div', {'class': 'map-workbench'}, root);
-  var wrap = h('div', {'class': 'scroller map-canvas'}, work);
-  var sv = s('svg', {role: 'img', 'aria-label': 'The lab’s example machine: four cores, caches, interconnect, memory controllers, DRAM and devices', viewBox: '0 0 1200 760', style: 'min-width:880px'}, wrap);
-  var info = h('aside', {'class': 'card map-inspector'}, work);
-  var parts = {}, selId = null;
-  var D = {
-    core0: ['Core 0 (and cores 1–3)', 'An out-of-order core. The model keeps 24 instructions in flight in its ROB, with 48 physical registers, 10 load-queue and 8 store-queue entries and 4 miss buffers: small enough to watch every entry. Real cores are far bigger: AMD Zen 5’s ROB holds 448 instructions. Many x86 cores also run two hardware threads (SMT); Arm’s Neoverse V3 runs one.', 'core', '[[ch:core]] runs the histogram loop through it cycle by cycle.'],
-    fe: ['Front end', 'Predicts the path, fetches instruction bytes from the L1i, finds where each instruction starts and decodes it into µops. The model fetches and decodes up to four instructions per cycle. Most x86 cores also keep recently decoded µops in an op cache, so a hot loop skips fetch and decode.', 'code', '[[ch:code]] shows what it decodes; [[ch:core]] shows it running.'],
-    ooo: ['Rename + out-of-order engine', 'Renames registers (RAT and free list), keeps instructions in program order in the ROB, and sends each µop to an execution port once its inputs are ready. The model has 48 physical registers, a 24-entry ROB, 16- and 12-entry schedulers, four ALUs and two address units.', 'core', ''],
-    lsu: ['Load/store unit + L1d', 'A load queue (10 entries in the model), a store queue (8) and 4 miss buffers in front of a 32 KiB, 8-way L1d with 64-byte lines. A load that matches an older queued store takes the data straight from the store queue (forwarding). Current L1d caches are 48 KiB (AMD Zen 5, Intel Redwood Cove) or 64 KiB (Arm Neoverse V3).', 'l1d', '[[ch:xlate]] covers translation, [[ch:l1d]] the L1d lookup, [[ch:stores]] the store path.'],
-    tlb: ['TLBs + page walker', 'Cache recent virtual-to-physical translations. On a miss, a hardware page walker reads the page tables through the data caches. The model has a 64-entry L1 DTLB and a 512-entry L2 TLB and uses x86-64 four-level page tables with 4 KiB pages. Real L2 TLBs hold a few thousand entries.', 'xlate', ''],
-    l2: ['L2 cache (one per core)', '512 KiB, 8-way, write-back and inclusive of the L1d in the model, sending 32 bytes per cycle to the L1. Current cores have 1 MiB (AMD Zen 5), 2 MiB (Intel Redwood Cove) or 2–3 MiB (Arm Neoverse V3).', 'hier', ''],
-    l3: ['L3 cache (shared by the four cores)', '4 MiB, 16-way in the model. It is a victim cache: a line enters it when an L2 evicts it, so the L3 holds mostly different lines from the L2s. It also keeps a copy of every L2’s tags (shadow tags), so it knows which core to ask for a line. AMD Zen 5’s L3 is also filled from L2 evictions, 32 MiB per 8 cores; Intel’s Xeon L3 is non-inclusive and split into slices across a mesh.', 'hier', '[[ch:hier]] follows a miss through it; [[ch:coh]] uses its shadow tags for coherence.'],
-    df: ['Coherent interconnect', 'Carries requests, data and coherence probes between the caches, the memory controllers, the GPU and the I/O hub. AMD calls its version Infinity Fabric; Intel’s Xeons use a mesh; Arm licenses its CMN mesh to chip makers.', 'hier', ''],
-    umc: ['Memory controllers', 'One per channel. Each maps physical addresses to channel, bank, row and column, queues requests, reorders them to hit open rows, and issues ACT/RD/WR/PRE/REF commands within the DRAM timing rules. Servers have many: AMD EPYC 9005 and Intel Xeon 6900P each drive 12 DDR5 channels per socket.', 'dram', '[[ch:dram]] takes one apart.'],
-    dram: ['DDR4 DRAM, two channels', 'Each channel is a 64-bit data bus plus a command/address bus. One read burst is 8 beats × 8 bytes = 64 bytes, one cache line. The cells are capacitors that must be refreshed. DDR5 splits each DIMM into two 32-bit subchannels with 16-beat bursts, which also deliver 64 bytes.', 'dram', ''],
-    gpu: ['Integrated GPU', 'Ten compute units (CUs) sharing a GPU L2. It is another client of the same interconnect and the same DRAM, so it competes with the cores for memory bandwidth. Laptop and phone chips have one; most server CPUs don’t.', 'hier', ''],
-    io: ['I/O hub: PCIe root complex + IOMMU', 'Turns core MMIO accesses into PCIe packets and device DMA into memory requests. The IOMMU translates device addresses and blocks DMA to memory the OS didn’t map for that device. On x86, hardware keeps device DMA coherent with the CPU caches; on some Arm systems the OS cleans or invalidates the cache lines around each transfer instead.', 'dev', '[[ch:dev]] walks an NVMe read through it.'],
-    nvme: ['NVMe SSD', 'Talks to the CPU through submission and completion rings in host RAM, doorbell registers written over MMIO, DMA, and MSI-X interrupts.', 'dev', ''],
-    nic: ['Network card', 'Same pattern as NVMe: TX and RX descriptor rings in host RAM, doorbell registers the driver writes over MMIO, a DMA engine that reads the rings and packet buffers, and MSI-X interrupts.', 'dev', '']
+/* ======================= II.01 · The machine: one load, block by block ======================= */
+(function () {
+  'use strict';
+  var g = App.g, d = App.gloss, h = App.h, s = App.s;
+  d('core', 'core', 'One processor inside the chip. It fetches, decodes and runs one stream of instructions, with its own registers and its own L1 and L2 caches. The example machine has four.');
+  d('igpu', 'integrated GPU', 'A graphics processor on the same chip as the cores. It reads and writes the same DRAM through the same interconnect, so it competes with the cores for memory bandwidth. Laptop chips usually have one; server chips usually do not.');
+  d('mts', 'MT/s', 'Million transfers per second: how many times per second a memory bus moves one word. A DDR4-2400 channel moves 8 bytes 2,400 million times a second, 19.2 GB/s.');
+  App.setCategory('core', 'core');
+  App.setCategory('igpu', 'io');
+  App.setCategory('mts', 'memory');
+
+  var CFG = App.CFG;
+  function cyc() { return { l1: CFG.l1, l2: CFG.l2, l3: CFG.l3, dram: App.dramCycles() }; }
+
+  /* The path of one load, as a strip of boxes; `at` marks the block a section is about. */
+  var STOPS = [['core', 'core', 'computes the address'], ['tlb', 'TLB', 'virtual → physical'], ['l1', 'L1d', '32 KiB, this core'], ['l2', 'L2', '512 KiB, this core'],
+    ['l3', 'L3', '4 MiB, all cores'], ['fabric', 'interconnect', 'joins everything'], ['mc', 'memory controller', 'one per channel'], ['dram', 'DRAM', 'outside the chip']];
+  function path(L, at, cap) {
+    var c = cyc(), lat = { l1: c.l1 + ' cycles', l2: c.l2 + ' cycles', l3: c.l3 + ' cycles', dram: '≈ ' + c.dram + ' cycles' };
+    L.chain(STOPS.map(function (x) { return { k: x[1], v: lat[x[0]] || '', d: x[2], hot: x[0] === at }; }), { cap: cap || 'The blocks a load can meet, in order. Cycle counts are the total load-to-use time when the data is found there.' });
+  }
+
+  /* "Lesson IV.02 · Down the hierarchy", or null for a page that does not exist */
+  function where(id) {
+    var c = App.chapters.filter(function (x) { return x.id === id; })[0];
+    if (!c || !c.num) return null;
+    return (App.Course && App.Course.labPages[id] ? 'Lab ' : 'Lesson ') + c.num + ' · ' + c.short;
+  }
+
+  /* ---------- the whole-machine diagram, with an inspector ---------- */
+  var BLOCKS = {
+    core0: ['Core 0', 'One of four cores. It runs one stream of instructions and has its own L1 and L2 caches.', 'code'],
+    cores: ['Cores 1 to 3', 'Built like core 0: each has its own front end, execution engine, load/store unit, TLBs, L1d and L2.', 'core'],
+    fe: ['Front end', 'Fetches instruction bytes from the L1 instruction cache (L1i), finds where each instruction starts, and decodes it into the small operations the core executes.', 'code'],
+    ex: ['Execution engine', 'Runs the decoded operations as soon as their inputs are ready, often out of program order, then retires them in order.', 'core'],
+    lsu: ['Load/store unit', 'Computes each memory address, sends loads and stores to the L1d, and keeps track of the ones still in flight.', 'core'],
+    tlb: ['TLBs and page walker', 'Translate virtual addresses into physical ones. The TLBs keep recent translations; on a miss the page walker reads the page tables through the caches.', 'vm-tlb'],
+    l1d: ['L1 data cache (L1d)', '32 KiB, private to the core, 4 cycles. Holds copies of 64-byte lines.', 'l1d'],
+    l2: ['L2 cache', '512 KiB per core, 12 cycles. In this machine it keeps a copy of every line in its core’s L1d.', 'hier'],
+    l3: ['L3 cache', '4 MiB shared by the four cores, 35 cycles. Filled with lines the L2s evict. It also knows which lines each L2 holds.', 'hier'],
+    fabric: ['Interconnect', 'Carries requests, data and coherence messages between the caches, the memory controllers, the I/O hub and the GPU.', 'hier'],
+    mc: ['Memory controllers', 'One per memory channel. Each turns requests into DRAM commands and receives lines back. Consecutive lines alternate between the two channels.', 'dram'],
+    dram: ['DRAM', 'Two DDR4-2400 channels, each a 64-bit bus to memory modules outside the chip. About 90 ns to the first byte.', 'dram'],
+    io: ['I/O hub and IOMMU', 'Connects devices over PCI Express. Turns the cores’ accesses to device registers into PCIe packets, and device DMA into memory requests after the IOMMU has checked them.', 'io-paths'],
+    gpu: ['Integrated GPU (some chips)', 'A graphics processor on the same chip. One more client of the same interconnect and DRAM. Server chips usually have none; a server GPU is a separate PCIe device.', 'gpu-mem'],
+    ssd: ['NVMe SSD', 'A storage device on a PCIe link. It moves data to and from DRAM by DMA.', 'io-paths'],
+    nic: ['Network card', 'A PCIe device that moves packets to and from DRAM by DMA.', 'io-paths']
   };
-  function blk(id, x, y, w, ht, title, lines, cls){
-    var gr = s('g', {'class': 'click'}, sv);
-    s('rect', {x: x, y: y, width: w, height: ht, rx: 8, 'class': 'box' + (cls ? ' ' + cls : '')}, gr);
-    s('text', {x: x + 10, y: y + 18, 'class': 'h'}, gr, title);
-    (lines || []).forEach(function(l, i){ s('text', {x: x + 10, y: y + 36 + i * 15, 'class': i === lines.length - 1 && lines.length > 1 ? 's' : ''}, gr, l); });
-    gr.onclick = function(e){ e.stopPropagation(); pick(id); };
-    parts[id] = gr; return gr;
-  }
-  function lbl(x, y, t, cls, anc){ return s('text', {x: x, y: y, 'class': cls || 's', 'text-anchor': anc || 'start'}, sv, t); }
-  function busL(d, width){ var p = s('path', {d: d, 'class': 'bus'}, sv); return p; }
-  /* package */
-  s('rect', {x: 10, y: 10, width: 1180, height: 560, rx: 14, 'class': 'sunk'}, sv);
-  lbl(24, 32, 'The lab\u2019s example machine \u00b7 one package', 'h');
-  /* core cluster */
-  s('rect', {x: 24, y: 44, width: 760, height: 380, rx: 12, fill: 'none', stroke: 'var(--bd2)', 'stroke-dasharray': '5 4'}, sv);
-  lbl(36, 62, 'Core cluster: four cores share the L3', 's');
-  /* core 0 detailed */
-  s('rect', {x: 36, y: 72, width: 420, height: 206, rx: 10, fill: 'none', stroke: 'var(--bd2)'}, sv);
-  blk('core0', 44, 80, 404, 26, 'Core 0 \u00b7 out of order', []);
-  blk('fe', 44, 112, 196, 70, 'Front end', ['branch predictor \u00b7 L1i', 'decode 4 per cycle'], 'a3b');
-  blk('ooo', 250, 112, 198, 70, 'Out-of-order engine', ['ROB 24 \u00b7 48 registers', '4 ALU + 2 AGU ports'], 'a3b');
-  blk('lsu', 44, 188, 250, 82, 'Load/store unit + L1d', ['LQ 10 \u00b7 SQ 8 \u00b7 4 miss buffers', 'L1d 32 KB \u00b7 8-way', 'store-to-load forwarding'], 'a4b');
-  blk('tlb', 302, 188, 146, 82, 'TLBs + walker', ['L1 DTLB 64', 'L2 TLB 512', 'page walker'], 'a4b');
-  blk('l2', 44, 300, 404, 50, 'L2 \u00b7 512 KB \u00b7 8-way \u00b7 inclusive of L1', ['private to this core'], 'a2b');
-  HW.assoc(parts.l2, 356, 307, 84, 36, {ways: 8, rows: 4});
-  busL('M 170 270 L 170 300'); lbl(176, 290, '32 B/cycle');
-  /* cores 1-3 */
-  [1, 2, 3].forEach(function(n, k){
-    var x = 472 + k * 102;
-    s('rect', {x: x, y: 72, width: 94, height: 206, rx: 10, fill: 'none', stroke: 'var(--bd2)'}, sv);
-    var gr = blk('c' + n, x + 6, 80, 82, 190, 'Core ' + n, []);
-    HW.blocks(gr, x + 12, 106, 70, 156, [
-      {t: 'Front end', sub: 'L1i \u00b7 decode', cls: 'a3b'},
-      {t: 'OoO engine', sub: 'ROB \u00b7 PRF', cls: 'a3b'},
-      {t: 'LSU + L1d', sub: 'LQ \u00b7 SQ', cls: 'a4b'},
-      {t: 'TLBs', sub: '+ walker', cls: 'a4b'}
-    ], {gap: 5});
-    gr.onclick = function(e){ e.stopPropagation(); pick('core0'); };
-    s('rect', {x: x + 6, y: 300, width: 82, height: 50, rx: 8, 'class': 'box a2b'}, sv);
-    lbl(x + 14, 318, 'L2 512 KB', 's');
-    HW.assoc(sv, x + 14, 324, 66, 19, {ways: 8, rows: 3});
-    busL('M ' + (x + 47) + ' 270 L ' + (x + 47) + ' 300');
-  });
-  blk('l3', 44, 366, 728, 50, 'L3 \u00b7 4 MB \u00b7 16-way \u00b7 victim cache \u00b7 shadow tags of all four L2s', ['shared by cores 0\u20133; filled by L2 evictions'], 'a2b');
-  [170, 519, 621, 723].forEach(function(x){ busL('M ' + x + ' 350 L ' + x + ' 366'); });
-  lbl(176, 362, '32 B/cycle');
-  /* PCIe links: I/O hub straight down to the devices (drawn first, so they pass under the fabric) */
-  busL('M 890 280 L 890 600'); busL('M 1086 280 L 1086 600');
-  /* fabric */
-  blk('df', 24, 440, 1152, 36, 'Coherent interconnect \u00b7 requests, data and probes', [], 'a3b');
-  busL('M 400 416 L 400 440');
-  var gpu = blk('gpu', 800, 44, 376, 110, 'Integrated GPU (optional)', []);
-  for (var cu = 0; cu < 10; cu++){
-    var cux = 810 + (cu % 5) * 50, cuy = 70 + Math.floor(cu / 5) * 26;
-    HW.rect(gpu, cux, cuy, 46, 22, 'a3b', 3); HW.txt(gpu, cux + 23, cuy + 15, 'CU ' + cu, {size: 9, anchor: 'middle', fill: 'var(--tx)'});
-  }
-  HW.blocks(gpu, 1066, 70, 100, 48, [{t: 'GPU L2', sub: 'shared by the CUs', cls: 'sunk'}]);
-  HW.rect(gpu, 806, 124, 92, 24, 'a3b', 4); HW.txt(gpu, 852, 140, 'fabric port', {size: 9.5, anchor: 'middle', fill: 'var(--tx)'});
-  HW.txt(gpu, 908, 140, 'same fabric and DRAM as the cores', {size: 9.5, fill: 'var(--tx3)'});
-  busL('M 800 130 L 792 130 L 792 440');
-  blk('io', 800, 170, 376, 110, 'I/O hub', ['PCIe root complex \u00b7 IOMMU + IOTLB', 'turns MMIO into PCIe packets and', 'device DMA into memory requests']);
-  busL('M 1000 280 L 1000 440');
-  blk('umc', 24, 490, 560, 64, 'Memory controllers \u00b7 one per channel', ['address mapping \u00b7 request queues \u00b7 DRAM command scheduling \u00b7 refresh']);
-  busL('M 300 476 L 300 490');
-  /* off-package */
-  blk('dram', 24, 600, 560, 140, 'DDR4 \u2014 channel A and channel B', ['each: 64-bit data bus + command/address bus', 'DIMM \u2192 rank \u2192 8 chips \u2192 16 banks each \u2192 rows \u00d7 columns', 'one 64-byte line = 8 beats of 8 bytes (burst length 8)', 'DDR4-2400: 2400 MT/s \u00d7 8 B = 19.2 GB/s per channel (peak)']);
-  busL('M 160 554 L 160 600'); busL('M 450 554 L 450 600'); lbl(166, 584, 'channel A, 64 bits'); lbl(456, 584, 'channel B, 64 bits');
-  blk('nvme', 800, 600, 180, 140, 'NVMe SSD', ['queues in host RAM', 'doorbells via MMIO', 'DMA + MSI-X']);
-  var nic = blk('nic', 996, 600, 180, 140, 'Network card', []);
-  HW.blocks(nic, 1004, 628, 164, 24, [{t: 'doorbells', cls: 'a3b'}, {t: 'DMA', cls: 'a3b'}, {t: 'MSI-X', cls: 'a3b'}], {cols: 3, gap: 4, size: 9});
-  ['TX', 'RX'].forEach(function(nm, r){
-    var ry = 664 + r * 24;
-    HW.txt(nic, 1006, ry + 11, nm + ' ring', {size: 9, fill: 'var(--tx2)'});
-    for (var k = 0; k < 8; k++) s('rect', {x: 1052 + k * 14.5, y: ry, width: 12, height: 15, rx: 2, 'class': 'sunk', style: 'stroke-dasharray:2 1.5'}, nic);
-  });
-  HW.txt(nic, 1006, 726, 'rings live in host RAM', {size: 9, fill: 'var(--tx3)'});
-  lbl(896, 530, 'PCIe links from the I/O hub');
-  lbl(896, 545, '(packets called TLPs); they do');
-  lbl(896, 560, 'not pass through the fabric');
-  lbl(600, 520, 'off-package from here down \u2193', 's');
-  sv.onclick = function(){ pick(null); };
+  var PATHS = {
+    hit: { label: 'L1d hit', blocks: ['core0', 'lsu', 'tlb', 'l1d'], note: 'Translated by the TLB, found in the L1d: about ' },
+    l3: { label: 'L3 hit', blocks: ['core0', 'lsu', 'tlb', 'l1d', 'l2', 'l3'], note: 'Missed in the L1d and the L2, found in the shared L3: about ' },
+    dram: { label: 'miss everywhere', blocks: ['core0', 'lsu', 'tlb', 'l1d', 'l2', 'l3', 'fabric', 'mc', 'dram'], note: 'Missed in every cache. The request crosses the interconnect to a memory controller, and the line comes back the same way: about ' },
+    dma: { label: 'SSD writes by DMA', blocks: ['ssd', 'io', 'fabric', 'mc', 'dram'], note: 'No core is involved: the device’s write travels over PCIe to the I/O hub, then across the interconnect to DRAM.' }
+  };
+  function machine(el) {
+    var wrap = h('div', { 'class': 'machine-lesson' }, el);
+    var bar = h('div', { 'class': 'machine-paths', role: 'group', 'aria-label': 'Highlight a path' }, wrap);
+    var sc = h('div', { 'class': 'scroller' }, wrap);
+    var sv = s('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'The example machine: four cores with their caches, a shared L3, the interconnect, memory controllers, DRAM, the I/O hub, an optional GPU and two devices', style: 'min-width:760px' }, sc);
+    var info = h('div', { 'class': 'card machine-info', 'aria-live': 'polite' }, wrap);
+    var parts = {}, picked = null, lit = null;
+    function T(x, y, t, cls, anc) { return s('text', { x: x, y: y, 'class': cls || 's', 'text-anchor': anc || 'start' }, sv, t); }
+    function wire(dd) { return s('path', { d: dd, 'class': 'bus' }, sv); }
+    function blk(id, x, y, w, ht, title, sub, cls, parent) {
+      var gr = s('g', { 'class': 'click', 'data-block': id, tabindex: '0', role: 'button', 'aria-label': BLOCKS[id] ? BLOCKS[id][0] : title }, parent || sv);
+      s('rect', { x: x, y: y, width: w, height: ht, rx: 8, 'class': 'box' + (cls ? ' ' + cls : '') }, gr);
+      s('text', { x: x + 10, y: y + 19, 'class': 'h' }, gr, title);
+      if (sub) s('text', { x: x + 10, y: y + 36, 'class': 's' }, gr, sub);
+      gr.onclick = function (e) { e.stopPropagation(); pick(id); };
+      gr.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(id); } };
+      (parts[id] = parts[id] || []).push(gr);
+      return gr;
+    }
+    /* the chip */
+    s('rect', { x: 10, y: 10, width: 980, height: 432, rx: 14, 'class': 'sunk' }, sv);
+    T(24, 30, 'One chip', 'h');
+    /* devices hang off the I/O hub; drawn first so the links pass under the interconnect */
+    wire('M 742 252 L 742 470'); wire('M 902 252 L 902 470');
+    /* core 0, opened up */
+    s('rect', { x: 24, y: 40, width: 330, height: 212, rx: 10, fill: 'none', stroke: 'var(--bd2)' }, sv);
+    blk('core0', 32, 46, 314, 26, 'Core 0', '', '');
+    blk('fe', 32, 80, 152, 50, 'Front end', 'fetch · decode · L1i', 'a3b');
+    blk('ex', 194, 80, 152, 50, 'Execution engine', 'runs the operations', 'a3b');
+    blk('lsu', 32, 138, 152, 50, 'Load/store unit', 'addresses · loads · stores', 'a4b');
+    blk('tlb', 194, 138, 152, 50, 'TLBs + walker', 'virtual → physical', 'a4b');
+    blk('l1d', 32, 196, 314, 48, 'L1d · 32 KiB', 'private to core 0', 'a2b');
+    blk('l2', 24, 262, 330, 40, 'L2 · 512 KiB · private to core 0', '', 'a2b');
+    wire('M 189 252 L 189 262');
+    /* cores 1–3 */
+    [1, 2, 3].forEach(function (n, k) {
+      var x = 366 + k * 98;
+      s('rect', { x: x, y: 40, width: 88, height: 212, rx: 10, fill: 'none', stroke: 'var(--bd2)' }, sv);
+      var gr = blk('cores', x + 6, 46, 76, 198, 'Core ' + n, '', '');
+      ['front end', 'execution', 'load/store', 'TLBs', 'L1d'].forEach(function (t, i) {
+        s('rect', { x: x + 12, y: 76 + i * 33, width: 64, height: 27, rx: 4, 'class': i === 4 ? 'a2b' : i > 1 ? 'a4b' : 'a3b' }, gr);
+        s('text', { x: x + 44, y: 94 + i * 33, 'class': 's', 'text-anchor': 'middle' }, gr, t);
+      });
+      blk('l2', x, 262, 88, 40, 'L2', '', 'a2b');
+      wire('M ' + (x + 44) + ' 252 L ' + (x + 44) + ' 262');
+    });
+    blk('l3', 24, 316, 636, 44, 'L3 · 4 MiB · shared by the four cores', 'filled with lines the L2s evict', 'a2b');
+    [189, 410, 508, 606].forEach(function (x) { wire('M ' + x + ' 302 L ' + x + ' 316'); });
+    blk('fabric', 24, 374, 952, 26, 'Interconnect', '', 'a3b');
+    wire('M 342 360 L 342 374');
+    /* right column: GPU and I/O hub */
+    blk('gpu', 672, 40, 304, 92, 'Integrated GPU (some chips)', 'one more client of the interconnect and DRAM', '');
+    blk('io', 672, 142, 304, 110, 'I/O hub', 'PCIe links to devices', '');
+    s('text', { x: 682, y: 214, 'class': 's' }, parts.io[0], 'IOMMU: checks every device access');
+    s('text', { x: 682, y: 232, 'class': 's' }, parts.io[0], 'turns DMA into memory requests');
+    wire('M 666 86 L 662 86 L 662 374'); wire('M 824 252 L 824 374');
+    blk('mc', 24, 406, 400, 28, 'Memory controllers · one per channel', '', '');
+    wire('M 224 400 L 224 406');
+    /* off the chip */
+    T(440, 462, 'outside the chip ↓', 's');
+    blk('dram', 24, 470, 192, 78, 'DRAM channel A', 'DDR4-2400 · 64-bit bus', 'sunk');
+    blk('dram', 232, 470, 192, 78, 'DRAM channel B', 'DDR4-2400 · 64-bit bus', 'sunk');
+    wire('M 120 434 L 120 470'); wire('M 328 434 L 328 470');
+    blk('ssd', 672, 470, 150, 78, 'NVMe SSD', 'PCIe device', 'sunk');
+    blk('nic', 832, 470, 144, 78, 'Network card', 'PCIe device', 'sunk');
+    T(752, 458, 'PCIe links from the I/O hub, not through the interconnect', 's');
+    sv.onclick = function () { pick(null); };
 
-  function pick(id){
-    selId = id;
-    for (var k in parts) parts[k].setAttribute('class', 'click' + (k === id ? ' on' : ''));
-    if (!id){ info.innerHTML = '<div class="inspector-kicker">The machine</div><h3>Pick a block</h3><p>Click any part to see what it does and which chapter takes it apart. The diagram is the table of contents.</p><p class="note">The sizes are the lab\u2019s example machine. For real AMD, Intel and Arm sizes, see <a href="#map/chips">Same parts, different choices</a> below.</p>'; return; }
-    var d = D[id];
-    info.innerHTML = '<h3>' + d[0] + '</h3><p>' + d[1] + '</p>' + (d[3] ? '<p>' + d[3] + '</p>' : '') + '<button class="pri" data-go="' + d[2] + '">open the chapter \u2192</button>';
-    info.querySelector('button').onclick = function(){ App.go(d[2]); };
+    function paint() {
+      var on = lit ? PATHS[lit].blocks : [];
+      Object.keys(parts).forEach(function (id) {
+        parts[id].forEach(function (gr) { gr.setAttribute('class', 'click' + (id === picked || on.indexOf(id) >= 0 ? ' on' : '')); });
+      });
+    }
+    function pick(id) {
+      picked = id; paint();
+      if (!id) { info.innerHTML = '<p class="note">Click any block to see what it does. The buttons above light up the blocks one access passes through.</p>'; return; }
+      var b = BLOCKS[id];
+      info.innerHTML = '<h3>' + b[0] + '</h3><p>' + b[1] + '</p>';
+      var to = where(b[2]);
+      if (to) h('a', { href: '#' + b[2], 'class': 'machine-go' }, info, 'Where the course opens it: ' + to + ' →');
+    }
+    Object.keys(PATHS).forEach(function (k) {
+      var bt = h('button', { type: 'button', 'aria-pressed': 'false' }, bar, PATHS[k].label);
+      bt.onclick = function () {
+        lit = lit === k ? null : k;
+        Array.prototype.forEach.call(bar.children, function (x) { x.setAttribute('aria-pressed', 'false'); x.classList.remove('on'); });
+        if (lit) { bt.setAttribute('aria-pressed', 'true'); bt.classList.add('on'); }
+        paint();
+        var c = cyc(), t = { hit: c.l1, l3: c.l3, dram: c.dram }[k];
+        info.innerHTML = lit ? '<h3>' + PATHS[k].label + '</h3><p>' + PATHS[k].note + (t ? t + ' cycles.' : '') + '</p>' : '';
+        if (!lit) pick(null);
+      };
+    });
+    pick(null);
   }
-  pick(null);
 
-  var path = h('div', {'class': 'card route-index'}, root);
-  path.innerHTML = '<h3>The route this site follows</h3><ol class="route">' +
-    '<li><b>[[num:bits]]\u2013[[num:share]]</b> Foundations: bits and hex, addresses, instructions, assembly, cycles, caches, virtual memory, cores and devices.</li>' +
-    '<li><b>[[num:code]]</b> C \u2192 assembly \u2192 bytes \u2192 \u00b5ops for <code>hist[data[i]]++</code>.</li>' +
-    '<li><b>[[num:core]]</b> Those \u00b5ops through fetch, decode, ' + g('rename') + ', the ' + g('rob') + ', ' + g('sched', 'schedulers') + ', ports, the ' + g('lq', 'load') + ' and ' + g('sq', 'store') + ' queues, retirement and store commit.</li>' +
-    '<li><b>[[num:xlate]]</b> The virtual address of <code>hist[123]</code> through the ' + g('dtlb') + ', the L2 TLB, a 4-level ' + g('walk') + ', and a ' + g('pf') + '.</li>' +
-    '<li><b>[[num:l1d]]</b> The physical address through the L1d: set, tag compare, way select, ' + g('plru') + ', eviction and ' + g('wbk') + '.</li>' +
-    '<li><b>[[num:hier]]</b> A miss through L2, the L3 ' + g('victimc') + ', the fabric and back, and how misses overlap.</li>' +
-    '<li><b>[[num:dram]]</b> DRAM: banks, rows, the ' + g('rowbuf') + ', commands and timings.</li>' +
-    '<li><b>[[num:stores]]</b> The store path: store buffer, ' + g('rfo') + ', ' + g('wc') + ', ' + g('memtype', 'memory types') + ', fences.</li>' +
-    '<li><b>[[num:coh]]</b> Four cores sharing lines: ' + g('moesi') + ', probes, ' + g('fshare') + '.</li>' +
-    '<li><b>[[num:pref]]</b> ' + g('pref', 'Prefetchers') + ' guessing the next line.</li>' +
-    '<li><b>[[num:dev]]</b> Devices: ' + g('mmio') + ', ' + g('dma') + ', the ' + g('iommu') + ', interrupts \u2014 an NVMe read end to end.</li>' +
-    '<li><b>[[num:e2e]]</b> One <code>hist[123]++</code> with every stage on a single timeline.</li>' +
-    '<li><b>[[num:gloss]]</b> Glossary: every term, searchable.</li></ol>' +
-    '<p class="note">Colored terms open a definition. The <b>latencies</b> button sets the cycle counts every simulation uses.</p>';
-}});
+  App.lesson({
+    id: 'map', short: 'The machine', title: 'The machine: one load, block by block',
+    lede: 'Where can the bytes of one load be? Each block of the machine, in the order a load meets it.',
+    know: ['A load copies data from memory into a register ([[ch:instr]]).', 'Caches keep recently used data close to the core, in levels ([[ch:whycache]]).', 'Programs use virtual addresses, which the hardware translates ([[ch:vm]]).', 'Cores share one memory, and devices reach it by DMA ([[ch:share]]).'],
+    learn: ['Name every block between a core and the DRAM chips, in the order a load meets them', 'Say what each block does, in one sentence', 'Read the whole-machine diagram that later lessons open up'],
+    sections: [
+      { id: 'question', title: 'One load, one question', body: function (L) {
+        L.p('Every page of this course follows one loop, <code>hist[data[i]]++</code>. Its slowest step is usually one load: reading <code>hist[123]</code>, 8 bytes, into the core.');
+        L.code('void histogram(const unsigned char *data, long n, long *hist)\n{\n    for (long i = 0; i < n; i++)\n        ⟦hist[data[i]]++⟧;\n}', { title: 'the running example' });
+        L.p('<code>hist</code> starts at 0x7ffd4a3c2a80. Element 123 is 123 × 8 = 984 bytes further, at 0x7ffd4a3c2e58. The core asks for the 8 bytes stored there.');
+        L.p('Those bytes can be in one of several places. Each is further from the core than the last, and slower to reach:');
+        var c = cyc();
+        L.table(['Where the bytes are', 'Cycles until the load has them'], [
+          ['the L1 data cache, inside the core', String(c.l1)],
+          ['the L2 cache, next to the core', String(c.l2)],
+          ['the L3 cache, shared by all cores', String(c.l3)],
+          ['DRAM, outside the chip', '≈ ' + c.dram]
+        ], { mono: false, cap: 'From the latency settings (the ≋ button): a 4 GHz core and 90 ns DRAM by default. Change them and later pages follow.' });
+        L.p('This lesson walks outward from the core, one block per section. The last section shows all of them on one diagram.');
+      } },
+      { id: 'core', title: 'The core', body: function (L) {
+        L.p('The example chip holds four cores. Each core runs its own stream of instructions, with its own registers and its own two levels of cache.', ['core']);
+        L.p('Inside a core, three parts handle our load:');
+        L.list([
+          'The <b>front end</b> reads instruction bytes and decodes them into the small operations the core executes.',
+          'The <b>execution engine</b> runs those operations as soon as their inputs are ready, often out of program order, and then retires them in order.',
+          'The <b>load/store unit</b> computes each memory address and sends the access to the cache.'
+        ], [['front end', 'The part of a core that fetches instruction bytes and decodes them. [[ch:code]] shows what it decodes.'], ['execution engine', 'The part of a core that runs decoded operations and puts their results back in program order. [[ch:core]] steps through it.']]);
+        L.p('The instruction <code>addq $0x1,(%rdx,%rax,8)</code> reads <code>hist[k]</code>, adds 1 and writes it back. The load/store unit computes its address from two registers: <code>rdx</code> + <code>rax</code> × 8 = 0x7ffd4a3c2a80 + 123 × 8.', [['load/store unit', 'The part of a core that computes addresses, sends loads and stores to the L1d, and tracks the ones still in flight.']]);
+        path(L, 'core');
+      } },
+      { id: 'translate', title: 'First, translation: the TLB', body: function (L) {
+        L.p('0x7ffd4a3c2e58 is a virtual address. The caches and DRAM work with physical addresses, so the address is translated first ([[ch:vm]]).');
+        L.p('A TLB keeps recent translations. This machine has a 64-entry TLB next to the L1d and a 512-entry second-level TLB behind it. When the translation is there, it costs nothing extra.', [['TLB', 'Translation lookaside buffer: a small cache of recent virtual-to-physical translations, inside each core.']]);
+        L.p('When it is not, the page walker reads the page tables. They are ordinary memory, so the walker’s reads go through the same caches as any load.', [['page walker', 'Hardware in each core that reads the page tables when the TLB has no translation. Part III follows it step by step.']]);
+        L.p('For our load the answer is the physical address 0x1a3f7ce58. Every block after the TLB sees only that number.');
+        path(L, 'tlb');
+        L.note('deeper', 'Part III spends 24 lessons on translation: page tables, the walk, page faults and what the kernel does. [[ch:vm-tlb]] opens the TLB.');
+      } },
+      { id: 'l1', title: 'The L1 data cache', body: function (L) {
+        L.p('The first cache is the L1 data cache, L1d, inside the core. It holds 32 KiB of recently used data in blocks of 64 bytes, called cache lines.', [['cache line', 'The 64-byte block every cache level stores and moves. A cache holds copies of whole lines, never single bytes.']]);
+        L.p('A cache always stores copies of whole lines. The line that holds <code>hist[123]</code> covers physical 0x1a3f7ce40 to 0x1a3f7ce7f: <code>hist[120]</code> to <code>hist[127]</code>.');
+        L.p('If that line is in the L1d, a hit, the load has its value 4 cycles after it asked. If not, a miss, the L1d asks the next level and the load waits.', [['hit, miss', 'A hit: the line is in that cache. A miss: it is not, and the request goes to the next level.']]);
+        L.p('While one miss is pending, the core keeps working. It can wait for up to 4 different missing lines at once; a small table of miss buffers tracks them.', [['miss buffer', 'One entry per missing line a cache is waiting for. A second load to the same line joins the first entry instead of asking again.']]);
+        path(L, 'l1');
+        L.note('other', 'Instruction bytes have their own first-level cache, the L1i, read by the front end. Everything after the L1 holds instructions and data alike.', 'Two L1s');
+      } },
+      { id: 'l2', title: 'The L2: bigger, and still private', body: function (L) {
+        L.p('Behind the L1d each core has an L2 of 512 KiB, 16 times larger. It answers in 12 cycles.');
+        L.p('In this machine the L2 keeps a copy of every line that is in its core’s L1d. A cache that keeps everything held by the cache above it is called inclusive.', [['inclusive', 'A cache that holds a copy of every line held by the smaller cache above it. The example L2 is inclusive of its L1d.']]);
+        L.p('Lines move between the L2 and the L1d at 32 bytes per cycle, so a 64-byte line needs 2 cycles to cross.');
+        path(L, 'l2');
+      } },
+      { id: 'l3', title: 'The L3: shared by all four cores', body: function (L) {
+        L.p('One L3 of 4 MiB serves all four cores, in 35 cycles. A line that one core brought in can later serve any other.');
+        L.p('This L3 is filled only with lines that an L2 throws out to make room. Removing a line is an eviction; a cache filled only that way is a victim cache.', [['eviction', 'Removing a line from a cache to make room for another.'], ['victim cache', 'A cache filled only with lines evicted from the level above it.']]);
+        L.p('So the L3 mostly holds lines the L2s do not. The four L2s and the L3 together keep more different data than if every line were stored twice.');
+        L.p('The L3 also keeps a copy of each L2’s record of which lines it holds, called shadow tags. When a core misses on a line that another core holds, the L3 knows which core to ask.', [['shadow tags', 'Copies, kept next to the L3, of the record each L2 has of which lines it holds.']]);
+        path(L, 'l3');
+      } },
+      { id: 'fabric', title: 'The interconnect', body: function (L) {
+        L.p('Below the L3, every part of the chip joins one interconnect, also called the fabric. It carries requests and data between the caches, the memory controllers and the I/O hub.', [['interconnect (fabric)', 'The on-chip network that carries requests, data and coherence messages between caches, memory controllers and the I/O hub.']]);
+        L.p('It also carries the messages that keep copies consistent. When two cores hold the same line and one writes it, the other copy must be removed first. That is cache coherence, the subject of Part V.', ['coh']);
+        path(L, 'fabric');
+      } },
+      { id: 'dram', title: 'Memory controllers and DRAM', body: function (L) {
+        L.p('A load that misses in every cache ends at a memory controller. This machine has two, one for each memory channel. Consecutive lines alternate between the two channels, so both stay busy.', ['memctl', ['memory channel', 'A data bus plus a command bus from one memory controller to the memory modules on it. DDR4 channels are 64 bits wide.']]);
+        L.p('The controller turns the request into DRAM commands. The line comes back as one burst: 8 transfers of 8 bytes, 64 bytes in all.', [['burst', 'One DDR4 read: 8 transfers of 8 bytes on the 64-bit bus, exactly one cache line.']]);
+        L.p('DRAM is slow to start and fast once started. The first byte takes about 90 ns, about ' + App.dramCycles() + ' core cycles. After that, a DDR4-2400 channel moves 8 bytes 2,400 million times a second: 19.2 GB/s.', ['mts']);
+        path(L, 'dram');
+        L.note('deeper', 'Part IV opens a DRAM chip: banks, rows, commands and timings ([[ch:dram]]).');
+      } },
+      { id: 'devices', title: 'Devices, and a GPU', body: function (L) {
+        L.p('The cores are not the only users of memory. An SSD or a network card writes incoming data straight into DRAM by DMA, without a core copying it ([[ch:share]]).', ['dma']);
+        L.p('Devices connect to the chip’s I/O hub over PCI Express links. The hub turns each device’s DMA into memory requests on the interconnect, after the IOMMU has checked that the device may use that memory.', [['PCI Express (PCIe)', 'The links between the chip and devices such as SSDs and network cards. Part VI covers them.'], ['IOMMU', 'A translation and permission check for device accesses, like the MMU for cores. [[ch:io-iommu]] covers it.']]);
+        L.p('Some chips also hold a GPU on the same die. It is one more client of the same interconnect and the same DRAM, so it competes with the cores for bandwidth.', ['igpu']);
+        L.p('Server chips usually have no GPU of their own. A server GPU is a separate PCIe device with its own memory. Part VI covers devices, and its last two lessons cover GPUs ([[ch:gpu-mem]]).');
+      } },
+      { id: 'whole', title: 'The whole machine', body: function (L) {
+        L.p('Here are all the blocks on one diagram. Click a block to see what it does and where the course opens it. The buttons light up the blocks one access passes through.');
+        L.custom(machine, 'lx-wide');
+        L.p('A load that hits in the L1d uses only the core, the TLB and the L1d. A load that misses everywhere crosses every block twice: out with the request, back with the line.');
+        L.note('other', 'Real chips have the same blocks, larger and wired differently. [[ch:chips]] compares AMD, Intel and Arm designs, after Parts III to VI have explained each block.', 'Real chips');
+      } }
+    ],
+    check: [
+      { q: 'A load misses in the L1d and the L2, and hits in the L3. Which blocks did it pass through?', options: ['The TLB, the L1d, the L2 and the L3', 'The L1d and the L3', 'The TLB, every cache and a memory controller', 'Only the L3'], answer: 0, why: 'Every load is translated first, then checks each cache level in turn until one has the line. A memory controller is reached only when the L3 misses too.' },
+      { q: 'Which cache does core 2 share with core 0?', options: ['Only the L3', 'The L2 and the L3', 'All of them', 'None'], answer: 0, why: 'Each core has its own L1d and L2. The single L3 serves all four cores.' },
+      { q: 'How does a line get into this machine’s L3?', options: ['An L2 evicts it', 'A core loads it for the first time', 'DRAM sends it there on every miss', 'A device writes it'], answer: 0, why: 'The L3 is a victim cache: it is filled only with lines the L2s evict. A line fetched from DRAM goes to the L2 and the L1d.' },
+      { q: 'An SSD writes a 4 KiB block into memory. Which blocks does the data cross?', options: ['PCIe link, I/O hub and IOMMU, interconnect, memory controller, DRAM', 'A core’s L1d, then the L2', 'The L3 first, then DRAM', 'The SSD writes the memory modules directly'], answer: 0, why: 'DMA does not involve a core. The device’s writes go over PCIe to the I/O hub, which checks them with the IOMMU and sends them across the interconnect to the memory controller.' }
+    ],
+    remember: [
+      'A load is translated by the TLB, then checks the L1d, the L2 and the L3 in turn. It goes to DRAM only when every cache misses.',
+      'The L1d and the L2 belong to one core; the L3 is shared by all four.',
+      'Caches hold copies of whole 64-byte lines.',
+      'Each level is larger and slower: by default 4, 12 and 35 cycles, and about ' + App.dramCycles() + ' for DRAM.',
+      'An interconnect joins the caches, the memory controllers and the I/O hub. Devices and a GPU use the same DRAM.'
+    ],
+    sources: [['Ulrich Drepper, What Every Programmer Should Know About Memory (2007)', 'https://www.akkadia.org/drepper/cpumemory.pdf'], ['Micron, DDR4 SDRAM', 'https://www.micron.com/products/memory/dram-components/ddr4-sdram']]
+  });
+})();
 
 /* ======================= chapter: from C to µops ======================= */
 App.chapter({id: 'code', short: 'C \u2192 \u00b5ops', title: 'From C to instructions to \u00b5ops',
@@ -12478,7 +12595,7 @@ build: function(root){
         F('probe', 'Probe core 2', 'The L3 sends a ' + g('probe') + ' only to core 2 (the other L2s are not disturbed). Core 2\u2019s L2 returns the 64 bytes.\nUnder ' + g('moesi') + ' it keeps its dirty copy as <b>Owned</b> and core 0 gets it <b>Shared</b>; DRAM is not written ([[ch:coh]]).\nVendors don\u2019t publish this latency; a core-to-core ping-pong benchmark measures it.', ['a3', 'c2l2', 'r3', 'r2', 'r1', 'l2', 'l1'], ['cache-to-cache', 'latency: measure it', '(not published)']);
       } else {
         F('L3 miss', 'L3 miss, shadow tags miss', 'Neither the L3 nor any L2 in this cluster has the line. The request leaves through the interconnect for system memory. The L3-hit time on the right is only for comparison.', ['l3', 'sh', 'a4'], ['L3 missed', 'L3-hit baseline:', CFG.l3 + ' cycles load-to-use']);
-        F('fabric', 'Fabric to the memory controller', 'The fabric routes by physical address to the memory controller for the channel that owns this line. On a large server chip this hop can cross a mesh or a link between chiplets, one reason DRAM latency differs between AMD, Intel and Arm designs ([[ch:map]]).', ['df', 'a5', 'umc'], ['in the fabric']);
+        F('fabric', 'Fabric to the memory controller', 'The fabric routes by physical address to the memory controller for the channel that owns this line. On a large server chip this hop can cross a mesh or a link between chiplets, one reason DRAM latency differs between AMD, Intel and Arm designs ([[ch:chips]]).', ['df', 'a5', 'umc'], ['in the fabric']);
         F('DRAM', 'DRAM access', 'The controller turns the request into DRAM commands: open the row if needed (ACT), read the column (RD), close rows that conflict (PRE). [[ch:dram]] steps through exactly this address.', ['umc', 'a6', 'dram'], ['DRAM access', 'see [[ch:dram]]']);
         F('return', 'The line returns to L2 and L1, not L3', 'Data comes back through the fabric straight to core 0\u2019s L2 and then the L1d. The L3 does <b>not</b> keep a copy: as a victim cache it only receives lines the L2 later evicts.\n<b>Total \u2248 ' + D + ' cycles = ' + ns(D) + '</b> with the current latency settings (L3 ' + CFG.l3 + ' cycles + ' + CFG.dramNs + ' ns).', ['df', 'r4', 'r1', 'l2', 'l1'], [D + ' cycles', ns(D), '', 'L3 + DRAM extra,', 'from latency settings']);
       }
@@ -12829,7 +12946,7 @@ build: function(root){
   var cur = 'share';
   var intro = h('div', {'class': 'grid2'}, root);
   h('div', {'class': 'card'}, intro, '<h3>The five states</h3><table class="mt"><tr><th></th><th>dirty?</th><th>other copies?</th><th>may write without asking?</th></tr>' +
-    '<tr><td>' + g('st_m', 'M') + '</td><td>yes</td><td>none</td><td>yes</td></tr><tr><td>' + g('st_o', 'O') + '</td><td>yes</td><td>possible (S)</td><td>no</td></tr><tr><td>' + g('st_e', 'E') + '</td><td>no</td><td>none</td><td>yes (becomes M)</td></tr><tr><td>' + g('st_s', 'S') + '</td><td>no*</td><td>possible</td><td>no</td></tr><tr><td>' + g('st_i', 'I') + '</td><td colspan="3" style="font-family:var(--sans)">no usable copy</td></tr></table><p class="note" style="margin-top:6px">* An S copy can be newer than DRAM when some cache holds the line in O. This model uses ' + g('moesi') + ', as AMD does; the O state lets a dirty line be shared without first writing it to DRAM. Intel uses MESIF and Arm\u2019s CHI protocol has its own state names ([[ch:map]]).</p>');
+    '<tr><td>' + g('st_m', 'M') + '</td><td>yes</td><td>none</td><td>yes</td></tr><tr><td>' + g('st_o', 'O') + '</td><td>yes</td><td>possible (S)</td><td>no</td></tr><tr><td>' + g('st_e', 'E') + '</td><td>no</td><td>none</td><td>yes (becomes M)</td></tr><tr><td>' + g('st_s', 'S') + '</td><td>no*</td><td>possible</td><td>no</td></tr><tr><td>' + g('st_i', 'I') + '</td><td colspan="3" style="font-family:var(--sans)">no usable copy</td></tr></table><p class="note" style="margin-top:6px">* An S copy can be newer than DRAM when some cache holds the line in O. This model uses ' + g('moesi') + ', as AMD does; the O state lets a dirty line be shared without first writing it to DRAM. Intel uses MESIF and Arm\u2019s CHI protocol has its own state names ([[ch:chips]]).</p>');
   h('div', {'class': 'card'}, intro, '<h3>Who is asked</h3><p>In this four-core model every request that misses a core\u2019s private caches reaches the L3. Its ' + g('shadow') + ' record which cores hold each line, so ' + g('probe', 'probes') + ' go only to those cores (a ' + g('pfilter') + '), never to all four. This model shows one private cache per core (L1 + L2 together) and counts every message.</p>');
   var ctl = h('div', {'class': 'stp'}, root);
   App.seg(ctl, Object.keys(SC).map(function(k){ return [k, SC[k].n]; }), function(v){ cur = v; run(false); }, cur);
@@ -14376,11 +14493,11 @@ build: function(root){
     var b = h('button', {'class': 'ghost', type: 'button', style: 'margin-top:10px'}, sec, 'step through it in [[ch:' + p[0] + ']] →');
     b.onclick = function(){ App.go(p[0]); };
   });
-  /* The package diagrams from chapter "The machine", without their notes. */
+  /* The package diagrams from the "Real chips" lesson, without their notes. */
   App.Implementations.cases.forEach(function(c){
     var sec = App.labSection(root, c.id, c.title, c.choice);
     App.CaseStudies.draw(sec, c);
-    App.LabUI.text('a', sec, 'What it changes and what to try →', {href: '#map/' + c.id});
+    App.LabUI.text('a', sec, 'What it changes and what to try →', {href: '#chips/' + c.id});
   });
 }});
 
@@ -14441,20 +14558,6 @@ build: function(root){
   var P = App.P, T = P.T, R = P.R, A = P.A, Ln = P.Ln, box = P.box;
   function num(id){ return App.chNum(id); }
   function lines(sv, x, y, arr, cls){ arr.forEach(function(t, i){ T(sv, x, y + i * 14, t, cls || 's', 'middle'); }); }
-
-  /* ---- 09 the machine ---- */
-  add('map', 'route', {h: 150, cap: 'One access, stage by stage. The number under each stage is the chapter that covers it.', draw: function(sv){
-    [['C \u2192 \u00b5ops', 'code'], ['core', 'core'], ['TLB', 'xlate'], ['L1d', 'l1d'], ['L2 \u00b7 L3', 'hier'], ['DRAM', 'dram']].forEach(function(s, i){
-      var x = 6 + i * 76; R(sv, x, 12, 68, 40, 'a2b');
-      T(sv, x + 34, 37, s[0], '', 'middle'); T(sv, x + 34, 70, 'ch. ' + num(s[1]), 's m', 'middle');
-      if (i < 5) A(sv, 'M' + (x + 69) + ' 32 H' + (x + 75));
-    });
-    T(sv, 6, 100, 'acting on the same path', 's');
-    [['stores', 'stores'], ['coherence', 'coh'], ['prefetch', 'pref'], ['devices', 'dev'], ['full path', 'e2e']].forEach(function(s, i){
-      var x = 6 + i * 90; R(sv, x, 108, 86, 36, 'box', 10);
-      T(sv, x + 43, 123, s[0], 's', 'middle'); T(sv, x + 43, 138, 'ch. ' + num(s[1]), 's m', 'middle');
-    });
-  }});
 
   /* ---- 10 C -> assembly -> bytes -> uops ---- */
   add('code', 'example', {h: 124, cap: 'The System V AMD64 calling convention passes the first three integer arguments in rdi, rsi and rdx.', draw: function(sv){
@@ -18714,7 +18817,7 @@ build: function(root){
   App.extendChapter('perf', compare);
 })();
 
-/* Chapter 09, second part: how AMD, Intel and Arm build the same machine. */
+/* Real chips (Lesson VII.02): the package drawings, notes and published measurements for AMD, Intel and Arm. */
 (function () {
   'use strict';
   var I = ImplementationEvidence,
@@ -18826,51 +18929,20 @@ build: function(root){
     U.text('span', caption, ' ' + c.generation + '. ' + c.scope);
     return figure;
   }
-  /* The side-by-side table that opens the "Real chips" part. */
-  function chips(root) {
-    var sec = App.labSection(
-      root,
-      'chips',
-      'Same parts, different choices',
-      'Every design has private caches, a shared cache, coherence and memory controllers. The sizes and the wiring differ.'
-    );
-    U.text(
-      'p',
-      sec,
-      'The example machine in this lab is deliberately small, so every structure fits on screen. Here is how it compares with three current server designs.'
-    );
-    var c = I.comparison;
-    U.table(sec, [''].concat(c.columns), c.rows).classList.add('chip-compare');
-    U.text(
-      'p',
-      sec,
-      'Two patterns stand out. AMD and Intel both keep the L1 data cache at 4 KiB per way (48 KiB ÷ 12 ways), so the set can be picked from page-offset bits alone; Arm’s 64 KiB, 4-way L1 handles the aliasing in hardware instead. And memory sits in different places: behind one central I/O die (AMD), on each compute die (Intel), or wherever the chip vendor puts it (Arm).'
-    );
-    refs(sec, c.sources);
-  }
-  function caseSection(root, c) {
-    var sec = App.labSection(root, c.id, c.title, c.choice);
-    sec.classList.add('implementation-case');
-    U.text('p', sec, c.fact);
-    draw(sec, c);
-    var grid = h('div', { class: 'impl-notes' }, sec);
+  /* What each design changes and how to try it, then the limits and the sources. */
+  function notes(root, c) {
+    var grid = h('div', { class: 'impl-notes' }, root);
     var a = h('div', { class: 'impl-note' }, grid);
     U.text('h3', a, 'What it changes');
     U.text('p', a, c.prediction);
     var b = h('div', { class: 'impl-note' }, grid);
     U.text('h3', b, 'Try it');
     U.text('p', b, c.experiment);
-    U.text('p', sec, c.limits, { class: 'note' });
-    refs(sec, c.sources);
+    U.text('p', root, c.limits, { class: 'note' });
+    refs(root, c.sources);
   }
-  function published(root) {
-    var sec = App.labSection(
-        root,
-        'published',
-        'Published measurements',
-        'What independent testers measured on Zen 5 and on Intel’s newest P-core, and what those numbers can and can’t tell you.'
-      ),
-      q = I.instruction;
+  function published(sec) {
+    var q = I.instruction;
     badge(sec, q.kind);
     U.text('h3', sec, 'L1 load-to-use latency: 4 cycles on both');
     U.text('p', sec, q.instruction + ': ' + q.scope + ' ' + q.method);
@@ -18946,13 +19018,7 @@ build: function(root){
       'A single dependency chain measures latency; many chains measure overlap. The <a href="#perf/queues">finite-queue lab</a> shows the mechanism, and <a href="#perf/datasets">the benchmarks</a> measure it on your machine. Their timer counts nanoseconds over a whole run, not cycles per instruction, so compare like with like.'
     );
   }
-  function history(root) {
-    var sec = App.labSection(
-      root,
-      'history',
-      'Older designs worth knowing',
-      'Two details from earlier chips that still explain experiments in this lab.'
-    );
+  function history(sec) {
     badge(sec, 'Peer-reviewed');
     U.text('h3', sec, 'AMD, 2011 to 2019: an L1 way predictor');
     U.text(
@@ -18971,15 +19037,8 @@ build: function(root){
     U.sources(sec, [App.Evidence.sources.cache]);
     h('p', null, sec, '<a href="#hier/inclusion">Open the inclusion lab →</a>');
   }
-  App.CaseStudies = { draw: draw, badge: badge };
-  App.extendChapter('map', function (root) {
-    chips(root);
-    I.cases.forEach(function (c) {
-      caseSection(root, c);
-    });
-    published(root);
-    history(root);
-  });
+  /* Placed by the "Real chips" lesson (VII.02). */
+  App.CaseStudies = { draw: draw, badge: badge, notes: notes, refs: refs, published: published, history: history };
 })();
 
 (function () {
@@ -21080,7 +21139,7 @@ build: function(root){
 
 /* ======================= lab runs: real outputs quoted by the lessons =======================
    Every excerpt names the file under labruns/ it was taken from, and the machine it ran on
-   (machine: 'b'; machine A when absent). tests/runs.test.cjs checks that each quoted line
+   (machine: 'b' or 'c'; machine A when absent). tests/runs.test.cjs checks that each quoted line
    (⟦highlight⟧ marks removed; a line starting with "…" marks lines left out) appears in that
    file, so a lesson can only quote what a program really printed. */
 var LabRuns = (function () {
@@ -21786,6 +21845,47 @@ var LabRuns = (function () {
       file: 'io/out/oneread.trace.txt', machine: 'b',
       what: "run_all.sh and oneread.c: the kernel trace of one 4 KiB read, with time since the first marker and the CPU of each event. Block events are filtered to vda, interrupt events to its request queue.",
       lines: ["       0.0 us  cpu000  # == io_uring_enter: submit one 4 KiB read at offset 1 MiB, wait for it", "       8.0 us  cpu000  io_uring_submit_req: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, opcode READ, flags 0x400000, sq_thread 0", "      11.0 us  cpu000  block_bio_queue: 254,0 RS 19671040 + 8 [oneread]", "      12.0 us  cpu000  block_getrq: 254,0 RS 19671040 + 8 [oneread]", "      13.0 us  cpu000  block_rq_insert: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]", "      14.0 us  cpu000  block_rq_issue: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]", "      29.0 us  cpu000  sched_switch: prev_comm=oneread prev_pid=18827 prev_prio=120 prev_state=S ==> next_comm=swapper/0 next_pid=0 next_prio=120", "      53.0 us  cpu003  irq_handler_entry: irq=37 name=virtio1-req.0", "      55.0 us  cpu003  irq_handler_exit: irq=37 ret=handled", "      55.0 us  cpu003  block_rq_complete: 254,0 RS () 19671040 + 8 be,0,4 [0]", "      56.0 us  cpu003  ipi_send_cpu: cpu=0 callsite=ttwu_queue_wakelist+0x11c/0x140 callback=generic_smp_call_function_single_interrupt+0x0/0x20", "      98.0 us  cpu000  sched_wakeup: comm=oneread pid=18827 prio=120 target_cpu=000", "      99.0 us  cpu000  sched_switch: prev_comm=swapper/0 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=oneread next_pid=18827 next_prio=120", "     100.0 us  cpu000  io_uring_complete: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, result 4096, cflags 0x0 extra1 0 extra2 0", "     101.0 us  cpu000  io_uring_task_work_run: tctx 0000000088b7722e, count 1", "     102.0 us  cpu000  # == io_uring_enter returned 4096"]
+    },
+    /* ---- machine C: labruns/hw (caches, ordering, coherence) ---- */
+    'c.facts': {
+      file: 'hw/out/facts.txt', machine: 'c',
+      what: 'facts.sh: what the CPU and the kernel report about machine C.',
+      lines: [
+        'Model name:                              Intel(R) Xeon(R) Processor @ 2.30GHz',
+        'CPU family:                              6',
+        'Model:                                   ⟦173⟧',
+        'Hypervisor vendor:                       KVM',
+        'NUMA node(s):                            1'
+      ]
+    },
+    'c.caches': {
+      file: 'hw/out/facts.txt', machine: 'c',
+      what: 'facts.sh: the cache sizes CPU 0 reports in sysfs.',
+      lines: [
+        'index0: L1 Data ⟦48K, 12 ways⟧, 64 sets, 64-byte lines, shared by CPUs 0',
+        'index1: L1 Instruction 64K, 16 ways, 64 sets, 64-byte lines, shared by CPUs 0',
+        'index2: L2 Unified ⟦2048K⟧, 16 ways, 2048 sets, 64-byte lines, shared by CPUs 0',
+        'index3: L3 Unified ⟦516096K⟧, 16 ways, 516096 sets, 64-byte lines, shared by CPUs 0-1'
+      ]
+    },
+    'c.ladder': {
+      file: 'hw/out/ladder.txt', machine: 'c',
+      what: 'ladder.c, pinned to CPU 0: a random pointer chase, one pointer per 64-byte line, over working sets from 16 KiB to 2 GiB, in 2 MiB pages.',
+      lines: [
+        'working set  ns per load',
+        '    16 KiB          1.3',
+        '    48 KiB          ⟦1.3⟧',
+        '    64 KiB          4.6',
+        '     1 MiB          ⟦4.8⟧',
+        '     2 MiB         13.5',
+        '     4 MiB         32.4',
+        '     8 MiB         ⟦33.4⟧',
+        '    16 MiB         72.8',
+        '    32 MiB        164.4',
+        '   256 MiB        134.0',
+        '     1 GiB        188.2',
+        '     2 GiB        ⟦136.2⟧'
+      ]
     },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
@@ -25317,6 +25417,331 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
       'NVMe, IOMMUs, non-coherent devices, the page cache and polling each change one step.'
     ],
     sources: [['labruns/io: the programs and their outputs', 'https://github.com/himasudo/memory-system-interactive/tree/lessons/labruns/io'], ['Linux: blk-mq', 'https://docs.kernel.org/block/blk-mq.html'], ['io_uring_enter(2)', 'https://man7.org/linux/man-pages/man2/io_uring_enter.2.html']]
+  });
+})();
+
+/* ======================= Part VI · GPUs and memory (VI.14–VI.15) ======================= */
+(function () {
+  'use strict';
+  var d = App.gloss, h = App.h, LW = function () { return App.LW; };
+  d('dgpu', 'discrete GPU', 'A GPU on its own card or package, joined to the processor by PCIe or a vendor link, with its own memory. The CPU and the GPU each reach the other’s memory only over that link.');
+  d('hbm', 'HBM, GDDR', 'The memory on discrete GPUs. HBM stacks DRAM dies next to the GPU in one package for a very wide bus; GDDR chips sit on the card around it. Both trade capacity and cost for bandwidth.');
+  d('uma', 'UMA (unified memory architecture)', 'A design in which the GPU has no memory of its own and uses the same DRAM as the cores, as an integrated GPU does.');
+  d('rebar', 'Resizable BAR', 'A PCIe capability that lets a device offer several BAR sizes and the system pick one. A GPU uses it to put all of its memory, not only a 256 MB window, in the CPU’s physical address space.');
+  d('gpuvm', 'GPU virtual memory', 'The GPU’s own MMU and page tables, written by the GPU driver. Each context has its own address space, which can map the GPU’s memory and, through the IOMMU, system memory.');
+  d('sva', 'SVA (shared virtual addressing)', 'A device uses a process’s own virtual addresses: the IOMMU translates its requests through that process’s page tables. PCIe calls it shared virtual memory.');
+  d('pasid', 'PASID', 'Process address space ID: a 20-bit tag a device puts on its requests so the IOMMU knows whose page tables to use.');
+  d('atspri', 'ATS, PRI', 'Address Translation Services and Page Request Interface: PCIe features that let a device cache translations in its own TLB and ask for a missing page to be faulted in.');
+  d('hmm', 'HMM', 'Heterogeneous memory management: Linux helpers that let a driver mirror a process’s page tables into a device’s, and migrate pages into device memory and back.');
+  d('devpriv', 'device-private page', 'A struct page that stands for a page of a device’s own memory (MEMORY_DEVICE_PRIVATE). The CPU cannot map it; touching the address faults and the page is migrated back to system memory.');
+  App.setCategory('dgpu hbm uma rebar', 'io');
+  App.setCategory('gpuvm sva pasid atspri hmm devpriv', 'xlate');
+
+  var ROCM = ['Linux v6.18: Documentation/gpu/amdgpu/amdgpu-glossary.rst', 'https://docs.kernel.org/gpu/amdgpu/amdgpu-glossary.html'];
+  var HMMDOC = ['Linux v6.18: Heterogeneous Memory Management (HMM)', 'https://docs.kernel.org/mm/hmm.html'];
+  var SVADOC = ['Linux v6.18: Shared Virtual Addressing (SVA) with ENQCMD', 'https://docs.kernel.org/arch/x86/sva.html'];
+  var REBAR = ['Microsoft, System and driver support for Resizable BAR', 'https://learn.microsoft.com/en-us/windows-hardware/drivers/display/resizable-bar-support'];
+  var PINNED = ['NVIDIA Technical Blog, How to Optimize Data Transfers in CUDA C/C++', 'https://developer.nvidia.com/blog/how-optimize-data-transfers-cuda-cc/'];
+  var NVHMM = ['NVIDIA Technical Blog, Simplifying GPU Application Development with Heterogeneous Memory Management (2023)', 'https://developer.nvidia.com/blog/simplifying-gpu-application-development-with-heterogeneous-memory-management/'];
+  var GH = ['NVIDIA Technical Blog, Simplifying GPU Programming for HPC with the NVIDIA Grace Hopper Superchip', 'https://developer.nvidia.com/blog/simplifying-gpu-programming-for-hpc-with-the-nvidia-grace-hopper-superchip/'];
+  var DRMMM = ['Linux v6.18: DRM Memory Management', 'https://docs.kernel.org/gpu/drm-mm.html'];
+
+  /* How long one copy takes over a PCIe link, next to reading the same bytes in GPU memory. */
+  function copyTime(el) {
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var size = LW().select(form, 'Buffer', [['64', '64 MiB'], ['1024', '1 GiB'], ['16384', '16 GiB']], '1024');
+    var link = LW().select(form, 'Link', [['31.5', 'PCIe 4.0 x16, 31.5 GB/s'], ['63', 'PCIe 5.0 x16, 63 GB/s']], '63');
+    var mem = LW().select(form, 'GPU memory', [['1000', '1 TB/s'], ['3000', '3 TB/s']], '1000');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function fmt(s) { return s >= 1 ? s.toFixed(2) + ' s' : (s * 1000).toFixed(1) + ' ms'; }
+    function draw() {
+      var bytes = +size.value * 1048576, a = bytes / (+link.value * 1e9), b = bytes / (+mem.value * 1e9);
+      out.innerHTML = '<div class="lx-table"><div class="lx-table-wrap"><table class="mono-cells"><tbody>' +
+        '<tr><td style="font-family:var(--sans)">over the link, one way</td><td>' + fmt(a) + '</td></tr>' +
+        '<tr><td style="font-family:var(--sans)">reading it once in GPU memory</td><td>' + fmt(b) + '</td></tr>' +
+        '<tr><td style="font-family:var(--sans)">how many times slower the link is</td><td>' + Math.round(a / b) + ' ×</td></tr></tbody></table></div></div>' +
+        '<p class="lx-msg">The link figures are the raw rate after 128b/130b encoding, before packet headers (Lesson ' + App.chNum('io-pcie') + '), so a real copy is slower still.</p>';
+    }
+    [size, link, mem].forEach(function (s) { s.addEventListener('change', draw); });
+    draw();
+  }
+
+  /* ---------- VI.14 ---------- */
+  App.lesson({
+    id: 'gpu-mem', short: 'A GPU and memory', title: 'A GPU and memory',
+    lede: 'An integrated GPU shares the cores’ DRAM. A discrete GPU brings its own memory and reaches system RAM over PCIe, by DMA, from pinned pages.',
+    know: ['Devices sit on PCIe links and expose BARs ([[ch:io-pcie]], [[ch:io-config]]).', 'Posted writes and non-posted reads on PCIe ([[ch:io-pcie]]).', 'DMA, the DMA API and pinning ([[ch:io-dma]]); the IOMMU ([[ch:io-iommu]]).', 'Demand paging: a page gets a frame on first touch ([[ch:vm-demand]]).'],
+    learn: ['Tell an integrated GPU from a discrete one by where its memory is', 'Say how the CPU reaches a discrete GPU’s memory, and how the GPU reaches system memory', 'Explain why GPU copies use pinned memory, and what the PCIe link costs'],
+    sections: [
+      { id: 'two', title: 'Two places a GPU’s memory can be', body: function (L) {
+        L.p('A GPU runs thousands of threads at once, and together they move far more data per second than a core. Where that data lives decides almost everything else.');
+        L.table(['', 'Integrated GPU', 'Discrete GPU'], [
+          ['Where it sits', 'on the same chip as the cores', 'on its own card or package'],
+          ['Its memory', 'the cores’ DRAM', 'its own GDDR or HBM'],
+          ['How it reaches system RAM', 'through the chip’s interconnect, like a core', 'by DMA over PCIe, through the IOMMU'],
+          ['Usually found in', 'laptops, phones, desktop chips', 'servers and workstations']
+        ], { mono: false, terms: ['igpu', 'dgpu', 'hbm'] });
+        L.p('The example machine in [[ch:map]] has an optional integrated GPU. A machine-learning server usually has several discrete GPUs, each with its own memory.');
+      } },
+      { id: 'shared', title: 'An integrated GPU shares the cores’ DRAM', body: function (L) {
+        L.p('An integrated GPU has no memory of its own. Firmware sets part of DRAM aside for it at boot, and its driver borrows ordinary pages for everything else.', ['uma']);
+        L.quote('UMA devices usually have what is called a "stolen" memory region, which provides space for the initial framebuffer and large, contiguous memory regions required by the device.', { cite: 'Documentation/gpu/drm-mm.rst, Linux v6.18', label: 'Linux source', src: DRMMM });
+        L.p('Its requests cross the same interconnect and memory controllers as the cores’. In the example machine that is two DDR4-2400 channels, 38.4 GB/s in all, shared by four cores and the GPU.');
+        L.p('So nothing needs copying between “CPU memory” and “GPU memory”: there is only one. The price is contention. A busy GPU takes bandwidth the cores would have had, and the other way round.');
+      } },
+      { id: 'bar', title: 'The CPU’s window into GPU memory', body: function (L) {
+        L.p('A discrete GPU’s memory sits behind its PCIe link. The CPU reaches it as it reaches any device: through a BAR, a range of physical addresses that the device answers ([[ch:io-config]]).', ['bar']);
+        L.p('For compatibility with 32-bit systems, GPUs long exposed only a 256 MB window of their memory, and drivers moved that window around. With Resizable BAR the system can make the BAR as large as all of the GPU’s memory.', ['rebar']);
+        L.quote('/**\n * amdgpu_device_resize_fb_bar - try to resize FB BAR\n…\n * Try to resize FB BAR to make all VRAM CPU accessible.', { code: true, cite: 'drivers/gpu/drm/amd/amdgpu/amdgpu_device.c, Linux v6.18 (excerpt)', label: 'Linux source', src: REBAR });
+        L.p('FB, the frame buffer, and VRAM are the driver’s names for the GPU’s own memory.');
+        L.p('A store into that window is a posted PCIe write: the core sends it and moves on. A load is a non-posted read: the core waits for a completion to come back over the link ([[ch:io-pcie]]). So programs write GPU memory from the CPU when they must, and avoid reading it.');
+      } },
+      { id: 'dma', title: 'The GPU’s side: DMA from pinned pages', body: function (L) {
+        L.p('In the other direction, the GPU reads and writes system RAM by DMA, as an SSD does. Its copy engines send PCIe requests; the IOMMU checks them and the I/O hub turns them into memory requests ([[ch:io-dma]]).');
+        L.p('A DMA transfer needs pages that stay where they are. A buffer from <code>malloc()</code> is pageable: its pages may not have frames yet, and the kernel may move or swap them at any time ([[ch:vm-demand]]). The device cannot follow those changes.', ['pin']);
+        L.p('NVIDIA’s CUDA documents what its driver does with a copy from such a buffer. It allocates a temporary pinned buffer, copies the data into it with the CPU, and only then lets the GPU copy it by DMA:');
+        L.chain([
+          { k: 'malloc() buffer', v: 'pageable', d: 'the GPU cannot DMA from it' },
+          { k: 'the driver’s pinned buffer', v: 'CPU copy', d: 'one extra pass over the data', hot: true },
+          { k: 'GPU memory', v: 'DMA over PCIe', d: 'done by the GPU’s copy engine' }
+        ], { cap: 'A copy from pageable memory, as NVIDIA describes it for CUDA.' });
+        L.p('A program that allocates pinned memory itself, with <code>cudaMallocHost()</code>, skips the extra copy. Inside the kernel, drivers pin user pages with <code>pin_user_pages()</code>:');
+        L.quote(' * pin_user_pages() - pin user pages in memory for use by other devices', { code: true, cite: 'mm/gup.c, Linux v6.18', label: 'Linux source' });
+        L.p('Pinned pages cost the rest of the system: while pinned they cannot be reclaimed or swapped, so pinning too much leaves less memory for everything else ([[ch:vm-reclaim]]).');
+      } },
+      { id: 'link', title: 'The link is the narrow part', body: function (L) {
+        L.p('The PCIe link is far slower than the GPU’s own memory. The kernel’s HMM documentation gives the scale:');
+        L.quote('Another crippling factor is the limited bandwidth (~32GBytes/s with PCIE 4.0 and 16 lanes). This is 33 times less than the fastest GPU memory (1 TBytes/s).', { cite: 'Documentation/mm/hmm.rst, Linux v6.18', label: 'Linux source', src: HMMDOC });
+        L.try('Time a copy', 'Pick a buffer, a link and the GPU memory’s bandwidth. The table compares moving the buffer over the link with reading it once on the GPU.', copyTime);
+        L.p('So GPU programs copy data once, keep it on the GPU as long as they can, and overlap copies with work. The next lesson asks how a program can avoid managing two copies at all.');
+      } }
+    ],
+    check: [
+      { q: 'Where does an integrated GPU keep its data?', options: ['In the same DRAM as the cores', 'In its own HBM', 'In the L3 cache', 'On the SSD'], answer: 0, why: 'An integrated GPU has no memory of its own. Firmware sets part of DRAM aside for it, and its driver uses ordinary pages too.' },
+      { q: 'Why can a GPU not DMA straight from a buffer that malloc() returned?', options: ['Its pages are pageable: they may not exist yet, and may move or be swapped', 'malloc() memory is uncached', 'GPUs can only read 4 KiB at a time', 'The IOMMU blocks all user memory'], answer: 0, why: 'A device needs pages that stay put for the whole transfer. CUDA stages such copies through a pinned buffer.' },
+      { q: 'What does Resizable BAR change?', options: ['The CPU can map all of the GPU’s memory instead of a 256 MB window', 'The GPU’s memory becomes faster', 'PCIe links get more lanes', 'The GPU can use the CPU’s page tables'], answer: 0, why: 'The BAR is the physical address range the GPU answers. Resizing it lets the whole of the GPU’s memory appear there at once.' },
+      { q: 'A program reads a GPU buffer from the CPU through the BAR, one load at a time. Why is that slow?', options: ['Each load is a non-posted PCIe read that waits for a completion', 'The GPU’s memory is slower than DRAM', 'The TLB cannot hold BAR addresses', 'The IOMMU translates every load'], answer: 0, why: 'Writes are posted and the core moves on; every read waits for its answer to cross the link and come back.' }
+    ],
+    remember: [
+      'An integrated GPU shares the cores’ DRAM and bandwidth; a discrete GPU has its own memory behind a PCIe link.',
+      'The CPU reaches a discrete GPU’s memory through a BAR. Writes are cheap posted packets; reads wait a round trip.',
+      'The GPU reaches system RAM by DMA, which needs pinned pages. CUDA copies pageable data into a pinned buffer first.',
+      'The link is tens of GB/s; GPU memory is about a TB/s and more. Copy rarely, and keep data on the GPU.'
+    ],
+    sources: [DRMMM, REBAR, PINNED, HMMDOC, ROCM]
+  });
+
+  /* ---------- VI.15 ---------- */
+  App.lesson({
+    id: 'gpu-svm', short: 'One address space', title: 'One address space for CPU and GPU',
+    lede: 'A GPU has its own page tables, so a CPU pointer means nothing to it by default. SVA shares the CPU’s tables; Linux HMM mirrors them and moves pages into GPU memory.',
+    know: ['Page tables, the walk and page faults ([[ch:vm-walk]], [[ch:vm-faults]]).', 'The IOMMU translates what devices send ([[ch:io-iommu]]).', 'A discrete GPU has its own memory and reaches system RAM by DMA ([[ch:gpu-mem]]).'],
+    learn: ['Say why a CPU pointer is not a GPU pointer, and what the classic copy-in, copy-out program does', 'Explain shared virtual addressing: PASID, ATS and PRI', 'Explain how Linux HMM mirrors page tables and migrates pages to GPU memory and back'],
+    sections: [
+      { id: 'gpuvm', title: 'A GPU has its own MMU', body: function (L) {
+        L.p('A GPU runs work for many programs, so it translates addresses too. Its MMU walks page tables that the GPU driver writes, one address space per context.', ['gpuvm']);
+        L.quote('GPU Virtual Memory.  This is the GPU\'s MMU.  The GPU supports multiple virtual address spaces that can be in flight at any given time.', { cite: 'Documentation/gpu/amdgpu/amdgpu-glossary.rst, GPUVM, Linux v6.18', label: 'Linux source', src: ROCM });
+        L.p('Those tables can point at the GPU’s own memory or, through the IOMMU, at system RAM. The GPU driver fills them; the process’s own page tables are not involved.');
+      } },
+      { id: 'split', title: 'Two address spaces', body: function (L) {
+        L.p('So by default a pointer is valid on one side only. The CPU address of <code>hist</code>, 0x7ffd4a3c2a80, means nothing to the GPU unless its driver has mapped that range into the GPU’s tables.');
+        L.p('The classic GPU program therefore allocates GPU memory through the driver, copies its data in, runs, and copies the result back:');
+        L.code('long *d;                                    /* an address in the GPU’s space */\ncudaMalloc(&d, bytes);\ncudaMemcpy(d, hist, bytes, cudaMemcpyHostToDevice);   /* CPU memory → GPU memory */\nkernel<<<blocks, threads>>>(d);\ncudaMemcpy(hist, d, bytes, cudaMemcpyDeviceToHost);   /* and back */', { title: 'the classic pattern, in CUDA' });
+        L.p('For a flat array that works. For a linked list or a tree it does not: every pointer stored inside the data is a CPU address, and each one would have to be rewritten. Linux’s HMM documentation calls this a split address space.');
+      } },
+      { id: 'sva', title: 'Sharing the CPU’s page tables: SVA', body: function (L) {
+        L.p('One fix is to let the device use the process’s own page tables. That is shared virtual addressing: the device sends the same virtual addresses the CPU uses, and the IOMMU translates them.', ['sva']);
+        L.p('Three PCIe features make it work:');
+        L.list([
+          '<b>PASID</b> tags every request from the device with the process it is working for.',
+          '<b>ATS</b> lets the device ask the IOMMU for a translation and keep it in a TLB of its own.',
+          '<b>PRI</b> lets the device report a missing page, so the kernel can fault it in, as for a CPU access.'
+        ], ['pasid', 'atspri']);
+        L.quote('ATS allows devices to cache translations for virtual addresses. The IOMMU driver uses the mmu_notifier() support to keep the device TLB cache and the CPU cache in sync.', { cite: 'Documentation/arch/x86/sva.rst, Linux v6.18', label: 'Linux source', src: SVADOC });
+        L.p('In Linux a driver turns it on with one call, which gives the device a process’s page tables under a new PASID:');
+        L.quote('struct iommu_sva *iommu_sva_bind_device(struct device *dev,\n\t\t\t\t\tstruct mm_struct *mm);\nvoid iommu_sva_unbind_device(struct iommu_sva *handle);\nu32 iommu_sva_get_pasid(struct iommu_sva *handle);', { code: true, cite: 'include/linux/iommu.h, Linux v6.18 (excerpt)', label: 'Linux source' });
+        L.p('Nothing needs pinning: if a page is not there, the device asks for it through PRI instead of reading the wrong memory. Accelerators such as Intel’s Data Streaming Accelerator work this way.');
+        L.note('careful', 'SVA leaves the data where it is, in system RAM. A discrete GPU using it still reads every byte over the PCIe link, at link speed.');
+      } },
+      { id: 'hmm', title: 'Mirroring and moving pages: HMM', body: function (L) {
+        L.p('A discrete GPU wants more than shared addresses: it wants the data in its own fast memory. Linux’s heterogeneous memory management gives drivers two tools for that.', ['hmm']);
+        L.p('The first is mirroring. The driver copies a range of the CPU’s page table into the GPU’s with <code>hmm_range_fault()</code>, and registers a notifier, so every later change to that range updates the GPU’s copy too.');
+        L.quote('  int hmm_range_fault(struct hmm_range *range);\n\nIt will trigger a page fault on missing or read-only entries if write access is\nrequested (see below). Page faults use the generic mm page fault code path just\nlike a CPU page fault.', { code: true, cite: 'Documentation/mm/hmm.rst, Linux v6.18 (excerpt)', label: 'Linux source', src: HMMDOC });
+        L.p('The second is migration. The driver can move pages into GPU memory. Linux gives each page of GPU memory a <code>struct page</code> of a special type, which the CPU cannot map:', ['devpriv']);
+        L.quote(' * MEMORY_DEVICE_PRIVATE:\n * Device memory that is not directly addressable by the CPU: CPU can neither\n * read nor write private memory.', { code: true, cite: 'include/linux/memremap.h, Linux v6.18 (excerpt)', label: 'Linux source' });
+        L.p('To the CPU, a migrated page looks swapped out. If a CPU thread touches it, the page fault calls the driver’s <code>migrate_to_ram()</code>, which copies the page back into system memory before the access goes on.');
+        L.chain([
+          { k: 'page in system RAM', v: 'mapped by the CPU', d: 'and mirrored in the GPU’s tables' },
+          { k: 'migrate_vma_*()', v: 'the GPU copies it', d: 'the CPU’s entry becomes a special swap entry', hot: true },
+          { k: 'device-private page', v: 'in GPU memory', d: 'a CPU access faults → migrate_to_ram()' }
+        ], { cap: 'A page moving to GPU memory and back, with Linux HMM.' });
+      } },
+      { id: 'today', title: 'What programs see', body: function (L) {
+        L.p('NVIDIA’s CUDA builds on HMM. With its open-source kernel driver on a Linux kernel that has HMM, GPU code can use memory from plain <code>malloc()</code> or <code>mmap()</code>: no special allocator and no copy in the program. The driver mirrors and migrates pages behind it.');
+        L.p('The work has not disappeared. Pages still cross the PCIe link when they migrate, and a page that bounces between CPU and GPU pays for a fault and a copy each time. Programs that care still decide where data lives.');
+        L.note('other', 'Some systems join CPU and GPU with a coherent link instead of PCIe, such as NVIDIA’s Grace Hopper with NVLink-C2C. There the GPU can read CPU memory directly, at cache-line granularity, and migration becomes an optimization rather than a requirement.');
+      } }
+    ],
+    check: [
+      { q: 'A CPU thread passes the pointer 0x7ffd4a3c2a80 to GPU code. Without SVA or HMM, what does the GPU find there?', options: ['Whatever its own page tables map at that address, if anything', 'The same bytes the CPU sees', 'A page fault handled by the CPU’s kernel', 'The L3 line that holds it'], answer: 0, why: 'The GPU translates through its own tables, which the GPU driver fills. A CPU address means something to it only if that range was mapped.' },
+      { q: 'With SVA, which tables does the IOMMU walk for a device’s request?', options: ['The process’s own page tables, chosen by the PASID', 'The GPU driver’s private tables', 'The kernel’s direct map', 'None: SVA turns translation off'], answer: 0, why: 'iommu_sva_bind_device() gives the device the process’s page tables under a PASID, and every request carries that PASID.' },
+      { q: 'A page was migrated to GPU memory with HMM. What happens when a CPU thread reads it?', options: ['A page fault calls the driver’s migrate_to_ram(), which copies it back first', 'The CPU reads GPU memory over the BAR', 'The read returns zeros', 'The kernel kills the process'], answer: 0, why: 'The CPU cannot map device-private pages. Its entry acts like a swap entry, so the access faults and the driver migrates the page back.' },
+      { q: 'Why does SVA alone not make a discrete GPU fast on system memory?', options: ['The data stays in system RAM, so every access still crosses the PCIe link', 'SVA disables the GPU’s caches', 'PASIDs slow down DRAM', 'SVA needs every page pinned'], answer: 0, why: 'SVA shares addresses, not location. Moving data into GPU memory is what HMM migration adds.' }
+    ],
+    remember: [
+      'A GPU has its own MMU and page tables; a CPU pointer means nothing to it unless something maps it.',
+      'The classic program copies data into GPU memory and back, which breaks pointer-based data.',
+      'SVA lets a device use a process’s page tables: PASID picks them, ATS caches translations, PRI asks for missing pages.',
+      'HMM mirrors CPU page tables into the GPU’s and migrates pages to device-private memory; a CPU access faults and migrates them back.'
+    ],
+    sources: [ROCM, SVADOC, HMMDOC, NVHMM, GH]
+  });
+})();
+
+/* ======================= VII.02 · Real chips: how AMD, Intel and Arm build the machine ======================= */
+(function () {
+  'use strict';
+  var g = App.g, d = App.gloss, I = ImplementationEvidence, CS = function () { return App.CaseStudies; };
+  d('chiplet', 'chiplet', 'One of several dies in one processor package. Each is a separate piece of silicon; links inside the package join them. AMD’s EPYC 9005 is built from core chiplets around one I/O die.');
+  d('ccd', 'CCD', 'Core complex die: one of AMD’s core chiplets. On EPYC 9005 a CCD holds 8 Zen 5 cores and the 32 MiB L3 they share; the denser Zen 5c CCD holds 16 cores.');
+  d('iodie', 'I/O die', 'The central die of an AMD EPYC package. It holds the memory controllers, the PCIe and CXL lanes and a link to every CCD, so every memory access from a CCD passes through it.');
+  d('computedie', 'compute die', 'A die that holds cores. On Intel’s Xeon 6900P each of the three compute dies also holds L3 slices and four DDR5 memory channels.');
+  d('mesh', 'mesh', 'An on-chip interconnect laid out as a grid. Each stop joins a core, an L3 slice or a memory controller to its neighbours, and requests hop from stop to stop. Intel’s Xeons and Arm’s CMN use meshes.');
+  d('slice', 'L3 slice', 'One piece of an L3 that is spread over a chip. Each physical address belongs to exactly one slice, picked by a hash the vendor does not publish, so all slices together act as one cache.');
+  d('cmn', 'CMN', 'Coherent Mesh Network: Arm’s mesh interconnect, which it licenses to chip makers. CMN S3 is the version in Arm’s Neoverse CSS V3 reference design.');
+  d('chi', 'AMBA CHI', 'Coherent Hub Interface: Arm’s protocol for coherent requests on its interconnects. Its main line states are UC (unique clean), UD (unique dirty), SC (shared clean), SD (shared dirty) and I (invalid): the ideas of E, M, S, O and I under other names.');
+  d('mesif', 'MESIF', 'The MESI states plus F (Forward). When several caches share a clean line, one copy is marked F, and only that cache answers the next request for the line. Intel described it for its multi-socket systems; current Xeons use variations of it.');
+  d('ddr5', 'DDR5', 'The DRAM generation after DDR4. Each module is split into two independent 32-bit subchannels, and a read burst is 16 transfers of 4 bytes: still one 64-byte line.');
+  d('mrdimm', 'MRDIMM', 'Multiplexed-rank DIMM: a DDR5 module with a buffer that reads two groups of chips at once and interleaves their data, so the channel runs faster than with ordinary modules: 8800 MT/s on Xeon 6.');
+  d('lpddr', 'LPDDR5', 'Low-power DRAM, soldered next to the processor instead of plugged in as modules. Phones and laptops use it, and so do some Arm servers such as NVIDIA’s Grace.');
+  d('cxl', 'CXL', 'Compute Express Link: a protocol that runs on the same wires as PCIe 5 and adds coherent memory access, so memory on a CXL card can be used as more system memory.');
+  d('upi', 'UPI', 'Ultra Path Interconnect: Intel’s link between the sockets of a multi-socket server. Memory requests and coherence messages for the other socket’s memory cross it.');
+  d('numa', 'NUMA node', 'A group of CPUs and the memory closest to them. Memory of another node is reachable but slower: non-uniform memory access. Linux lists the nodes in /sys/devices/system/node.');
+  d('nps', 'NPS (nodes per socket)', 'An AMD EPYC firmware setting. NPS1 interleaves memory over all 12 channels as one NUMA node; NPS2 and NPS4 split the socket into 2 or 4 nodes, each with its nearest channels.');
+  d('snc', 'SNC (sub-NUMA clustering)', 'An Intel Xeon firmware setting that splits a socket into several NUMA nodes. On a Xeon 6900P, SNC3 makes one node per compute die.');
+  d('neoverse', 'Neoverse', 'Arm’s family of CPU cores for servers, which it licenses to chip makers. V-series cores aim at the highest speed per core; N-series cores at more cores per watt.');
+  d('css', 'CSS (Neoverse Compute Subsystem)', 'A complete reference design from Arm: cores, mesh, memory and I/O controllers, verified together. A chip maker can build on it instead of assembling the parts itself.');
+  App.setCategory('chiplet ccd iodie computedie mesh slice cmn ddr5 mrdimm lpddr numa nps snc', 'memory');
+  App.setCategory('chi mesif', 'coh');
+  App.setCategory('cxl upi', 'io');
+  App.setCategory('neoverse css', 'core');
+
+  /* Mark the vendor terms in the comparison table so each one opens its definition. */
+  var MARK = [
+    [/Infinity Fabric/g, function () { return g('fabric', 'Infinity Fabric'); }],
+    [/I\/O die/g, function () { return g('iodie', 'I/O die'); }],
+    [/compute die/g, function () { return g('computedie', 'compute die'); }],
+    [/\bCCDs?\b/g, function (m) { return g('ccd', m); }],
+    [/CMN S3/g, function () { return g('cmn', 'CMN S3'); }],
+    [/AMBA CHI/g, function () { return g('chi', 'AMBA CHI'); }],
+    [/MESIF/g, function () { return g('mesif', 'MESIF'); }],
+    [/\bMOESI\b/g, function () { return g('moesi', 'MOESI'); }],
+    [/MRDIMM/g, function () { return g('mrdimm', 'MRDIMM'); }],
+    [/LPDDR5/g, function () { return g('lpddr', 'LPDDR5'); }],
+    [/(^|[^P])DDR5/g, function (m, pre) { return pre + g('ddr5', 'DDR5'); }],
+    [/victim cache/g, function () { return g('victimc', 'victim cache'); }],
+    [/L3 slices/g, function () { return 'L3 ' + g('slice', 'slices'); }],
+    [/\bmesh\b/g, function () { return g('mesh', 'mesh'); }],
+    [/chiplet/g, function () { return g('chiplet', 'chiplet'); }],
+    [/\d+-way/g, function (m) { return g('way', m); }]
+  ];
+  function mark(text) {
+    var held = [];
+    MARK.forEach(function (r) {
+      text = text.replace(r[0], function () { held.push(r[1].apply(null, arguments)); return '\u0000' + (held.length - 1) + '\u0000'; });
+    });
+    return text.replace(/\u0000(\d+)\u0000/g, function (m, i) { return held[+i]; });
+  }
+  function srcList(keys) { return keys.map(function (k) { return I.sources[k]; }); }
+  function caseBlock(id) {
+    return function (el) {
+      var c = I.cases.filter(function (x) { return x.id === id; })[0];
+      CS().draw(el, c);
+      CS().notes(el, c);
+    };
+  }
+
+  App.lesson({
+    id: 'chips', short: 'Real chips', title: 'Real chips: how AMD, Intel and Arm build the machine',
+    lede: 'Three 2024 server designs next to the example machine, block by block, then one of them measured.',
+    know: ['The blocks of the example machine and the path of one load ([[ch:map]]).', 'Sets and ways, and why an L1 is indexed with page-offset bits ([[ch:vm-vipt]]).', 'Victim caches and shadow tags ([[ch:hier]]); coherence states ([[ch:coh]]).', 'Devices, DMA and PCIe (Part VI).'],
+    learn: ['Read a vendor’s cache and memory figures and map them onto the example machine', 'Say where each design puts its shared cache and its memory controllers', 'Measure the cache levels of a real machine, and know what a virtual machine hides'],
+    sections: [
+      { id: 'why', title: 'The same blocks, many more of them', body: function (L) {
+        L.p('Every page so far used one small example machine: four cores, one L3, two DDR4 channels. It is small on purpose, so every structure fits on screen.');
+        L.p('A server chip has the same blocks: cores with private L1 and L2 caches, a shared cache, coherence, an interconnect, memory controllers. It has many more of each, and it wires them differently.');
+        L.p('This lesson puts three server designs from 2024 next to the example: AMD’s EPYC 9005, Intel’s Xeon 6900P and Arm’s Neoverse V3. Then it measures one of them.');
+        L.note('careful', 'Every figure about a real chip on this page names its source. Vendors do not publish everything; where a value is not public, the page says so instead of guessing.');
+      } },
+      { id: 'chips', title: 'Same blocks, different sizes', body: function (L) {
+        L.p('Read the table one row at a time. The first column is the example machine; the others are what each vendor documents.');
+        var c = I.comparison;
+        L.table([''].concat(c.columns), c.rows.map(function (r) { return [r[0]].concat(r.slice(1).map(mark)); }), { mono: false, wide: true, title: 'The example machine next to three 2024 server designs', label: 'Vendor docs', src: srcList(c.sources) });
+        L.p('The first three rows are per core. All four designs give each core its own L1 and L2; only the sizes differ. A 12-way cache can keep a given line in any of 12 slots of one set.', [['way', 'One of the slots of a set. A line can be stored in any way of the one set its address picks; [[ch:vm-vipt]] shows how the address picks the set.']]);
+        L.p('The shared cache differs most. AMD’s L3 belongs to one chiplet of 8 cores. Intel spreads slices of one L3 over each die. Arm leaves the shared cache to the company that builds the chip.', ['chiplet', 'slice']);
+        L.p('All four keep caches coherent; they name the line states differently. The example uses MOESI, as AMD does. Intel’s MESIF adds a Forward state, and Arm’s AMBA CHI uses its own names for the same ideas.', ['mesif', 'chi']);
+        L.p('Memory moved from DDR4 to DDR5. Intel also supports faster MRDIMM modules, and Arm-based chips may use soldered LPDDR5 instead.', ['ddr5', 'mrdimm', 'lpddr']);
+        L.p('Two patterns stand out. AMD and Intel keep each way of the L1d at 4 KiB: 48 KiB ÷ 12 ways. So the set is still picked by page-offset bits alone, before translation finishes ([[ch:vm-vipt]]). Arm’s 64 KiB, 4-way L1d has 16 KiB per way and deals with the resulting aliases in hardware.');
+        L.p('And memory sits in different places: behind one central I/O die on AMD, on every compute die on Intel, and wherever the chip maker puts it on Arm.');
+      } },
+      { id: 'amd', title: 'AMD EPYC 9005: chiplets around one I/O die', body: function (L) {
+        L.p('An EPYC 9005 package holds up to 16 core chiplets, called CCDs, around one central I/O die.', ['ccd', 'iodie']);
+        L.p('Each CCD has 8 Zen 5 cores. Every core has its own 1 MiB L2, and the 8 share a 32 MiB L3 that is filled with lines their L2s evict: a victim cache, like the example machine’s. The denser Zen 5c version puts 16 smaller cores on a CCD.');
+        L.p('Each CCD has its own Infinity Fabric link to the I/O die. The I/O die holds all 12 DDR5 memory controllers and the PCIe and CXL lanes.', ['cxl']);
+        L.p('Since every CCD reaches memory through the I/O die, a firmware setting, NPS, lets the owner present a socket as one NUMA node or split it into 2 or 4.', ['numa', 'nps']);
+        L.custom(caseBlock('amd'));
+      } },
+      { id: 'intel', title: 'Intel Xeon 6900P: memory on every compute die', body: function (L) {
+        L.p('A Xeon 6900P package holds three compute dies and two I/O dies.', ['computedie']);
+        L.p('Each compute die holds P-cores with 2 MiB of private L2, slices of the shared L3, and four DDR5 channels, all joined by a mesh. One socket has up to 128 cores and up to 504 MB of L3.', ['mesh']);
+        L.p('The memory runs at DDR5-6400, or 8800 MT/s with MRDIMMs. The I/O dies carry PCIe 5.0, CXL 2.0, and UPI links to a second socket.', ['upi']);
+        L.p('In sub-NUMA clustering mode, SNC3, Linux sees one NUMA node per compute die. Intel’s DDIO also lets devices write incoming data straight into the L3 instead of DRAM.', ['snc', 'ddio']);
+        L.custom(caseBlock('intel'));
+      } },
+      { id: 'arm', title: 'Arm Neoverse V3: a core and a reference design', body: function (L) {
+        L.p('Arm sells designs, not chips. Neoverse is its family of server cores, and V3 is the fastest one of 2024.', ['neoverse']);
+        L.p('A V3 core has 64 KiB instruction and data L1 caches and a private 2 or 3 MiB L2.');
+        L.p('Arm’s reference design, CSS V3, joins up to 64 of these cores on a CMN S3 mesh, with up to 12 DDR5 or LPDDR5 channels and 64 lanes of PCIe 5 or CXL. It supports chiplets.', ['css', 'cmn']);
+        L.p('The shared cache, the memory type and the links between chips are each chip maker’s choice. NVIDIA’s Grace Superchip, for example, joins two 72-core chips built on the previous core, V2, over its own link.', [['NVLink-C2C', 'NVIDIA’s chip-to-chip link. In a Grace Superchip it joins two CPU dies; each die and its memory is its own NUMA node.']]);
+        L.custom(caseBlock('arm'));
+      } },
+      { id: 'measured', title: 'One of them, measured: machine C', body: function (L) {
+        L.p('Some lab runs in this course come from machine C, a cloud virtual machine. Its CPU reports family 6, model 173:');
+        L.out('c.facts');
+        L.p('Linux’s list of Intel CPU models names model 0xAD, which is 173: Granite Rapids, the Xeon 6 with P-cores in the table.');
+        L.quote('#define INTEL_GRANITERAPIDS_X\t\tIFM(6, 0xAD) /* Redwood Cove */', { code: true, label: 'Linux source', cite: 'arch/x86/include/asm/intel-family.h, Linux v6.18', src: ['Linux v6.18: arch/x86/include/asm/intel-family.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/intel-family.h'] });
+        L.p('The caches it reports match the Xeon 6900P column: a 48 KiB, 12-way L1d, a 2 MiB L2, and an L3 of 516096 KiB, which is 504 MiB.');
+        L.out('c.caches');
+        L.p('A pointer chase measures what a load really costs. Each 64-byte line holds a pointer to another line, in a random cycle, so every load’s address comes from the previous load and nothing can be fetched early.');
+        L.code('for (size_t i = 0; i < hops; i++)\n    p = (void **)*p;             /* the next address is the value just loaded */', { title: 'labruns/hw/ladder.c (excerpt)' });
+        L.out('c.ladder');
+        L.p('Up to 48 KiB every load hits the L1d: 1.3 ns. Up to 1 MiB it hits the L2: about 4.7 ns. At 4 and 8 MiB it hits the L3: about 33 ns.');
+        L.p('From 32 MiB on, a load takes 130 to 190 ns, and the figure changes from run to run. Those loads go to DRAM.');
+        L.note('vm', 'The L3 reports 504 MiB, yet this virtual machine behaves as if it had only 8 to 16 MiB of it. Other virtual machines on the same host share that L3, and a hypervisor can also limit how much of it one guest may fill. From inside the guest, neither can be seen. (Inference)');
+        L.p('[[ch:vm-vipt]] used the same kind of chase on machines A and B to count the ways of an L1. On any machine, read the reported sizes as a description and measure when a number matters.');
+      } },
+      { id: 'published', title: 'Numbers others measured', body: function (L) {
+        L.p('Independent testers publish measurements too. Two are worth reading closely, for what they show and for what they cannot.');
+        L.custom(function (el) { CS().published(el); });
+      } },
+      { id: 'history', title: 'Two older designs worth knowing', body: function (L) {
+        L.p('Two details from earlier chips still explain experiments in this course.');
+        L.custom(function (el) { CS().history(el); });
+      } }
+    ],
+    check: [
+      { q: 'Where are the memory controllers on an AMD EPYC 9005?', options: ['All on the central I/O die', 'One on each CCD', 'On every core', 'On the DIMMs'], answer: 0, why: 'All 12 DDR5 controllers sit on the I/O die. Every CCD reaches memory over its own Infinity Fabric link to that die.' },
+      { q: 'Why do the 48 KiB L1d caches of Zen 5 and Redwood Cove have 12 ways?', options: ['So each way is 4 KiB and page-offset bits alone pick the set', 'Because 12 cores share them', 'Because DDR5 bursts are 12 transfers', 'To match a 12-entry TLB'], answer: 0, why: '48 KiB ÷ 12 = 4 KiB per way: 64 sets of 64-byte lines. The set index stays inside the 4 KiB page offset, so the lookup can start before translation ends.' },
+      { q: 'On machine C a chase takes about 33 ns at 8 MiB and about 150 ns at 1 GiB. Where were those loads served?', options: ['The L3, then DRAM', 'The L2, then the L3', 'DRAM both times', 'The L1d, then the L2'], answer: 0, why: 'Its L2 holds 2 MiB, so 8 MiB is beyond the L2; 33 ns is an L3 hit. At 1 GiB nearly every line comes from DRAM.' },
+      { q: 'Two Arm servers use the same Neoverse V3 core. Can their memory systems differ?', options: ['Yes: the shared cache, memory type and socket links are the chip maker’s choice', 'No: the core fixes the whole memory system', 'Only in their clock speed', 'Only if one runs a different operating system'], answer: 0, why: 'Arm licenses the core and a reference design. The company that builds the chip decides the system cache, the memory and how chips connect.' }
+    ],
+    remember: [
+      'Real server chips have the example machine’s blocks: private L1 and L2, a shared cache, coherence, an interconnect, memory controllers. They have more of each.',
+      'AMD: 8 cores and a 32 MiB victim L3 per CCD, all memory behind one I/O die. Intel: memory controllers and L3 slices on every compute die. Arm: the system design is the chip maker’s choice.',
+      'A 48 KiB, 12-way L1d still has 4 KiB per way, so its set comes from the page offset.',
+      'A machine’s reported cache sizes are a description. Measure when a number matters, above all in a virtual machine.'
+    ],
+    sources: [I.sources.amd9005, I.sources.zen5hc, I.sources.xeon6, I.sources.xeon6np, I.sources.cssv3, I.sources.v3cache, ['Linux v6.18: arch/x86/include/asm/intel-family.h', 'https://github.com/torvalds/linux/blob/v6.18/arch/x86/include/asm/intel-family.h']]
   });
 })();
 

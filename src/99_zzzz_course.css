@@ -338,3 +338,15 @@ svg .dash{stroke-dasharray:4 3}
 .cm-bar{display:block;height:4px;border-radius:2px;background:var(--bd)}
 .cm-bar i{display:block;height:100%;border-radius:2px;background:var(--act)}
 .cm-also{margin:2px 0 0;color:var(--tx2);font-size:14px}
+
+/* ---------- II.01: the whole-machine diagram inside the lesson ---------- */
+.machine-lesson{display:grid;gap:10px}
+.machine-paths{display:flex;flex-wrap:wrap;gap:6px}
+.machine-paths button{font:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--bd);border-radius:7px;background:var(--panel);color:var(--tx2);cursor:pointer}
+.machine-paths button.on,.machine-paths button[aria-pressed="true"]{border-color:var(--act);color:var(--tx);background:color-mix(in srgb,var(--act) 14%,var(--panel))}
+.machine-lesson svg g.click{cursor:pointer}
+.machine-lesson svg g.click:focus-visible{outline:2px solid var(--act);outline-offset:2px}
+.machine-info{min-height:64px}
+.machine-info h3{margin:0 0 6px;font-size:16px}
+.machine-info p{margin:0 0 6px;color:var(--tx2);font-size:14px}
+.machine-go{display:inline-block;margin-top:2px;font-size:13.5px}

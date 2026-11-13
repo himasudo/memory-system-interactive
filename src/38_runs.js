@@ -1,6 +1,6 @@
 /* ======================= lab runs: real outputs quoted by the lessons =======================
    Every excerpt names the file under labruns/ it was taken from, and the machine it ran on
-   (machine: 'b'; machine A when absent). tests/runs.test.cjs checks that each quoted line
+   (machine: 'b' or 'c'; machine A when absent). tests/runs.test.cjs checks that each quoted line
    (⟦highlight⟧ marks removed; a line starting with "…" marks lines left out) appears in that
    file, so a lesson can only quote what a program really printed. */
 var LabRuns = (function () {
@@ -706,6 +706,47 @@ var LabRuns = (function () {
       file: 'io/out/oneread.trace.txt', machine: 'b',
       what: "run_all.sh and oneread.c: the kernel trace of one 4 KiB read, with time since the first marker and the CPU of each event. Block events are filtered to vda, interrupt events to its request queue.",
       lines: ["       0.0 us  cpu000  # == io_uring_enter: submit one 4 KiB read at offset 1 MiB, wait for it", "       8.0 us  cpu000  io_uring_submit_req: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, opcode READ, flags 0x400000, sq_thread 0", "      11.0 us  cpu000  block_bio_queue: 254,0 RS 19671040 + 8 [oneread]", "      12.0 us  cpu000  block_getrq: 254,0 RS 19671040 + 8 [oneread]", "      13.0 us  cpu000  block_rq_insert: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]", "      14.0 us  cpu000  block_rq_issue: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]", "      29.0 us  cpu000  sched_switch: prev_comm=oneread prev_pid=18827 prev_prio=120 prev_state=S ==> next_comm=swapper/0 next_pid=0 next_prio=120", "      53.0 us  cpu003  irq_handler_entry: irq=37 name=virtio1-req.0", "      55.0 us  cpu003  irq_handler_exit: irq=37 ret=handled", "      55.0 us  cpu003  block_rq_complete: 254,0 RS () 19671040 + 8 be,0,4 [0]", "      56.0 us  cpu003  ipi_send_cpu: cpu=0 callsite=ttwu_queue_wakelist+0x11c/0x140 callback=generic_smp_call_function_single_interrupt+0x0/0x20", "      98.0 us  cpu000  sched_wakeup: comm=oneread pid=18827 prio=120 target_cpu=000", "      99.0 us  cpu000  sched_switch: prev_comm=swapper/0 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=oneread next_pid=18827 next_prio=120", "     100.0 us  cpu000  io_uring_complete: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, result 4096, cflags 0x0 extra1 0 extra2 0", "     101.0 us  cpu000  io_uring_task_work_run: tctx 0000000088b7722e, count 1", "     102.0 us  cpu000  # == io_uring_enter returned 4096"]
+    },
+    /* ---- machine C: labruns/hw (caches, ordering, coherence) ---- */
+    'c.facts': {
+      file: 'hw/out/facts.txt', machine: 'c',
+      what: 'facts.sh: what the CPU and the kernel report about machine C.',
+      lines: [
+        'Model name:                              Intel(R) Xeon(R) Processor @ 2.30GHz',
+        'CPU family:                              6',
+        'Model:                                   ⟦173⟧',
+        'Hypervisor vendor:                       KVM',
+        'NUMA node(s):                            1'
+      ]
+    },
+    'c.caches': {
+      file: 'hw/out/facts.txt', machine: 'c',
+      what: 'facts.sh: the cache sizes CPU 0 reports in sysfs.',
+      lines: [
+        'index0: L1 Data ⟦48K, 12 ways⟧, 64 sets, 64-byte lines, shared by CPUs 0',
+        'index1: L1 Instruction 64K, 16 ways, 64 sets, 64-byte lines, shared by CPUs 0',
+        'index2: L2 Unified ⟦2048K⟧, 16 ways, 2048 sets, 64-byte lines, shared by CPUs 0',
+        'index3: L3 Unified ⟦516096K⟧, 16 ways, 516096 sets, 64-byte lines, shared by CPUs 0-1'
+      ]
+    },
+    'c.ladder': {
+      file: 'hw/out/ladder.txt', machine: 'c',
+      what: 'ladder.c, pinned to CPU 0: a random pointer chase, one pointer per 64-byte line, over working sets from 16 KiB to 2 GiB, in 2 MiB pages.',
+      lines: [
+        'working set  ns per load',
+        '    16 KiB          1.3',
+        '    48 KiB          ⟦1.3⟧',
+        '    64 KiB          4.6',
+        '     1 MiB          ⟦4.8⟧',
+        '     2 MiB         13.5',
+        '     4 MiB         32.4',
+        '     8 MiB         ⟦33.4⟧',
+        '    16 MiB         72.8',
+        '    32 MiB        164.4',
+        '   256 MiB        134.0',
+        '     1 GiB        188.2',
+        '     2 GiB        ⟦136.2⟧'
+      ]
     },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',

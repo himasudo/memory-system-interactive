@@ -15,10 +15,10 @@ build: function(root){
     var b = h('button', {'class': 'ghost', type: 'button', style: 'margin-top:10px'}, sec, 'step through it in [[ch:' + p[0] + ']] →');
     b.onclick = function(){ App.go(p[0]); };
   });
-  /* The package diagrams from chapter "The machine", without their notes. */
+  /* The package diagrams from the "Real chips" lesson, without their notes. */
   App.Implementations.cases.forEach(function(c){
     var sec = App.labSection(root, c.id, c.title, c.choice);
     App.CaseStudies.draw(sec, c);
-    App.LabUI.text('a', sec, 'What it changes and what to try →', {href: '#map/' + c.id});
+    App.LabUI.text('a', sec, 'What it changes and what to try →', {href: '#chips/' + c.id});
   });
 }});

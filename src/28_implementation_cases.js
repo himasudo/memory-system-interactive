@@ -1,4 +1,4 @@
-/* Chapter 09, second part: how AMD, Intel and Arm build the same machine. */
+/* Real chips (Lesson VII.02): the package drawings, notes and published measurements for AMD, Intel and Arm. */
 (function () {
   'use strict';
   var I = ImplementationEvidence,
@@ -110,51 +110,20 @@
     U.text('span', caption, ' ' + c.generation + '. ' + c.scope);
     return figure;
   }
-  /* The side-by-side table that opens the "Real chips" part. */
-  function chips(root) {
-    var sec = App.labSection(
-      root,
-      'chips',
-      'Same parts, different choices',
-      'Every design has private caches, a shared cache, coherence and memory controllers. The sizes and the wiring differ.'
-    );
-    U.text(
-      'p',
-      sec,
-      'The example machine in this lab is deliberately small, so every structure fits on screen. Here is how it compares with three current server designs.'
-    );
-    var c = I.comparison;
-    U.table(sec, [''].concat(c.columns), c.rows).classList.add('chip-compare');
-    U.text(
-      'p',
-      sec,
-      'Two patterns stand out. AMD and Intel both keep the L1 data cache at 4 KiB per way (48 KiB ÷ 12 ways), so the set can be picked from page-offset bits alone; Arm’s 64 KiB, 4-way L1 handles the aliasing in hardware instead. And memory sits in different places: behind one central I/O die (AMD), on each compute die (Intel), or wherever the chip vendor puts it (Arm).'
-    );
-    refs(sec, c.sources);
-  }
-  function caseSection(root, c) {
-    var sec = App.labSection(root, c.id, c.title, c.choice);
-    sec.classList.add('implementation-case');
-    U.text('p', sec, c.fact);
-    draw(sec, c);
-    var grid = h('div', { class: 'impl-notes' }, sec);
+  /* What each design changes and how to try it, then the limits and the sources. */
+  function notes(root, c) {
+    var grid = h('div', { class: 'impl-notes' }, root);
     var a = h('div', { class: 'impl-note' }, grid);
     U.text('h3', a, 'What it changes');
     U.text('p', a, c.prediction);
     var b = h('div', { class: 'impl-note' }, grid);
     U.text('h3', b, 'Try it');
     U.text('p', b, c.experiment);
-    U.text('p', sec, c.limits, { class: 'note' });
-    refs(sec, c.sources);
+    U.text('p', root, c.limits, { class: 'note' });
+    refs(root, c.sources);
   }
-  function published(root) {
-    var sec = App.labSection(
-        root,
-        'published',
-        'Published measurements',
-        'What independent testers measured on Zen 5 and on Intel’s newest P-core, and what those numbers can and can’t tell you.'
-      ),
-      q = I.instruction;
+  function published(sec) {
+    var q = I.instruction;
     badge(sec, q.kind);
     U.text('h3', sec, 'L1 load-to-use latency: 4 cycles on both');
     U.text('p', sec, q.instruction + ': ' + q.scope + ' ' + q.method);
@@ -230,13 +199,7 @@
       'A single dependency chain measures latency; many chains measure overlap. The <a href="#perf/queues">finite-queue lab</a> shows the mechanism, and <a href="#perf/datasets">the benchmarks</a> measure it on your machine. Their timer counts nanoseconds over a whole run, not cycles per instruction, so compare like with like.'
     );
   }
-  function history(root) {
-    var sec = App.labSection(
-      root,
-      'history',
-      'Older designs worth knowing',
-      'Two details from earlier chips that still explain experiments in this lab.'
-    );
+  function history(sec) {
     badge(sec, 'Peer-reviewed');
     U.text('h3', sec, 'AMD, 2011 to 2019: an L1 way predictor');
     U.text(
@@ -255,13 +218,6 @@
     U.sources(sec, [App.Evidence.sources.cache]);
     h('p', null, sec, '<a href="#hier/inclusion">Open the inclusion lab →</a>');
   }
-  App.CaseStudies = { draw: draw, badge: badge };
-  App.extendChapter('map', function (root) {
-    chips(root);
-    I.cases.forEach(function (c) {
-      caseSection(root, c);
-    });
-    published(root);
-    history(root);
-  });
+  /* Placed by the "Real chips" lesson (VII.02). */
+  App.CaseStudies = { draw: draw, badge: badge, notes: notes, refs: refs, published: published, history: history };
 })();
