@@ -51,7 +51,7 @@
 App.chapter({id: 'start', short: 'Start here', title: 'Memory Systems Lab',
 lede: 'How one memory access travels through a computer, from a line of C down to the DRAM chips and back. Change the experiments, compare real AMD, Intel and Arm chips, and measure your own machine.',
 points: ['Seven parts, in order: foundations, the core, virtual memory, caches and DRAM, ordering, devices, and the whole system.',
-  'Parts III and VI are short lessons built on outputs from real Linux machines; the other parts are chapters with interactive labs.',
+  'Parts II to VI are short lessons built on outputs from real Linux machines, with interactive labs after the lessons they need; Parts I and VII are chapters.',
   'The lab uses one small example machine, and compares it with real AMD, Intel and Arm designs.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
@@ -89,7 +89,7 @@ build: function(root){
         '<span class="cm-num">' + p.n + '</span><span class="cm-body"><strong>' + p.title + '</strong><small>' + list.length + (list.length === 1 ? ' page' : ' pages') + (lessons ? ' · ' + lessons + ' lessons' : '') + (n ? ' · ' + n + ' done' : '') + '</small>' +
         '<span class="cm-bar"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></span></span>');
     });
-    App.h('p', {'class': 'cm-also'}, map, 'Also: <a href="#map/chips">AMD, Intel and Arm compared</a> · <a href="#perf/datasets">measure your own computer</a> · <a href="#gloss">glossary</a>');
+    App.h('p', {'class': 'cm-also'}, map, 'Also: <a href="#chips">AMD, Intel and Arm compared</a> · <a href="#perf/datasets">measure your own computer</a> · <a href="#gloss">glossary</a>');
   }
   drawMap();
 
@@ -100,9 +100,9 @@ build: function(root){
     'Register names and hex values are linked too: a value like 0x7b opens its decimal form.',
     'Diagrams mark the active part in amber. Click a block to see what it is.',
     'Step panels walk through a process one step at a time. The \u2190 and \u2192 keys also work.',
-    'Each chapter is one long page. The section name in the top bar opens a list of its sections.',
-    'Most hardware chapters have two parts: the walkthrough, then an <b>Experiments</b> part with small simulations you can change. Each experiment asks you to predict the result first.',
-    'Lessons, in Parts III and VI, define each new term once, in the margin, and end with questions and a short list of what to remember. Outputs marked <b>Lab run</b> come from real Linux machines and name the machine and file they came from.',
+    'Each lesson, lab and chapter is one long page. The section name in the top bar opens a list of its sections.',
+    'Most labs have two parts: the walkthrough, then an <b>Experiments</b> part with small simulations you can change. Each experiment asks you to predict the result first.',
+    'Lessons, in Parts II to VI, define each new term once, in the margin, and end with questions and a short list of what to remember. Outputs marked <b>Lab run</b> come from real Linux machines and name the machine and file they came from.',
     'Timings come from the latency settings (the ≋ button). They are example values for the lab’s model machine. Your own measurements appear separately, labeled “Your machine”.'
   ])]);
   var labels = App.h('dl', {'class': 'label-legend'}, c);
@@ -114,7 +114,7 @@ build: function(root){
   var d = P.sec(root, 'numbers', 'Where the numbers come from', 'One small example machine, three real ones, and yours.');
   P.row(d, [
     'Sizes and addresses come from one small example machine: four cores, a 32 KiB L1 data cache and a 512 KiB L2 per core, a 4 MiB L3 shared by all four, and two DDR4 memory channels. It is small on purpose, so every structure fits on screen, and it copies no particular chip.',
-    'Real chips build the same parts at other sizes. [[ch:map]] compares the example with <a href="#map/amd">AMD EPYC 9005</a>, <a href="#map/intel">Intel Xeon 6</a> and <a href="#map/arm">Arm Neoverse V3</a>, and <a href="#perf/datasets">Measure your machine</a> runs the same experiments on your own computer.'
+    'Real chips build the same parts at other sizes. [[ch:chips]] compares the example with <a href="#chips/amd">AMD EPYC 9005</a>, <a href="#chips/intel">Intel Xeon 6</a> and <a href="#chips/arm">Arm Neoverse V3</a>, and <a href="#perf/datasets">Measure your machine</a> runs the same experiments on your own computer.'
   ], {h: 120, cap: 'Capacity per level in the example machine. Each level is larger and slower than the one before it.', draw: function(sv){
     var L = [['core', '', 50], ['L1d', '32 KiB', 70], ['L2', '512 KiB', 80], ['L3', '4 MiB', 92], ['DRAM', 'GBs', 102]], x = 10;
     L.forEach(function(l, i){
@@ -159,7 +159,7 @@ build: function(root){
   P.row(c, [
     'Hardware sizes are powers of two, because a field of <i>n</i> bits can number exactly 2<sup><i>n</i></sup> things.',
     'Here 1 KB = 1024 bytes and 1 MB = 1024 KB. Strictly these are KiB and MiB; hardware documentation usually writes KB and MB.',
-    'Three sizes appear in almost every chapter: the 64-byte ' + g('line', 'cache line') + ', the 4 KB ' + g('page') + ', and the 2 MB ' + g('huge', 'large page') + '.'
+    'Three sizes appear in almost every chapter: the 64-byte ' + g('line', 'cache line') + ', the block a cache copies from memory ([[ch:whycache]]); the 4 KB ' + g('page') + ', the block virtual memory maps ([[ch:vm]]); and the 2 MB ' + g('huge', 'large page') + ', 512 pages mapped as one.'
   ], {h: 130, cap: 'An n-bit field numbers 2\u207f positions. These three appear throughout.', draw: function(sv){
     [['6 bits', '2\u2076 = 64 bytes', 'one cache line'], ['12 bits', '2\u00b9\u00b2 = 4 KB', 'one page'], ['21 bits', '2\u00b2\u00b9 = 2 MB', 'one large page']].forEach(function(r, i){
       var y = 14 + i * 38;
@@ -176,7 +176,7 @@ build: function(root){
     'Chapters about caches and translation split an address into fields written as ' + g('bitrange', 'bit ranges') + '. Bits are numbered from 0 at the right, and \u201cbits 11:6\u201d means the six bits from bit 11 down to bit 6.',
     'In C that field is <code>(addr &gt;&gt; 6) &amp; 0x3f</code>: shift the field down to bit 0, then keep six bits with a mask.',
     'Take the address of <code>hist[123]</code>, 0x7ffd4a3c2e58. Its low 12 bits are 0xe58 = 1110 0101 1000.',
-    'Bits 5:0 are 011000 = 24: the byte within a cache line. Bits 11:6 are 111001 = 57: the cache set that [[ch:l1d]] looks up.'
+    'Bits 5:0 are 011000 = 24: the byte within a cache line. Bits 11:6 are 111001 = 57: the L1d uses them to pick which of its 64 groups of slots, called sets, to search ([[ch:cache-org]]).'
   ], {h: 140, cap: 'The low 12 bits of the address of hist[123], split the way the L1d splits them.', draw: function(sv){
     var bits = [1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0], top = [];
     for (var i = 11; i >= 0; i--) top.push(String(i));

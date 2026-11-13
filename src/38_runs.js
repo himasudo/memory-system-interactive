@@ -1,6 +1,6 @@
 /* ======================= lab runs: real outputs quoted by the lessons =======================
    Every excerpt names the file under labruns/ it was taken from, and the machine it ran on
-   (machine: 'b'; machine A when absent). tests/runs.test.cjs checks that each quoted line
+   (machine: 'b' or 'c'; machine A when absent). tests/runs.test.cjs checks that each quoted line
    (⟦highlight⟧ marks removed; a line starting with "…" marks lines left out) appears in that
    file, so a lesson can only quote what a program really printed. */
 var LabRuns = (function () {
@@ -706,6 +706,121 @@ var LabRuns = (function () {
       file: 'io/out/oneread.trace.txt', machine: 'b',
       what: "run_all.sh and oneread.c: the kernel trace of one 4 KiB read, with time since the first marker and the CPU of each event. Block events are filtered to vda, interrupt events to its request queue.",
       lines: ["       0.0 us  cpu000  # == io_uring_enter: submit one 4 KiB read at offset 1 MiB, wait for it", "       8.0 us  cpu000  io_uring_submit_req: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, opcode READ, flags 0x400000, sq_thread 0", "      11.0 us  cpu000  block_bio_queue: 254,0 RS 19671040 + 8 [oneread]", "      12.0 us  cpu000  block_getrq: 254,0 RS 19671040 + 8 [oneread]", "      13.0 us  cpu000  block_rq_insert: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]", "      14.0 us  cpu000  block_rq_issue: 254,0 RS 4096 () 19671040 + 8 be,0,4 [oneread]", "      29.0 us  cpu000  sched_switch: prev_comm=oneread prev_pid=18827 prev_prio=120 prev_state=S ==> next_comm=swapper/0 next_pid=0 next_prio=120", "      53.0 us  cpu003  irq_handler_entry: irq=37 name=virtio1-req.0", "      55.0 us  cpu003  irq_handler_exit: irq=37 ret=handled", "      55.0 us  cpu003  block_rq_complete: 254,0 RS () 19671040 + 8 be,0,4 [0]", "      56.0 us  cpu003  ipi_send_cpu: cpu=0 callsite=ttwu_queue_wakelist+0x11c/0x140 callback=generic_smp_call_function_single_interrupt+0x0/0x20", "      98.0 us  cpu000  sched_wakeup: comm=oneread pid=18827 prio=120 target_cpu=000", "      99.0 us  cpu000  sched_switch: prev_comm=swapper/0 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=oneread next_pid=18827 next_prio=120", "     100.0 us  cpu000  io_uring_complete: ring 000000002d7d7646, req 00000000a353d5f4, user_data 0x2a, result 4096, cflags 0x0 extra1 0 extra2 0", "     101.0 us  cpu000  io_uring_task_work_run: tctx 0000000088b7722e, count 1", "     102.0 us  cpu000  # == io_uring_enter returned 4096"]
+    },
+    /* ---- machine C: labruns/hw (caches, ordering, coherence) ---- */
+    'c.facts': {
+      file: 'hw/out/facts.txt', machine: 'c',
+      what: 'facts.sh: what the CPU and the kernel report about machine C.',
+      lines: [
+        'Model name:                              Intel(R) Xeon(R) Processor @ 2.30GHz',
+        'CPU family:                              6',
+        'Model:                                   ⟦173⟧',
+        'Hypervisor vendor:                       KVM',
+        'NUMA node(s):                            1'
+      ]
+    },
+    'c.caches': {
+      file: 'hw/out/facts.txt', machine: 'c',
+      what: 'facts.sh: the cache sizes CPU 0 reports in sysfs.',
+      lines: [
+        'index0: L1 Data ⟦48K, 12 ways⟧, 64 sets, 64-byte lines, shared by CPUs 0',
+        'index1: L1 Instruction 64K, 16 ways, 64 sets, 64-byte lines, shared by CPUs 0',
+        'index2: L2 Unified ⟦2048K⟧, 16 ways, 2048 sets, 64-byte lines, shared by CPUs 0',
+        'index3: L3 Unified ⟦516096K⟧, 16 ways, 516096 sets, 64-byte lines, shared by CPUs 0-1'
+      ]
+    },
+    'c.ladder': {
+      file: 'hw/out/ladder.txt', machine: 'c',
+      what: 'ladder.c, pinned to CPU 0: a random pointer chase, one pointer per 64-byte line, over working sets from 16 KiB to 2 GiB, in 2 MiB pages.',
+      lines: [
+        'working set  ns per load',
+        '    16 KiB          1.3',
+        '    48 KiB          ⟦1.3⟧',
+        '    64 KiB          4.6',
+        '     1 MiB          ⟦4.8⟧',
+        '     2 MiB         13.5',
+        '     4 MiB         32.4',
+        '     8 MiB         ⟦33.4⟧',
+        '    16 MiB         72.8',
+        '    32 MiB        164.4',
+        '   256 MiB        134.0',
+        '     1 GiB        188.2',
+        '     2 GiB        ⟦136.2⟧'
+      ]
+    },
+    'c.branch': {
+      file: 'hw/out/branch.txt', machine: 'c',
+      what: 'branch.c, pinned to CPU 0: count the bytes >= 128 in 1 MiB of random bytes, first in random order, then sorted. The loop keeps a real conditional jump.',
+      lines: [
+        'random  data: 524215 of 1048576 bytes are >= 128, ⟦3.81 ns⟧ per byte',
+        'sorted  data: 524215 of 1048576 bytes are >= 128, ⟦0.26 ns⟧ per byte'
+      ]
+    },
+    'c.mlp': {
+      file: 'hw/out/mlp.txt', machine: 'c',
+      what: 'mlp.c, pinned to CPU 0: a random pointer cycle over 1 GiB, walked as 1, 2, 4, 8 or 16 independent chains at once.',
+      lines: [
+        ' chains    ns per load     loads per us',
+        '      1          ⟦192.1⟧              5.2',
+        '      2           95.7             10.4',
+        '      4           48.5             20.6',
+        '      8           24.9             40.2',
+        '     16           ⟦13.0⟧             77.0'
+      ]
+    },
+    'c.seq': {
+      file: 'hw/out/seq.txt', machine: 'c',
+      what: 'seq.c, pinned to CPU 0: one 8-byte load from every 64-byte line of 1 GiB, in address order and in random order; independent loads take line numbers from an array, dependent loads follow a pointer in each line.',
+      lines: [
+        'loads        order           ns per line',
+        'independent  address                 6.8',
+        'dependent    address                 ⟦5.2⟧',
+        'independent  random                 10.5',
+        'dependent    random                ⟦197.2⟧'
+      ]
+    },
+    'c.sb': {
+      file: 'hw/out/sb.txt', machine: 'c',
+      what: 'sb.c: two threads on CPUs 0 and 1. Thread 0 stores x = 1 and loads y; thread 1 stores y = 1 and loads x. 2 million runs, three ways.',
+      lines: [
+        'nothing between the store and the load: 2000000 runs',
+        '  r0=0 r1=0:    ⟦50650⟧',
+        '  r0=0 r1=1:   748331',
+        '  r0=1 r1=0:  1193770',
+        '  r0=1 r1=1:     7249',
+        'mfence between them: 2000000 runs',
+        '  r0=0 r1=0:        ⟦0⟧',
+        'lock orq $0,(%rsp) between them: 2000000 runs',
+        '  r0=0 r1=0:        ⟦0⟧'
+      ]
+    },
+    'c.falseshare': {
+      file: 'hw/out/falseshare.txt', machine: 'c',
+      what: 'falseshare.c: one or two threads (CPUs 0 and 1), each adding 1 to its own counter 20 million times; the counters are 8 or 128 bytes apart.',
+      lines: [
+        'increment        threads and counters         ns per increment',
+        'plain            1 thread                       0.27',
+        'plain            2 threads, one line            0.29',
+        'plain            2 threads, 128 bytes apart     0.26',
+        'atomic           1 thread                       4.73',
+        'atomic           2 threads, one line           ⟦56.10⟧',
+        'atomic           2 threads, 128 bytes apart     4.74'
+      ]
+    },
+    'c.pingpong': {
+      file: 'hw/out/pingpong.txt', machine: 'c',
+      what: 'pingpong.c: two threads on CPUs 0 and 1 pass a counter back and forth through one cache line, a million round trips per run; eight runs, two seconds apart.',
+      lines: [
+        '1000000 round trips between CPU 0 and CPU 1, one 64-byte line',
+        'run 1:  143.6 ns per round trip,  ⟦71.8⟧ ns per handoff',
+        'run 2:  144.1 ns per round trip,  72.1 ns per handoff',
+        'run 3:  137.4 ns per round trip,  68.7 ns per handoff',
+        'run 4:  130.8 ns per round trip,  65.4 ns per handoff',
+        'run 5:  134.1 ns per round trip,  67.1 ns per handoff',
+        'run 6:  127.4 ns per round trip,  63.7 ns per handoff',
+        'run 7:  122.5 ns per round trip,  ⟦61.2⟧ ns per handoff',
+        'run 8:  136.0 ns per round trip,  68.0 ns per handoff'
+      ]
     },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',

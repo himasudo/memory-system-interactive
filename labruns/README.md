@@ -9,6 +9,7 @@ quoted line really is in that file.
 | `vm/out/` | A | Part III | `vm/run_all.sh` |
 | `vm/out-b/` | B | Part III (runs added later) | `vm/run_b.sh` |
 | `io/out/` | B | Part VI | `io/run_all.sh` |
+| `hw/out/` | C | Parts II, IV, V and VII (caches, ordering, coherence, real chips) | `hw/run_all.sh` |
 
 **Machine A**: a cloud virtual machine (KVM), Linux 6.18.44, 2 vCPUs. The CPU reports itself as
 an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), 46-bit physical and 48-bit virtual
@@ -18,6 +19,13 @@ addresses.
 CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), 52-bit
 physical and 57-bit virtual addresses; the kernel uses 4-level paging. Details in
 `machine-b.txt`.
+
+**Machine C**: a third cloud virtual machine (KVM), the same Linux 6.18.44 build, 2 vCPUs. The
+CPU reports itself as an Intel Xeon at 2.30 GHz (family 6, model 173, stepping 1), 52-bit physical
+and 57-bit virtual addresses, a 48 KiB 12-way L1d and a 2 MiB L2 per core, and a 504 MiB L3.
+Linux names model 173 Granite Rapids (Xeon 6 with P-cores). Its single-thread timing programs are
+pinned to one CPU with `taskset`; the two-thread programs (`sb`, `falseshare`, `pingpong`) pin their
+threads to CPUs 0 and 1 themselves.
 
 On a virtual machine, physical addresses are the virtual machine's own (the host translates
 them once more), and the CPU model and cache sizes are what the hypervisor reports.
@@ -33,6 +41,7 @@ space through sysfs (never write it) and read a 4 MiB file they create.
     sudo sh vm/run_all.sh /tmp/lab     # writes vm/out/
     sudo sh vm/run_b.sh /tmp/lab       # writes vm/out-b/
     sudo sh io/run_all.sh /tmp/lab     # writes io/out/ (/tmp/lab must be on a virtio disk)
+    sh hw/run_all.sh /tmp/lab-hw       # writes hw/out/ (no root needed)
 
 Your numbers will differ: frame numbers change on every run, and timings depend on the machine.
 `common/lab.h` holds the helpers (pagemap, fault counts, trace markers) and

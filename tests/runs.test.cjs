@@ -32,9 +32,9 @@ test('every excerpt says what was run', () => {
 });
 
 test('every excerpt names the machine its file came from', () => {
-  /* labruns/vm/out: machine A; labruns/vm/out-b, labruns/io and machine-b.txt: machine B */
+  /* labruns/vm/out: machine A; labruns/vm/out-b, labruns/io and machine-b.txt: machine B; labruns/hw: machine C */
   for (const [id, r] of Object.entries(Runs.runs)) {
-    const isB = /^(vm\/out-b\/|io\/|machine-b\.txt$)/.test(r.file);
-    assert.equal(r.machine || 'a', isB ? 'b' : 'a', id + ': ' + r.file + ' comes from machine ' + (isB ? 'B' : 'A'));
+    const m = /^hw\//.test(r.file) ? 'c' : /^(vm\/out-b\/|io\/|machine-b\.txt$)/.test(r.file) ? 'b' : 'a';
+    assert.equal(r.machine || 'a', m, id + ': ' + r.file + ' comes from machine ' + m.toUpperCase());
   }
 });

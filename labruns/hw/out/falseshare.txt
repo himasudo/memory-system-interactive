@@ -1,0 +1,7 @@
+increment        threads and counters         ns per increment
+plain            1 thread                       0.27
+plain            2 threads, one line            0.29
+plain            2 threads, 128 bytes apart     0.26
+atomic           1 thread                       4.73
+atomic           2 threads, one line           56.10
+atomic           2 threads, 128 bytes apart     4.74

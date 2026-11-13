@@ -69,8 +69,6 @@ var App = (function(){
 
   /* ---------- chapter parts: walkthrough first, then experiments ---------- */
   var PARTS = {
-    map: {label: 'Real chips', title: 'How AMD, Intel and Arm build it', kicker: '',
-      copy: 'The map above is this lab’s example machine. These sections compare it with three current server designs.'},
     perf: false, atlas: false, start: false, gloss: false
   };
   var DEFAULT_PART = {label: 'Experiments', title: 'Try it yourself', kicker: 'Lab',
@@ -216,13 +214,17 @@ var App = (function(){
     if (built[ch.id].api.onShow) built[ch.id].api.onShow();
   }
 
+  var routeSeq = 0;
   function route(){
     var p = location.hash.slice(1).split('/');
     var moved = p[1] && App.Course && App.Course.moved[p[0] + '/' + p[1]];
     if (moved && App.Course.lessons[moved]){ p[0] = moved; try { history.replaceState(null, '', '#' + p.join('/')); } catch(e){} }
     show(p[0] || chapters[0].id);
-    /* second jump after the workbenches above have finished sizing */
-    if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
+    /* second jump after the workbenches above have finished sizing; skipped once the reader has
+       gone elsewhere, so a late jump cannot write the old page back into the address bar */
+    var seq = ++routeSeq;
+    function again(){ if (seq === routeSeq && location.hash.slice(1).split('/')[0] === p[0]) scrollToSection(p[1], false); }
+    if (p[1]){ setTimeout(again, 30); setTimeout(again, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
   }
   function scrollToSection(sid, smooth){
     var current = built[cur]; if (current && current.api.selectSection) current.api.selectSection(sid);
@@ -608,14 +610,6 @@ var App = (function(){
 
   function enhanceAllChapterWorkbench(sec){
     var id=sec.id;
-    if(id==='ch-map'){
-      var sc=sec.querySelector('.map-canvas'); if(sc) sec._cameraFocus=addFocusStrip(sec,sc,[
-        {id:'overview',label:'Whole machine',box:[0,0,1200,760]},
-        {id:'core',label:'CPU + caches',box:[15,35,780,405]},
-        {id:'memory',label:'Fabric + DRAM',box:[0,350,800,410]},
-        {id:'io',label:'I/O + devices',box:[760,20,440,740]}
-      ],{auto:false,follow:false,initial:'overview',label:'system view'});
-    }
     if(id==='ch-hier'){
       buildGenericWorkbench(sec,{className:'hier-workbench',views:[
         {id:'overview',label:'Overview',box:[0,0,1200,560]},
@@ -742,12 +736,7 @@ var App = (function(){
     function q(sel){return sec.querySelector(sel);} function kids(sel){return Array.prototype.slice.call(body.querySelectorAll(':scope > '+sel));}
     var psec = body.querySelectorAll(':scope > .p-sec');
     if (psec.length){ makeGuidedJourney(sec, Array.prototype.map.call(psec, function(el){ return {id: el.dataset.sec, title: el.dataset.title, copy: el.dataset.copy, nodes: [el]}; })); return; }
-    if(sec.id==='ch-map'){
-      makeGuidedJourney(sec,[
-        {id:'atlas',title:'See the whole machine',copy:'Click any block to see what it is, how big it is, and which chapter explains it.',nodes:[q('.map-workbench')]},
-        {id:'route',title:'Follow the route',copy:'The order the chapters follow: one stage of a memory access each.',nodes:[q('.route-index')]}
-      ]);
-    } else if(sec.id==='ch-code'){
+    if(sec.id==='ch-code'){
       var tops=Array.prototype.slice.call(body.children);
       makeGuidedJourney(sec,[
         {id:'example',title:'The example',copy:'The C function, its three arguments, and the registers they arrive in.',nodes:[tops[0]]},

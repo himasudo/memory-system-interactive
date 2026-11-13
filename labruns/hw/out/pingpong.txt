@@ -1,0 +1,9 @@
+1000000 round trips between CPU 0 and CPU 1, one 64-byte line
+run 1:  143.6 ns per round trip,  71.8 ns per handoff
+run 2:  144.1 ns per round trip,  72.1 ns per handoff
+run 3:  137.4 ns per round trip,  68.7 ns per handoff
+run 4:  130.8 ns per round trip,  65.4 ns per handoff
+run 5:  134.1 ns per round trip,  67.1 ns per handoff
+run 6:  127.4 ns per round trip,  63.7 ns per handoff
+run 7:  122.5 ns per round trip,  61.2 ns per handoff
+run 8:  136.0 ns per round trip,  68.0 ns per handoff

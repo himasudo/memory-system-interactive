@@ -5,7 +5,7 @@
   d('bio', 'bio', 'The block layer’s description of one I/O: a device, a starting sector, a direction and a list of memory pieces. One or more bios make a request.');
   d('blkrq', 'request', 'What the block layer hands a driver: one or more bios for neighbouring sectors, with a tag that identifies it until it completes.');
   d('blkmq', 'blk-mq', 'The multi-queue block layer: per-CPU software queues feeding one or more hardware queues, each matching a submission queue of the device.');
-  d('tag', 'tag', 'A small number naming an in-flight request in a hardware queue, 0 to 127 for vda. The number of tags caps how many requests the device may have at once.');
+  d('blktag', 'tag (block layer)', 'A small number naming an in-flight request in a hardware queue, 0 to 127 for vda. The number of tags caps how many requests the device may have at once.');
   d('sector', 'sector', 'The block layer’s unit of disk position: 512 bytes, whatever the device’s real block size.');
   d('sqe', 'SQE', 'Submission queue entry: a 64-byte request in io_uring’s submission ring, naming the operation, file, buffer, length, offset and a user_data tag.');
   d('cqe', 'CQE', 'Completion queue entry: io_uring’s answer to one SQE, 16 bytes holding the user_data tag and the result (bytes, or a negative error).');
@@ -46,7 +46,7 @@
         L.p('vda’s settings in sysfs:');
         L.out('io.queue', { wide: true });
         L.out('io.mq');
-        L.p('vda has one hardware queue, fed by all four CPUs, with 128 tags: at most 128 requests in flight. The scheduler, mq-deadline, may hold up to 256 requests before that.', ['tag']);
+        L.p('vda has one hardware queue, fed by all four CPUs, with 128 tags: at most 128 requests in flight. The scheduler, mq-deadline, may hold up to 256 requests before that.', ['blktag']);
         L.quote('[RW] If this option is \'1\', the block layer will migrate request completions to the cpu "group" that originally submitted the request. For some workloads this provides a significant reduction in CPU cycles due to caching effects.', { cite: 'Documentation/ABI/stable/sysfs-block, rq_affinity, Linux v6.18', label: 'Linux source' });
         L.p('rq_affinity is 1: completions run in the submitter’s CPU group. The trace showed the completion on CPU 3, where the interrupt arrived, and only the program’s wake-up went to CPU 0 ([[ch:io-irq]]).');
         L.p('io_poll is 0: vda has no polled queues, so completions always arrive by interrupt. A device with several hardware queues, such as an NVMe SSD, usually gets one per CPU and needs no sharing at all.');
@@ -94,7 +94,7 @@
       { id: 'submit', title: 'Submitting a read', body: function (L) {
         L.p('oneread.c fills one SQE, adds it to the ring, and enters the kernel:');
         L.code('struct io_uring_sqe *e = &sqes[idx];\nmemset(e, 0, sizeof *e);\ne->opcode = IORING_OP_READ;\ne->fd = fd;\ne->addr = (uint64_t)(uintptr_t)buf;\ne->len = 4096;\ne->off = off;\ne->user_data = 0x2a;\nsq_array[idx] = idx;\n__atomic_store_n(sq_tail, tail + 1, __ATOMIC_RELEASE);\nif (syscall(__NR_io_uring_enter, ring_fd, 1, 1, IORING_ENTER_GETEVENTS, NULL, 0) < 0) { perror("io_uring_enter"); exit(1); }', { title: 'labruns/io/oneread.c, read_once() (excerpt)' });
-        L.p('The release store makes the SQE visible before the new tail, the same rule as for any ring ([[ch:stores]]). io_uring_enter(fd, 1, 1, GETEVENTS) submits one entry and waits for one completion.');
+        L.p('The release store makes the SQE visible before the new tail, the same rule as for any ring ([[ch:ord-fence]]). io_uring_enter(fd, 1, 1, GETEVENTS) submits one entry and waits for one completion.');
         L.p('user_data is the program’s own tag, 0x2a here: the kernel copies it into the CQE so the program can match answers to requests.');
       } },
       { id: 'trace', title: 'What the kernel did', body: function (L) {

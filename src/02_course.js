@@ -15,9 +15,10 @@
       outcomes: ['Read hex values and bit ranges', 'Read a few lines of x86 assembly', 'Tell latency from throughput', 'Explain why caches and virtual memory exist'],
       pages: ['bits', 'addr', 'instr', 'asm', 'time', 'whycache', 'vm', 'share']},
     {id: 'machine', n: 'II', title: 'The machine and the core',
-      lede: 'A map of the whole machine, then the path from a line of C to the µops a core executes.',
-      outcomes: ['Name every block between a core and DRAM', 'Follow C to instructions to µops', 'Read an out-of-order pipeline cycle by cycle'],
-      pages: ['map', 'code', 'core']},
+      lede: 'A map of the whole machine, then the path from a line of C to the µops a core executes, and how an out-of-order core runs them: pipelining, branch prediction, renaming, scheduling, the load and store queues, and misses.',
+      outcomes: ['Name every block between a core and DRAM', 'Follow C to instructions, bytes and µops', 'Explain how a core predicts branches, renames registers and runs µops out of order', 'Read an out-of-order pipeline cycle by cycle', 'Explain why independent misses overlap and dependent ones do not'],
+      runs: ['c'],
+      pages: ['map', 'cpu-code', 'cpu-uops', 'code', 'cpu-pipe', 'cpu-branch', 'cpu-ooo', 'cpu-rename', 'cpu-sched', 'cpu-lsq', 'cpu-miss', 'core']},
     {id: 'vmem', n: 'III', title: 'Virtual memory',
       lede: 'How every address a program uses is translated: pages, page tables, the TLB, page faults, copy-on-write and huge pages, and what the kernel does behind each one. The outputs shown are from real runs on a Linux machine.',
       outcomes: ['Translate a virtual address by hand through all four levels', 'Read /proc/self/maps, pagemap and smaps', 'Decode any page-fault error code', 'Predict when the TLB is flushed and when other CPUs are interrupted', 'Measure page-fault costs and keep them out of benchmarks'],
@@ -25,34 +26,40 @@
       pages: ['vm-addresses', 'vm-pages', 'vm-space', 'vm-tree', 'vm-levels', 'vm-pte', 'vm-walk', 'vm-tlb', 'xlate', 'vm-huge', 'vm-vipt', 'vm-switch', 'vm-shootdown',
         'vm-faults', 'vm-demand', 'vm-files', 'vm-cow', 'vm-protect', 'vm-cost', 'vm-buddy', 'vm-reclaim', 'vm-alias', 'vm-virt', 'vm-review']},
     {id: 'cache', n: 'IV', title: 'Caches and DRAM',
-      lede: 'Inside an L1 lookup, down through L2, L3 and the fabric, into the DRAM chips, and the prefetchers that fetch lines before they are asked for.',
-      outcomes: ['Split an address into tag, index and offset', 'Follow a miss to DRAM and back', 'Explain row hits, misses and conflicts', 'Tell a useful prefetch from a late or useless one'],
-      pages: ['l1d', 'hier', 'dram', 'pref']},
+      lede: 'How a cache is organized and looked up, what happens when a set is full or a line is written, how the L2 and L3 work together, what a miss crosses on its way to DRAM, how DRAM chips store and deliver a line, and the prefetchers that fetch lines before they are asked for.',
+      outcomes: ['Split an address into tag, index and offset, and find its set at every level', 'Explain replacement, write-back and the three kinds of miss', 'Follow a miss to DRAM and back, and relate latency, bandwidth and misses in flight', 'Price a DRAM read as a row hit, closed row or row conflict', 'Tell a useful prefetch from a late or useless one'],
+      runs: ['c', 'b'],
+      pages: ['cache-org', 'cache-lookup', 'cache-replace', 'cache-writes', 'l1d', 'cache-levels', 'cache-miss', 'hier', 'dram-cells', 'dram-cmds', 'dram-map', 'dram-refresh', 'dram', 'pref-hw', 'pref']},
     {id: 'order', n: 'V', title: 'Stores, ordering and coherence',
-      lede: 'What happens after a store retires, which orders other cores may observe, and how caches keep many copies of one line consistent.',
-      outcomes: ['Follow a store from the store queue to L1', 'Read a litmus test', 'Step through MOESI state changes'],
-      pages: ['stores', 'coh']},
+      lede: 'When a store becomes visible to other cores, why a store reads a line first, which orders other cores may observe and what fences and atomic instructions cost, then how caches keep the copies of one line consistent and what false sharing costs. The outputs shown are from real runs on two CPUs.',
+      outcomes: ['Follow a store from the store queue to the moment other cores see it', 'Count the traffic of normal and non-temporal stores', 'Read a litmus test and say which results x86 and Arm allow', 'Pick the fence or atomic a pattern needs, on x86 and on Arm', 'Step a line through MOESI and say who gets probed', 'Find and fix false sharing'],
+      runs: ['c'],
+      pages: ['st-visible', 'st-rfo', 'ord-tso', 'ord-fence', 'stores', 'coh-why', 'coh-mesi', 'coh-probe', 'coh-false', 'coh']},
     {id: 'io', n: 'VI', title: 'Devices and I/O',
-      lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, and the queues behind every disk and network request. The outputs shown are from real runs on a Linux machine.',
-      outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt'],
+      lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, the queues behind every disk and network request, and how a GPU fits in. The outputs shown are from real runs on a Linux machine.',
+      outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt', 'Say where a GPU’s memory is, and how CPU and GPU can share one address space'],
       runs: ['b'],
-      pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review']},
+      pages: ['io-paths', 'io-pcie', 'io-config', 'io-mmio', 'io-rings', 'io-dma', 'io-coherence', 'io-iommu', 'io-irq', 'io-block', 'io-uring', 'dev', 'io-review', 'gpu-mem', 'gpu-svm']},
     {id: 'system', n: 'VII', title: 'The whole system',
-      lede: 'Everything together: one access end to end, then predicting, measuring and explaining performance on your own machine.',
-      outcomes: ['Add up one access from instruction to DRAM', 'Predict throughput from queue sizes', 'Measure your own machine and compare'],
-      pages: ['e2e', 'perf']},
+      lede: 'Everything together: one access end to end, the same blocks in real AMD, Intel and Arm chips, then predicting, measuring and explaining performance on your own machine.',
+      outcomes: ['Add up one access from instruction to DRAM', 'Map a real server chip onto the example machine', 'Predict throughput from queue sizes', 'Measure your own machine and compare'],
+      runs: ['c'],
+      pages: ['e2e', 'chips', 'perf']},
     {id: 'ref', n: '', title: 'Reference', pages: ['atlas', 'gloss']}
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
-  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab'};
+  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab', code: 'Lab', core: 'Lab', l1d: 'Lab', hier: 'Lab', dram: 'Lab', pref: 'Lab', stores: 'Lab', coh: 'Lab'};
   /* Experiments that moved from the two labs into lessons. An old link such as #xlate/os opens
      the lesson that holds the experiment now (#vm-cow/os); the section id did not change. */
   var MOVED = {'xlate/os': 'vm-cow', 'xlate/native': 'vm-cost', 'xlate/pages': 'vm-huge', 'xlate/granules': 'vm-vipt',
-    'xlate/walk-contention': 'vm-tlb', 'xlate/shootdown': 'vm-shootdown', 'dev/iotlb': 'io-iommu', 'dev/queues': 'io-irq', 'dev/uring': 'io-uring'};
+    'xlate/walk-contention': 'vm-tlb', 'xlate/shootdown': 'vm-shootdown', 'dev/iotlb': 'io-iommu', 'dev/queues': 'io-irq', 'dev/uring': 'io-uring',
+    /* the real-chips half of the old machine chapter is now Lesson VII.02 */
+    'map/chips': 'chips', 'map/amd': 'chips', 'map/intel': 'chips', 'map/arm': 'chips', 'map/published': 'chips', 'map/history': 'chips', 'map/part': 'chips'};
   /* The machines the "Lab run" outputs were captured on. Each output names its machine. */
   var MACHINES = {
     a: {name: 'machine A', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.80 GHz (family 6, model 85, stepping 7), with 46-bit physical and 48-bit virtual addresses.'},
-    b: {name: 'machine B', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'}
+    b: {name: 'machine B', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 4 vCPUs. The CPU reports itself as an Intel Xeon at 2.10 GHz (family 6, model 207, stepping 2), with 52-bit physical and 57-bit virtual addresses; the kernel uses 4-level paging, as on machine A. Its devices are virtio devices on an emulated PCI bus.'},
+    c: {name: 'machine C', text: 'a cloud virtual machine (KVM) running Linux 6.18.44 on 2 vCPUs. The CPU reports itself as an Intel Xeon at 2.30 GHz (family 6, model 173, stepping 1), with a 48 KiB L1 data cache and a 2 MiB L2 per core, and 52-bit physical and 57-bit virtual addresses.'}
   };
   var RUN_MACHINE = MACHINES.a.text;
   function machineName(id){ return (MACHINES[id || 'a'] || MACHINES.a).name; }
@@ -234,6 +241,19 @@
   function codeHTML(text){
     return esc(text).replace(/⟦([^⟧]*)⟧/g, '<mark>$1</mark>');
   }
+  /* tabs to spaces, 8 columns as in the kernel sources (the code lines have a hanging indent, which
+     would shift the browser's own tab stops) */
+  function expandTabs(text){
+    return String(text).split('\n').map(function(line){
+      if (line.indexOf('\t') < 0) return line;
+      var out = '';
+      for (var i = 0; i < line.length; i++){
+        var ch = line.charAt(i);
+        out += ch === '\t' ? '        '.slice(0, 8 - out.length % 8) : ch;
+      }
+      return out;
+    }).join('\n');
+  }
   function shellHTML(text){
     return text.split('\n').map(function(line){
       var cls = /^\$ /.test(line) ? 'ln-cmd' : /^\s*#/.test(line) ? 'ln-com' : '';
@@ -246,7 +266,7 @@
     /* light C/asm colouring: comments and strings; everything else plain */
     return text.split('\n').map(function(line){
       var m = line.match(/^(.*?)(\/\/.*|\/\*.*|#.*)$/), body;
-      if (m && !/["']/.test(m[1].slice(-1)) && !/#include|#define|#if|#endif/.test(line)) body = codeHTML(m[1]) + '<span class="c-com">' + codeHTML(m[2]) + '</span>';
+      if (m && !/["']/.test(m[1].slice(-1)) && !/^\s*#\s*(include|define|undef|if|ifdef|ifndef|elif|else|endif|pragma|error)\b/.test(line)) body = codeHTML(m[1]) + '<span class="c-com">' + codeHTML(m[2]) + '</span>';
       else body = codeHTML(line);
       return '<span class="ln">' + (body || ' ') + '</span>';
     }).join('');
@@ -289,7 +309,7 @@
   B.steps = function(items, terms){ this.row('lx-text', '<ol class="lx-olist">' + items.map(function(x){ return '<li>' + prose(x) + '</li>'; }).join('') + '</ol>', terms); return this; };
   /* a block of code, a shell session, or a real output */
   B.code = function(text, o){
-    o = o || {};
+    o = o || {}; text = expandTabs(text);
     var lang = o.lang || 'c', body = lang === 'sh' || lang === 'out' ? shellHTML(text) : lang === 'text' ? codeHTML(text).split('\n').map(function(l){ return '<span class="ln">' + (l || ' ') + '</span>'; }).join('') : cHTML(text);
     var langName = {c: 'C', sh: 'shell', out: 'output', asm: 'assembly', text: o.title ? '' : 'text'}[lang] || lang;
     var m = this.row('lx-art' + (o.wide ? ' lx-wide' : ''), '', o.terms);
@@ -319,7 +339,7 @@
     var fig = h('figure', {'class': 'lx-quote'}, m);
     h('div', {'class': 'lx-code-bar'}, fig, '<span class="lx-code-t">' + (o.cite || '') + '</span>' + chip(o.label || 'Vendor docs'));
     var isCode = o.code;
-    if (isCode) h('pre', {'class': 'no-autolink'}, fig, '<code>' + cHTML(text) + '</code>');
+    if (isCode) h('pre', {'class': 'no-autolink'}, fig, '<code>' + cHTML(expandTabs(text)) + '</code>');
     else h('blockquote', null, fig, text.split('\n').map(function(t){ return '<p>' + t + '</p>'; }).join(''));
     if (o.src) h('figcaption', {'class': 'lx-src'}, fig, srcLinks(o.src));
     return this;

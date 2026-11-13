@@ -69,7 +69,7 @@ async function main() {
         await page.locator('#ch-start').textContent(),
         /Zen\+|3750H|Primary reference/i
       );
-      assert.ok(await page.locator('#ch-start a[href="#map/amd"]').count());
+      assert.ok(await page.locator('#ch-start a[href="#chips/amd"]').count());
       assert.ok(await page.locator('#ch-start a[href="#perf/datasets"]').count());
     });
     await check('Start page legend explains every label', async () => {
@@ -85,8 +85,8 @@ async function main() {
     });
     for (const id of ['amd', 'intel', 'arm'])
       await check('implementation schematic with notes and sources: ' + id, async () => {
-        await route('map/' + id);
-        const sec = page.locator('#map--' + id),
+        await route('chips/' + id);
+        const sec = page.locator('#chips--' + id),
           figure = sec.locator('.implementation-figure');
         assert.equal(await figure.getAttribute('data-implementation'), id);
         assert.match(await figure.getAttribute('data-implementation-scope'), /2024/);
@@ -96,26 +96,26 @@ async function main() {
         assert.ok((await sec.locator('.lab-sources a[href^="https://"]').count()) >= 2);
       });
     await check('Arm system parts the chip vendor chooses are drawn as unknown', async () => {
-      await route('map/arm');
-      assert.ok(await page.locator('#map--arm .implementation-unknown').count());
+      await route('chips/arm');
+      assert.ok(await page.locator('#chips--arm .implementation-unknown').count());
       assert.match(
-        await page.locator('#map--arm .implementation-figure').textContent(),
+        await page.locator('#chips--arm .implementation-figure').textContent(),
         /Real chips choose their own/
       );
     });
     await check(
       'published plot retains exact operand scope, unavailable CPU model and source method',
       async () => {
-        await route('map/published');
-        const text = await page.locator('#map--published').textContent();
+        await route('chips/published');
+        const text = await page.locator('#chips--published').textContent();
         assert.match(text, /address comes from the previous load/);
         assert.match(text, /Exact SKU not specified/);
         assert.match(text, /nanoBench/);
         assert.match(text, /Core Ultra 9 285K/);
         assert.match(text, /Ryzen 9 9900X/);
         assert.match(text, /different populations/);
-        assert.equal(await page.locator('#map--published .evidence-bar').count(), 2);
-        assert.ok((await page.locator('#map--published a[href*="html-lat"]').count()) === 2);
+        assert.equal(await page.locator('#chips--published .evidence-bar').count(), 2);
+        assert.ok((await page.locator('#chips--published a[href*="html-lat"]').count()) === 2);
       }
     );
     await check(
@@ -169,12 +169,12 @@ async function main() {
         await route('atlas/l1d');
         assert.match(await page.locator('#atlas--l1d').textContent(), /Parallel lookup/);
         assert.doesNotMatch(await page.locator('#atlas--l1d').textContent(), /Zen\+|Way predictor/);
-        await route('map/history');
+        await route('chips/history');
         assert.match(
-          await page.locator('#map--history').textContent(),
+          await page.locator('#chips--history').textContent(),
           /AMD, 2011 to 2019: an L1 way predictor/
         );
-        assert.ok(await page.locator('#map--history a[href*="takeaway"]').count());
+        assert.ok(await page.locator('#chips--history a[href*="takeaway"]').count());
       }
     );
     await check(
@@ -204,10 +204,10 @@ async function main() {
               await page.locator('#themeToggle').click();
             for (const id of [
               'start',
-              'map/amd',
-              'map/intel',
-              'map/arm',
-              'map/published',
+              'chips/amd',
+              'chips/intel',
+              'chips/arm',
+              'chips/published',
               'atlas/core'
             ]) {
               await route(id);
@@ -216,11 +216,11 @@ async function main() {
                 id + ' document overflow'
               );
             }
-            await route('map/arm');
+            await route('chips/arm');
             await page.screenshot({
               path: path.join(output, 'implementation-arm-' + width + '-' + theme + '.png')
             });
-            await route('map/published');
+            await route('chips/published');
             await page.screenshot({
               path: path.join(output, 'published-evidence-' + width + '-' + theme + '.png')
             });

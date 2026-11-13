@@ -5,9 +5,11 @@ The lab runs every simulation on one small example machine: four cores, a 32 KiB
 channels. It is small so every structure fits on screen, and it copies no
 particular chip. Real chips appear in two places:
 
-- **Lesson II.01, "Real chips"**: a comparison table and one package diagram each
+- **Lesson VII.02, "Real chips"**: a comparison table and one package diagram each
   for AMD EPYC 9005 (Zen 5), Intel Xeon 6900P (P-cores) and Arm Neoverse V3 /
-  CSS V3, plus published measurements and two older designs worth knowing.
+  CSS V3, measurements of machine C (a Xeon 6 virtual machine), published
+  measurements and two older designs worth knowing. It comes after Parts III to
+  VI, so every block it compares has been taught.
 - **Short notes in the pages**: for example L1d, TLB and ROB sizes on Zen 5,
   Golden Cove and Neoverse V3, the DDR5 burst shape, which coherence protocol
   each vendor uses, and the "On Arm", "On AMD" and "On Intel" notes in the
@@ -73,7 +75,7 @@ Checked 7 October 2026.
 | Arm Neoverse V3 | [Neoverse V3 optimization guide](https://documentation-service.arm.com/static/6734eb2627eda361ad4da4f4), [CSS V3](https://arm.com/products/neoverse-compute-subsystems/css-v3), [Jiajie Chen's V3 notes](https://jia.je/hardware/2026/06/13/arm-neoverse-v3/index.md) |
 | Coherence protocols | [AMD64 APM vol. 2 (MOESI)](https://web.archive.org/web/20170619232736/http://developer.amd.com/wordpress/media/2012/10/24593_APM_v21.pdf#page=217), [Goodman and Hum, MESIF](https://www.cs.auckland.ac.nz/~goodman/TechnicalReports/MESIF-2009.pdf), [gem5 CHI states](https://www.gem5.org/documentation/general_docs/ruby/CHI/) |
 
-Published measurements in Lesson II.01 come from
+Published measurements in Lesson VII.02 come from
 [uops.info](https://uops.info/html-instr/MOV_R64_M64.html) (L1 load-to-use on
 Zen 5 and Arrow Lake-P; the exact CPU model isn't given, so the lab says so) and
 [Chips and Cheese on Lion Cove](https://chipsandcheese.com/p/analyzing-lion-coves-memory-subsystem)
