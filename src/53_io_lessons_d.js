@@ -5,7 +5,7 @@
   d('bio', 'bio', 'The block layer’s description of one I/O: a device, a starting sector, a direction and a list of memory pieces. One or more bios make a request.');
   d('blkrq', 'request', 'What the block layer hands a driver: one or more bios for neighbouring sectors, with a tag that identifies it until it completes.');
   d('blkmq', 'blk-mq', 'The multi-queue block layer: per-CPU software queues feeding one or more hardware queues, each matching a submission queue of the device.');
-  d('tag', 'tag', 'A small number naming an in-flight request in a hardware queue, 0 to 127 for vda. The number of tags caps how many requests the device may have at once.');
+  d('blktag', 'tag (block layer)', 'A small number naming an in-flight request in a hardware queue, 0 to 127 for vda. The number of tags caps how many requests the device may have at once.');
   d('sector', 'sector', 'The block layer’s unit of disk position: 512 bytes, whatever the device’s real block size.');
   d('sqe', 'SQE', 'Submission queue entry: a 64-byte request in io_uring’s submission ring, naming the operation, file, buffer, length, offset and a user_data tag.');
   d('cqe', 'CQE', 'Completion queue entry: io_uring’s answer to one SQE, 16 bytes holding the user_data tag and the result (bytes, or a negative error).');
@@ -46,7 +46,7 @@
         L.p('vda’s settings in sysfs:');
         L.out('io.queue', { wide: true });
         L.out('io.mq');
-        L.p('vda has one hardware queue, fed by all four CPUs, with 128 tags: at most 128 requests in flight. The scheduler, mq-deadline, may hold up to 256 requests before that.', ['tag']);
+        L.p('vda has one hardware queue, fed by all four CPUs, with 128 tags: at most 128 requests in flight. The scheduler, mq-deadline, may hold up to 256 requests before that.', ['blktag']);
         L.quote('[RW] If this option is \'1\', the block layer will migrate request completions to the cpu "group" that originally submitted the request. For some workloads this provides a significant reduction in CPU cycles due to caching effects.', { cite: 'Documentation/ABI/stable/sysfs-block, rq_affinity, Linux v6.18', label: 'Linux source' });
         L.p('rq_affinity is 1: completions run in the submitter’s CPU group. The trace showed the completion on CPU 3, where the interrupt arrived, and only the program’s wake-up went to CPU 0 ([[ch:io-irq]]).');
         L.p('io_poll is 0: vda has no polled queues, so completions always arrive by interrupt. A device with several hardware queues, such as an NVMe SSD, usually gets one per CPU and needs no sharing at all.');

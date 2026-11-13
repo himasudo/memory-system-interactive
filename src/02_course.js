@@ -26,9 +26,10 @@
       pages: ['vm-addresses', 'vm-pages', 'vm-space', 'vm-tree', 'vm-levels', 'vm-pte', 'vm-walk', 'vm-tlb', 'xlate', 'vm-huge', 'vm-vipt', 'vm-switch', 'vm-shootdown',
         'vm-faults', 'vm-demand', 'vm-files', 'vm-cow', 'vm-protect', 'vm-cost', 'vm-buddy', 'vm-reclaim', 'vm-alias', 'vm-virt', 'vm-review']},
     {id: 'cache', n: 'IV', title: 'Caches and DRAM',
-      lede: 'Inside an L1 lookup, down through L2, L3 and the fabric, into the DRAM chips, and the prefetchers that fetch lines before they are asked for.',
-      outcomes: ['Split an address into tag, index and offset', 'Follow a miss to DRAM and back', 'Explain row hits, misses and conflicts', 'Tell a useful prefetch from a late or useless one'],
-      pages: ['l1d', 'hier', 'dram', 'pref']},
+      lede: 'How a cache is organized and looked up, what happens when a set is full or a line is written, how the L2 and L3 work together, what a miss crosses on its way to DRAM, how DRAM chips store and deliver a line, and the prefetchers that fetch lines before they are asked for.',
+      outcomes: ['Split an address into tag, index and offset, and find its set at every level', 'Explain replacement, write-back and the three kinds of miss', 'Follow a miss to DRAM and back, and relate latency, bandwidth and misses in flight', 'Price a DRAM read as a row hit, closed row or row conflict', 'Tell a useful prefetch from a late or useless one'],
+      runs: ['c', 'b'],
+      pages: ['cache-org', 'cache-lookup', 'cache-replace', 'cache-writes', 'l1d', 'cache-levels', 'cache-miss', 'hier', 'dram-cells', 'dram-cmds', 'dram-map', 'dram-refresh', 'dram', 'pref-hw', 'pref']},
     {id: 'order', n: 'V', title: 'Stores, ordering and coherence',
       lede: 'What happens after a store retires, which orders other cores may observe, and how caches keep many copies of one line consistent.',
       outcomes: ['Follow a store from the store queue to L1', 'Read a litmus test', 'Step through MOESI state changes'],
@@ -46,7 +47,7 @@
     {id: 'ref', n: '', title: 'Reference', pages: ['atlas', 'gloss']}
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
-  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab', code: 'Lab', core: 'Lab'};
+  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab', code: 'Lab', core: 'Lab', l1d: 'Lab', hier: 'Lab', dram: 'Lab', pref: 'Lab'};
   /* Experiments that moved from the two labs into lessons. An old link such as #xlate/os opens
      the lesson that holds the experiment now (#vm-cow/os); the section id did not change. */
   var MOVED = {'xlate/os': 'vm-cow', 'xlate/native': 'vm-cost', 'xlate/pages': 'vm-huge', 'xlate/granules': 'vm-vipt',

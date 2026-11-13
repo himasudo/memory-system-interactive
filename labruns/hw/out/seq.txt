@@ -1,0 +1,6 @@
+1 GiB, one 8-byte load per 64-byte line, 2 MiB pages
+loads        order           ns per line
+independent  address                 6.8
+dependent    address                 5.2
+independent  random                 10.5
+dependent    random                197.2

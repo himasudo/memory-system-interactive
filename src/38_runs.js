@@ -768,6 +768,17 @@ var LabRuns = (function () {
         '     16           ⟦13.0⟧             77.0'
       ]
     },
+    'c.seq': {
+      file: 'hw/out/seq.txt', machine: 'c',
+      what: 'seq.c, pinned to CPU 0: one 8-byte load from every 64-byte line of 1 GiB, in address order and in random order; independent loads take line numbers from an array, dependent loads follow a pointer in each line.',
+      lines: [
+        'loads        order           ns per line',
+        'independent  address                 6.8',
+        'dependent    address                 ⟦5.2⟧',
+        'independent  random                 10.5',
+        'dependent    random                ⟦197.2⟧'
+      ]
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',

@@ -30,7 +30,7 @@ The site is a course in seven parts. A page's number comes from its place in the
 | **I** Foundations | `I.01`–`I.08` | Bits and hex, memory and addresses, instructions and registers, reading x86 assembly, cycles and latency, why caches exist, virtual memory, cores and devices |
 | **II** The machine and the core | `II.01`–`II.12` | 10 lessons and two labs, listed below: the example machine block by block, C → machine code → µops, and how an out-of-order core runs them |
 | **III** Virtual memory | `III.01`–`III.24` | 23 lessons and one lab, listed below |
-| **IV** Caches and DRAM | `IV.01`–`IV.04` | The L1d lookup; L2, L3, fabric and the path to DRAM; DRAM banks, commands, refresh and ECC; prefetchers |
+| **IV** Caches and DRAM | `IV.01`–`IV.15` | 11 lessons and four labs, listed below: sets and ways, lookups, replacement, write-back, the L2 and L3, a miss on its way to DRAM, DRAM cells, commands, address mapping, refresh and ECC, and prefetchers |
 | **V** Stores, ordering and coherence | `V.01`–`V.02` | The store path, memory types and fences; MOESI coherence and false sharing |
 | **VI** Devices and I/O | `VI.01`–`VI.15` | 14 lessons and one lab, listed below |
 | **VII** The whole system | `VII.01`–`VII.03` | One `hist[123]++`, end to end; real chips: AMD, Intel and Arm designs next to the example machine, and one of them measured; units, Little's law, queue limits and benchmarks on your machine |

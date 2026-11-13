@@ -35,12 +35,12 @@
     ex: ['Execution engine', 'Runs the decoded operations as soon as their inputs are ready, often out of program order, then retires them in order.', 'cpu-ooo'],
     lsu: ['Load/store unit', 'Computes each memory address, sends loads and stores to the L1d, and keeps track of the ones still in flight.', 'cpu-lsq'],
     tlb: ['TLBs and page walker', 'Translate virtual addresses into physical ones. The TLBs keep recent translations; on a miss the page walker reads the page tables through the caches.', 'vm-tlb'],
-    l1d: ['L1 data cache (L1d)', '32 KiB, private to the core, 4 cycles. Holds copies of 64-byte lines.', 'l1d'],
-    l2: ['L2 cache', '512 KiB per core, 12 cycles. In this machine it keeps a copy of every line in its core’s L1d.', 'hier'],
-    l3: ['L3 cache', '4 MiB shared by the four cores, 35 cycles. Filled with lines the L2s evict. It also knows which lines each L2 holds.', 'hier'],
-    fabric: ['Interconnect', 'Carries requests, data and coherence messages between the caches, the memory controllers, the I/O hub and the GPU.', 'hier'],
-    mc: ['Memory controllers', 'One per memory channel. Each turns requests into DRAM commands and receives lines back. Consecutive lines alternate between the two channels.', 'dram'],
-    dram: ['DRAM', 'Two DDR4-2400 channels, each a 64-bit bus to memory modules outside the chip. About 90 ns to the first byte.', 'dram'],
+    l1d: ['L1 data cache (L1d)', '32 KiB, private to the core, 4 cycles. Holds copies of 64-byte lines.', 'cache-org'],
+    l2: ['L2 cache', '512 KiB per core, 12 cycles. In this machine it keeps a copy of every line in its core’s L1d.', 'cache-levels'],
+    l3: ['L3 cache', '4 MiB shared by the four cores, 35 cycles. Filled with lines the L2s evict. It also knows which lines each L2 holds.', 'cache-levels'],
+    fabric: ['Interconnect', 'Carries requests, data and coherence messages between the caches, the memory controllers, the I/O hub and the GPU.', 'cache-miss'],
+    mc: ['Memory controllers', 'One per memory channel. Each turns requests into DRAM commands and receives lines back. Consecutive lines alternate between the two channels.', 'dram-map'],
+    dram: ['DRAM', 'Two DDR4-2400 channels, each a 64-bit bus to memory modules outside the chip. About 90 ns to the first byte.', 'dram-cells'],
     io: ['I/O hub and IOMMU', 'Connects devices over PCI Express. Turns the cores’ accesses to device registers into PCIe packets, and device DMA into memory requests after the IOMMU has checked them.', 'io-paths'],
     gpu: ['Integrated GPU (some chips)', 'A graphics processor on the same chip. One more client of the same interconnect and DRAM. Server chips usually have none; a server GPU is a separate PCIe device.', 'gpu-mem'],
     ssd: ['NVMe SSD', 'A storage device on a PCIe link. It moves data to and from DRAM by DMA.', 'io-paths'],
@@ -219,7 +219,7 @@
         L.p('The controller turns the request into DRAM commands. The line comes back as one burst: 8 transfers of 8 bytes, 64 bytes in all.', [['burst', 'One DDR4 read: 8 transfers of 8 bytes on the 64-bit bus, exactly one cache line.']]);
         L.p('DRAM is slow to start and fast once started. The first byte takes about 90 ns, about ' + App.dramCycles() + ' core cycles. After that, a DDR4-2400 channel moves 8 bytes 2,400 million times a second: 19.2 GB/s.', ['mts']);
         path(L, 'dram');
-        L.note('deeper', 'Part IV opens a DRAM chip: banks, rows, commands and timings ([[ch:dram]]).');
+        L.note('deeper', 'Part IV opens a DRAM chip: banks, rows, commands and timings ([[ch:dram-cells]]).');
       } },
       { id: 'devices', title: 'Devices, and a GPU', body: function (L) {
         L.p('The cores are not the only users of memory. An SSD or a network card writes incoming data straight into DRAM by DMA, without a core copying it ([[ch:share]]).', ['dma']);

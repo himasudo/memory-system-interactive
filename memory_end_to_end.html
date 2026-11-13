@@ -4201,9 +4201,10 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
       pages: ['vm-addresses', 'vm-pages', 'vm-space', 'vm-tree', 'vm-levels', 'vm-pte', 'vm-walk', 'vm-tlb', 'xlate', 'vm-huge', 'vm-vipt', 'vm-switch', 'vm-shootdown',
         'vm-faults', 'vm-demand', 'vm-files', 'vm-cow', 'vm-protect', 'vm-cost', 'vm-buddy', 'vm-reclaim', 'vm-alias', 'vm-virt', 'vm-review']},
     {id: 'cache', n: 'IV', title: 'Caches and DRAM',
-      lede: 'Inside an L1 lookup, down through L2, L3 and the fabric, into the DRAM chips, and the prefetchers that fetch lines before they are asked for.',
-      outcomes: ['Split an address into tag, index and offset', 'Follow a miss to DRAM and back', 'Explain row hits, misses and conflicts', 'Tell a useful prefetch from a late or useless one'],
-      pages: ['l1d', 'hier', 'dram', 'pref']},
+      lede: 'How a cache is organized and looked up, what happens when a set is full or a line is written, how the L2 and L3 work together, what a miss crosses on its way to DRAM, how DRAM chips store and deliver a line, and the prefetchers that fetch lines before they are asked for.',
+      outcomes: ['Split an address into tag, index and offset, and find its set at every level', 'Explain replacement, write-back and the three kinds of miss', 'Follow a miss to DRAM and back, and relate latency, bandwidth and misses in flight', 'Price a DRAM read as a row hit, closed row or row conflict', 'Tell a useful prefetch from a late or useless one'],
+      runs: ['c', 'b'],
+      pages: ['cache-org', 'cache-lookup', 'cache-replace', 'cache-writes', 'l1d', 'cache-levels', 'cache-miss', 'hier', 'dram-cells', 'dram-cmds', 'dram-map', 'dram-refresh', 'dram', 'pref-hw', 'pref']},
     {id: 'order', n: 'V', title: 'Stores, ordering and coherence',
       lede: 'What happens after a store retires, which orders other cores may observe, and how caches keep many copies of one line consistent.',
       outcomes: ['Follow a store from the store queue to L1', 'Read a litmus test', 'Step through MOESI state changes'],
@@ -4221,7 +4222,7 @@ d('memwall','memory wall','The widening gap between CPU speed and DRAM latency. 
     {id: 'ref', n: '', title: 'Reference', pages: ['atlas', 'gloss']}
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
-  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab', code: 'Lab', core: 'Lab'};
+  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab', code: 'Lab', core: 'Lab', l1d: 'Lab', hier: 'Lab', dram: 'Lab', pref: 'Lab'};
   /* Experiments that moved from the two labs into lessons. An old link such as #xlate/os opens
      the lesson that holds the experiment now (#vm-cow/os); the section id did not change. */
   var MOVED = {'xlate/os': 'vm-cow', 'xlate/native': 'vm-cost', 'xlate/pages': 'vm-huge', 'xlate/granules': 'vm-vipt',
@@ -6720,12 +6721,12 @@ build: function(root){
     ex: ['Execution engine', 'Runs the decoded operations as soon as their inputs are ready, often out of program order, then retires them in order.', 'cpu-ooo'],
     lsu: ['Load/store unit', 'Computes each memory address, sends loads and stores to the L1d, and keeps track of the ones still in flight.', 'cpu-lsq'],
     tlb: ['TLBs and page walker', 'Translate virtual addresses into physical ones. The TLBs keep recent translations; on a miss the page walker reads the page tables through the caches.', 'vm-tlb'],
-    l1d: ['L1 data cache (L1d)', '32 KiB, private to the core, 4 cycles. Holds copies of 64-byte lines.', 'l1d'],
-    l2: ['L2 cache', '512 KiB per core, 12 cycles. In this machine it keeps a copy of every line in its core’s L1d.', 'hier'],
-    l3: ['L3 cache', '4 MiB shared by the four cores, 35 cycles. Filled with lines the L2s evict. It also knows which lines each L2 holds.', 'hier'],
-    fabric: ['Interconnect', 'Carries requests, data and coherence messages between the caches, the memory controllers, the I/O hub and the GPU.', 'hier'],
-    mc: ['Memory controllers', 'One per memory channel. Each turns requests into DRAM commands and receives lines back. Consecutive lines alternate between the two channels.', 'dram'],
-    dram: ['DRAM', 'Two DDR4-2400 channels, each a 64-bit bus to memory modules outside the chip. About 90 ns to the first byte.', 'dram'],
+    l1d: ['L1 data cache (L1d)', '32 KiB, private to the core, 4 cycles. Holds copies of 64-byte lines.', 'cache-org'],
+    l2: ['L2 cache', '512 KiB per core, 12 cycles. In this machine it keeps a copy of every line in its core’s L1d.', 'cache-levels'],
+    l3: ['L3 cache', '4 MiB shared by the four cores, 35 cycles. Filled with lines the L2s evict. It also knows which lines each L2 holds.', 'cache-levels'],
+    fabric: ['Interconnect', 'Carries requests, data and coherence messages between the caches, the memory controllers, the I/O hub and the GPU.', 'cache-miss'],
+    mc: ['Memory controllers', 'One per memory channel. Each turns requests into DRAM commands and receives lines back. Consecutive lines alternate between the two channels.', 'dram-map'],
+    dram: ['DRAM', 'Two DDR4-2400 channels, each a 64-bit bus to memory modules outside the chip. About 90 ns to the first byte.', 'dram-cells'],
     io: ['I/O hub and IOMMU', 'Connects devices over PCI Express. Turns the cores’ accesses to device registers into PCIe packets, and device DMA into memory requests after the IOMMU has checked them.', 'io-paths'],
     gpu: ['Integrated GPU (some chips)', 'A graphics processor on the same chip. One more client of the same interconnect and DRAM. Server chips usually have none; a server GPU is a separate PCIe device.', 'gpu-mem'],
     ssd: ['NVMe SSD', 'A storage device on a PCIe link. It moves data to and from DRAM by DMA.', 'io-paths'],
@@ -6904,7 +6905,7 @@ build: function(root){
         L.p('The controller turns the request into DRAM commands. The line comes back as one burst: 8 transfers of 8 bytes, 64 bytes in all.', [['burst', 'One DDR4 read: 8 transfers of 8 bytes on the 64-bit bus, exactly one cache line.']]);
         L.p('DRAM is slow to start and fast once started. The first byte takes about 90 ns, about ' + App.dramCycles() + ' core cycles. After that, a DDR4-2400 channel moves 8 bytes 2,400 million times a second: 19.2 GB/s.', ['mts']);
         path(L, 'dram');
-        L.note('deeper', 'Part IV opens a DRAM chip: banks, rows, commands and timings ([[ch:dram]]).');
+        L.note('deeper', 'Part IV opens a DRAM chip: banks, rows, commands and timings ([[ch:dram-cells]]).');
       } },
       { id: 'devices', title: 'Devices, and a GPU', body: function (L) {
         L.p('The cores are not the only users of memory. An SSD or a network card writes incoming data straight into DRAM by DMA, without a core copying it ([[ch:share]]).', ['dma']);
@@ -21693,6 +21694,707 @@ build: function(root){
   });
 })();
 
+/* ======================= Part IV · caches (IV.01–IV.04, IV.06–IV.07) ======================= */
+(function () {
+  'use strict';
+  var d = App.gloss, h = App.h, s = App.s, LW = function () { return App.LW; };
+  d('fullyassoc', 'fully associative', 'A cache in which any line can go in any slot. Every lookup must compare against every slot, so only small structures, such as TLBs, are built this way.');
+  d('directmap', 'direct-mapped', 'A cache in which each address has exactly one possible slot. Lookups are cheap, but two busy lines that map to the same slot keep evicting each other.');
+  d('setassoc', 'set-associative', 'The usual compromise: the address picks one set, and the line can go in any of that set’s ways. An 8-way cache compares 8 tags per lookup.');
+  d('conflict', 'conflict miss', 'A miss on a line that was evicted because too many lines map to its set, although the cache as a whole had room.');
+  d('hitvec', 'hit vector', 'One bit per way, set where the stored tag matches and the valid bit is 1. At most one bit can be set; it picks which way’s data goes out.');
+  d('lruterm', 'LRU (least recently used)', 'Evict the line that was used longest ago. Exact LRU for 8 ways must track the order of all 8, so caches usually approximate it.');
+  d('backinv', 'back-invalidation', 'When an inclusive cache evicts a line, it must also remove the copies in the smaller caches above it, which may still have been using them.');
+  d('excl', 'exclusive or non-inclusive cache', 'Exclusive: a line is in this level or the level above, never both. Non-inclusive: no rule either way. Both avoid storing every line twice.');
+  d('missq', 'miss queue', 'A table at each cache level of the misses it has sent on and is waiting for. Its size caps how many misses that level can have in flight.');
+  d('bpl', 'bytes in flight', 'Bandwidth × latency: how much data must be on its way at every moment to keep a link busy. 19.2 GB/s at 90 ns is 1,728 bytes, 27 lines.');
+  App.setCategory('fullyassoc directmap setassoc conflict hitvec lruterm backinv excl missq bpl', 'cache');
+  var DREPPER = ['Ulrich Drepper, What Every Programmer Should Know About Memory (2007)', 'https://www.akkadia.org/drepper/cpumemory.pdf'];
+  var HP = ['Hill and Smith, Evaluating Associativity in CPU Caches (IEEE Trans. Computers, 1989)', 'https://doi.org/10.1109/12.40842'];
+  var INTEL_NI = ['Intel, Xeon Scalable (Skylake-SP) cache hierarchy: non-inclusive L3', 'https://www.intel.com/content/www/us/en/developer/articles/technical/xeon-processor-scalable-family-technical-overview.html'];
+  var CFG = App.CFG;
+
+  /* Eight ways of one set, with LRU or tree pseudo-LRU replacement. */
+  function setsim(el) {
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var pol = LW().select(form, 'Replacement', [['plru', 'tree pseudo-LRU (7 bits)'], ['lru', 'exact LRU']], 'plru');
+    var bar = h('div', { 'class': 'lx-stepbar lx-wrap' }, el);
+    var lines = ['hist'].concat([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (k) { return 'buf' + k; }));
+    lines.forEach(function (n) { var b = h('button', { type: 'button' }, bar, 'load ' + n); b.onclick = function () { access(n); render(); }; });
+    var bar2 = h('div', { 'class': 'lx-stepbar lx-wrap' }, el);
+    var play = h('button', { type: 'button', 'class': 'pri' }, bar2, 'hist, then buf0 … buf11, then hist again');
+    var reset = h('button', { type: 'button' }, bar2, 'reset');
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    var ways, bits, age, clock, log, hits, misses;
+    function init() { ways = [null, null, null, null, null, null, null, null]; bits = [0, 0, 0, 0, 0, 0, 0]; age = [0, 0, 0, 0, 0, 0, 0, 0]; clock = 0; log = []; hits = 0; misses = 0; }
+    function touch(w) {
+      age[w] = ++clock;
+      /* each node on the path points away from the way just used: 0 = the older half is on the left */
+      var node = 0, lo = 0, hi = 8;
+      while (hi - lo > 1) { var mid = (lo + hi) / 2, left = w < mid; bits[node] = left ? 1 : 0; node = node * 2 + (left ? 1 : 2); if (left) hi = mid; else lo = mid; }
+    }
+    function victim() {
+      var free = ways.indexOf(null); if (free >= 0) return free;
+      if (pol.value === 'lru') { var v = 0; for (var i = 1; i < 8; i++) if (age[i] < age[v]) v = i; return v; }
+      var node = 0, lo = 0, hi = 8;
+      while (hi - lo > 1) { var mid = (lo + hi) / 2, goLeft = bits[node] === 0; node = node * 2 + (goLeft ? 1 : 2); if (goLeft) hi = mid; else lo = mid; }
+      return lo;
+    }
+    function access(n) {
+      var w = ways.indexOf(n);
+      if (w >= 0) { hits++; touch(w); log.push(n + ': hit in way ' + w); }
+      else {
+        misses++; w = victim();
+        log.push(n + ': miss' + (ways[w] ? ', evicts ' + ways[w] + ' from way ' + w : ', fills empty way ' + w));
+        ways[w] = n; touch(w);
+      }
+      if (log.length > 6) log.shift();
+    }
+    function render() {
+      var cells = ways.map(function (n, i) { return '<td' + (n === 'hist' ? ' style="color:var(--act);font-weight:600"' : '') + '>' + (n || '—') + '</td>'; }).join('');
+      out.innerHTML = '<div class="lx-table"><div class="lx-table-wrap"><table class="mono-cells"><thead><tr>' + ways.map(function (_, i) { return '<th>way ' + i + '</th>'; }).join('') + '</tr></thead><tbody><tr>' + cells + '</tr></tbody></table></div></div>' +
+        (pol.value === 'plru' ? '<p class="lx-msg">Tree bits (root first): ' + bits.join(' ') + '. A 0 sends the next victim search left, a 1 right.</p>' : '<p class="lx-msg">Exact LRU: the victim is the way used longest ago.</p>') +
+        '<p class="lx-msg">' + hits + ' hits, ' + misses + ' misses. ' + log.join(' · ') + '</p>';
+    }
+    play.onclick = function () { init(); access('hist'); for (var k = 0; k < 12; k++) access('buf' + k); access('hist'); render(); };
+    reset.onclick = function () { init(); render(); };
+    pol.addEventListener('change', function () { init(); render(); });
+    init(); render();
+  }
+
+  /* 64 sets × 8 ways, with set 57 marked. */
+  function grid(sv) {
+    var P = App.P, x0 = 70, y0 = 26, cw = 46, ch = 17;
+    P.T(sv, x0 + 4 * cw, 14, '8 ways', 's', 'middle');
+    for (var w = 0; w < 8; w++) P.T(sv, x0 + w * cw + cw / 2, y0 - 2, 'way ' + w, 's m', 'middle');
+    var rows = [0, 1, 2, null, 56, 57, 58, null, 63];
+    rows.forEach(function (r, i) {
+      var y = y0 + 4 + i * (ch + 3);
+      if (r === null) { P.T(sv, x0 + 4 * cw, y + 12, '⋮', 's', 'middle'); return; }
+      P.T(sv, x0 - 8, y + 12, 'set ' + r, 's m', 'end');
+      for (var w = 0; w < 8; w++) P.R(sv, x0 + w * cw + 2, y, cw - 4, ch, r === 57 ? (w === 3 ? 'box on' : 'a2b') : 'sunk', 3);
+    });
+    P.T(sv, x0 + 8 * cw + 10, y0 + 4 + 5 * (ch + 3) + 12, '← hist[123]’s line, way 3', 's');
+  }
+
+  /* ---------- IV.01 ---------- */
+  App.lesson({
+    id: 'cache-org', short: 'Lines, sets and ways', title: 'Lines, sets and ways',
+    lede: 'A cache is a table of 64-byte lines. Some address bits pick a set; the line can sit in any way of that set; the rest of the address is stored as its tag.',
+    know: ['Caches hold copies of 64-byte lines ([[ch:whycache]], [[ch:map]]).', 'Reading a bit range such as bits 11:6 ([[ch:bits]]).', 'A physical address is a frame number and a 12-bit page offset ([[ch:vm-pages]]).'],
+    learn: ['Explain why caches are split into sets and ways', 'Split a physical address into offset, set index and tag', 'Work out the number of sets from size, ways and line size'],
+    sections: [
+      { id: 'where', title: 'Where can a line go?', body: function (L) {
+        L.p('The example L1d holds 32 KiB: 512 lines of 64 bytes. When a load arrives, the cache must find out quickly whether its line is among them.');
+        L.p('If any line could sit in any of the 512 slots, every lookup would compare against all 512. That is too slow and costs too much power for a cache read every cycle.', ['fullyassoc']);
+        L.p('If each address had exactly one slot, a lookup would check one place. But two busy lines that map to the same slot would keep throwing each other out.', ['directmap']);
+        L.p('Caches take the middle: the address picks a small group of slots, a set, and the line may sit in any slot of that group.', ['setassoc']);
+      } },
+      { id: 'sets', title: 'Sets and ways', body: function (L) {
+        L.p('The example L1d arranges its 512 slots as 64 sets of 8 ways: 64 × 8 × 64 bytes = 32 KiB.', ['set', 'way']);
+        L.fig(520, 222, grid, { cap: 'The example L1d: 64 sets, 8 ways each. The line holding hist[123] can only live in set 57; it happens to be in way 3.' });
+        L.p('A lookup reads one set and checks its 8 ways. A line can only ever be in the set its address picks, in any of its 8 ways.');
+      } },
+      { id: 'split', title: 'Which bits pick the set', body: function (L) {
+        L.p('A line is 64 = 2⁶ bytes, so the low 6 bits of an address say which byte of the line: the offset. There are 64 = 2⁶ sets, so the next 6 bits pick the set: the index.', ['offset', 'index']);
+        L.p('The remaining bits are stored with the line as its tag, so a lookup can tell which of all the lines that share set 57 this one is.', ['tag']);
+        L.bits([
+          { bits: '47:12', val: '0x1a3f7c', name: 'tag', tone: 'a1', w: 2 },
+          { bits: '11:6', val: '57', name: 'set index', tone: 'a4' },
+          { bits: '5:0', val: '24', name: 'byte in the line', tone: 'a3' }
+        ], { title: 'The physical address of hist[123], 0x1a3f7ce58, split for the example L1d' });
+        L.code('offset = 0x1a3f7ce58 & 63          = 24\nset    = (0x1a3f7ce58 >> 6) & 63   = 57\ntag    = 0x1a3f7ce58 >> 12         = 0x1a3f7c', { lang: 'text', title: 'arithmetic' });
+        L.p('Offset and index together are 12 bits: exactly the page offset. So here the tag is the frame number, and the set is known before translation ends. [[ch:vm-vipt]] showed why that matters.');
+      } },
+      { id: 'stored', title: 'What one way holds', body: function (L) {
+        L.p('Next to its 64 data bytes, each way keeps a little bookkeeping:');
+        L.table(['Field', 'Bits', 'Meaning'], [
+          ['valid', '1', 'this way holds a real line'],
+          ['dirty', '1', 'a store has changed the line since it was filled ([[ch:cache-writes]])'],
+          ['tag', '36', 'physical address bits 47:12'],
+          ['data', '512', 'the 64 bytes']
+        ], { mono: false, terms: ['valid'] });
+        L.p('The index is not stored: the row a line sits in is its index. So 38 bits of bookkeeping ride along with every 512 bits of data, about 7%.');
+      } },
+      { id: 'shapes', title: 'Other shapes, same rule', body: function (L) {
+        L.p('Every set-associative cache follows one rule: sets = size ÷ (ways × line size). The index takes log₂(sets) bits above the offset.');
+        L.table(['Cache', 'Size', 'Ways', 'Sets', 'Index bits'], [
+          ['example L1d', '32 KiB', '8', '64', '11:6'],
+          ['example L2', '512 KiB', '8', '1024', '15:6'],
+          ['example L3', '4 MiB', '16', '4096', '17:6'],
+          ['machine C L1d', '48 KiB', '12', '64', '11:6'],
+          ['machine C L2', '2 MiB', '16', '2048', '16:6']
+        ], { title: 'sets = size ÷ (ways × 64 bytes)' });
+        L.p('Machine C reports the same numbers itself:');
+        L.out('c.caches');
+        L.try('Size a cache', 'Change the size, the ways, the line size and the page size. The last line says whether the set index still fits in the page offset.', function (el) { LW().l1geom(el, {}); });
+      } }
+    ],
+    check: [
+      { q: 'An L1d of 32 KiB with 64-byte lines has 8 ways. How many sets?', options: ['64', '512', '8', '4096'], answer: 0, why: '32768 ÷ (8 × 64) = 64 sets.' },
+      { q: 'For that L1d, which bits of the address pick the set?', options: ['Bits 11:6', 'Bits 5:0', 'Bits 47:12', 'Bits 15:6'], answer: 0, why: 'Bits 5:0 pick the byte in the 64-byte line; the next 6 bits pick one of 64 sets.' },
+      { q: 'Why is the tag stored but not the index?', options: ['The row a line sits in already is its index', 'The index is too large to store', 'The tag is used for coherence only', 'The index changes on every access'], answer: 0, why: 'Every line in set 57 has index 57. Only the tag tells them apart.' },
+      { q: 'Machine C’s L2 is 2 MiB, 16-way, with 64-byte lines. How many sets?', options: ['2048', '1024', '64', '32768'], answer: 0, why: '2 097 152 ÷ (16 × 64) = 2048, as its sysfs files report.' }
+    ],
+    remember: [
+      'A set-associative cache: the address picks a set, the line can sit in any way of it.',
+      'Low bits: offset in the line. Next bits: set index. The rest: the tag stored with the line.',
+      'sets = size ÷ (ways × line size).',
+      'Each way stores a valid bit, a dirty bit, the tag and the 64 data bytes.'
+    ],
+    sources: [DREPPER]
+  });
+
+  /* ---------- IV.02 ---------- */
+  App.lesson({
+    id: 'cache-lookup', short: 'One lookup', title: 'One lookup, step by step',
+    lede: 'The L1d reads all 8 ways of one set at once, compares 8 tags in parallel, and sends the matching way’s bytes to the load.',
+    know: ['How an address splits into tag, index and offset ([[ch:cache-org]]).', 'The set can be read before translation ends ([[ch:vm-vipt]]).'],
+    learn: ['Follow the four steps of an L1d lookup for hist[123]', 'Say how the cache knows it has a hit, and what happens on a miss', 'Explain why more ways cost time and power'],
+    sections: [
+      { id: 'read', title: 'Read the whole set', body: function (L) {
+        L.p('Bits 11:6 of the address, 57, go to the row decoder as soon as the address exists. The cache reads all of set 57 at once: 8 tags and 8 × 64 bytes of data.');
+        L.p('Those bits are the same in the virtual and the physical address, so this starts while the TLB is still translating.');
+      } },
+      { id: 'compare', title: 'Compare 8 tags at once', body: function (L) {
+        L.p('The TLB delivers the frame number, 0x1a3f7c: the physical tag. Eight comparators check it against the 8 stored tags in the same cycle; each result counts only if that way’s valid bit is 1.');
+        L.p('The 8 results form the hit vector. At most one bit is set, because a line is never stored twice in one set.', ['hitvec']);
+        L.table(['way', '0', '1', '2', '3', '4', '5', '6', '7'], [
+          ['tag matches?', 'no', 'no', 'no', 'yes', 'no', 'no', 'no', 'no'],
+          ['valid', '1', '1', '0', '1', '1', '0', '1', '1'],
+          { cells: ['hit vector', '0', '0', '0', '1', '0', '0', '0', '0'], hot: true }
+        ], { title: 'set 57, looking for tag 0x1a3f7c: one possible state of the set' });
+      } },
+      { id: 'select', title: 'Select the way, pick the bytes', body: function (L) {
+        L.p('The hit vector drives a multiplexer that passes way 3’s 64 bytes on. The offset, 24, picks bytes 24 to 31: 8 bytes, <code>hist[123]</code>, the value 41.');
+        L.chain([
+          { k: 'index', v: 'bits 11:6 = 57', d: 'read 8 tags and 8 lines' },
+          { k: 'compare', v: 'tag 0x1a3f7c', d: '8 comparators at once' },
+          { k: 'select', v: 'way 3', d: 'the hit vector picks it' },
+          { k: 'align', v: 'bytes 24–31', d: 'the offset picks them', hot: true }
+        ], { cap: 'An L1d hit: ' + CFG.l1 + ' cycles from the address to the value, with the default latency settings.' });
+      } },
+      { id: 'miss', title: 'No match: a miss', body: function (L) {
+        L.p('If no valid tag matches, the hit vector is all zeros: a miss. The L1d takes a miss buffer for the line, 0x1a3f7ce40, and asks the L2 ([[ch:cpu-miss]]).');
+        L.p('The load waits; the rest of the core does not. When the line arrives, it is written into one way of set 57, and the load is woken up.');
+        L.p('Which way? If one is invalid, that one. If all 8 hold lines, one must go: the next lesson.');
+      } },
+      { id: 'price', title: 'The price of more ways', body: function (L) {
+        L.p('Every lookup reads and compares every way of the set. 12 ways mean 12 comparators firing and 12 lines read on every load, even though at most one is used.');
+        L.p('That is why L1 caches stay at 8 to 12 ways, and why some cores guess the way first and read only that one ([[ch:vm-vipt]]). Larger caches further out can afford more ways, because they are read far less often.', ['waypred']);
+      } }
+    ],
+    check: [
+      { q: 'What does the L1d compare to decide a hit?', options: ['The physical tag from the TLB against the 8 stored tags of the set, each with its valid bit', 'The virtual address against every line', 'The data bytes against the load', 'The set index against the tag'], answer: 0, why: 'The index picks the set; the tag compare, gated by the valid bits, decides which way, if any, holds the line.' },
+      { q: 'Which bytes of the 64-byte line become the load’s value?', options: ['Bytes 24 to 31, picked by the offset', 'Bytes 0 to 7', 'All 64', 'Bytes 57 to 64'], answer: 0, why: 'The offset of 0x1a3f7ce58 is 24, and the load reads 8 bytes.' },
+      { q: 'Why do caches far from the core have more ways than the L1?', options: ['They are read much less often, so comparing more tags per lookup costs less overall', 'They are faster', 'Their lines are smaller', 'They have no tags'], answer: 0, why: 'Every way is read on every lookup. An L1 is looked up almost every cycle; an L3 far less.' }
+    ],
+    remember: [
+      'Lookup: index the set, compare all its tags at once, select the matching way, pick the bytes by offset.',
+      'The hit vector has at most one bit set; all zeros is a miss.',
+      'A miss takes a miss buffer and asks the next level; the line then fills one way of the set.',
+      'More ways mean more tags read and compared on every lookup.'
+    ],
+    sources: [DREPPER]
+  });
+
+  /* ---------- IV.03 ---------- */
+  App.lesson({
+    id: 'cache-replace', short: 'A full set', title: 'A full set: replacement and the three kinds of miss',
+    lede: 'When all ways of a set are full, a new line must evict one. Which one goes, and why misses happen at all, decide how well a cache works.',
+    know: ['A line can only live in the set its address picks ([[ch:cache-org]]).', 'A miss fills one way of the set ([[ch:cache-lookup]]).'],
+    learn: ['Show how 9 lines that share a set evict each other', 'Explain LRU and the cheaper tree pseudo-LRU', 'Sort misses into compulsory, capacity and conflict misses'],
+    sections: [
+      { id: 'nine', title: 'Nine lines, eight ways', body: function (L) {
+        L.p('After the loop, a program reads another array, <code>buf</code>, at a stride of 4096 bytes: every element sits at the same page offset, 0xe40.');
+        L.p('Same page offset means same bits 11:6, so every one of them maps to set 57, the set holding <code>hist[123]</code>’s line. After 8 of them the set is full; the 9th must evict something.');
+        L.code('buf[k] at 0x7f3a8c000e40 + k × 0x1000\n(0xe40 >> 6) & 63 = 57         /* the same set, for every k */', { lang: 'text', title: 'why all of them collide' });
+      } },
+      { id: 'lru', title: 'Evict the line used longest ago', body: function (L) {
+        L.p('A good guess is that the line used longest ago will not be needed soon. Exact LRU evicts it, but must track the full order of all 8 ways, and update it on every hit.', ['lruterm']);
+        L.p('So caches approximate it with a small tree: 7 bits for 8 ways. Each bit points to the half of its subtree used less recently. A hit flips the bits on its path to point away from it; the victim is found by following the bits from the root.', ['plru']);
+        L.try('Fill one set', 'Load hist’s line, then twelve lines of buf that all map to the same set, then hist again. Switch between pseudo-LRU and exact LRU.', setsim);
+        L.p('Either way, by the time <code>hist</code> is needed again its line is gone: the set held only 8 lines, and 12 newer ones passed through.');
+      } },
+      { id: 'kinds', title: 'Three kinds of miss', body: function (L) {
+        L.p('Every miss has one of three causes:');
+        L.table(['Kind', 'Cause', 'Example'], [
+          ['compulsory', 'the line was never in the cache', 'the first load of <code>hist[123]</code>'],
+          ['capacity', 'the data in use is larger than the whole cache', 'walking 1 GiB over and over'],
+          ['conflict', 'too many lines map to one set, though the cache has room', '<code>hist[123]</code> after the 12 <code>buf</code> lines']
+        ], { mono: false, terms: ['compulsory', 'capacity_miss', 'conflict'] });
+        L.p('Conflict misses are the strange ones. The L1d still had about 500 free slots, but all of them were in other sets.');
+        L.p('A fully associative cache of the same size has no conflict misses at all, so comparing against one sorts them out. The L1 lab’s first experiment does exactly that.');
+      } },
+      { id: 'measure', title: 'A conflict, measured', body: function (L) {
+        L.p('[[ch:vm-vipt]] measured this on machine B. A pointer chase visits one line per page, all at the same page offset, so all in one set:');
+        L.out('vipt.b');
+        L.p('Up to 12 pages, every hop hits the 12-way L1d. From 13 pages on, the set overflows, every hop misses, and each takes about as long as an L2 hit. The cache is 48 KiB; the chase uses less than 1 KiB of it.');
+      } }
+    ],
+    check: [
+      { q: 'Why do buf[0] to buf[11] all land in set 57?', options: ['They share the page offset 0xe40, and bits 11:6 come from the page offset', 'They are in the same page', 'They are 64 bytes apart', 'Because the L1d is direct-mapped'], answer: 0, why: 'A 4096-byte stride leaves bits 11:0 unchanged, so the set index stays 57.' },
+      { q: 'hist[123]’s line was evicted by 12 buf lines and is read again. What kind of miss is it?', options: ['Conflict', 'Compulsory', 'Capacity', 'Coherence'], answer: 0, why: 'The cache had plenty of room overall, but only 8 ways in the one set those lines share.' },
+      { q: 'What does a tree pseudo-LRU store for an 8-way set?', options: ['7 bits that point toward the less recently used half at each level', 'The full order of the 8 ways', 'One bit per way', 'A timestamp per line'], answer: 0, why: 'A binary tree over 8 ways has 7 nodes, one bit each. It approximates LRU cheaply.' }
+    ],
+    remember: [
+      'A full set must evict a line to take a new one; LRU picks the one used longest ago, tree pseudo-LRU approximates it with 7 bits for 8 ways.',
+      'Lines at the same page offset share an L1 set; more of them than ways evict each other.',
+      'Misses are compulsory (first use), capacity (too much data) or conflict (too much in one set).'
+    ],
+    sources: [DREPPER, HP]
+  });
+
+  /* ---------- IV.04 ---------- */
+  App.lesson({
+    id: 'cache-writes', short: 'Writes and dirty lines', title: 'Writes: dirty lines and write-back',
+    lede: 'A committed store changes the line in the L1d and marks it dirty. The new bytes reach the next level only when the line is evicted.',
+    know: ['A store writes the L1d only when it commits, after retiring ([[ch:cpu-lsq]]).', 'Lookups, sets and eviction ([[ch:cache-replace]]).'],
+    learn: ['Say what a store does to a line, and what the dirty bit records', 'Explain write-back and write-through', 'Follow hist[123]’s two increments to the moment they leave the L1d'],
+    sections: [
+      { id: 'store', title: 'A store writes the cached copy', body: function (L) {
+        L.p('When a store commits, the L1d looks up its line like a load does, and on a hit overwrites the 8 bytes in that way.');
+        L.p('On a miss, the line is fetched first and then written. Cores do that because a store usually touches only a few bytes of the 64, and the line must be complete in the cache.', ['walloc']);
+      } },
+      { id: 'dirty', title: 'Dirty: newer than the copy below', body: function (L) {
+        L.p('After the write, the L1d holds the only up-to-date copy. The L2’s copy, and DRAM’s, are now stale. The line’s dirty bit records that.', ['dirty']);
+        L.p('In the example, C1’s store sets <code>hist[123]</code> to 42 and marks the line dirty. C2’s store sets it to 43; the line was dirty already, and nothing else happens.');
+      } },
+      { id: 'wb', title: 'Write-back: only on eviction', body: function (L) {
+        L.p('The example L1d sends nothing to the L2 for those two stores. The line is written back, all 64 bytes, only when it is evicted.', ['wbk']);
+        L.p('When the 12 <code>buf</code> lines push it out of set 57, the L1d sees the dirty bit and writes the line to the L2 before reusing the way. A clean line would simply be dropped.', ['evict']);
+        L.p('Where does it go? The line’s address is rebuilt from its tag and its set: 0x1a3f7c, then 57, then six zero bits: 0x1a3f7ce40.');
+        L.chain([
+          { k: 'C1 commits', v: 'hist[123] = 42', d: 'line dirty, 0 bytes to the L2' },
+          { k: 'C2 commits', v: 'hist[123] = 43', d: 'still dirty, still 0 bytes' },
+          { k: 'evicted by buf', v: '64 bytes to the L2', d: 'one write-back for two stores', hot: true }
+        ]);
+      } },
+      { id: 'wt', title: 'The other policy: write-through', body: function (L) {
+        L.p('A write-through cache sends every store to the next level at once. It never holds the only copy, so an eviction never writes anything back.', ['wthru']);
+        L.p('The price is traffic: every store crosses to the next level. Loops that update the same line many times, like a histogram, show the difference most.');
+        L.note('other', 'Some memory regions must not be cached in a write-back way at all, such as device registers. Their memory type says so ([[ch:io-mmio]]).', 'Not every store goes through the cache');
+      } }
+    ],
+    check: [
+      { q: 'hist[123] is incremented twice while its line stays in the L1d. How many bytes go to the L2?', options: ['None until the line is evicted, then 64', '16, one 8-byte write per store', '128', '8'], answer: 0, why: 'A write-back L1d keeps the newest value and marks the line dirty; the whole line is written back once, on eviction.' },
+      { q: 'What does the dirty bit say?', options: ['This cache holds a newer copy than the level below', 'The line has an error', 'The line is shared with another core', 'The line was prefetched'], answer: 0, why: 'A store changed it after it was filled. On eviction it must be written back.' },
+      { q: 'How does the cache know where to write a dirty line back?', options: ['It rebuilds the address from the tag and the set index', 'It stores the full address separately', 'It asks the TLB', 'It writes it to the same set of the L2 regardless of address'], answer: 0, why: 'Tag, then index, then zeros for the offset: 0x1a3f7c, 57, 000000 = 0x1a3f7ce40.' }
+    ],
+    remember: [
+      'A store hit overwrites the bytes in the L1d and sets the line’s dirty bit; a store miss fetches the line first.',
+      'Write-back: the next level gets the line only when it is evicted, once for any number of stores.',
+      'Write-through: every store also goes to the next level.',
+      'A dirty line’s address is rebuilt from tag ‖ index ‖ zero offset.'
+    ],
+    sources: [DREPPER]
+  });
+
+  /* ---------- IV.06 ---------- */
+  App.lesson({
+    id: 'cache-levels', short: 'L2 and L3', title: 'The L2 and the L3',
+    lede: 'Each core’s L2 catches what its L1d misses; the shared L3 catches what the L2s evict. Inclusion decides which copies exist where.',
+    know: ['Sets, lookups, replacement and write-back in one cache ([[ch:cache-org]]–[[ch:cache-writes]]).', 'The machine’s levels: L1d and L2 per core, a shared L3 ([[ch:map]]).'],
+    learn: ['Find a line’s set in each level of the example machine', 'Tell inclusive, exclusive and non-inclusive caches apart', 'Explain why the example L3 is filled only by evictions, and what its shadow tags are for'],
+    sections: [
+      { id: 'ladder', title: 'Each level bigger and slower', body: function (L) {
+        L.p('The levels repeat the same design at larger sizes. Machine C shows the steps directly, with a pointer chase over growing working sets:');
+        L.out('c.ladder', { lines: [0, 2, 4, 6, 7, 9, 12] });
+        L.p('Up to 48 KiB, the L1d: 1.3 ns. Up to 1 MiB, the L2: about 4.7 ns. Up to 8 MiB, the L3: about 33 ns. Beyond that, DRAM.');
+      } },
+      { id: 'l2', title: 'The L2: private and inclusive', body: function (L) {
+        L.p('The example L2 has 512 KiB, 8 ways and 1024 sets, so bits 15:6 pick its set. For <code>hist[123]</code>’s line, 0x1a3f7ce40, that is set 825.');
+        L.code('(0x1a3f7ce40 >> 6) & 63     = 57     /* L1d set */\n(0x1a3f7ce40 >> 6) & 1023   = 825    /* L2 set  */\n(0x1a3f7ce40 >> 6) & 4095   = 3897   /* L3 set, in this simple model */', { lang: 'text', title: 'the same line, three sets' });
+        L.p('This L2 is inclusive of its L1d: every line in the L1d is also in the L2. So when the L2 evicts a line, it must also remove it from the L1d, even if the core was still using it there.', ['incl', 'backinv']);
+        L.p('In return, the L2 alone can answer whether this core has a line at all. That will matter for coherence in Part V.');
+      } },
+      { id: 'l3', title: 'The L3: shared, and filled by evictions', body: function (L) {
+        L.p('The example L3 is a victim cache. A line fetched from DRAM goes straight to the L2 and the L1d, not the L3. A line enters the L3 only when an L2 evicts it.', ['victimc']);
+        L.p('When a core later hits that line in the L3, the line moves back up to its L2, and the L3 usually drops its copy. The L3 and the L2s then hold mostly different lines, and together more data.', ['excl']);
+        L.table(['Policy', 'Rule', 'Where it is used'], [
+          ['inclusive', 'everything above is also here', 'the example L2 (of its L1d); older Intel Xeon L3s'],
+          ['exclusive (victim)', 'a line is here or above, not both', 'the example L3; AMD Zen L3s, filled by L2 evictions'],
+          ['non-inclusive', 'no rule either way', 'Intel Xeon L3s since Skylake-SP']
+        ], { mono: false, src: INTEL_NI });
+      } },
+      { id: 'shadow', title: 'Knowing who has what: shadow tags', body: function (L) {
+        L.p('Because the L3 does not hold copies of the L2s’ lines, it cannot tell from its own contents whether some core has a line.');
+        L.p('So it keeps a copy of every L2’s tags: shadow tags. A miss in the L3 checks them. If another core’s L2 holds the line, the request goes to that core instead of DRAM, and to no other core.', ['shadow', 'pfilter']);
+        L.p('Part V uses this when two cores share a line ([[ch:coh]]).');
+      } }
+    ],
+    check: [
+      { q: 'Which bits pick the set in the example L2 (512 KiB, 8 ways, 64-byte lines)?', options: ['Bits 15:6', 'Bits 11:6', 'Bits 17:6', 'Bits 5:0'], answer: 0, why: '512 KiB ÷ (8 × 64) = 1024 sets = 2¹⁰, so 10 index bits above the 6 offset bits.' },
+      { q: 'A line comes back from DRAM after a miss in every level. Where is it placed in the example machine?', options: ['In the L2 and the L1d, not the L3', 'Only in the L3', 'In all three levels', 'Only in the L1d'], answer: 0, why: 'The example L3 is a victim cache: lines enter it only when an L2 evicts them.' },
+      { q: 'What does inclusion cost the example L2?', options: ['When it evicts a line, the L1d must lose its copy too', 'Every store is written through', 'It cannot hold dirty lines', 'It needs shadow tags'], answer: 0, why: 'Inclusive means the L1d’s lines are a subset of the L2’s, so an L2 eviction forces an L1d invalidation.' },
+      { q: 'Why does the example L3 keep shadow tags?', options: ['It does not hold the L2s’ lines, yet must know which core has a line', 'To speed up L1 hits', 'To store dirty data', 'To translate addresses'], answer: 0, why: 'Shadow tags tell it exactly which core to ask, without asking all of them.' }
+    ],
+    remember: [
+      'The same design repeats at each level; only the size, the ways and the index bits change.',
+      'Inclusive: a superset of the level above, so evictions remove copies above. Exclusive or victim: lines move between levels instead of being copied.',
+      'The example L3 is filled only by L2 evictions, and keeps shadow tags of every L2.',
+      'On machine C the steps are about 1.3, 4.7 and 33 ns, then DRAM.'
+    ],
+    sources: [DREPPER, INTEL_NI]
+  });
+
+  /* ---------- IV.07 ---------- */
+  App.lesson({
+    id: 'cache-miss', short: 'A miss travels outward', title: 'A miss travels outward',
+    lede: 'A load that misses everywhere passes the L2, the L3 and the interconnect to a memory controller, and the line comes back the same way. Every level has a queue, and every link a bandwidth.',
+    know: ['The L2 and the victim L3 ([[ch:cache-levels]]).', 'Miss buffers and overlapping misses ([[ch:cpu-miss]]).'],
+    learn: ['Follow one miss from the L1d to DRAM and back', 'Use Little’s law to relate latency, bandwidth and the misses in flight', 'Say why memory on another socket is slower'],
+    sections: [
+      { id: 'trip', title: 'The whole trip', body: function (L) {
+        L.p('Say <code>hist[123]</code>’s line is in no cache at all. This is the path of the load:');
+        L.chain([
+          { k: 'L1d', v: 'miss, set 57', d: 'a miss buffer records the line' },
+          { k: 'L2', v: 'miss, set 825', d: 'its own miss queue takes the request' },
+          { k: 'L3 and shadow tags', v: 'miss', d: 'no core has the line either' },
+          { k: 'interconnect', v: 'to the controller', d: 'the one that owns this address' },
+          { k: 'DRAM', v: 'row, column, burst', d: 'Part IV’s next lessons', hot: true },
+          { k: 'back', v: 'to the L2 and the L1d', d: 'the waiting load wakes up' }
+        ], { cap: 'With the default latency settings: about ' + App.dramCycles() + ' cycles from the load to its value.' });
+        L.p('The line returns to the L2 and the L1d, not the L3 ([[ch:cache-levels]]).');
+      } },
+      { id: 'queues', title: 'A queue at every level', body: function (L) {
+        L.p('Each level keeps its own table of misses it has passed on: 4 miss buffers in the example L1d, and miss queues further out.', ['missq']);
+        L.p('Any of them can be the limit. If the L1d allows 4 misses, a core cannot have 5 lines on their way, however many the L2 or the memory controller could take.');
+      } },
+      { id: 'little', title: 'Latency, bandwidth and lines in flight', body: function (L) {
+        L.p('One rule ties these together. To keep a link busy, the data in flight must equal its bandwidth times its latency.', ['little', 'bpl']);
+        L.code('19.2 GB/s × 90 ns = 1,728 bytes = 27 lines in flight   /* one DDR4-2400 channel */\n38.4 GB/s × 90 ns = 3,456 bytes = 54 lines in flight   /* both channels */', { lang: 'text', title: 'Little’s law for the example machine' });
+        L.p('A core with 4 miss buffers keeps at most 4 lines in flight: 256 bytes ÷ 90 ns ≈ 2.8 GB/s from random misses, a seventh of one channel.');
+        L.p('Machine C’s random chains from [[ch:cpu-miss]] fit the same rule: 16 chains, 13 ns per load, about 77 million lines a second, 4.9 GB/s from one core.');
+      } },
+      { id: 'numa', title: 'Memory on another socket', body: function (L) {
+        L.p('Servers often have two sockets, each with its own memory controllers. A miss to memory attached to the other socket crosses an extra link and takes longer.', ['numa']);
+        L.p('Linux describes each socket, or each part of one, as a NUMA node. Its default policy puts a page on the node of the CPU that first writes it ([[ch:vm-demand]]).', ['ftouch']);
+        L.p('The lab after this lesson has a two-socket experiment: who touches pages first decides how many misses cross the link.');
+      } }
+    ],
+    check: [
+      { q: 'A line comes back from DRAM. Where does the example machine put it?', options: ['In the L2 and the L1d', 'In the L3 only', 'In all three caches', 'Nowhere: the load uses it directly'], answer: 0, why: 'The L3 is filled only by L2 evictions.' },
+      { q: 'A DDR4-2400 channel moves 19.2 GB/s with about 90 ns latency. How many 64-byte lines must be in flight to keep it busy?', options: ['About 27', '1', '4', 'About 300'], answer: 0, why: '19.2 GB/s × 90 ns = 1,728 bytes, 27 lines.' },
+      { q: 'What limits a core with 4 L1d miss buffers to about 2.8 GB/s from random misses?', options: ['At most 4 lines can be in flight, each taking about 90 ns', 'The DRAM channel bandwidth', 'The L3 size', 'The TLB'], answer: 0, why: '4 × 64 bytes per 90 ns. The channel could do seven times more.' }
+    ],
+    remember: [
+      'A full miss passes L1d, L2, L3 with its shadow tags, the interconnect and a memory controller, and returns to L2 and L1d.',
+      'Each level has a miss queue; the smallest one on the path limits the misses in flight.',
+      'Little’s law: data in flight = bandwidth × latency. Latency hides only behind enough misses in flight.',
+      'Memory on another socket is a NUMA node of its own, and slower to reach.'
+    ],
+    sources: [DREPPER]
+  });
+})();
+
+/* ======================= Part IV · DRAM and prefetchers (IV.09–IV.12, IV.14) ======================= */
+(function () {
+  'use strict';
+  var d = App.gloss, h = App.h, LW = function () { return App.LW; };
+  d('senseamp', 'sense amplifier', 'A circuit at the end of each bitline that detects the tiny charge a cell shares when its row opens, and drives the bitline back to a full 0 or 1, which also restores the cell.');
+  d('rank', 'rank', 'The set of DRAM chips that answer one command together and fill the whole 64-bit bus: eight x8 chips. A DIMM has one or more ranks.');
+  d('dimmterm', 'DIMM', 'A memory module: a small board of DRAM chips that plugs into a slot on one channel.');
+  d('xn', 'x8 chip', 'A DRAM chip with 8 data pins. Eight of them side by side make the 64-bit bus; x4 chips need sixteen.');
+  d('tck', 'tCK', 'One period of the DRAM clock. DDR4-2400 runs a 1200 MHz clock, tCK = 0.833 ns, and moves data on both clock edges: 2400 transfers per microsecond.');
+  d('rowhit', 'row hit, closed row, row conflict', 'Row hit: the needed row is already open in that bank. Closed row: no row is open. Row conflict: another row is open and must be closed first.');
+  d('frfcfs', 'FR-FCFS', 'First ready, first come first served: a controller policy that serves requests hitting an open row before older requests that would need a row change.');
+  d('treffi', 'tREFI', 'The interval between REF commands: 7.8 µs for DDR4 at normal temperature. 8192 of them cover every row in 64 ms.');
+  d('rowhammer', 'disturbance errors (Rowhammer)', 'Opening and closing one row very many times can flip bits in the rows next to it. Memory makers and controllers add defences, such as refreshing neighbours of busy rows.');
+  d('covered', 'covered, late, useless', 'A covered prefetch arrives before the load that needs it; a late one is still on its way when the load comes; a useless one is never used and only cost bandwidth and cache space.');
+  App.setCategory('senseamp rank dimmterm xn tck rowhit frfcfs treffi rowhammer', 'memory');
+  App.setCategory('covered', 'pref');
+  var MICRON = ['Micron, 8Gb x4/x8/x16 DDR4 SDRAM data sheet', 'https://classes.engineering.wustl.edu/cse362/images/0/0c/8Gb_DDR4_SDRAM.pdf'];
+  var DREPPER = ['Ulrich Drepper, What Every Programmer Should Know About Memory (2007)', 'https://www.akkadia.org/drepper/cpumemory.pdf'];
+  var KIM = ['Kim et al., Flipping Bits in Memory Without Accessing Them (ISCA 2014)', 'https://doi.org/10.1109/ISCA.2014.6853210'];
+  var RIXNER = ['Rixner et al., Memory Access Scheduling (ISCA 2000)', 'https://doi.org/10.1145/339647.339668'];
+  var GCCPF = ['GCC, __builtin_prefetch', 'https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html'];
+
+  /* The DRAM coordinates of any physical address, in the example layout. */
+  function mapper(el) {
+    var form = h('div', { 'class': 'lx-form' }, el);
+    var inp = LW().field(form, 'Physical address', '0x1a3f7ce40', { width: '220px' });
+    var out = h('div', { 'class': 'lx-out', 'aria-live': 'polite' }, el);
+    function draw() {
+      var pa = LW().parseHex(inp.value);
+      if (pa === null) { out.innerHTML = '<p class="lx-msg">Enter a hex address such as 0x1a3f7ce40.</p>'; return; }
+      var m = App.HW.dramMap(pa);
+      out.innerHTML = LW().bitsHTML([
+        { bits: '33:18', val: String(m.row), name: 'row', tone: 'a1', w: 2 },
+        { bits: '17:16', val: String(m.bg), name: 'bank group', tone: 'a2' },
+        { bits: '15:14', val: String(m.bank), name: 'bank', tone: 'a2' },
+        { bits: '13:7', val: String(m.col), name: 'column', tone: 'a4' },
+        { bits: '6', val: String(m.ch), name: 'channel', tone: 'a3' },
+        { bits: '5:0', val: String(Number(pa & 63n)), name: 'byte', tone: 'n' }
+      ]) + '<p class="lx-msg">Channel ' + m.ch + ', bank group ' + m.bg + ', bank ' + m.bank + ', row ' + m.row + ', column ' + m.col + '. Add 0x40 to move to the next line: the channel bit flips.</p>';
+    }
+    inp.addEventListener('input', draw);
+    draw();
+  }
+
+  /* ---------- IV.09 ---------- */
+  App.lesson({
+    id: 'dram-cells', short: 'Inside a DRAM chip', title: 'Inside a DRAM chip: cells, rows and banks',
+    lede: 'A DRAM bit is a tiny capacitor. Cells sit in rows; a whole row must be opened before any bit in it can be read.',
+    know: ['A miss in every cache ends at a memory controller and DRAM ([[ch:cache-miss]]).', 'DRAM is dense and slow; SRAM caches are small and fast ([[ch:whycache]]).'],
+    learn: ['Say how one DRAM cell stores a bit and why reading it is slow', 'Explain rows, the row buffer and banks', 'Follow one 64-byte line from eight chips to the bus'],
+    sections: [
+      { id: 'cell', title: 'One bit, one capacitor', body: function (L) {
+        L.p('A DRAM cell is one transistor and one capacitor. A charged capacitor is a 1, an empty one a 0. That makes DRAM dense and cheap: a few gigabits per chip.', ['dramcell']);
+        L.p('The charge is tiny. Reading it means connecting the capacitor to a long wire, the bitline, and detecting a very small change in its voltage.');
+        L.p('A sense amplifier does that detection, then drives the bitline back to a full 0 or 1, which also refills the cell: reading drains the cell, and the read restores it.', ['senseamp']);
+      } },
+      { id: 'rows', title: 'Rows open as a whole', body: function (L) {
+        L.p('Cells sit in a grid of rows and columns. One wire, the wordline, connects every cell of a row to its bitline at once.', ['row']);
+        L.p('So DRAM never reads one bit: it opens a whole row into the sense amplifiers, the row buffer. In an 8 Gbit x8 chip a row is 1 KiB per bank.', ['rowbuf']);
+        L.p('Once the row is open, reading any part of it is quick. Reaching a different row means closing this one and opening the other: slow.');
+      } },
+      { id: 'banks', title: 'Banks work in parallel', body: function (L) {
+        L.p('Each chip is split into independent arrays, banks, each with its own row buffer. A DDR4 x8 chip has 16 banks, in 4 bank groups of 4.', ['bank']);
+        L.p('While one bank opens a row, another can deliver data. So a controller spreads requests over banks to keep them all busy.');
+        L.table(['Per 8 Gbit DDR4 x8 chip', 'Value'], [
+          ['banks', '16, in 4 bank groups'],
+          ['rows per bank', '65,536'],
+          ['column addresses per row', '1,024, one byte each; a burst reads 8 in a row'],
+          ['row (page) size', '1 KiB per bank']
+        ], { mono: false, label: 'Vendor docs', src: MICRON });
+      } },
+      { id: 'rank', title: 'Eight chips make one line', body: function (L) {
+        L.p('A chip has only 8 data pins. Eight x8 chips side by side fill the 64-bit bus; together they are a rank, and they all receive the same commands.', ['xn', 'rank']);
+        L.p('When the controller opens “row 26877 of bank 3”, every one of the eight chips opens its row 26877 of bank 3. The rank’s row is 8 × 1 KiB = 8 KiB.');
+        L.p('A read sends 8 transfers. In each, every chip delivers 8 bits: 8 bytes across the bus. 8 transfers × 8 bytes = 64 bytes: one cache line, a burst.', ['burst']);
+        L.chain([
+          { k: 'row opened', v: '8 KiB', d: 'across the 8 chips of the rank' },
+          { k: 'one column read', v: '8 bytes per transfer', d: '1 byte from each chip' },
+          { k: 'burst of 8', v: '64 bytes', d: 'one cache line', hot: true }
+        ]);
+      } },
+      { id: 'channel', title: 'DIMMs and channels', body: function (L) {
+        L.p('The chips sit on a DIMM, a module in a slot. A DIMM carries one or more ranks; one or more DIMMs share a channel: one 64-bit data bus and one command bus from one controller.', ['dimmterm', 'channel']);
+        L.p('The example machine has two channels, so it can move two lines at the same time. Large servers have 8 to 12 per socket ([[ch:chips]]).');
+        L.note('other', 'DDR5 splits each DIMM into two independent 32-bit subchannels, and a burst is 16 transfers of 4 bytes: still 64 bytes, one line.', 'DDR5');
+      } }
+    ],
+    check: [
+      { q: 'Why does DRAM open a whole row instead of reading one cell?', options: ['One wordline connects every cell of the row to the sense amplifiers at once', 'Because rows are smaller than lines', 'To save power on writes', 'Because the cache asks for a whole row'], answer: 0, why: 'Activating a row connects all its cells; the sense amplifiers then hold the whole row, the row buffer.' },
+      { q: 'How do eight x8 chips deliver one 64-byte line?', options: ['8 transfers, each with 1 byte from each chip', '1 transfer of 64 bytes from one chip', '64 transfers of 1 byte', '8 bytes from one chip, then the next chip'], answer: 0, why: 'Each transfer is 64 bits wide, 8 from each chip. A burst of 8 transfers is 64 bytes.' },
+      { q: 'What does a bank give the controller?', options: ['An independent array with its own row buffer, so requests to different banks can overlap', 'A second channel', 'A larger row', 'Error correction'], answer: 0, why: 'Each bank opens and reads rows on its own; the controller interleaves work across banks.' }
+    ],
+    remember: [
+      'A DRAM cell is a transistor and a capacitor; sense amplifiers detect and restore its charge.',
+      'A row is opened whole into the row buffer; reading inside an open row is quick, changing rows is slow.',
+      'A DDR4 x8 chip has 16 banks in 4 groups; eight x8 chips form a rank on the 64-bit bus.',
+      'One burst is 8 transfers × 8 bytes = one 64-byte line.'
+    ],
+    sources: [MICRON, DREPPER]
+  });
+
+  /* ---------- IV.10 ---------- */
+  App.lesson({
+    id: 'dram-cmds', short: 'Commands and timings', title: 'Commands and timings',
+    lede: 'A controller reads a line with up to three commands: close the open row, open the new one, read a column. The DRAM timings set the minimum gap between them.',
+    know: ['Rows, the row buffer and banks ([[ch:dram-cells]]).'],
+    learn: ['Name the four main DRAM commands', 'Use CL, tRCD and tRP to price a row hit, a closed row and a row conflict', 'Compute the time of one burst on a DDR4-2400 bus'],
+    sections: [
+      { id: 'cmds', title: 'Four commands', body: function (L) {
+        L.p('The controller speaks to a rank in commands. Four matter here:', ['act']);
+        L.table(['Command', 'Does'], [
+          ['ACT (activate)', 'opens a row of one bank into its row buffer'],
+          ['RD / WR', 'reads or writes one column of the open row: one burst'],
+          ['PRE (precharge)', 'closes the bank’s open row'],
+          ['REF (refresh)', 'rewrites some rows before their charge leaks ([[ch:dram-refresh]])']
+        ], { mono: false });
+      } },
+      { id: 'clock', title: 'The clock', body: function (L) {
+        L.p('DDR4-2400 runs a 1200 MHz clock and moves data on both of its edges, 2400 million transfers a second. One clock period, tCK, is 0.833 ns.', ['tck']);
+        L.p('A burst of 8 transfers therefore takes 4 clocks, 3.33 ns. All other timings are counted in clocks too.');
+      } },
+      { id: 'timings', title: 'The gaps between commands', body: function (L) {
+        L.p('Each command needs time before the next may follow. A common DDR4-2400 speed bin, CL17, uses these:', ['tcl']);
+        L.table(['Name', 'From → to', 'Clocks', 'ns'], [
+          ['tRCD', 'ACT → RD', '17', '14.2'],
+          ['CL', 'RD → first data', '17', '14.2'],
+          ['tRP', 'PRE → next ACT', '17', '14.2'],
+          ['tRAS', 'ACT → PRE, at least', '39', '32.5'],
+          ['burst', 'first → last data', '4', '3.3']
+        ], { label: 'Vendor docs', src: MICRON });
+      } },
+      { id: 'prices', title: 'Three prices for the same read', body: function (L) {
+        L.p('What a read costs depends on what is open in its bank:', ['rowhit']);
+        L.table(['Bank state', 'Commands', 'Clocks to the last data', 'ns'], [
+          ['row hit: the row is open', 'RD', 'CL + 4 = 21', '17.5'],
+          ['closed: no row open', 'ACT, RD', 'tRCD + CL + 4 = 38', '31.7'],
+          ['conflict: another row open', 'PRE, ACT, RD', 'tRP + tRCD + CL + 4 = 55', '45.8']
+        ], { title: 'DDR4-2400 CL17' });
+        L.p('A row conflict costs more than twice a row hit. That is device time only; the trip through the caches, the interconnect and the controller’s queues comes on top: the example’s 90 ns.');
+        L.p('The lab after these lessons steps four requests through these commands: <code>hist[123]</code>’s line opens row 26877, a second line hits the open row, a third needs the next row in the same bank and pays the conflict.');
+      } }
+    ],
+    check: [
+      { q: 'The needed row is already open. What does the controller send?', options: ['Only RD', 'ACT and RD', 'PRE, ACT and RD', 'REF'], answer: 0, why: 'A row hit reads straight from the row buffer.' },
+      { q: 'With CL17 and tCK = 0.833 ns, how long is a row conflict from PRE to the last data?', options: ['55 clocks, about 46 ns', '21 clocks, about 17.5 ns', '17 clocks', '4 clocks'], answer: 0, why: 'tRP + tRCD + CL + 4 = 17 + 17 + 17 + 4 = 55 clocks.' },
+      { q: 'How long does one 8-transfer burst take on DDR4-2400?', options: ['4 clocks, 3.33 ns', '8 clocks', '1 clock', '17 clocks'], answer: 0, why: 'Two transfers per clock, so 8 transfers take 4 clocks of 0.833 ns.' }
+    ],
+    remember: [
+      'ACT opens a row, RD/WR use it, PRE closes it, REF refreshes.',
+      'tRCD, CL and tRP are each about 14 ns on DDR4-2400 CL17.',
+      'Row hit 17.5 ns, closed row 31.7 ns, row conflict 45.8 ns of device time.',
+      'A burst is 4 clocks; everything else is waiting for rows.'
+    ],
+    sources: [MICRON, DREPPER]
+  });
+
+  /* ---------- IV.11 ---------- */
+  App.lesson({
+    id: 'dram-map', short: 'Address to DRAM', title: 'From a physical address to a bank and a row',
+    lede: 'The memory controller slices each physical address into channel, bank group, bank, row and column, and reorders its queue to hit open rows.',
+    know: ['Banks, rows and the three prices of a read ([[ch:dram-cmds]]).'],
+    learn: ['Turn a physical address into DRAM coordinates in the example layout', 'Explain why consecutive lines alternate channels and banks', 'Say what an FR-FCFS controller does, and what it trades away'],
+    sections: [
+      { id: 'slice', title: 'Address bits to DRAM coordinates', body: function (L) {
+        L.p('The controller cuts every physical address into fields. The example machine uses a simple layout you can read off:', ['umc']);
+        L.bits([
+          { bits: '33:18', val: '26877', name: 'row', tone: 'a1', w: 2 },
+          { bits: '17:16', val: '3', name: 'bank group', tone: 'a2' },
+          { bits: '15:14', val: '3', name: 'bank', tone: 'a2' },
+          { bits: '13:7', val: '28', name: 'column', tone: 'a4' },
+          { bits: '6', val: '1', name: 'channel', tone: 'a3' },
+          { bits: '5:0', val: '0', name: 'byte', tone: 'n' }
+        ], { title: 'hist[123]’s line, 0x1a3f7ce40, in the example layout' });
+        L.p('Here the column field counts whole bursts: an 8 KiB rank row holds 128 lines of 64 bytes, so 7 bits pick one.');
+        L.try('Map an address', 'Type any physical address. Try the next line, 0x1a3f7ce80, and an address 256 KiB higher, 0x1a3fbce40.', mapper);
+      } },
+      { id: 'spread', title: 'Why the low bits pick the channel', body: function (L) {
+        L.p('Bit 6 is the lowest bit above the line offset. So line 0 goes to channel 0, line 1 to channel 1, line 2 to channel 0 again.');
+        L.p('A program that reads memory in order keeps both channels busy at once, doubling the bandwidth it can get. The column bits come next, so a run of lines on one channel stays in one open row.');
+        L.p('0x1a3fbce40 is 256 KiB above <code>hist</code>’s line: same channel, same bank, the next row. Two such lines in turn are a row conflict every time.');
+      } },
+      { id: 'hash', title: 'Real controllers hash', body: function (L) {
+        L.p('A layout this simple lets a regular pattern pile onto one bank. Real controllers combine higher address bits with the bank and channel bits, with XOR, so that strides spread out.');
+        L.p('Firmware sets the mapping, and vendors do not publish it. Researchers recover it by timing pairs of addresses: a pair that conflicts must share a bank.');
+      } },
+      { id: 'sched', title: 'The controller reorders', body: function (L) {
+        L.p('Requests wait in the controller’s queues. Taking them strictly in arrival order would often close a row only to reopen it two requests later.');
+        L.p('So controllers serve requests that hit an open row first, then older ones. This policy is called FR-FCFS.', ['frfcfs']);
+        L.p('It raises throughput, but an old request to a busy bank can wait behind a stream of row hits. Controllers cap that wait. They also collect writes and send them in batches, because switching the bus between reading and writing costs time.');
+        L.p('The DRAM lab’s controller experiment runs the same requests under different policies and shows both throughput and the slowest requests.');
+      } }
+    ],
+    check: [
+      { q: 'In the example layout, which bit picks the channel?', options: ['Bit 6', 'Bit 0', 'Bit 17', 'Bit 33'], answer: 0, why: 'Bits 5:0 are the byte in the line; bit 6 is the lowest bit that changes from one line to the next.' },
+      { q: 'Two lines map to the same bank but different rows, and are read alternately. What does each read cost?', options: ['A row conflict: PRE, ACT, RD', 'A row hit', 'Nothing: they are in different channels', 'A refresh'], answer: 0, why: 'A bank holds one open row; switching rows needs a precharge and an activate each time.' },
+      { q: 'What does FR-FCFS do?', options: ['Serves requests that hit an open row before older ones that do not', 'Serves requests strictly in order', 'Serves writes before reads', 'Refreshes rows first'], answer: 0, why: 'It trades fairness for throughput, and needs a limit on how long an old request may wait.' }
+    ],
+    remember: [
+      'The controller slices a physical address into channel, bank group, bank, row and column.',
+      'Low bits pick the channel, so consecutive lines alternate channels; real controllers also XOR in higher bits.',
+      'FR-FCFS serves row hits first: more throughput, longer waits for some requests.'
+    ],
+    sources: [RIXNER, DREPPER]
+  });
+
+  /* ---------- IV.12 ---------- */
+  App.lesson({
+    id: 'dram-refresh', short: 'Refresh and errors', title: 'Refresh, errors and ECC',
+    lede: 'Capacitors leak, so every row is rewritten every 64 ms. Bits can still flip; error-correcting codes find and fix most of them.',
+    know: ['Cells are capacitors read through sense amplifiers ([[ch:dram-cells]]).', 'The DRAM commands, including REF ([[ch:dram-cmds]]).'],
+    learn: ['Say why DRAM needs refresh, how often, and what it costs', 'Explain how ECC corrects one flipped bit and detects two', 'Say what disturbance errors are, in outline'],
+    sections: [
+      { id: 'refresh', title: 'Refresh', body: function (L) {
+        L.p('A cell’s charge leaks away in milliseconds. So every row must be read and rewritten before it fades: refresh.', ['refresh']);
+        L.p('The controller sends a REF command every 7.8 µs. Each one refreshes a group of rows; 8192 of them cover every row in 64 ms. Above 85 °C cells leak faster, and the interval halves.', ['treffi']);
+        L.p('During a refresh, the rank can do nothing else for a few hundred nanoseconds. That is a few percent of all time, and a request that arrives just then waits.');
+        L.p('The DRAM lab’s refresh experiment runs the same requests with refresh off and on: the median barely moves, the slowest requests move a lot.');
+      } },
+      { id: 'flips', title: 'Bits flip', body: function (L) {
+        L.p('Even with refresh, a bit sometimes flips: a cell leaks faster than expected, or a particle strike disturbs it. With billions of cells, “sometimes” happens.');
+        L.p('A parity bit can notice one flipped bit in a word, but not say which. Servers need more.');
+      } },
+      { id: 'ecc', title: 'ECC: find the bit, fix the bit', body: function (L) {
+        L.p('ECC memory stores 8 check bits with every 64 data bits: 72 bits per transfer, from a ninth chip on the module.');
+        L.p('The usual code corrects any single flipped bit and detects any two: SECDED. On every read the controller recomputes the check bits; the difference, the syndrome, names the flipped bit.', ['secded']);
+        L.p('A corrected error is logged and the read goes on; Linux counts them per memory controller. An uncorrectable one is reported as a machine check.');
+        L.p('The DRAM lab’s ECC experiment flips bits one, two and three at a time, and shows where the guarantee ends.');
+      } },
+      { id: 'disturb', title: 'Disturbance errors', body: function (L) {
+        L.p('Cells are so close together that opening and closing one row many thousands of times can drain charge from the rows next to it, faster than refresh restores it.', ['rowhammer']);
+        L.p('Researchers showed in 2014 that ordinary programs could flip bits this way. Memory makers and controllers now add defences, such as refreshing the neighbours of rows that are opened very often.');
+        L.p('The DRAM lab shows only the command pattern that matters, many ACT and PRE commands to one row, not any way to cause flips.');
+      } }
+    ],
+    check: [
+      { q: 'How often is each DDR4 row refreshed at normal temperature?', options: ['At least every 64 ms', 'Every 7.8 µs', 'Every second', 'Only after a write'], answer: 0, why: 'A REF every 7.8 µs refreshes a group of rows; 8192 of them cover all rows in 64 ms.' },
+      { q: 'What can SECDED do?', options: ['Correct one flipped bit and detect two in a 64-bit word', 'Correct any number of flipped bits', 'Only detect errors', 'Prevent refresh'], answer: 0, why: '8 check bits per 64 data bits are enough to locate one error and notice two.' },
+      { q: 'Why does refresh hurt the slowest requests more than the median?', options: ['Most requests miss the refresh windows, but those that arrive during one wait hundreds of nanoseconds', 'Refresh slows every request equally', 'Refresh only affects writes', 'Refresh closes every bank forever'], answer: 0, why: 'Refresh is short and rare, so it lands on a few requests and adds a lot to each of them.' }
+    ],
+    remember: [
+      'DRAM cells leak; each row is refreshed at least every 64 ms, one REF every 7.8 µs.',
+      'A refresh blocks its rank for a few hundred nanoseconds: a few percent of time, felt by the slowest requests.',
+      'ECC adds 8 check bits per 64: correct one flipped bit, detect two.',
+      'Opening one row very often can disturb its neighbours; modern memory defends against it.'
+    ],
+    sources: [MICRON, KIM]
+  });
+
+  /* ---------- IV.14 ---------- */
+  App.lesson({
+    id: 'pref-hw', short: 'Prefetchers', title: 'Fetching before being asked: prefetchers',
+    lede: 'A prefetcher watches the lines a core touches, guesses the next ones and requests them early. A good guess hides DRAM latency; a bad one wastes bandwidth.',
+    know: ['A miss to DRAM takes hundreds of cycles ([[ch:cache-miss]]).', 'Independent misses overlap; dependent ones do not ([[ch:cpu-miss]]).'],
+    learn: ['Say what stream and stride prefetchers detect', 'Read machine C’s measurement: the same loads in address order and in random order', 'Tell covered, late and useless prefetches apart, and use software prefetch where hardware cannot guess'],
+    sections: [
+      { id: 'idea', title: 'Guess the next line', body: function (L) {
+        L.p('The loop reads <code>data[]</code> one byte at a time: line after line, in order. Nothing stops the hardware from fetching the next lines before the loads get there.');
+        L.p('A prefetcher watches the stream of lines a core touches. When the distance from one line to the next repeats, it requests lines further along that pattern.', ['pref']);
+        L.table(['Prefetcher', 'Notices', 'In the loop'], [
+          ['next-line or stream', 'consecutive lines in one direction', '<code>data[]</code>: +1 line every 64 bytes'],
+          ['stride', 'a constant step from one access to the next', 'an array read every k-th element'],
+          ['none can help', 'no pattern at all', '<code>hist[data[i]]</code>: wherever the data says']
+        ], { mono: false, terms: ['stream', 'stride'] });
+      } },
+      { id: 'measure', title: 'The same loads, two orders', body: function (L) {
+        L.p('This run on machine C reads one word from every line of 1 GiB, four ways: in address order or in random order, with each load’s address either known in advance or loaded by the load before it.');
+        L.out('c.seq');
+        L.p('Look at the dependent loads. Each must wait for the previous one either way, yet in address order they take 5.2 ns, and in random order 197 ns: 38 times longer.');
+        L.p('In address order the line is already on its way, or there, before the load asks for it: the prefetchers saw the pattern. In random order there is nothing to see.');
+        L.p('The independent loads differ far less, 6.8 and 10.5 ns. Out-of-order execution already overlaps their misses ([[ch:cpu-miss]]), so prefetching adds less.');
+      } },
+      { id: 'score', title: 'Covered, late or useless', body: function (L) {
+        L.p('Every prefetch is one of three things:', ['covered']);
+        L.list([
+          '<b>Covered</b>: the line arrives before the load needs it; the load hits.',
+          '<b>Late</b>: the load comes while the prefetch is still on its way; it waits less, but still waits.',
+          '<b>Useless</b>: the line is never used; it cost a memory transfer and pushed out a line that might have been used.'
+        ], ['late', 'pollute']);
+        L.p('To be on time, a prefetcher must run ahead by at least the latency divided by the time between accesses. With a 395-cycle miss and a new line every 100 cycles, that is 4 lines ahead.');
+      } },
+      { id: 'limits', title: 'Where prefetchers stop', body: function (L) {
+        L.p('Prefetchers see physical addresses, and the next virtual page may be anywhere in physical memory. So most stop at a 4 KiB page boundary and must learn the pattern again in the next page.');
+        L.p('They cannot follow pointers: the next address of a linked list is only known when the current load returns. That is the dependent random row above.');
+        L.p('And they cannot guess data-dependent addresses like <code>hist[data[i]]</code>. Our loop is fast anyway because <code>hist</code> is only 2 KiB and stays in the L1d.');
+      } },
+      { id: 'sw', title: 'Software prefetch', body: function (L) {
+        L.p('When the program knows an address early but the hardware cannot guess it, the program can ask: a prefetch instruction starts fetching a line without waiting for it.', ['swpf']);
+        L.code('for (long i = 0; i < n; i++) {\n    __builtin_prefetch(&hist[data[i + 16]], 1);   /* the line needed 16 iterations from now, for writing */\n    hist[data[i]]++;\n}', { title: 'a software prefetch with GCC (illustration)' });
+        L.p('GCC turns <code>__builtin_prefetch</code> into a <code>prefetchw</code> or <code>prefetcht0</code> instruction. The distance, 16 here, must cover the latency, and the extra loads of <code>data[i + 16]</code> cost something. It only pays when <code>hist</code> is too large to stay in a cache.');
+        L.p('The prefetcher lab measures exactly this trade-off with a distance you choose.');
+      } }
+    ],
+    check: [
+      { q: 'On machine C, dependent loads take 5.2 ns per line in address order and 197 ns in random order. Why?', options: ['In address order the prefetchers fetch the next lines before the loads ask', 'Random addresses are slower to compute', 'The random order uses more memory', 'Address order uses the L1i'], answer: 0, why: 'Each load still waits for the previous one, but in order the line is already close by when it is asked for.' },
+      { q: 'A prefetched line arrives after the load that needs it was issued. What is it?', options: ['A late prefetch', 'A covered prefetch', 'A useless prefetch', 'A conflict miss'], answer: 0, why: 'It helped a little, since the load waited less than a full miss, but it did not arrive in time.' },
+      { q: 'Why can no hardware prefetcher help hist[data[i]]?', options: ['The address depends on data values, not on a pattern of earlier addresses', 'hist is too small', 'hist is written, not read', 'Prefetchers only work for code'], answer: 0, why: 'Stream and stride detectors predict from the sequence of addresses; here the next address is whatever the data says.' }
+    ],
+    remember: [
+      'Stream and stride prefetchers notice repeating distances between accessed lines and fetch ahead.',
+      'On machine C, a dependent chain in address order is 38 times faster than in random order: prefetching at work.',
+      'A prefetch is covered, late or useless; useless ones cost bandwidth and cache space.',
+      'Prefetchers stop at page boundaries and cannot follow pointers or data-dependent addresses; software prefetch can help there.'
+    ],
+    sources: [DREPPER, GCCPF]
+  });
+})();
+
 /* ======================= lab runs: real outputs quoted by the lessons =======================
    Every excerpt names the file under labruns/ it was taken from, and the machine it ran on
    (machine: 'b' or 'c'; machine A when absent). tests/runs.test.cjs checks that each quoted line
@@ -22461,6 +23163,17 @@ var LabRuns = (function () {
         '      4           48.5             20.6',
         '      8           24.9             40.2',
         '     16           ⟦13.0⟧             77.0'
+      ]
+    },
+    'c.seq': {
+      file: 'hw/out/seq.txt', machine: 'c',
+      what: 'seq.c, pinned to CPU 0: one 8-byte load from every 64-byte line of 1 GiB, in address order and in random order; independent loads take line numbers from an array, dependent loads follow a pointer in each line.',
+      lines: [
+        'loads        order           ns per line',
+        'independent  address                 6.8',
+        'dependent    address                 ⟦5.2⟧',
+        'independent  random                 10.5',
+        'dependent    random                ⟦197.2⟧'
       ]
     },
     'err.kernel': {
@@ -25778,7 +26491,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
   d('bio', 'bio', 'The block layer’s description of one I/O: a device, a starting sector, a direction and a list of memory pieces. One or more bios make a request.');
   d('blkrq', 'request', 'What the block layer hands a driver: one or more bios for neighbouring sectors, with a tag that identifies it until it completes.');
   d('blkmq', 'blk-mq', 'The multi-queue block layer: per-CPU software queues feeding one or more hardware queues, each matching a submission queue of the device.');
-  d('tag', 'tag', 'A small number naming an in-flight request in a hardware queue, 0 to 127 for vda. The number of tags caps how many requests the device may have at once.');
+  d('blktag', 'tag (block layer)', 'A small number naming an in-flight request in a hardware queue, 0 to 127 for vda. The number of tags caps how many requests the device may have at once.');
   d('sector', 'sector', 'The block layer’s unit of disk position: 512 bytes, whatever the device’s real block size.');
   d('sqe', 'SQE', 'Submission queue entry: a 64-byte request in io_uring’s submission ring, naming the operation, file, buffer, length, offset and a user_data tag.');
   d('cqe', 'CQE', 'Completion queue entry: io_uring’s answer to one SQE, 16 bytes holding the user_data tag and the result (bytes, or a negative error).');
@@ -25819,7 +26532,7 @@ if (typeof module !== 'undefined') module.exports = LabRuns;
         L.p('vda’s settings in sysfs:');
         L.out('io.queue', { wide: true });
         L.out('io.mq');
-        L.p('vda has one hardware queue, fed by all four CPUs, with 128 tags: at most 128 requests in flight. The scheduler, mq-deadline, may hold up to 256 requests before that.', ['tag']);
+        L.p('vda has one hardware queue, fed by all four CPUs, with 128 tags: at most 128 requests in flight. The scheduler, mq-deadline, may hold up to 256 requests before that.', ['blktag']);
         L.quote('[RW] If this option is \'1\', the block layer will migrate request completions to the cpu "group" that originally submitted the request. For some workloads this provides a significant reduction in CPU cycles due to caching effects.', { cite: 'Documentation/ABI/stable/sysfs-block, rq_affinity, Linux v6.18', label: 'Linux source' });
         L.p('rq_affinity is 1: completions run in the submitter’s CPU group. The trace showed the completion on CPU 3, where the interrupt arrived, and only the program’s wake-up went to CPU 0 ([[ch:io-irq]]).');
         L.p('io_poll is 0: vda has no polled queues, so completions always arrive by interrupt. A device with several hardware queues, such as an NVMe SSD, usually gets one per CPU and needs no sharing at all.');
