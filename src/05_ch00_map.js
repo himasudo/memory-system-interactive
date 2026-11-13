@@ -29,11 +29,11 @@
 
   /* ---------- the whole-machine diagram, with an inspector ---------- */
   var BLOCKS = {
-    core0: ['Core 0', 'One of four cores. It runs one stream of instructions and has its own L1 and L2 caches.', 'code'],
-    cores: ['Cores 1 to 3', 'Built like core 0: each has its own front end, execution engine, load/store unit, TLBs, L1d and L2.', 'core'],
-    fe: ['Front end', 'Fetches instruction bytes from the L1 instruction cache (L1i), finds where each instruction starts, and decodes it into the small operations the core executes.', 'code'],
-    ex: ['Execution engine', 'Runs the decoded operations as soon as their inputs are ready, often out of program order, then retires them in order.', 'core'],
-    lsu: ['Load/store unit', 'Computes each memory address, sends loads and stores to the L1d, and keeps track of the ones still in flight.', 'core'],
+    core0: ['Core 0', 'One of four cores. It runs one stream of instructions and has its own L1 and L2 caches.', 'cpu-pipe'],
+    cores: ['Cores 1 to 3', 'Built like core 0: each has its own front end, execution engine, load/store unit, TLBs, L1d and L2.', 'cpu-pipe'],
+    fe: ['Front end', 'Fetches instruction bytes from the L1 instruction cache (L1i), finds where each instruction starts, and decodes it into the small operations the core executes.', 'cpu-uops'],
+    ex: ['Execution engine', 'Runs the decoded operations as soon as their inputs are ready, often out of program order, then retires them in order.', 'cpu-ooo'],
+    lsu: ['Load/store unit', 'Computes each memory address, sends loads and stores to the L1d, and keeps track of the ones still in flight.', 'cpu-lsq'],
     tlb: ['TLBs and page walker', 'Translate virtual addresses into physical ones. The TLBs keep recent translations; on a miss the page walker reads the page tables through the caches.', 'vm-tlb'],
     l1d: ['L1 data cache (L1d)', '32 KiB, private to the core, 4 cycles. Holds copies of 64-byte lines.', 'l1d'],
     l2: ['L2 cache', '512 KiB per core, 12 cycles. In this machine it keeps a copy of every line in its core’s L1d.', 'hier'],
@@ -176,7 +176,7 @@
           'The <b>front end</b> reads instruction bytes and decodes them into the small operations the core executes.',
           'The <b>execution engine</b> runs those operations as soon as their inputs are ready, often out of program order, and then retires them in order.',
           'The <b>load/store unit</b> computes each memory address and sends the access to the cache.'
-        ], [['front end', 'The part of a core that fetches instruction bytes and decodes them. [[ch:code]] shows what it decodes.'], ['execution engine', 'The part of a core that runs decoded operations and puts their results back in program order. [[ch:core]] steps through it.']]);
+        ], [['front end', 'The part of a core that fetches instruction bytes and decodes them. [[ch:cpu-code]] and [[ch:cpu-uops]] open it.'], ['execution engine', 'The part of a core that runs decoded operations and puts their results back in program order. [[ch:cpu-ooo]] opens it.']]);
         L.p('The instruction <code>addq $0x1,(%rdx,%rax,8)</code> reads <code>hist[k]</code>, adds 1 and writes it back. The load/store unit computes its address from two registers: <code>rdx</code> + <code>rax</code> × 8 = 0x7ffd4a3c2a80 + 123 × 8.', [['load/store unit', 'The part of a core that computes addresses, sends loads and stores to the L1d, and tracks the ones still in flight.']]);
         path(L, 'core');
       } },

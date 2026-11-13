@@ -15,9 +15,10 @@
       outcomes: ['Read hex values and bit ranges', 'Read a few lines of x86 assembly', 'Tell latency from throughput', 'Explain why caches and virtual memory exist'],
       pages: ['bits', 'addr', 'instr', 'asm', 'time', 'whycache', 'vm', 'share']},
     {id: 'machine', n: 'II', title: 'The machine and the core',
-      lede: 'A map of the whole machine, then the path from a line of C to the µops a core executes.',
-      outcomes: ['Name every block between a core and DRAM', 'Follow C to instructions to µops', 'Read an out-of-order pipeline cycle by cycle'],
-      pages: ['map', 'code', 'core']},
+      lede: 'A map of the whole machine, then the path from a line of C to the µops a core executes, and how an out-of-order core runs them: pipelining, branch prediction, renaming, scheduling, the load and store queues, and misses.',
+      outcomes: ['Name every block between a core and DRAM', 'Follow C to instructions, bytes and µops', 'Explain how a core predicts branches, renames registers and runs µops out of order', 'Read an out-of-order pipeline cycle by cycle', 'Explain why independent misses overlap and dependent ones do not'],
+      runs: ['c'],
+      pages: ['map', 'cpu-code', 'cpu-uops', 'code', 'cpu-pipe', 'cpu-branch', 'cpu-ooo', 'cpu-rename', 'cpu-sched', 'cpu-lsq', 'cpu-miss', 'core']},
     {id: 'vmem', n: 'III', title: 'Virtual memory',
       lede: 'How every address a program uses is translated: pages, page tables, the TLB, page faults, copy-on-write and huge pages, and what the kernel does behind each one. The outputs shown are from real runs on a Linux machine.',
       outcomes: ['Translate a virtual address by hand through all four levels', 'Read /proc/self/maps, pagemap and smaps', 'Decode any page-fault error code', 'Predict when the TLB is flushed and when other CPUs are interrupted', 'Measure page-fault costs and keep them out of benchmarks'],
@@ -45,7 +46,7 @@
     {id: 'ref', n: '', title: 'Reference', pages: ['atlas', 'gloss']}
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
-  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab'};
+  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab', code: 'Lab', core: 'Lab'};
   /* Experiments that moved from the two labs into lessons. An old link such as #xlate/os opens
      the lesson that holds the experiment now (#vm-cow/os); the section id did not change. */
   var MOVED = {'xlate/os': 'vm-cow', 'xlate/native': 'vm-cost', 'xlate/pages': 'vm-huge', 'xlate/granules': 'vm-vipt',

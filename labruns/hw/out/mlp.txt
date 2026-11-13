@@ -1,0 +1,7 @@
+1 GiB of lines in one random cycle, 2 MiB pages
+ chains    ns per load     loads per us
+      1          192.1              5.2
+      2           95.7             10.4
+      4           48.5             20.6
+      8           24.9             40.2
+     16           13.0             77.0

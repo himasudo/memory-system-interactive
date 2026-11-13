@@ -28,7 +28,7 @@ The site is a course in seven parts. A page's number comes from its place in the
 |---|---|---|
 | Start | `00` | The running example, the course map with your progress, how to read the pages, where the numbers come from |
 | **I** Foundations | `I.01`–`I.08` | Bits and hex, memory and addresses, instructions and registers, reading x86 assembly, cycles and latency, why caches exist, virtual memory, cores and devices |
-| **II** The machine and the core | `II.01`–`II.03` | The example machine, one block at a time, in the order a load meets them; C → instructions → µops; the out-of-order core, cycle by cycle |
+| **II** The machine and the core | `II.01`–`II.12` | 10 lessons and two labs, listed below: the example machine block by block, C → machine code → µops, and how an out-of-order core runs them |
 | **III** Virtual memory | `III.01`–`III.24` | 23 lessons and one lab, listed below |
 | **IV** Caches and DRAM | `IV.01`–`IV.04` | The L1d lookup; L2, L3, fabric and the path to DRAM; DRAM banks, commands, refresh and ECC; prefetchers |
 | **V** Stores, ordering and coherence | `V.01`–`V.02` | The store path, memory types and fences; MOESI coherence and false sharing |

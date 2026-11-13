@@ -748,6 +748,26 @@ var LabRuns = (function () {
         '     2 GiB        ⟦136.2⟧'
       ]
     },
+    'c.branch': {
+      file: 'hw/out/branch.txt', machine: 'c',
+      what: 'branch.c, pinned to CPU 0: count the bytes >= 128 in 1 MiB of random bytes, first in random order, then sorted. The loop keeps a real conditional jump.',
+      lines: [
+        'random  data: 524215 of 1048576 bytes are >= 128, ⟦3.81 ns⟧ per byte',
+        'sorted  data: 524215 of 1048576 bytes are >= 128, ⟦0.26 ns⟧ per byte'
+      ]
+    },
+    'c.mlp': {
+      file: 'hw/out/mlp.txt', machine: 'c',
+      what: 'mlp.c, pinned to CPU 0: a random pointer cycle over 1 GiB, walked as 1, 2, 4, 8 or 16 independent chains at once.',
+      lines: [
+        ' chains    ns per load     loads per us',
+        '      1          ⟦192.1⟧              5.2',
+        '      2           95.7             10.4',
+        '      4           48.5             20.6',
+        '      8           24.9             40.2',
+        '     16           ⟦13.0⟧             77.0'
+      ]
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',

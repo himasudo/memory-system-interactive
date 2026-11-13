@@ -104,7 +104,7 @@ async function main() {
         await page.evaluate(() =>
           ['start', 'map', 'core', 'l1d', 'e2e', 'perf', 'xlate', 'dev'].map((id) => App.chNum(id))
         ),
-        ['00', 'II.01', 'II.03', 'IV.01', 'VII.01', 'VII.03', 'III.09', 'VI.12']
+        ['00', 'II.01', 'II.12', 'IV.01', 'VII.01', 'VII.03', 'III.09', 'VI.12']
       );
     });
     await check('redirect preserves section hash', async () => {

@@ -1,0 +1,2 @@
+random  data: 524215 of 1048576 bytes are >= 128, 3.81 ns per byte
+sorted  data: 524215 of 1048576 bytes are >= 128, 0.26 ns per byte
