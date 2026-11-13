@@ -3224,13 +3224,17 @@ var App = (function(){
     if (built[ch.id].api.onShow) built[ch.id].api.onShow();
   }
 
+  var routeSeq = 0;
   function route(){
     var p = location.hash.slice(1).split('/');
     var moved = p[1] && App.Course && App.Course.moved[p[0] + '/' + p[1]];
     if (moved && App.Course.lessons[moved]){ p[0] = moved; try { history.replaceState(null, '', '#' + p.join('/')); } catch(e){} }
     show(p[0] || chapters[0].id);
-    /* second jump after the workbenches above have finished sizing */
-    if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
+    /* second jump after the workbenches above have finished sizing; skipped once the reader has
+       gone elsewhere, so a late jump cannot write the old page back into the address bar */
+    var seq = ++routeSeq;
+    function again(){ if (seq === routeSeq && location.hash.slice(1).split('/')[0] === p[0]) scrollToSection(p[1], false); }
+    if (p[1]){ setTimeout(again, 30); setTimeout(again, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
   }
   function scrollToSection(sid, smooth){
     var current = built[cur]; if (current && current.api.selectSection) current.api.selectSection(sid);
@@ -5574,7 +5578,7 @@ if (typeof module !== 'undefined') module.exports = ImplementationEvidence;
 App.chapter({id: 'start', short: 'Start here', title: 'Memory Systems Lab',
 lede: 'How one memory access travels through a computer, from a line of C down to the DRAM chips and back. Change the experiments, compare real AMD, Intel and Arm chips, and measure your own machine.',
 points: ['Seven parts, in order: foundations, the core, virtual memory, caches and DRAM, ordering, devices, and the whole system.',
-  'Parts III and VI are short lessons built on outputs from real Linux machines; the other parts are chapters with interactive labs.',
+  'Parts II to VI are short lessons built on outputs from real Linux machines, with interactive labs after the lessons they need; Parts I and VII are chapters.',
   'The lab uses one small example machine, and compares it with real AMD, Intel and Arm designs.'],
 build: function(root){
   var P = App.P, g = App.g, T = P.T, R = P.R, A = P.A;
@@ -5623,9 +5627,9 @@ build: function(root){
     'Register names and hex values are linked too: a value like 0x7b opens its decimal form.',
     'Diagrams mark the active part in amber. Click a block to see what it is.',
     'Step panels walk through a process one step at a time. The \u2190 and \u2192 keys also work.',
-    'Each chapter is one long page. The section name in the top bar opens a list of its sections.',
-    'Most hardware chapters have two parts: the walkthrough, then an <b>Experiments</b> part with small simulations you can change. Each experiment asks you to predict the result first.',
-    'Lessons, in Parts III and VI, define each new term once, in the margin, and end with questions and a short list of what to remember. Outputs marked <b>Lab run</b> come from real Linux machines and name the machine and file they came from.',
+    'Each lesson, lab and chapter is one long page. The section name in the top bar opens a list of its sections.',
+    'Most labs have two parts: the walkthrough, then an <b>Experiments</b> part with small simulations you can change. Each experiment asks you to predict the result first.',
+    'Lessons, in Parts II to VI, define each new term once, in the margin, and end with questions and a short list of what to remember. Outputs marked <b>Lab run</b> come from real Linux machines and name the machine and file they came from.',
     'Timings come from the latency settings (the ≋ button). They are example values for the lab’s model machine. Your own measurements appear separately, labeled “Your machine”.'
   ])]);
   var labels = App.h('dl', {'class': 'label-legend'}, c);
@@ -5682,7 +5686,7 @@ build: function(root){
   P.row(c, [
     'Hardware sizes are powers of two, because a field of <i>n</i> bits can number exactly 2<sup><i>n</i></sup> things.',
     'Here 1 KB = 1024 bytes and 1 MB = 1024 KB. Strictly these are KiB and MiB; hardware documentation usually writes KB and MB.',
-    'Three sizes appear in almost every chapter: the 64-byte ' + g('line', 'cache line') + ', the 4 KB ' + g('page') + ', and the 2 MB ' + g('huge', 'large page') + '.'
+    'Three sizes appear in almost every chapter: the 64-byte ' + g('line', 'cache line') + ', the block a cache copies from memory ([[ch:whycache]]); the 4 KB ' + g('page') + ', the block virtual memory maps ([[ch:vm]]); and the 2 MB ' + g('huge', 'large page') + ', 512 pages mapped as one.'
   ], {h: 130, cap: 'An n-bit field numbers 2\u207f positions. These three appear throughout.', draw: function(sv){
     [['6 bits', '2\u2076 = 64 bytes', 'one cache line'], ['12 bits', '2\u00b9\u00b2 = 4 KB', 'one page'], ['21 bits', '2\u00b2\u00b9 = 2 MB', 'one large page']].forEach(function(r, i){
       var y = 14 + i * 38;
@@ -5699,7 +5703,7 @@ build: function(root){
     'Chapters about caches and translation split an address into fields written as ' + g('bitrange', 'bit ranges') + '. Bits are numbered from 0 at the right, and \u201cbits 11:6\u201d means the six bits from bit 11 down to bit 6.',
     'In C that field is <code>(addr &gt;&gt; 6) &amp; 0x3f</code>: shift the field down to bit 0, then keep six bits with a mask.',
     'Take the address of <code>hist[123]</code>, 0x7ffd4a3c2e58. Its low 12 bits are 0xe58 = 1110 0101 1000.',
-    'Bits 5:0 are 011000 = 24: the byte within a cache line. Bits 11:6 are 111001 = 57: the cache set that [[ch:l1d]] looks up.'
+    'Bits 5:0 are 011000 = 24: the byte within a cache line. Bits 11:6 are 111001 = 57: the L1d uses them to pick which of its 64 groups of slots, called sets, to search ([[ch:cache-org]]).'
   ], {h: 140, cap: 'The low 12 bits of the address of hist[123], split the way the L1d splits them.', draw: function(sv){
     var bits = [1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0], top = [];
     for (var i = 11; i >= 0; i--) top.push(String(i));
@@ -5924,7 +5928,7 @@ build: function(root){
   var c = P.sec(root, 'chains', 'Dependency chains', 'Why some loops run fast and others crawl.');
   P.row(c, [
     'If an operation needs the result of the previous one, it cannot start until that result exists. A ' + g('depchain', 'chain of dependent operations') + ' takes the sum of their latencies.',
-    'Independent operations overlap. A modern core looks ahead through the instruction stream and starts every operation whose inputs are ready. [[ch:core]] shows this out-of-order execution cycle by cycle.'
+    'Independent operations overlap. A modern core looks ahead through the instruction stream and starts every operation whose inputs are ready. [[ch:cpu-ooo]] explains this out-of-order execution, and [[ch:core]] shows it cycle by cycle.'
   ], {h: 150, cap: 'The same three 3-cycle operations, dependent and independent.', draw: function(sv){
     var cw = 46, x0 = 20;
     T(sv, x0, 16, 'dependent: 3 + 3 + 3 = 9 cycles', 's');
@@ -5945,8 +5949,8 @@ build: function(root){
     });
   }});
   function ladderText(){
-    r._text.innerHTML = '<p>A load is fast only when its data is close to the core. With the current latency settings, a load that finds its data in the L1 cache takes ' + CFG.l1 + ' cycles; one that has to go to DRAM takes about ' + Math.round(App.dramCycles()) + '.</p>' +
-      '<p>That gap drives most of the hardware in the later chapters. [[ch:whycache]] explains why caches work, and [[ch:hier]] follows a miss level by level.</p>';
+    r._text.innerHTML = '<p>A load is fast only when its data is close to the core. With the current latency settings, a load that finds its data in the L1 cache takes ' + CFG.l1 + ' cycles from the moment it starts until its value can be used, its load-to-use latency; one that has to go to DRAM takes about ' + Math.round(App.dramCycles()) + '.</p>' +
+      '<p>That gap drives most of the hardware in the later chapters. [[ch:whycache]] explains why caches work, and [[ch:cache-levels]] follows a miss level by level.</p>';
   }
   ladderText(); App.onCfg(ladderText);
   var perf=P.sec(root,'performance','From one latency to many requests','Why overlapping requests matter as much as latency.');
@@ -5995,7 +5999,7 @@ build: function(root){
   P.row(c, [
     'A cache never holds single bytes. It holds copies of whole blocks of memory, 64 bytes on most CPUs, called ' + g('line', 'cache lines') + ', each starting at an address that is a multiple of 64.',
     'When the core loads an address, the cache checks whether it holds that line. If it does, that is a ' + g('hit') + ' and the data returns in a few cycles. If not, it is a ' + g('miss') + ': the whole line is fetched from the next level while the load waits.',
-    'Because the whole line arrives, the next 63 bytes come with it. Reading <code>data[]</code> in order costs one miss per 64 bytes, not one per byte, and a prefetcher can hide even those.'
+    'Because the whole line arrives, the next 63 bytes come with it. Reading <code>data[]</code> in order costs one miss per 64 bytes, not one per byte, and a prefetcher, hardware that fetches lines before they are asked for, can hide even those ([[ch:pref-hw]]).'
   ], {h: 172, live: true, cap: 'A load checks the L1d; a miss brings in the whole 64-byte line.', draw: function(sv){
     P.box(sv, 10, 56, 70, 44, 'a3b', 'core');
     A(sv, 'M82 78 H124'); T(sv, 103, 70, 'load', 's', 'middle');
@@ -6010,7 +6014,7 @@ build: function(root){
   P.row(d, [
     'One cache cannot be both large and fast: a larger array has longer wires and more entries to search. So processors stack several levels.',
     'In the lab’s example machine each core has a 32 KiB L1 data cache and a 512 KiB L2, and the four cores share a 4 MiB L3. A load checks the L1 first, then the L2, then the L3, and only then DRAM. Real chips stack the same levels at larger sizes: an AMD Zen 5 core has a 48 KiB L1d and a 1 MiB L2, and eight cores share a 32 MiB L3.',
-    '[[ch:l1d]] opens the L1d; [[ch:hier]] follows a miss through the other levels.'
+    'Part IV builds them up: [[ch:cache-org]] starts with how one cache is organized, and [[ch:cache-levels]] follows a miss through the other levels.'
   ], {h: 120, live: true, cap: 'Size and load-to-use latency of each level, from the latency settings.', draw: function(sv){
     var L = [['L1d', '32 KB', CFG.l1], ['L2', '512 KB', CFG.l2], ['L3', '4 MB', CFG.l3], ['DRAM', 'GBs', App.dramCycles()]], x = 10;
     P.box(sv, x, 30, 50, 50, 'a3b', 'core'); x += 62;
@@ -6062,7 +6066,7 @@ build: function(root){
   var c = P.sec(root, 'tables', 'Page tables', 'Where the mappings are stored.');
   P.row(c, [
     'The operating system keeps the mappings in page tables: data structures in ordinary memory. On x86-64 they form a ' + g('pml4', '4-level tree') + '. Each level uses 9 bits of the virtual page number to pick one of 512 entries.',
-    'A full translation therefore reads four entries from memory. The hardware ' + g('walk', 'page walker') + ' does this automatically; [[ch:xlate]] steps through all four reads.'
+    'A full translation therefore reads four entries from memory. The hardware ' + g('walk', 'page walker') + ' does this automatically; [[ch:vm-walk]] steps through all four reads.'
   ], {h: 150, cap: 'Four 9-bit indexes pick one entry per level; the last entry names the physical frame.', draw: function(sv){
     var F = [['47:39', 'level 1'], ['38:30', 'level 2'], ['29:21', 'level 3'], ['20:12', 'level 4'], ['11:0', 'offset']];
     F.forEach(function(f, i){
@@ -6115,7 +6119,7 @@ build: function(root){
   var b = P.sec(root, 'copies', 'Keeping copies consistent', 'What happens when two cores cache the same line.');
   P.row(b, [
     'If two cores cache the same line and one of them writes it, the other core\u2019s copy is now stale. ' + g('coh', 'Cache coherence') + ' is the hardware that stops anyone from reading stale data.',
-    'Before a core writes a line, it must hold the only valid copy: the other copies are invalidated first. A later read by another core then fetches the new data. [[ch:coh]] follows these messages one by one.'
+    'Before a core writes a line, it must hold the only valid copy: the other copies are invalidated first. A later read by another core then fetches the new data. [[ch:coh-why]] follows these messages one by one.'
   ], {h: 160, cap: 'A write first invalidates other copies; a later read sees the new value.', draw: function(sv){
     R(sv, 10, 30, 180, 54, 'box on'); T(sv, 22, 50, 'core 0 L1', 's'); T(sv, 22, 72, 'line X: 41 \u2192 42', 'm');
     R(sv, 270, 30, 180, 54, 'badb'); T(sv, 282, 50, 'core 1 L1', 's'); T(sv, 282, 72, 'line X: invalid', 'm');
@@ -6127,7 +6131,7 @@ build: function(root){
   var c = P.sec(root, 'order', 'When a store becomes visible', 'Why the order of stores matters.');
   P.row(c, [
     'A store does not reach memory the moment it executes. It waits in the core\u2019s ' + g('sq', 'store queue') + ', enters the L1 cache after its instruction retires, and only then can other cores see it.',
-    'For a single core this is invisible. Between cores it matters: code that writes data and then sets a flag depends on other cores seeing the two stores in that order. [[ch:stores]] shows the rules x86 guarantees.'
+    'For a single core this is invisible. Between cores it matters: code that writes data and then sets a flag depends on other cores seeing the two stores in that order. [[ch:ord-tso]] shows the rules x86 guarantees.'
   ], {h: 110, cap: 'A store becomes visible to other cores only once it reaches the L1d.', draw: function(sv){
     P.box(sv, 10, 26, 86, 50, 'a3b', 'execute');
     A(sv, 'M98 51 H116'); P.box(sv, 120, 26, 110, 50, 'a1b', 'store queue', 'private, waits');
@@ -6138,8 +6142,8 @@ build: function(root){
 
   var d = P.sec(root, 'devices', 'Devices and DMA', 'How an SSD moves data without the CPU copying bytes.');
   P.row(d, [
-    'The CPU talks to a device by writing to the device\u2019s registers, which appear at special physical addresses: ' + g('mmio', 'memory-mapped I/O') + '.',
-    'The device moves the data itself. With ' + g('dma', 'direct memory access') + ', an NVMe SSD writes a 4 KB block straight into memory, then raises an ' + g('interrupt') + ' to report that it is done. [[ch:dev]] traces one such read from start to finish.'
+    'The CPU talks to a device by writing to the device\u2019s registers, which appear at special physical addresses: ' + g('mmio', 'memory-mapped I/O') + '. A write to one of them, called a doorbell, tells the device that new work is waiting.',
+    'The device moves the data itself. With ' + g('dma', 'direct memory access') + ', an NVMe SSD writes a 4 KB block straight into memory, then raises an ' + g('interrupt') + ' to report that it is done. [[ch:io-review]] traces one such read from start to finish.'
   ], {h: 170, cap: 'The CPU starts the transfer with an MMIO write; the SSD moves the data by DMA and reports with an interrupt.', draw: function(sv){
     P.box(sv, 10, 34, 110, 50, 'a3b', 'CPU');
     P.box(sv, 340, 34, 110, 50, 'a4b', 'NVMe SSD');

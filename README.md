@@ -31,20 +31,35 @@ The site is a course in seven parts. A page's number comes from its place in the
 | **II** The machine and the core | `II.01`–`II.12` | 10 lessons and two labs, listed below: the example machine block by block, C → machine code → µops, and how an out-of-order core runs them |
 | **III** Virtual memory | `III.01`–`III.24` | 23 lessons and one lab, listed below |
 | **IV** Caches and DRAM | `IV.01`–`IV.15` | 11 lessons and four labs, listed below: sets and ways, lookups, replacement, write-back, the L2 and L3, a miss on its way to DRAM, DRAM cells, commands, address mapping, refresh and ECC, and prefetchers |
-| **V** Stores, ordering and coherence | `V.01`–`V.02` | The store path, memory types and fences; MOESI coherence and false sharing |
+| **V** Stores, ordering and coherence | `V.01`–`V.10` | 8 lessons and two labs, listed below: when a store becomes visible, RFO and non-temporal stores, the x86 and Arm memory models, fences and atomics, coherence and MOESI, snooping and directories, false sharing |
 | **VI** Devices and I/O | `VI.01`–`VI.15` | 14 lessons and one lab, listed below |
 | **VII** The whole system | `VII.01`–`VII.03` | One `hist[123]++`, end to end; real chips: AMD, Intel and Arm designs next to the example machine, and one of them measured; units, Little's law, queue limits and benchmarks on your machine |
 | Reference | `REF`, `A–Z` | **Atlas**: every full-width plate, plus the AMD, Intel and Arm package diagrams. **Glossary**: every term, searchable |
 
 Pages scroll in linkable sections (`#page/section`, for example `#l1d/lookup` or `#vm-walk/walk`). The top bar shows the current section, a section menu and reading progress. Each lesson and lab has **Mark as done**; the sidebar and the start page count the pages done in each part, and the start page links to the next page not done. Progress stays in the browser (`localStorage`).
 
-### Parts III and VI: lessons
+### Lessons and labs
 
-Parts III and VI are written as lessons. A lesson is a series of short steps: one or two sentences, then one figure, output, source excerpt or small widget, then one or two sentences. Each term is defined once, in the margin, where it first appears. A lesson ends with **Check yourself** (questions with feedback) and **What to remember**.
+Parts II to VI are written as lessons. A lesson is a series of short steps: one or two sentences, then one figure, output, source excerpt or small widget, then one or two sentences. Each term is defined once, in the margin, where it first appears. A lesson ends with **Check yourself** (questions with feedback) and **What to remember**.
 
 The examples come from real Linux machines. Program outputs are quoted from runs on three cloud virtual machines, kept with their scripts in [`labruns/`](labruns/README.md); kernel code is quoted from Linux v6.18. The worked example is x86-64, with notes where Arm, AMD or Intel differ.
 
-The earlier chapters on translation and on devices are now the labs `III.09` and `VI.12`. Their experiments sit inside the lessons they belong to (copy-on-write in `III.17`, the IOMMU mapping lifetime in `VI.08`, interrupt and queue depth in `VI.09`, io_uring in `VI.11`). `III.09` keeps the translation and page-walk steppers; `VI.12` keeps the step-by-step NVMe read.
+The earlier chapters are now labs, each placed after the lessons that teach what it shows: `II.04` and `II.12` in Part II, `III.09` in Part III, `IV.05`, `IV.08`, `IV.13` and `IV.15` in Part IV, `V.05` and `V.10` in Part V, and `VI.12` in Part VI. Some of their experiments sit inside the lessons they belong to (copy-on-write in `III.17`, the IOMMU mapping lifetime in `VI.08`, interrupt and queue depth in `VI.09`, io_uring in `VI.11`). The labs keep the steppers and simulators: the pipeline, the L1d lookup, the miss through the hierarchy, the DRAM controller, the store path, the coherence protocol, translation and the NVMe read.
+
+| # | Part II: The machine and the core | Route |
+|---|---|---|
+| `II.01` | The machine: one load, block by block | `#map` |
+| `II.02` | From C to machine code | `#cpu-code` |
+| `II.03` | Decoding: instructions become µops | `#cpu-uops` |
+| `II.04` | **Lab** · From C to instructions to µops | `#code` |
+| `II.05` | A pipeline: many instructions at once | `#cpu-pipe` |
+| `II.06` | Predicting branches | `#cpu-branch` |
+| `II.07` | Running out of order | `#cpu-ooo` |
+| `II.08` | Register renaming | `#cpu-rename` |
+| `II.09` | Schedulers, ports and execution units | `#cpu-sched` |
+| `II.10` | Loads and stores inside the core | `#cpu-lsq` |
+| `II.11` | When a load misses | `#cpu-miss` |
+| `II.12` | **Lab** · Inside the core, cycle by cycle | `#core` |
 
 | # | Part III: Virtual memory | Route |
 |---|---|---|
@@ -72,6 +87,37 @@ The earlier chapters on translation and on devices are now the labs `III.09` and
 | `III.22` | Two views of one frame | `#vm-alias` |
 | `III.23` | Translation inside a virtual machine | `#vm-virt` |
 | `III.24` | One store, end to end | `#vm-review` |
+
+| # | Part IV: Caches and DRAM | Route |
+|---|---|---|
+| `IV.01` | Lines, sets and ways | `#cache-org` |
+| `IV.02` | One lookup, step by step | `#cache-lookup` |
+| `IV.03` | A full set: replacement and the three kinds of miss | `#cache-replace` |
+| `IV.04` | Writes: dirty lines and write-back | `#cache-writes` |
+| `IV.05` | **Lab** · Inside an L1d lookup | `#l1d` |
+| `IV.06` | The L2 and the L3 | `#cache-levels` |
+| `IV.07` | A miss travels outward | `#cache-miss` |
+| `IV.08` | **Lab** · Down the hierarchy: L2, L3, fabric, DRAM | `#hier` |
+| `IV.09` | Inside a DRAM chip: cells, rows and banks | `#dram-cells` |
+| `IV.10` | Commands and timings | `#dram-cmds` |
+| `IV.11` | From a physical address to a bank and a row | `#dram-map` |
+| `IV.12` | Refresh, errors and ECC | `#dram-refresh` |
+| `IV.13` | **Lab** · DRAM: banks, rows and the commands behind one read | `#dram` |
+| `IV.14` | Fetching before being asked: prefetchers | `#pref-hw` |
+| `IV.15` | **Lab** · Prefetchers: fetching the next line before it is asked for | `#pref` |
+
+| # | Part V: Stores, ordering and coherence | Route |
+|---|---|---|
+| `V.01` | When a store becomes visible | `#st-visible` |
+| `V.02` | Owning a line before writing it: RFO and non-temporal stores | `#st-rfo` |
+| `V.03` | What order other cores see | `#ord-tso` |
+| `V.04` | Fences and atomic instructions | `#ord-fence` |
+| `V.05` | **Lab** · The store path, memory types and fences | `#stores` |
+| `V.06` | Coherence: one value per address | `#coh-why` |
+| `V.07` | MESI and MOESI, state by state | `#coh-mesi` |
+| `V.08` | Who gets asked: snooping, directories and shadow tags | `#coh-probe` |
+| `V.09` | False sharing | `#coh-false` |
+| `V.10` | **Lab** · Four cores, one line: MOESI coherence | `#coh` |
 
 | # | Part VI: Devices and I/O | Route |
 |---|---|---|
@@ -248,7 +294,7 @@ regenerates `memory_end_to_end.html`. Edit `src/` or `shell.html`, then rebuild;
 
 Shared drawing code and data:
 
-- `src/02_course.js` (`App.Course`, `App.lesson`): the parts, page numbers, navigation, progress and part pages, and the builder lessons are written with (`L.p`, `L.fig`, `L.out`, `L.quote`, `L.note`, `L.try`, `L.lab`, `L.ask` and others). Lessons are `src/40_vm_lessons_a.js`–`46_vm_lessons_g.js` (Part III) and `src/50_io_lessons_a.js`–`53_io_lessons_d.js` (Part VI).
+- `src/02_course.js` (`App.Course`, `App.lesson`): the parts, page numbers, navigation, progress and part pages, and the builder lessons are written with (`L.p`, `L.fig`, `L.out`, `L.quote`, `L.note`, `L.try`, `L.lab`, `L.ask` and others). Lessons are `src/05_ch00_map.js` and `src/31_cpu_lessons_a.js`–`32_cpu_lessons_b.js` (Part II), `src/40_vm_lessons_a.js`–`46_vm_lessons_g.js` (Part III), `src/33_cache_lessons.js`–`34_dram_lessons.js` (Part IV), `src/36_order_lessons.js` (Part V), `src/50_io_lessons_a.js`–`54_gpu_lessons.js` (Part VI) and `src/55_chips_lesson.js` (Lesson VII.02).
 - `src/38_runs.js` (`App.Runs`): every lab-run output a lesson shows, with the file in `labruns/` it was taken from and the machine it ran on. `tests/runs.test.cjs` checks that each quoted line is in that file.
 - `src/39_lesson_widgets.js` (`App.LW`): the small interactive widgets inside lessons (address splitter, page-table entry and fault-code decoders, TLB and LRU simulators, buddy allocator, two-dimensional walk counter, PCIe link and BAR sizing calculators, a descriptor ring and others).
 - `src/04_shared_hw.js` (`App.HW`): parts drawn in several chapters (core blocks, set-associative arrays, L3 slices, shadow-tag grids, DRAM ranks, cache-line words, device pipelines, the latency ladder). Each draws inside an existing box; a cell with class `box` lights up with its parent group.
@@ -289,9 +335,9 @@ silently recalibrate the simulations.
 Never write a page number by hand: numbers come from each page's part and build order, so inserting a page renumbers the rest. In page text use tokens, which become links when rendered:
 
 - `[[ch:vm-walk]]` → "Lesson III.07" (a link). A lab renders as "Lab III.09", a part page (`[[ch:part-vmem]]`) as "Part III".
-- `[[chs:stores,coh]]` → "Lessons V.01 and V.02"
-- `[[chr:hier,dram]]` → "Lessons IV.02–IV.03"
-- `[[num:l1d]]` → "IV.01" (plain number)
+- `[[chs:st-visible,st-rfo]]` → "Lessons V.01 and V.02"
+- `[[chr:cache-org,cache-writes]]` → "Lessons IV.01–IV.04"
+- `[[num:l1d]]` → "IV.05" (plain number)
 
 Overview figures: `src/23_section_figs.js` registers one per section with `add(chapter, section, {h, cap, draw, live})`; Foundations chapters lay out text and figures with the `App.P` helpers in `src/04_found_a.js`.
 
@@ -349,7 +395,7 @@ That lets each page build on the same machine state instead of starting over, an
 
 The original hardware walkthrough keeps its pages and routes, arranged as a course. On top of it:
 
-- **Parts III and VI** are short lessons built on outputs from real Linux machines, with the earlier experiments placed inside them.
+- **Parts II to VI** are short lessons built on outputs from real Linux machines, with the earlier chapters kept as labs after the lessons they need.
 - Most hardware pages end with an **Experiments** part: small simulations with a prediction to make first (caches, forwarding, SMT, coherence, the DRAM controller, page tables and TLBs, prefetching, I/O queues, NUMA, ECC, refresh and more).
 - Lesson VII.02, **Real chips**, compares the example machine with AMD EPYC 9005, Intel Xeon 6 and Arm Neoverse V3, with sources, and measures machine C, a Xeon 6 virtual machine.
 - **Measure your machine** runs native benchmarks with one command and shows the results next to each simulation.

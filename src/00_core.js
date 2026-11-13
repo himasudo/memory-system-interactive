@@ -214,13 +214,17 @@ var App = (function(){
     if (built[ch.id].api.onShow) built[ch.id].api.onShow();
   }
 
+  var routeSeq = 0;
   function route(){
     var p = location.hash.slice(1).split('/');
     var moved = p[1] && App.Course && App.Course.moved[p[0] + '/' + p[1]];
     if (moved && App.Course.lessons[moved]){ p[0] = moved; try { history.replaceState(null, '', '#' + p.join('/')); } catch(e){} }
     show(p[0] || chapters[0].id);
-    /* second jump after the workbenches above have finished sizing */
-    if (p[1]){ setTimeout(function(){ scrollToSection(p[1], false); }, 30); setTimeout(function(){ scrollToSection(p[1], false); }, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
+    /* second jump after the workbenches above have finished sizing; skipped once the reader has
+       gone elsewhere, so a late jump cannot write the old page back into the address bar */
+    var seq = ++routeSeq;
+    function again(){ if (seq === routeSeq && location.hash.slice(1).split('/')[0] === p[0]) scrollToSection(p[1], false); }
+    if (p[1]){ setTimeout(again, 30); setTimeout(again, 400); } else window.scrollTo({top: 0, behavior: 'instant'});
   }
   function scrollToSection(sid, smooth){
     var current = built[cur]; if (current && current.api.selectSection) current.api.selectSection(sid);
