@@ -23,8 +23,9 @@ physical and 57-bit virtual addresses; the kernel uses 4-level paging. Details i
 **Machine C**: a third cloud virtual machine (KVM), the same Linux 6.18.44 build, 2 vCPUs. The
 CPU reports itself as an Intel Xeon at 2.30 GHz (family 6, model 173, stepping 1), 52-bit physical
 and 57-bit virtual addresses, a 48 KiB 12-way L1d and a 2 MiB L2 per core, and a 504 MiB L3.
-Linux names model 173 Granite Rapids (Xeon 6 with P-cores). Its timing programs are pinned to one
-CPU with `taskset`.
+Linux names model 173 Granite Rapids (Xeon 6 with P-cores). Its single-thread timing programs are
+pinned to one CPU with `taskset`; the two-thread programs (`sb`, `falseshare`, `pingpong`) pin their
+threads to CPUs 0 and 1 themselves.
 
 On a virtual machine, physical addresses are the virtual machine's own (the host translates
 them once more), and the CPU model and cache sizes are what the hypervisor reports.

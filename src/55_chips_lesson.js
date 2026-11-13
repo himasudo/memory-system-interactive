@@ -64,7 +64,7 @@
   App.lesson({
     id: 'chips', short: 'Real chips', title: 'Real chips: how AMD, Intel and Arm build the machine',
     lede: 'Three 2024 server designs next to the example machine, block by block, then one of them measured.',
-    know: ['The blocks of the example machine and the path of one load ([[ch:map]]).', 'Sets and ways, and why an L1 is indexed with page-offset bits ([[ch:vm-vipt]]).', 'Victim caches and shadow tags ([[ch:hier]]); coherence states ([[ch:coh]]).', 'Devices, DMA and PCIe (Part VI).'],
+    know: ['The blocks of the example machine and the path of one load ([[ch:map]]).', 'Sets and ways, and why an L1 is indexed with page-offset bits ([[ch:vm-vipt]]).', 'Victim caches and shadow tags ([[ch:hier]]); coherence states ([[ch:coh-mesi]]).', 'Devices, DMA and PCIe (Part VI).'],
     learn: ['Read a vendor’s cache and memory figures and map them onto the example machine', 'Say where each design puts its shared cache and its memory controllers', 'Measure the cache levels of a real machine, and know what a virtual machine hides'],
     sections: [
       { id: 'why', title: 'The same blocks, many more of them', body: function (L) {

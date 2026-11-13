@@ -779,6 +779,49 @@ var LabRuns = (function () {
         'dependent    random                ⟦197.2⟧'
       ]
     },
+    'c.sb': {
+      file: 'hw/out/sb.txt', machine: 'c',
+      what: 'sb.c: two threads on CPUs 0 and 1. Thread 0 stores x = 1 and loads y; thread 1 stores y = 1 and loads x. 2 million runs, three ways.',
+      lines: [
+        'nothing between the store and the load: 2000000 runs',
+        '  r0=0 r1=0:    ⟦50650⟧',
+        '  r0=0 r1=1:   748331',
+        '  r0=1 r1=0:  1193770',
+        '  r0=1 r1=1:     7249',
+        'mfence between them: 2000000 runs',
+        '  r0=0 r1=0:        ⟦0⟧',
+        'lock orq $0,(%rsp) between them: 2000000 runs',
+        '  r0=0 r1=0:        ⟦0⟧'
+      ]
+    },
+    'c.falseshare': {
+      file: 'hw/out/falseshare.txt', machine: 'c',
+      what: 'falseshare.c: one or two threads (CPUs 0 and 1), each adding 1 to its own counter 20 million times; the counters are 8 or 128 bytes apart.',
+      lines: [
+        'increment        threads and counters         ns per increment',
+        'plain            1 thread                       0.27',
+        'plain            2 threads, one line            0.29',
+        'plain            2 threads, 128 bytes apart     0.26',
+        'atomic           1 thread                       4.73',
+        'atomic           2 threads, one line           ⟦56.10⟧',
+        'atomic           2 threads, 128 bytes apart     4.74'
+      ]
+    },
+    'c.pingpong': {
+      file: 'hw/out/pingpong.txt', machine: 'c',
+      what: 'pingpong.c: two threads on CPUs 0 and 1 pass a counter back and forth through one cache line, a million round trips per run; eight runs, two seconds apart.',
+      lines: [
+        '1000000 round trips between CPU 0 and CPU 1, one 64-byte line',
+        'run 1:  143.6 ns per round trip,  ⟦71.8⟧ ns per handoff',
+        'run 2:  144.1 ns per round trip,  72.1 ns per handoff',
+        'run 3:  137.4 ns per round trip,  68.7 ns per handoff',
+        'run 4:  130.8 ns per round trip,  65.4 ns per handoff',
+        'run 5:  134.1 ns per round trip,  67.1 ns per handoff',
+        'run 6:  127.4 ns per round trip,  63.7 ns per handoff',
+        'run 7:  122.5 ns per round trip,  ⟦61.2⟧ ns per handoff',
+        'run 8:  136.0 ns per round trip,  68.0 ns per handoff'
+      ]
+    },
     'err.kernel': {
       file: 'vm/out/errcodes.txt',
       what: 'errcodes.c: loads from the kernel half and from the hole between the halves. A SIGSEGV handler prints the exception number (trap), the error code and si_code.',

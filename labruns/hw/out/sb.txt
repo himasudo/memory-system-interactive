@@ -1,0 +1,15 @@
+nothing between the store and the load: 2000000 runs
+  r0=0 r1=0:    50650
+  r0=0 r1=1:   748331
+  r0=1 r1=0:  1193770
+  r0=1 r1=1:     7249
+mfence between them: 2000000 runs
+  r0=0 r1=0:        0
+  r0=0 r1=1:  1510890
+  r0=1 r1=0:   313780
+  r0=1 r1=1:   175330
+lock orq $0,(%rsp) between them: 2000000 runs
+  r0=0 r1=0:        0
+  r0=0 r1=1:   920262
+  r0=1 r1=0:  1050836
+  r0=1 r1=1:    28902

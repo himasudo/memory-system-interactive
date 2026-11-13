@@ -85,7 +85,7 @@
       { id: 'ring', title: 'One producer, one consumer', body: function (L) {
         L.p('A ring is a fixed array used as a queue. The producer writes at the tail and advances it; the consumer reads at the head and advances it:', ['ring']);
         L.try('A ring of 8 slots', 'Add and take entries. The indexes only ever grow; the slot is the index masked by the ring size.', function (el) { App.LW.ringsim(el, {}); });
-        L.p('Each index has one writer, so producer and consumer need no lock. The only rule is order: write the entry first, then publish the new index ([[ch:stores]]).');
+        L.p('Each index has one writer, so producer and consumer need no lock. The only rule is order: write the entry first, then publish the new index ([[ch:ord-tso]]).');
         L.p('A device ring has the same shape, with the driver and the device as the two sides.');
       } },
       { id: 'vq', title: 'A virtqueue', body: function (L) {

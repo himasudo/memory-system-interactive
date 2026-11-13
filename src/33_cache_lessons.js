@@ -324,7 +324,7 @@
       { id: 'shadow', title: 'Knowing who has what: shadow tags', body: function (L) {
         L.p('Because the L3 does not hold copies of the L2s’ lines, it cannot tell from its own contents whether some core has a line.');
         L.p('So it keeps a copy of every L2’s tags: shadow tags. A miss in the L3 checks them. If another core’s L2 holds the line, the request goes to that core instead of DRAM, and to no other core.', ['shadow', 'pfilter']);
-        L.p('Part V uses this when two cores share a line ([[ch:coh]]).');
+        L.p('Part V uses this when two cores share a line ([[ch:coh-probe]]).');
       } }
     ],
     check: [

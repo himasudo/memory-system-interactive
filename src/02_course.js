@@ -31,9 +31,10 @@
       runs: ['c', 'b'],
       pages: ['cache-org', 'cache-lookup', 'cache-replace', 'cache-writes', 'l1d', 'cache-levels', 'cache-miss', 'hier', 'dram-cells', 'dram-cmds', 'dram-map', 'dram-refresh', 'dram', 'pref-hw', 'pref']},
     {id: 'order', n: 'V', title: 'Stores, ordering and coherence',
-      lede: 'What happens after a store retires, which orders other cores may observe, and how caches keep many copies of one line consistent.',
-      outcomes: ['Follow a store from the store queue to L1', 'Read a litmus test', 'Step through MOESI state changes'],
-      pages: ['stores', 'coh']},
+      lede: 'When a store becomes visible to other cores, why a store reads a line first, which orders other cores may observe and what fences and atomic instructions cost, then how caches keep the copies of one line consistent and what false sharing costs. The outputs shown are from real runs on two CPUs.',
+      outcomes: ['Follow a store from the store queue to the moment other cores see it', 'Count the traffic of normal and non-temporal stores', 'Read a litmus test and say which results x86 and Arm allow', 'Pick the fence or atomic a pattern needs, on x86 and on Arm', 'Step a line through MOESI and say who gets probed', 'Find and fix false sharing'],
+      runs: ['c'],
+      pages: ['st-visible', 'st-rfo', 'ord-tso', 'ord-fence', 'stores', 'coh-why', 'coh-mesi', 'coh-probe', 'coh-false', 'coh']},
     {id: 'io', n: 'VI', title: 'Devices and I/O',
       lede: 'How the CPU and devices share one machine: PCI Express, device registers (MMIO), DMA, the IOMMU, interrupts, the queues behind every disk and network request, and how a GPU fits in. The outputs shown are from real runs on a Linux machine.',
       outcomes: ['Read a device’s configuration space and BARs', 'Explain posted writes, doorbells and descriptor rings', 'Pick the right DMA API call and say what it does to the caches', 'Trace one read through io_uring, the block layer, the device and the interrupt', 'Say where a GPU’s memory is, and how CPU and GPU can share one address space'],
@@ -47,7 +48,7 @@
     {id: 'ref', n: '', title: 'Reference', pages: ['atlas', 'gloss']}
   ];
   /* Pages that are interactive labs rather than lessons; marked "Lab" in lists. */
-  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab', code: 'Lab', core: 'Lab', l1d: 'Lab', hier: 'Lab', dram: 'Lab', pref: 'Lab'};
+  var LAB_PAGES = {xlate: 'Lab', dev: 'Lab', code: 'Lab', core: 'Lab', l1d: 'Lab', hier: 'Lab', dram: 'Lab', pref: 'Lab', stores: 'Lab', coh: 'Lab'};
   /* Experiments that moved from the two labs into lessons. An old link such as #xlate/os opens
      the lesson that holds the experiment now (#vm-cow/os); the section id did not change. */
   var MOVED = {'xlate/os': 'vm-cow', 'xlate/native': 'vm-cost', 'xlate/pages': 'vm-huge', 'xlate/granules': 'vm-vipt',
@@ -240,6 +241,19 @@
   function codeHTML(text){
     return esc(text).replace(/⟦([^⟧]*)⟧/g, '<mark>$1</mark>');
   }
+  /* tabs to spaces, 8 columns as in the kernel sources (the code lines have a hanging indent, which
+     would shift the browser's own tab stops) */
+  function expandTabs(text){
+    return String(text).split('\n').map(function(line){
+      if (line.indexOf('\t') < 0) return line;
+      var out = '';
+      for (var i = 0; i < line.length; i++){
+        var ch = line.charAt(i);
+        out += ch === '\t' ? '        '.slice(0, 8 - out.length % 8) : ch;
+      }
+      return out;
+    }).join('\n');
+  }
   function shellHTML(text){
     return text.split('\n').map(function(line){
       var cls = /^\$ /.test(line) ? 'ln-cmd' : /^\s*#/.test(line) ? 'ln-com' : '';
@@ -252,7 +266,7 @@
     /* light C/asm colouring: comments and strings; everything else plain */
     return text.split('\n').map(function(line){
       var m = line.match(/^(.*?)(\/\/.*|\/\*.*|#.*)$/), body;
-      if (m && !/["']/.test(m[1].slice(-1)) && !/#include|#define|#if|#endif/.test(line)) body = codeHTML(m[1]) + '<span class="c-com">' + codeHTML(m[2]) + '</span>';
+      if (m && !/["']/.test(m[1].slice(-1)) && !/^\s*#\s*(include|define|undef|if|ifdef|ifndef|elif|else|endif|pragma|error)\b/.test(line)) body = codeHTML(m[1]) + '<span class="c-com">' + codeHTML(m[2]) + '</span>';
       else body = codeHTML(line);
       return '<span class="ln">' + (body || ' ') + '</span>';
     }).join('');
@@ -295,7 +309,7 @@
   B.steps = function(items, terms){ this.row('lx-text', '<ol class="lx-olist">' + items.map(function(x){ return '<li>' + prose(x) + '</li>'; }).join('') + '</ol>', terms); return this; };
   /* a block of code, a shell session, or a real output */
   B.code = function(text, o){
-    o = o || {};
+    o = o || {}; text = expandTabs(text);
     var lang = o.lang || 'c', body = lang === 'sh' || lang === 'out' ? shellHTML(text) : lang === 'text' ? codeHTML(text).split('\n').map(function(l){ return '<span class="ln">' + (l || ' ') + '</span>'; }).join('') : cHTML(text);
     var langName = {c: 'C', sh: 'shell', out: 'output', asm: 'assembly', text: o.title ? '' : 'text'}[lang] || lang;
     var m = this.row('lx-art' + (o.wide ? ' lx-wide' : ''), '', o.terms);
@@ -325,7 +339,7 @@
     var fig = h('figure', {'class': 'lx-quote'}, m);
     h('div', {'class': 'lx-code-bar'}, fig, '<span class="lx-code-t">' + (o.cite || '') + '</span>' + chip(o.label || 'Vendor docs'));
     var isCode = o.code;
-    if (isCode) h('pre', {'class': 'no-autolink'}, fig, '<code>' + cHTML(text) + '</code>');
+    if (isCode) h('pre', {'class': 'no-autolink'}, fig, '<code>' + cHTML(expandTabs(text)) + '</code>');
     else h('blockquote', null, fig, text.split('\n').map(function(t){ return '<p>' + t + '</p>'; }).join(''));
     if (o.src) h('figcaption', {'class': 'lx-src'}, fig, srcLinks(o.src));
     return this;

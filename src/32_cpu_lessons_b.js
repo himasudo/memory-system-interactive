@@ -348,7 +348,7 @@
       } },
       { id: 'commit', title: 'Committing stores', body: function (L) {
         L.p('Senior stores leave the store queue in program order, one by one, as each writes its line in the L1d.');
-        L.p('That write, the commit, is the moment other cores can see the new value. Before it, only this core can: through forwarding. Part V starts from here ([[ch:stores]]).');
+        L.p('That write, the commit, is the moment other cores can see the new value. Before it, only this core can: through forwarding. Part V starts from here ([[ch:st-visible]]).');
       } }
     ],
     check: [

@@ -15,12 +15,12 @@
   App.lesson({
     id: 'io-coherence', short: 'DMA and the caches', title: 'DMA and the caches',
     lede: 'A device writes memory behind the CPU caches’ back. On x86 the hardware keeps them consistent; elsewhere the DMA API cleans and invalidates cache lines around every transfer.',
-    know: ['The device writes data into RAM by DMA ([[ch:io-dma]]).', 'Caches keep copies of memory lines, and coherence keeps the copies consistent between cores ([[ch:coh]]).', 'A streaming DMA mapping names a direction ([[ch:io-dma]]).'],
+    know: ['The device writes data into RAM by DMA ([[ch:io-dma]]).', 'Caches keep copies of memory lines, and coherence keeps the copies consistent between cores ([[ch:coh-why]]).', 'A streaming DMA mapping names a direction ([[ch:io-dma]]).'],
     learn: ['Explain why x86 drivers need no cache maintenance for DMA', 'Say what the DMA API does for a device that is not coherent', 'Explain bounce buffers, and read why machine B has none', 'Say where DMA data lands: DRAM or the cache'],
     sections: [
       { id: 'x86', title: 'x86: devices are coherent', body: function (L) {
         L.p('A device writing memory meets two hazards. A cache may still hold the old line, and when the device reads, a cache may hold newer data than DRAM.', ['iocoh']);
-        L.p('On x86 the hardware handles both: device reads and writes are checked against the caches, as another core’s would be ([[ch:coh]]). Linux encodes that in one function:');
+        L.p('On x86 the hardware handles both: device reads and writes are checked against the caches, as another core’s would be ([[ch:coh-probe]]). Linux encodes that in one function:');
         L.quote('#if defined(CONFIG_ARCH_HAS_SYNC_DMA_FOR_DEVICE) || \\\n\tdefined(CONFIG_ARCH_HAS_SYNC_DMA_FOR_CPU) || \\\n\tdefined(CONFIG_ARCH_HAS_SYNC_DMA_FOR_CPU_ALL)\nextern bool dma_default_coherent;\nstatic inline bool dev_is_dma_coherent(struct device *dev)\n{\n\treturn dev->dma_coherent;\n}\n#else\n#define dma_default_coherent true\n\nstatic inline bool dev_is_dma_coherent(struct device *dev)\n{\n\treturn true;\n}\n#endif', { cite: 'include/linux/dma-map-ops.h, Linux v6.18', label: 'Linux source', code: true });
         L.p('arch/x86/Kconfig selects none of those three options, so on x86 every device counts as coherent. The DMA API then does nothing to the caches at all.');
         L.p('Coherent still means ordered by the driver. A driver writes a descriptor, then publishes it, with a barrier between, exactly as between two cores ([[ch:io-rings]]).');

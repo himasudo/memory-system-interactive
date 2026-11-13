@@ -9,9 +9,15 @@ mkdir -p "$bin" "$here/out"
 for p in ladder branch mlp seq; do
   gcc -O2 -Wall -o "$bin/$p" "$here/$p.c"
 done
+for p in sb falseshare pingpong; do
+  gcc -O2 -Wall -pthread -o "$bin/$p" "$here/$p.c"
+done
 sh "$here/facts.sh" > "$here/out/facts.txt" 2>&1
 taskset -c 0 "$bin/ladder" > "$here/out/ladder.txt"
 taskset -c 0 "$bin/branch" > "$here/out/branch.txt"
 taskset -c 0 "$bin/mlp" > "$here/out/mlp.txt"
 taskset -c 0 "$bin/seq" > "$here/out/seq.txt"
+"$bin/sb" > "$here/out/sb.txt"
+"$bin/falseshare" > "$here/out/falseshare.txt"
+"$bin/pingpong" > "$here/out/pingpong.txt"
 echo done

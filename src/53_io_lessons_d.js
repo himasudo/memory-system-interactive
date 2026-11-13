@@ -94,7 +94,7 @@
       { id: 'submit', title: 'Submitting a read', body: function (L) {
         L.p('oneread.c fills one SQE, adds it to the ring, and enters the kernel:');
         L.code('struct io_uring_sqe *e = &sqes[idx];\nmemset(e, 0, sizeof *e);\ne->opcode = IORING_OP_READ;\ne->fd = fd;\ne->addr = (uint64_t)(uintptr_t)buf;\ne->len = 4096;\ne->off = off;\ne->user_data = 0x2a;\nsq_array[idx] = idx;\n__atomic_store_n(sq_tail, tail + 1, __ATOMIC_RELEASE);\nif (syscall(__NR_io_uring_enter, ring_fd, 1, 1, IORING_ENTER_GETEVENTS, NULL, 0) < 0) { perror("io_uring_enter"); exit(1); }', { title: 'labruns/io/oneread.c, read_once() (excerpt)' });
-        L.p('The release store makes the SQE visible before the new tail, the same rule as for any ring ([[ch:stores]]). io_uring_enter(fd, 1, 1, GETEVENTS) submits one entry and waits for one completion.');
+        L.p('The release store makes the SQE visible before the new tail, the same rule as for any ring ([[ch:ord-fence]]). io_uring_enter(fd, 1, 1, GETEVENTS) submits one entry and waits for one completion.');
         L.p('user_data is the program’s own tag, 0x2a here: the kernel copies it into the CQE so the program can match answers to requests.');
       } },
       { id: 'trace', title: 'What the kernel did', body: function (L) {
